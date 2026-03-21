@@ -1,0 +1,473 @@
+//! Types for command security operations
+//!
+//! Defines threat categories and allow-list types for OS command execution safety.
+
+use std::collections::HashSet;
+use std::fmt;
+
+/// Security threats in command execution (CWE-78: OS Command Injection)
+///
+/// Each variant maps to a specific attack pattern that could allow
+/// arbitrary command execution or information disclosure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CommandThreat {
+    // Command chaining (CWE-78)
+    /// Semicolon command chaining: `cmd1; cmd2`
+    CommandChain,
+    /// Pipe chaining: `cmd1 | cmd2`
+    PipeChain,
+    /// Background execution: `cmd &`
+    BackgroundExecution,
+    /// Conditional chaining: `cmd1 && cmd2` or `cmd1 || cmd2`
+    ConditionalChain,
+
+    // Shell expansion (CWE-78)
+    /// Command substitution: `$(cmd)` or `` `cmd` ``
+    CommandSubstitution,
+    /// Variable expansion: `$VAR` or `${VAR}`
+    VariableExpansion,
+    /// Indirect variable expansion: `${!VAR}`
+    IndirectExpansion,
+    /// Arithmetic expansion: `$((expr))`
+    ArithmeticExpansion,
+
+    // Redirection (CWE-78)
+    /// Output redirection: `>` or `>>`
+    OutputRedirect,
+    /// Input redirection: `<`
+    InputRedirect,
+
+    // Glob patterns (information disclosure)
+    /// Shell glob patterns: `*`, `?`, `[...]`
+    GlobPattern,
+
+    // Other
+    /// Null byte injection (CWE-158)
+    NullByte,
+    /// Control characters (CWE-707)
+    ControlCharacter,
+    /// Newline injection (CWE-93)
+    NewlineInjection,
+    /// Command not in allow-list
+    DisallowedCommand,
+    /// Dangerous environment variable name
+    DangerousEnvName,
+    /// Dangerous environment variable value
+    DangerousEnvValue,
+}
+
+impl CommandThreat {
+    /// Get the CWE identifier for this threat
+    #[must_use]
+    pub const fn cwe(&self) -> &'static str {
+        match self {
+            Self::CommandChain
+            | Self::PipeChain
+            | Self::BackgroundExecution
+            | Self::ConditionalChain
+            | Self::CommandSubstitution
+            | Self::VariableExpansion
+            | Self::IndirectExpansion
+            | Self::ArithmeticExpansion
+            | Self::OutputRedirect
+            | Self::InputRedirect => "CWE-78",
+            Self::GlobPattern => "CWE-200", // Information Exposure
+            Self::NullByte => "CWE-158",
+            Self::ControlCharacter => "CWE-707",
+            Self::NewlineInjection => "CWE-93", // CRLF Injection
+            Self::DisallowedCommand => "CWE-78",
+            Self::DangerousEnvName | Self::DangerousEnvValue => "CWE-78",
+        }
+    }
+
+    /// Get the severity level (1-5, higher is more severe)
+    #[must_use]
+    pub const fn severity(&self) -> u8 {
+        match self {
+            // Critical: Direct command execution
+            Self::CommandSubstitution
+            | Self::CommandChain
+            | Self::PipeChain
+            | Self::NewlineInjection => 5,
+            // High: Can lead to command execution
+            Self::ConditionalChain
+            | Self::BackgroundExecution
+            | Self::VariableExpansion
+            | Self::IndirectExpansion
+            | Self::ArithmeticExpansion
+            | Self::DisallowedCommand => 4,
+            // Medium: Data manipulation
+            Self::OutputRedirect | Self::InputRedirect | Self::DangerousEnvValue => 3,
+            // Low: Information disclosure or parsing issues
+            Self::GlobPattern
+            | Self::NullByte
+            | Self::ControlCharacter
+            | Self::DangerousEnvName => 2,
+        }
+    }
+
+    /// Get a human-readable description
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
+        match self {
+            Self::CommandChain => "Semicolon command chaining (;)",
+            Self::PipeChain => "Pipe command chaining (|)",
+            Self::BackgroundExecution => "Background execution (&)",
+            Self::ConditionalChain => "Conditional chaining (&& or ||)",
+            Self::CommandSubstitution => "Command substitution ($() or ``)",
+            Self::VariableExpansion => "Variable expansion ($VAR or ${VAR})",
+            Self::IndirectExpansion => "Indirect variable expansion (${!VAR})",
+            Self::ArithmeticExpansion => "Arithmetic expansion ($((expr)))",
+            Self::OutputRedirect => "Output redirection (> or >>)",
+            Self::InputRedirect => "Input redirection (<)",
+            Self::GlobPattern => "Shell glob pattern (* ? [...])",
+            Self::NullByte => "Null byte injection",
+            Self::ControlCharacter => "Control character",
+            Self::NewlineInjection => "Newline injection (\\n or \\r\\n)",
+            Self::DisallowedCommand => "Command not in allow-list",
+            Self::DangerousEnvName => "Dangerous environment variable name",
+            Self::DangerousEnvValue => "Dangerous environment variable value",
+        }
+    }
+}
+
+impl fmt::Display for CommandThreat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({})", self.description(), self.cwe())
+    }
+}
+
+/// Mode for allow-list enforcement
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AllowListMode {
+    /// Only commands in the list are allowed (default, most secure)
+    #[default]
+    AllowOnly,
+    /// Commands in the list are denied, others allowed (less secure)
+    DenyListed,
+}
+
+/// Allow-list for command validation
+///
+/// Controls which commands can be executed. The default mode is `AllowOnly`,
+/// which only permits explicitly listed commands.
+///
+/// # Example
+///
+/// ```ignore
+/// use octarine::security::commands::AllowList;
+///
+/// let list = AllowList::new()
+///     .allow("git")
+///     .allow("docker")
+///     .deny_all_others();
+///
+/// assert!(list.is_allowed("git"));
+/// assert!(!list.is_allowed("rm"));
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct AllowList {
+    commands: HashSet<String>,
+    mode: AllowListMode,
+}
+
+impl AllowList {
+    /// Create a new empty allow-list in `AllowOnly` mode
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a command to the list
+    #[must_use]
+    pub fn allow(mut self, command: impl Into<String>) -> Self {
+        self.commands.insert(command.into());
+        self
+    }
+
+    /// Add multiple commands to the list
+    #[must_use]
+    pub fn allow_many<I, S>(mut self, commands: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for cmd in commands {
+            self.commands.insert(cmd.into());
+        }
+        self
+    }
+
+    /// Set mode to deny all commands not in the list (default)
+    #[must_use]
+    pub fn deny_all_others(mut self) -> Self {
+        self.mode = AllowListMode::AllowOnly;
+        self
+    }
+
+    /// Set mode to allow all commands except those in the list
+    #[must_use]
+    pub fn allow_all_except(mut self) -> Self {
+        self.mode = AllowListMode::DenyListed;
+        self
+    }
+
+    /// Check if a command is allowed
+    #[must_use]
+    pub fn is_allowed(&self, command: &str) -> bool {
+        // Extract just the command name (basename) for comparison
+        let cmd_name = Self::extract_command_name(command);
+
+        match self.mode {
+            AllowListMode::AllowOnly => self.commands.contains(cmd_name),
+            AllowListMode::DenyListed => !self.commands.contains(cmd_name),
+        }
+    }
+
+    /// Check if a command is allowed, resolving symlinks
+    ///
+    /// This prevents bypass attacks where an attacker creates a symlink
+    /// like `/tmp/git -> /bin/rm` to execute disallowed commands.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The command path to check
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(true)` if the command is allowed
+    /// * `Ok(false)` if the command is not allowed
+    /// * `Err` if the path cannot be resolved (e.g., command doesn't exist)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use octarine::security::commands::AllowList;
+    ///
+    /// let allowlist = AllowList::git_operations();
+    ///
+    /// // Even if /tmp/git is a symlink to /bin/rm, this will reject it
+    /// match allowlist.is_allowed_resolving_symlinks("/tmp/git") {
+    ///     Ok(true) => println!("Allowed"),
+    ///     Ok(false) => println!("Denied - resolved name not in allowlist"),
+    ///     Err(e) => println!("Cannot resolve: {}", e),
+    /// }
+    /// ```
+    pub fn is_allowed_resolving_symlinks(&self, command: &str) -> std::io::Result<bool> {
+        // First check the basename
+        let cmd_name = Self::extract_command_name(command);
+        if !self.is_allowed(cmd_name) {
+            return Ok(false);
+        }
+
+        // If it's a path (contains separator), resolve symlinks
+        if command.contains('/') || command.contains('\\') {
+            use std::path::Path;
+
+            let path = Path::new(command);
+
+            // Only resolve if the path exists
+            if path.exists() {
+                let resolved = std::fs::canonicalize(path)?;
+                let resolved_name = resolved.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+                // The resolved binary name must also be in the allow-list
+                return Ok(self.is_allowed(resolved_name));
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Extract the command name from a path
+    fn extract_command_name(command: &str) -> &str {
+        // Handle absolute paths like /usr/bin/git -> git
+        command
+            .rsplit('/')
+            .next()
+            .unwrap_or(command)
+            .rsplit('\\')
+            .next()
+            .unwrap_or(command)
+    }
+
+    /// Get the number of commands in the list
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.commands.len()
+    }
+
+    /// Check if the list is empty
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.commands.is_empty()
+    }
+
+    /// Get the mode
+    #[must_use]
+    pub fn mode(&self) -> AllowListMode {
+        self.mode
+    }
+
+    // Preset allow-lists
+
+    /// Create an allow-list for shell-safe commands
+    ///
+    /// Includes common read-only utilities that are generally safe.
+    #[must_use]
+    pub fn shell_safe() -> Self {
+        Self::new().allow_many([
+            "ls", "cat", "echo", "grep", "find", "head", "tail", "wc", "sort", "uniq", "cut", "tr",
+            "date", "whoami", "pwd", "env", "printenv", "which", "file", "stat", "du", "df",
+        ])
+    }
+
+    /// Create an allow-list for git operations
+    #[must_use]
+    pub fn git_operations() -> Self {
+        Self::new().allow("git")
+    }
+
+    /// Create an allow-list for docker operations
+    #[must_use]
+    pub fn docker_operations() -> Self {
+        Self::new().allow_many(["docker", "docker-compose"])
+    }
+
+    /// Create an allow-list for npm/node operations
+    #[must_use]
+    pub fn node_operations() -> Self {
+        Self::new().allow_many(["node", "npm", "npx", "yarn", "pnpm"])
+    }
+
+    /// Create an allow-list for cargo/rust operations
+    #[must_use]
+    pub fn rust_operations() -> Self {
+        Self::new().allow_many(["cargo", "rustc", "rustup", "rustfmt", "clippy-driver"])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn test_command_threat_display() {
+        let threat = CommandThreat::CommandSubstitution;
+        let display = format!("{}", threat);
+        assert!(display.contains("CWE-78"));
+        assert!(display.contains("Command substitution"));
+    }
+
+    #[test]
+    fn test_command_threat_severity() {
+        // Command substitution is most severe
+        assert_eq!(CommandThreat::CommandSubstitution.severity(), 5);
+        // Glob patterns are less severe
+        assert_eq!(CommandThreat::GlobPattern.severity(), 2);
+    }
+
+    #[test]
+    fn test_allowlist_allow_only() {
+        let list = AllowList::new().allow("git").allow("docker");
+
+        assert!(list.is_allowed("git"));
+        assert!(list.is_allowed("docker"));
+        assert!(!list.is_allowed("rm"));
+        assert!(!list.is_allowed("bash"));
+    }
+
+    #[test]
+    fn test_allowlist_deny_listed() {
+        let list = AllowList::new().allow("rm").allow("dd").allow_all_except();
+
+        assert!(!list.is_allowed("rm"));
+        assert!(!list.is_allowed("dd"));
+        assert!(list.is_allowed("git"));
+        assert!(list.is_allowed("ls"));
+    }
+
+    #[test]
+    fn test_allowlist_path_extraction() {
+        let list = AllowList::new().allow("git");
+
+        // Should work with absolute paths
+        assert!(list.is_allowed("/usr/bin/git"));
+        assert!(list.is_allowed("/opt/homebrew/bin/git"));
+
+        // And Windows-style paths
+        assert!(list.is_allowed("C:\\Program Files\\Git\\git"));
+    }
+
+    #[test]
+    fn test_allowlist_presets() {
+        let shell_safe = AllowList::shell_safe();
+        assert!(shell_safe.is_allowed("ls"));
+        assert!(shell_safe.is_allowed("cat"));
+        assert!(!shell_safe.is_allowed("rm")); // Not in shell_safe
+
+        let git = AllowList::git_operations();
+        assert!(git.is_allowed("git"));
+        assert!(!git.is_allowed("docker"));
+
+        let docker = AllowList::docker_operations();
+        assert!(docker.is_allowed("docker"));
+        assert!(docker.is_allowed("docker-compose"));
+    }
+
+    #[test]
+    fn test_allowlist_len_and_empty() {
+        let empty = AllowList::new();
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+
+        let with_items = AllowList::new().allow("git").allow("docker");
+        assert!(!with_items.is_empty());
+        assert_eq!(with_items.len(), 2);
+    }
+
+    #[test]
+    fn test_allowlist_symlink_resolution_nonexistent() {
+        // For non-existent paths, should return Ok(true) if basename is allowed
+        let allowlist = AllowList::new().allow("git");
+
+        // Non-existent path with allowed basename
+        let result = allowlist.is_allowed_resolving_symlinks("/nonexistent/path/git");
+        assert!(result.is_ok());
+        assert!(result.expect("should succeed"));
+
+        // Non-existent path with disallowed basename
+        let result = allowlist.is_allowed_resolving_symlinks("/nonexistent/path/rm");
+        assert!(result.is_ok());
+        assert!(!result.expect("should succeed"));
+    }
+
+    #[test]
+    fn test_allowlist_symlink_resolution_real_binary() {
+        // Test with real binaries that should exist
+        let allowlist = AllowList::new().allow("sh");
+
+        // /bin/sh should exist on Unix systems
+        #[cfg(unix)]
+        {
+            let result = allowlist.is_allowed_resolving_symlinks("/bin/sh");
+            // This should work - sh is allowed and resolves to sh (or bash on some systems)
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_allowlist_symlink_bare_command() {
+        // Bare command without path should just use is_allowed
+        let allowlist = AllowList::new().allow("git");
+
+        let result = allowlist.is_allowed_resolving_symlinks("git");
+        assert!(result.is_ok());
+        assert!(result.expect("should succeed"));
+
+        let result = allowlist.is_allowed_resolving_symlinks("rm");
+        assert!(result.is_ok());
+        assert!(!result.expect("should succeed"));
+    }
+}

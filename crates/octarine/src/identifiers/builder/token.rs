@@ -1,0 +1,571 @@
+//! Token identifier builder with observability
+//!
+//! Wraps `primitives::identifiers::TokenIdentifierBuilder` with observe instrumentation.
+//!
+//! This is the **public API** (Layer 3) that wraps the primitive builder
+//! with observe instrumentation for compliance-grade audit trails.
+
+use std::borrow::Cow;
+
+use crate::observe::Problem;
+use crate::primitives::identifiers::{
+    ApiKeyProvider, ApiKeyRedactionStrategy, JwtAlgorithm, JwtMetadata, JwtRedactionStrategy,
+    SessionIdRedactionStrategy, SshFingerprintRedactionStrategy, SshKeyRedactionStrategy,
+    TokenIdentifierBuilder, TokenTextPolicy, TokenType,
+};
+
+/// Token identifier builder with observability
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TokenBuilder {
+    inner: TokenIdentifierBuilder,
+    emit_events: bool,
+}
+
+impl TokenBuilder {
+    /// Create a new TokenBuilder with observe events enabled
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            inner: TokenIdentifierBuilder::new(),
+            emit_events: true,
+        }
+    }
+
+    /// Create a builder without observe events (for internal use)
+    #[must_use]
+    pub fn silent() -> Self {
+        Self {
+            inner: TokenIdentifierBuilder::new(),
+            emit_events: false,
+        }
+    }
+
+    /// Enable or disable observe events
+    #[must_use]
+    pub fn with_events(mut self, emit: bool) -> Self {
+        self.emit_events = emit;
+        self
+    }
+
+    // ============================================================================
+    // Detection Methods
+    // ============================================================================
+
+    /// Check if value is a JWT token
+    #[must_use]
+    pub fn is_jwt(&self, value: &str) -> bool {
+        self.inner.is_jwt(value)
+    }
+
+    /// Check if value is an API key
+    #[must_use]
+    pub fn is_api_key(&self, value: &str) -> bool {
+        self.inner.is_api_key(value)
+    }
+
+    /// Check if value is an AWS Access Key
+    #[must_use]
+    pub fn is_aws_access_key(&self, value: &str) -> bool {
+        self.inner.is_aws_access_key(value)
+    }
+
+    /// Check if value is an AWS Secret Key
+    #[must_use]
+    pub fn is_aws_secret_key(&self, value: &str) -> bool {
+        self.inner.is_aws_secret_key(value)
+    }
+
+    /// Check if value is a GCP API key
+    #[must_use]
+    pub fn is_gcp_api_key(&self, value: &str) -> bool {
+        self.inner.is_gcp_api_key(value)
+    }
+
+    /// Check if value is a GitHub token
+    #[must_use]
+    pub fn is_github_token(&self, value: &str) -> bool {
+        self.inner.is_github_token(value)
+    }
+
+    /// Check if value is an Azure key
+    #[must_use]
+    pub fn is_azure_key(&self, value: &str) -> bool {
+        self.inner.is_azure_key(value)
+    }
+
+    /// Check if value is a Stripe key
+    #[must_use]
+    pub fn is_stripe_key(&self, value: &str) -> bool {
+        self.inner.is_stripe_key(value)
+    }
+
+    /// Check if value is a GitLab token
+    #[must_use]
+    pub fn is_gitlab_token(&self, value: &str) -> bool {
+        self.inner.is_gitlab_token(value)
+    }
+
+    /// Check if value is a 1Password service account token
+    #[must_use]
+    pub fn is_onepassword_token(&self, value: &str) -> bool {
+        self.inner.is_onepassword_token(value)
+    }
+
+    /// Check if value is a 1Password vault reference
+    #[must_use]
+    pub fn is_onepassword_vault_ref(&self, value: &str) -> bool {
+        self.inner.is_onepassword_vault_ref(value)
+    }
+
+    /// Check if value is a Bearer token
+    #[must_use]
+    pub fn is_bearer_token(&self, value: &str) -> bool {
+        self.inner.is_bearer_token(value)
+    }
+
+    /// Check if value is a URL with embedded credentials
+    #[must_use]
+    pub fn is_url_with_credentials(&self, value: &str) -> bool {
+        self.inner.is_url_with_credentials(value)
+    }
+
+    /// Check if value is an SSH public key
+    #[must_use]
+    pub fn is_ssh_public_key(&self, value: &str) -> bool {
+        self.inner.is_ssh_public_key(value)
+    }
+
+    /// Check if value is an SSH private key
+    #[must_use]
+    pub fn is_ssh_private_key(&self, value: &str) -> bool {
+        self.inner.is_ssh_private_key(value)
+    }
+
+    /// Check if value is an SSH fingerprint
+    #[must_use]
+    pub fn is_ssh_fingerprint(&self, value: &str) -> bool {
+        self.inner.is_ssh_fingerprint(value)
+    }
+
+    /// Check if value is an SSH key or fingerprint
+    #[must_use]
+    pub fn is_ssh_key(&self, value: &str) -> bool {
+        self.inner.is_ssh_key(value)
+    }
+
+    /// Check if value looks like a session ID (heuristic)
+    #[must_use]
+    pub fn is_likely_session_id(&self, value: &str) -> bool {
+        self.inner.is_likely_session_id(value)
+    }
+
+    /// Detect the specific type of token
+    #[must_use]
+    pub fn detect_token_type(&self, value: &str) -> Option<TokenType> {
+        self.inner.detect_token_type(value)
+    }
+
+    /// Check if value is any type of token
+    #[must_use]
+    pub fn is_token_identifier(&self, value: &str) -> bool {
+        self.inner.is_token_identifier(value)
+    }
+
+    // ============================================================================
+    // Validation Methods
+    //
+    // Naming convention:
+    // - `is_*` returns `bool` (detection layer only)
+    // - `validate_*` returns `Result<T, E>` (validation with error details)
+    // ============================================================================
+
+    /// Validate JWT token format (returns Result)
+    pub fn validate_jwt(&self, token: &str) -> Result<(), Problem> {
+        self.inner.validate_jwt(token)
+    }
+
+    /// Validate JWT algorithm security (returns Result with algorithm)
+    pub fn validate_jwt_algorithm(
+        &self,
+        token: &str,
+        allow_hmac: bool,
+    ) -> Result<JwtAlgorithm, Problem> {
+        self.inner.validate_jwt_algorithm(token, allow_hmac)
+    }
+
+    /// Detect JWT algorithm from token
+    pub fn detect_jwt_algorithm(&self, token: &str) -> Result<JwtAlgorithm, Problem> {
+        self.inner.detect_jwt_algorithm(token)
+    }
+
+    /// Validate API key format (returns Result with provider)
+    pub fn validate_api_key(
+        &self,
+        key: &str,
+        min: usize,
+        max: usize,
+    ) -> Result<ApiKeyProvider, Problem> {
+        self.inner.validate_api_key(key, min, max)
+    }
+
+    /// Validate session ID format (returns Result)
+    pub fn validate_session_id(
+        &self,
+        session_id: &str,
+        min: usize,
+        max: usize,
+    ) -> Result<(), Problem> {
+        self.inner.validate_session_id(session_id, min, max)
+    }
+
+    // ============================================================================
+    // Conversion Methods
+    // ============================================================================
+
+    /// Extract metadata from JWT header
+    pub fn extract_jwt_metadata(&self, token: &str) -> Result<JwtMetadata, Problem> {
+        self.inner.extract_jwt_metadata(token)
+    }
+
+    /// Parse JWT header and return raw JSON
+    pub fn parse_jwt_header(&self, token: &str) -> Result<serde_json::Value, Problem> {
+        self.inner.parse_jwt_header(token)
+    }
+
+    /// Extract algorithm string from JWT header
+    pub fn extract_jwt_algorithm_string(&self, token: &str) -> Result<String, Problem> {
+        self.inner.extract_jwt_algorithm_string(token)
+    }
+
+    /// Extract token type from JWT header
+    pub fn extract_jwt_type(&self, token: &str) -> Result<Option<String>, Problem> {
+        self.inner.extract_jwt_type(token)
+    }
+
+    // ============================================================================
+    // JWT Redaction
+    // ============================================================================
+
+    /// Redact JWT token (show algorithm by default)
+    #[must_use]
+    pub fn redact_jwt(&self, token: &str) -> String {
+        self.inner.redact_jwt(token)
+    }
+
+    /// Redact JWT token with custom strategy
+    #[must_use]
+    pub fn redact_jwt_with_strategy(&self, token: &str, strategy: JwtRedactionStrategy) -> String {
+        self.inner.redact_jwt_with_strategy(token, strategy)
+    }
+
+    /// Mask JWT token (convenience wrapper)
+    #[must_use]
+    pub fn mask_jwt(&self, token: &str) -> String {
+        self.inner.mask_jwt(token)
+    }
+
+    /// Redact JWTs in text
+    #[must_use]
+    pub fn redact_jwts_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        self.inner.redact_jwts_in_text(text)
+    }
+
+    /// Redact JWTs in text with custom policy
+    #[must_use]
+    pub fn redact_jwts_in_text_with_policy<'a>(
+        &self,
+        text: &'a str,
+        policy: TokenTextPolicy,
+    ) -> Cow<'a, str> {
+        self.inner.redact_jwts_in_text_with_policy(text, policy)
+    }
+
+    // ============================================================================
+    // API Key Redaction
+    // ============================================================================
+
+    /// Redact API key (show prefix by default)
+    #[must_use]
+    pub fn redact_api_key(&self, key: &str) -> String {
+        self.inner.redact_api_key(key)
+    }
+
+    /// Redact API key with custom strategy
+    #[must_use]
+    pub fn redact_api_key_with_strategy(
+        &self,
+        key: &str,
+        strategy: ApiKeyRedactionStrategy,
+    ) -> String {
+        self.inner.redact_api_key_with_strategy(key, strategy)
+    }
+
+    /// Mask API key (convenience wrapper)
+    #[must_use]
+    pub fn mask_api_key(&self, key: &str) -> String {
+        self.inner.mask_api_key(key)
+    }
+
+    /// Redact API keys in text
+    #[must_use]
+    pub fn redact_api_keys_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        self.inner.redact_api_keys_in_text(text)
+    }
+
+    /// Redact API keys in text with custom policy
+    #[must_use]
+    pub fn redact_api_keys_in_text_with_policy<'a>(
+        &self,
+        text: &'a str,
+        policy: TokenTextPolicy,
+    ) -> Cow<'a, str> {
+        self.inner.redact_api_keys_in_text_with_policy(text, policy)
+    }
+
+    // ============================================================================
+    // Session ID Redaction
+    // ============================================================================
+
+    /// Redact session ID (show prefix by default)
+    #[must_use]
+    pub fn redact_session_id(&self, session_id: &str) -> String {
+        self.inner.redact_session_id(session_id)
+    }
+
+    /// Redact session ID with custom strategy
+    #[must_use]
+    pub fn redact_session_id_with_strategy(
+        &self,
+        session_id: &str,
+        strategy: SessionIdRedactionStrategy,
+    ) -> String {
+        self.inner
+            .redact_session_id_with_strategy(session_id, strategy)
+    }
+
+    /// Mask session ID (convenience wrapper)
+    #[must_use]
+    pub fn mask_session_id(&self, session_id: &str) -> String {
+        self.inner.mask_session_id(session_id)
+    }
+
+    /// Redact session IDs in text
+    #[must_use]
+    pub fn redact_session_ids_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        self.inner.redact_session_ids_in_text(text)
+    }
+
+    /// Redact session IDs in text with custom policy
+    #[must_use]
+    pub fn redact_session_ids_in_text_with_policy<'a>(
+        &self,
+        text: &'a str,
+        policy: TokenTextPolicy,
+    ) -> Cow<'a, str> {
+        self.inner
+            .redact_session_ids_in_text_with_policy(text, policy)
+    }
+
+    // ============================================================================
+    // SSH Key Redaction
+    // ============================================================================
+
+    /// Redact SSH key (show type by default)
+    #[must_use]
+    pub fn redact_ssh_key(&self, key: &str) -> String {
+        self.inner.redact_ssh_key(key)
+    }
+
+    /// Redact SSH key with custom strategy
+    #[must_use]
+    pub fn redact_ssh_key_with_strategy(
+        &self,
+        key: &str,
+        strategy: SshKeyRedactionStrategy,
+    ) -> String {
+        self.inner.redact_ssh_key_with_strategy(key, strategy)
+    }
+
+    /// Mask SSH key (convenience wrapper)
+    #[must_use]
+    pub fn mask_ssh_key(&self, key: &str) -> String {
+        self.inner.mask_ssh_key(key)
+    }
+
+    /// Redact SSH keys in text
+    #[must_use]
+    pub fn redact_ssh_keys_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        self.inner.redact_ssh_keys_in_text(text)
+    }
+
+    /// Redact SSH keys in text with custom policy
+    #[must_use]
+    pub fn redact_ssh_keys_in_text_with_policy<'a>(
+        &self,
+        text: &'a str,
+        policy: TokenTextPolicy,
+    ) -> Cow<'a, str> {
+        self.inner.redact_ssh_keys_in_text_with_policy(text, policy)
+    }
+
+    // ============================================================================
+    // SSH Fingerprint Redaction
+    // ============================================================================
+
+    /// Redact SSH fingerprint (show type by default)
+    #[must_use]
+    pub fn redact_ssh_fingerprint(&self, fingerprint: &str) -> String {
+        self.inner.redact_ssh_fingerprint(fingerprint)
+    }
+
+    /// Redact SSH fingerprint with custom strategy
+    #[must_use]
+    pub fn redact_ssh_fingerprint_with_strategy(
+        &self,
+        fingerprint: &str,
+        strategy: SshFingerprintRedactionStrategy,
+    ) -> String {
+        self.inner
+            .redact_ssh_fingerprint_with_strategy(fingerprint, strategy)
+    }
+
+    // ============================================================================
+    // Provider-Specific Redaction
+    // ============================================================================
+
+    /// Redact AWS key
+    #[must_use]
+    pub fn redact_aws_key(&self, key: &str) -> String {
+        self.inner.redact_aws_key(key)
+    }
+
+    /// Mask AWS key
+    #[must_use]
+    pub fn mask_aws_key(&self, key: &str) -> String {
+        self.inner.mask_aws_key(key)
+    }
+
+    /// Redact GitHub token
+    #[must_use]
+    pub fn redact_github_token(&self, token: &str) -> String {
+        self.inner.redact_github_token(token)
+    }
+
+    /// Mask GitHub token
+    #[must_use]
+    pub fn mask_github_token(&self, token: &str) -> String {
+        self.inner.mask_github_token(token)
+    }
+
+    /// Redact Stripe key
+    #[must_use]
+    pub fn redact_stripe_key(&self, key: &str) -> String {
+        self.inner.redact_stripe_key(key)
+    }
+
+    /// Mask Stripe key
+    #[must_use]
+    pub fn mask_stripe_key(&self, key: &str) -> String {
+        self.inner.mask_stripe_key(key)
+    }
+
+    /// Redact GCP key
+    #[must_use]
+    pub fn redact_gcp_key(&self, key: &str) -> String {
+        self.inner.redact_gcp_key(key)
+    }
+
+    /// Mask GCP key
+    #[must_use]
+    pub fn mask_gcp_key(&self, key: &str) -> String {
+        self.inner.mask_gcp_key(key)
+    }
+
+    /// Redact Azure key
+    #[must_use]
+    pub fn redact_azure_key(&self, key: &str) -> String {
+        self.inner.redact_azure_key(key)
+    }
+
+    /// Mask Azure key
+    #[must_use]
+    pub fn mask_azure_key(&self, key: &str) -> String {
+        self.inner.mask_azure_key(key)
+    }
+
+    // ============================================================================
+    // Comprehensive Text Redaction
+    // ============================================================================
+
+    /// Redact all token types in text using default Complete policy
+    #[must_use]
+    pub fn redact_all_in_text(&self, text: &str) -> String {
+        self.inner.redact_all_in_text(text)
+    }
+
+    /// Redact all token types in text with explicit policy
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The text to scan for token identifiers
+    /// * `policy` - The redaction policy to apply
+    #[must_use]
+    pub fn redact_all_in_text_with_policy(&self, text: &str, policy: TokenTextPolicy) -> String {
+        self.inner.redact_all_in_text_with_policy(text, policy)
+    }
+
+    // ============================================================================
+    // Test Data Detection Methods
+    // ============================================================================
+
+    /// Check if JWT is a known test/development token
+    #[must_use]
+    pub fn is_test_jwt(&self, jwt: &str) -> bool {
+        self.inner.is_test_jwt(jwt)
+    }
+
+    /// Check if API key is a known test/development key
+    #[must_use]
+    pub fn is_test_api_key(&self, key: &str) -> bool {
+        self.inner.is_test_api_key(key)
+    }
+
+    /// Check if session ID is a known test/development ID
+    #[must_use]
+    pub fn is_test_session_id(&self, session_id: &str) -> bool {
+        self.inner.is_test_session_id(session_id)
+    }
+
+    /// Check if SSH key or fingerprint is a known test/example
+    #[must_use]
+    pub fn is_test_ssh_key(&self, ssh_key: &str) -> bool {
+        self.inner.is_test_ssh_key(ssh_key)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn test_builder_creation() {
+        let builder = TokenBuilder::new();
+        assert!(builder.emit_events);
+
+        let silent = TokenBuilder::silent();
+        assert!(!silent.emit_events);
+    }
+
+    #[test]
+    fn test_with_events() {
+        let builder = TokenBuilder::new().with_events(false);
+        assert!(!builder.emit_events);
+    }
+
+    #[test]
+    fn test_jwt_detection() {
+        let builder = TokenBuilder::silent();
+        assert!(builder.is_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"));
+    }
+}

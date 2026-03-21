@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 680039126d37d562ae2d84fed32c1b4229ad20f72b5223a6c2d192501542960a # shrinks to attack = "..\\windows\\system32"
+cc 613e6791e9b70e3b8e95c7f8f63a1c02df65815c1c73f51ef338c6f8df4b5e5d # shrinks to attack = "file\nrm -rf /"
+cc 05c6d1af5c5842787d31ec6961ba52ffc2931e0de84b19add3b4048ba6fd4180 # shrinks to url = "http://127.0.0.1.xip.io/"
+cc 4056ede96d45e4598043b117f5aaaeee0682b25f3331ab77185408b53b199fc9 # shrinks to attack = "....//....//etc/passwd"
+cc 2f1af48956b709bcc2bffb095867f2db8d20d1bcb190fc5d2c6a3644f064e353 # shrinks to attack = "..%c0%af..%c0%af"

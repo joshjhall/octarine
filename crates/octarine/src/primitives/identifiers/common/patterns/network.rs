@@ -1,0 +1,400 @@
+//! Network identification patterns
+//!
+//! Regex patterns for network identifiers including UUIDs, MAC addresses, IP addresses,
+//! URLs, phone numbers, emails, usernames, JWTs, and API keys.
+
+// SAFETY: All regex patterns in this module are hardcoded and verified at compile time.
+#![allow(clippy::expect_used)]
+
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+pub mod email {
+    use super::*;
+
+    /// Standard email pattern (for text scanning)
+    /// Example: "user@example.com"
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Exact email pattern (for validation)
+    /// Example: "user@example.com"
+    pub static EXACT: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*STANDARD]
+    }
+}
+pub mod phone {
+    use super::*;
+
+    /// US phone with country code
+    /// Example: "+1-555-123-4567"
+    pub static WITH_COUNTRY_CODE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\+1[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// US phone with parentheses
+    /// Example: "(555) 123-4567"
+    pub static WITH_PARENS: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\(\d{3}\)\s*\d{3}[-.\s]?\d{4}").expect("BUG: Invalid regex pattern")
+    });
+
+    /// US phone standard format
+    /// Example: "555-123-4567"
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// International format (generic 10+ digits with optional +)
+    /// Example: "+44 20 7946 0958"
+    pub static INTERNATIONAL: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\+?\d{1,3}[-.\s]?\d{1,14}").expect("BUG: Invalid regex pattern"));
+
+    /// E.164 format (exact match for validation)
+    /// Example: "+15551234567"
+    pub static E164_EXACT: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^\+[1-9]\d{1,14}$").expect("BUG: Invalid regex pattern"));
+
+    /// US phone exact match (for validation)
+    /// Example: "(555) 123-4567", "555-123-4567"
+    pub static US_EXACT: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^(\+1[-.\s]?)?(\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*WITH_COUNTRY_CODE, &*WITH_PARENS, &*STANDARD]
+    }
+}
+
+pub mod username {
+    use super::*;
+
+    /// Standard username pattern (alphanumeric with underscore, dot, dash)
+    /// Example: "john_doe", "user.name", "test-user"
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]{3,32}$").expect("BUG: Invalid regex pattern"));
+}
+
+// UUID patterns
+/// UUID v4 pattern (random UUIDs)
+/// Example: "550e8400-e29b-41d4-a716-446655440000"
+pub static UUID_V4: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
+/// UUID v5 pattern (namespace-based SHA-1 UUIDs)
+/// Example: "550e8400-e29b-41d4-5716-446655440000"
+pub static UUID_V5: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-5[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
+/// UUID any version pattern (versions 1-5)
+/// Example: "550e8400-e29b-41d4-a716-446655440000"
+pub static UUID_ANY: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
+// MAC address patterns
+/// MAC address with colons
+/// Example: "00:1B:44:11:3A:B7"
+pub static MAC_COLON: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}").expect("BUG: Invalid regex pattern")
+});
+
+/// MAC address with hyphens
+/// Example: "00-1B-44-11-3A-B7"
+pub static MAC_HYPHEN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"([0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}").expect("BUG: Invalid regex pattern")
+});
+
+/// MAC address with dots (Cisco format)
+/// Example: "001B.4411.3AB7"
+pub static MAC_DOT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}")
+        .expect("BUG: Invalid regex pattern")
+});
+
+// IP address patterns
+/// IPv4 address
+/// Example: "192.168.1.1"
+pub static IPV4: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
+/// IPv6 address (simplified pattern)
+/// Example: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+pub static IPV6: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::1|::)")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// IPv4 with label
+/// Example: "IP: 192.168.1.1"
+pub static IPV4_LABELED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i:ip[\s:-]*address?[\s:-]*)(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)")
+        .expect("BUG: Invalid regex pattern")
+});
+
+// URL patterns
+/// HTTP/HTTPS URL
+/// Example: "https://example.com/path"
+pub static URL_HTTP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"https?://[^\s]+").expect("BUG: Invalid regex pattern"));
+
+/// FTP URL
+/// Example: "ftp://ftp.example.com"
+pub static URL_FTP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"ftp://[^\s]+").expect("BUG: Invalid regex pattern"));
+
+/// Generic URL with protocol
+/// Example: "protocol://host.com"
+pub static URL_GENERIC: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"[a-z][a-z0-9+.-]*://[^\s]+").expect("BUG: Invalid regex pattern"));
+
+/// WebSocket URL (secure)
+/// Example: "wss://example.com/socket"
+pub static URL_WSS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"wss://[^\s]+").expect("BUG: Invalid regex pattern"));
+
+/// WebSocket URL (insecure)
+/// Example: "ws://localhost:8080/stream"
+pub static URL_WS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"ws://[^\s]+").expect("BUG: Invalid regex pattern"));
+
+// Domain and hostname patterns
+/// Domain name (without protocol)
+/// Example: "example.com", "sub.domain.co.uk"
+/// Pattern: Must have at least one dot and valid TLD (2-63 chars)
+pub static DOMAIN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Hostname (with optional port)
+/// Example: "server01", "db-primary:5432", "cache-node-3"
+/// Pattern: Alphanumeric + hyphens, 1-63 chars, optional :port
+pub static HOSTNAME: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?::\d{1,5})?\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Port number (standalone or with colon)
+/// Example: ":8080", ":443", ":3000"
+pub static PORT: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r":([1-9]\d{0,4})\b").expect("BUG: Invalid regex pattern"));
+
+// Phone patterns
+/// International phone with country code
+/// Example: "+1-555-123-4567"
+pub static PHONE_INTL: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\+[1-9]\d{0,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}")
+        .expect("BUG: Invalid regex pattern")
+});
+
+// JWT pattern
+/// JWT token (base64url.base64url.base64url)
+/// Example: "eyJhbGc...iOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWI...iJ9.SflKxwR...J8WQ4"
+pub static JWT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[A-Za-z0-9-_]{20,}\.[A-Za-z0-9-_]{20,}\.[A-Za-z0-9-_]{20,}\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+// API key patterns
+/// Generic API key pattern (alphanumeric with dashes/underscores)
+/// Example: "sk_test_0000000000KEY01"
+pub static API_KEY_GENERIC: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i:api[-_]?key|token)[\s:=]+[a-zA-Z0-9_-]{20,}")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Stripe API key pattern
+/// Example: "sk_live_0000000000KEY01"
+pub static API_KEY_STRIPE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?:sk|pk)_(?:live|test)_[a-zA-Z0-9]{24,}").expect("BUG: Invalid regex pattern")
+});
+
+/// AWS Access Key ID pattern
+/// Example: "AKIAIOSFODNN7EXAMPLE"
+pub static API_KEY_AWS_ACCESS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bAKIA[0-9A-Z]{16}\b").expect("BUG: Invalid regex pattern"));
+
+/// AWS Secret Access Key pattern (40 base64 characters)
+/// Example: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+pub static API_KEY_AWS_SECRET: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"[A-Za-z0-9/+=]{40}").expect("BUG: Invalid regex pattern"));
+
+/// Google Cloud Platform API key pattern
+/// Example: "AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3namBGewQe"
+pub static API_KEY_GCP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bAIza[0-9A-Za-z_-]{35}\b").expect("BUG: Invalid regex pattern"));
+
+/// GitHub Personal Access Token patterns
+/// Formats: ghp_ (personal), gho_ (OAuth), ghs_ (server-to-server), ghr_ (refresh)
+/// Example: "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"
+pub static API_KEY_GITHUB: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bgh[prso]_[a-zA-Z0-9]{36,}\b").expect("BUG: Invalid regex pattern"));
+
+/// GitLab Personal Access Token patterns
+/// Formats: glpat- (personal access token), gldt- (deploy token)
+/// Example: "glpat-xxxxxxxxxxxxxxxxxxxx"
+pub static API_KEY_GITLAB: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:glpat|gldt)-[a-zA-Z0-9_-]{20,}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// Azure Storage Account Key pattern (base64, 88 characters)
+/// Example: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=..."
+pub static API_KEY_AZURE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i:AccountKey)=([A-Za-z0-9+/=]{88})").expect("BUG: Invalid regex pattern")
+});
+
+/// 1Password Service Account Token pattern
+/// Example: "ops_eyJzaWduSW5BZGRyZXNzIjoi..."
+pub static API_KEY_1PASSWORD: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bops_[A-Za-z0-9_-]{50,}\b").expect("BUG: Invalid regex pattern"));
+
+/// 1Password Vault Reference pattern
+/// Example: "op://vault/item/field" or "op://vault/item"
+pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bop://[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)?\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Bearer Token pattern (Authorization header)
+/// Example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+/// Also matches: "bearer abc123token", "Authorization: Bearer xyz"
+pub static BEARER_TOKEN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i:bearer)\s+[A-Za-z0-9_-]{20,}").expect("BUG: Invalid regex pattern")
+});
+
+/// URL with embedded credentials pattern
+/// Example: "https://user:password@example.com/path"
+pub static URL_WITH_CREDENTIALS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"[a-z][a-z0-9+.-]*://[^:@\s]+:[^@\s]+@[^\s]+").expect("BUG: Invalid regex pattern")
+});
+
+// SSH key patterns
+/// SSH public key pattern
+/// Formats: ssh-rsa, ssh-ed25519, ssh-ecdsa, ssh-dss
+/// Example: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... user@host"
+pub static SSH_PUBLIC_KEY: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bssh-(rsa|ed25519|ecdsa|dss)\s+[A-Za-z0-9+/]+=*(?:\s+\S+)?\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// SSH fingerprint MD5 format
+/// Example: "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48"
+pub static SSH_FINGERPRINT_MD5: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:[0-9a-f]{2}:){15}[0-9a-f]{2}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// SSH fingerprint SHA256 format
+/// Example: "SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8"
+pub static SSH_FINGERPRINT_SHA256: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bSHA256:[A-Za-z0-9+/]{43}=?\b").expect("BUG: Invalid regex pattern")
+});
+
+/// SSH private key header pattern
+/// Matches various private key formats: RSA, DSA, EC, OPENSSH
+/// Example: "-----BEGIN RSA PRIVATE KEY-----"
+pub static SSH_PRIVATE_KEY_HEADER: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"-----BEGIN\s+(?:RSA|DSA|EC|OPENSSH|ENCRYPTED)?\s*PRIVATE\s+KEY-----")
+        .expect("BUG: Invalid regex pattern")
+});
+
+pub fn uuids() -> Vec<&'static Regex> {
+    vec![&*UUID_V4, &*UUID_V5, &*UUID_ANY]
+}
+
+pub fn macs() -> Vec<&'static Regex> {
+    vec![&*MAC_COLON, &*MAC_HYPHEN, &*MAC_DOT]
+}
+
+pub fn ips() -> Vec<&'static Regex> {
+    vec![&*IPV4, &*IPV6, &*IPV4_LABELED]
+}
+
+pub fn urls() -> Vec<&'static Regex> {
+    vec![&*URL_HTTP, &*URL_FTP, &*URL_WSS, &*URL_WS, &*URL_GENERIC]
+}
+
+pub fn api_keys() -> Vec<&'static Regex> {
+    vec![
+        &*API_KEY_GENERIC,
+        &*API_KEY_STRIPE,
+        &*API_KEY_AWS_ACCESS,
+        &*API_KEY_AWS_SECRET,
+        &*API_KEY_GCP,
+        &*API_KEY_GITHUB,
+        &*API_KEY_GITLAB,
+        &*API_KEY_AZURE,
+        &*API_KEY_1PASSWORD,
+        &*ONEPASSWORD_VAULT_REF,
+        &*BEARER_TOKEN,
+    ]
+}
+
+pub fn ssh_keys() -> Vec<&'static Regex> {
+    vec![
+        &*SSH_PUBLIC_KEY,
+        &*SSH_FINGERPRINT_MD5,
+        &*SSH_FINGERPRINT_SHA256,
+        &*SSH_PRIVATE_KEY_HEADER,
+    ]
+}
+
+pub fn all() -> Vec<&'static Regex> {
+    vec![
+        &*UUID_V4,
+        &*UUID_V5,
+        &*UUID_ANY,
+        &*MAC_COLON,
+        &*MAC_HYPHEN,
+        &*MAC_DOT,
+        &*IPV4,
+        &*IPV6,
+        &*IPV4_LABELED,
+        &*URL_HTTP,
+        &*URL_FTP,
+        &*URL_WSS,
+        &*URL_WS,
+        &*URL_GENERIC,
+        &*URL_WITH_CREDENTIALS,
+        &*PHONE_INTL,
+        &*JWT,
+        &*API_KEY_GENERIC,
+        &*API_KEY_STRIPE,
+        &*API_KEY_AWS_ACCESS,
+        &*API_KEY_AWS_SECRET,
+        &*API_KEY_GCP,
+        &*API_KEY_GITHUB,
+        &*API_KEY_GITLAB,
+        &*API_KEY_AZURE,
+        &*API_KEY_1PASSWORD,
+        &*ONEPASSWORD_VAULT_REF,
+        &*BEARER_TOKEN,
+        &*SSH_PUBLIC_KEY,
+        &*SSH_FINGERPRINT_MD5,
+        &*SSH_FINGERPRINT_SHA256,
+        &*SSH_PRIVATE_KEY_HEADER,
+    ]
+}
