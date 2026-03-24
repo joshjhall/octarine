@@ -73,7 +73,7 @@ Layer 2: observe/     — Observability, uses primitives only
 Layer 3: data/, runtime/, crypto/  — Uses primitives + observe
 ```
 
-See `crates/octarine/docs/` for detailed documentation.
+See [`docs/`](docs/) for detailed documentation and [`crates/octarine/examples/`](crates/octarine/examples/) for runnable examples.
 
 ## License
 

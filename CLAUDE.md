@@ -1,6 +1,6 @@
-# Octarine Crate - Claude Code Context
+# Octarine - Claude Code Context
 
-This file provides crate-specific guidance for working with octarine.
+This file provides guidance for working with the octarine project.
 
 ## Overview
 
