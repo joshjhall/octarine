@@ -1,0 +1,49 @@
+# cargo-deny configuration (v0.19+)
+# Run: cargo deny check
+# Docs: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+all-features = true
+
+# ─── Advisories ──────────────────────────────────────────────────────────────
+
+[advisories]
+ignore = [
+    # rsa crate has a known timing side-channel with no patch available.
+    # Transitive dep only — we don't use RSA directly.
+    { id = "RUSTSEC-2023-0071", reason = "no patch available, transitive dep only" },
+]
+
+# ─── Licenses ────────────────────────────────────────────────────────────────
+
+[licenses]
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSD-1-Clause",
+    "0BSD",
+    "ISC",
+    "Unlicense",
+    "Zlib",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "OpenSSL",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+
+exceptions = [
+    # r-efi is dual-licensed MIT/Apache-2.0/LGPL-2.1+; we use it under MIT/Apache-2.0
+    { allow = ["LGPL-2.1-or-later"], crate = "r-efi" },
+]
+
+# ─── Sources ─────────────────────────────────────────────────────────────────
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

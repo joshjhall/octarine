@@ -66,6 +66,28 @@ preflight: fmt-check clippy test
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
 
+# ─── Dependencies ────────────────────────────────────────────────────────
+
+# Update Cargo.lock to latest semver-compatible versions
+deps-update:
+    cargo update
+    @echo "Run 'just deps-audit' to check for remaining vulnerabilities"
+
+# Show outdated dependencies
+deps-outdated:
+    cargo outdated --workspace --depth 1
+
+# Check for known security vulnerabilities
+deps-audit:
+    cargo audit --ignore RUSTSEC-2023-0071
+
+# Run cargo-deny checks (advisories, licenses, sources)
+deps-deny:
+    cargo deny check
+
+# Full dependency health check: audit + deny + outdated
+deps-check: deps-audit deps-deny deps-outdated
+
 # ─── Utilities ───────────────────────────────────────────────────────────────
 
 # Remove build artifacts
