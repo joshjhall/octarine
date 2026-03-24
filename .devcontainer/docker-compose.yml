@@ -35,6 +35,9 @@ services:
       - rustup:/cache/rustup
     env_file:
       - ../.env
+    environment:
+      - CLAUDE_MCPS=filesystem
+      - MEMORY_FILE_PATH=/workspace/octarine/.claude/memory
     # Use tini as init system for proper zombie process reaping
     # This is a belt-and-suspenders approach - the Dockerfile also includes tini,
     # but init: true ensures proper PID 1 behavior even if command overrides entrypoint
