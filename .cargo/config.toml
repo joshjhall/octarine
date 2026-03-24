@@ -1,0 +1,8 @@
+# Limit build parallelism to avoid linker "too many open files" errors
+# in resource-constrained environments (containers, CI).
+[build]
+jobs = 4
+
+[profile.dev]
+# Reduce linker file descriptor pressure by combining more crates per codegen unit
+codegen-units = 16
