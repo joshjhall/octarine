@@ -4,7 +4,7 @@
 //! Uses figment's Jail for safe environment variable isolation.
 
 #![cfg(feature = "derive")]
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::result_large_err)]
 
 use figment::Jail;
 use octarine::Config;

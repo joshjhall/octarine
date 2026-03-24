@@ -109,7 +109,12 @@ impl Default for FigmentAdapter {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
+    #![allow(
+        clippy::panic,
+        clippy::expect_used,
+        clippy::unwrap_used,
+        clippy::result_large_err
+    )]
 
     use std::io::Write;
 
