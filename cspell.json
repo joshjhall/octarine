@@ -1,0 +1,22 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.astro/**",
+    "containers/**"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "project-words",
+      "path": "./.cspell/project-words.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": ["project-words"],
+  "words": [],
+  "ignoreWords": [],
+  "import": []
+}

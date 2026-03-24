@@ -1,0 +1,6 @@
+# Test fixtures for security identifier detection library.
+# These are intentionally crafted fake tokens used to verify detection works.
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-pat:354
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-oauth:355
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-app-token:356
+crates/octarine/src/primitives/identifiers/token/sanitization.rs:jwt:664
