@@ -162,8 +162,14 @@ mod tests {
         // AWS
         assert!(is_api_key("AKIAIOSFODNN7EXAMPLE"));
         // Stripe
-        assert!(is_api_key(&format!("sk_test_{}", "EXAMPLE0000000000KEY01abcdef")));
-        assert!(is_api_key(&format!("pk_live_{}", "EXAMPLE0000000000KEY01abcdef")));
+        assert!(is_api_key(&format!(
+            "sk_test_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        )));
+        assert!(is_api_key(&format!(
+            "pk_live_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        )));
         // GitHub
         assert!(is_api_key("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
         // GCP
@@ -207,17 +213,31 @@ mod tests {
 
     #[test]
     fn test_is_stripe_key() {
-        assert!(is_stripe_key(&format!("sk_test_{}", "EXAMPLE0000000000KEY01abcdef")));
-        assert!(is_stripe_key(&format!("sk_live_{}", "EXAMPLE0000000000KEY01abcdef")));
-        assert!(is_stripe_key(&format!("pk_test_{}", "EXAMPLE0000000000KEY01abcdef")));
-        assert!(is_stripe_key(&format!("pk_live_{}", "EXAMPLE0000000000KEY01abcdef")));
+        assert!(is_stripe_key(&format!(
+            "sk_test_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        )));
+        assert!(is_stripe_key(&format!(
+            "sk_live_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        )));
+        assert!(is_stripe_key(&format!(
+            "pk_test_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        )));
+        assert!(is_stripe_key(&format!(
+            "pk_live_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        )));
         assert!(!is_stripe_key("not-a-stripe-key"));
     }
 
     #[test]
     fn test_find_api_keys_in_text() {
-        let text =
-            &format!("AWS key: AKIAIOSFODNN7EXAMPLE and Stripe: sk_test_{}", "EXAMPLE0000000000KEY01abcdef");
+        let text = &format!(
+            "AWS key: AKIAIOSFODNN7EXAMPLE and Stripe: sk_test_{}",
+            "EXAMPLE0000000000KEY01abcdef"
+        );
         let matches = find_api_keys_in_text(text);
         assert!(!matches.is_empty()); // At least AWS key should be found
     }

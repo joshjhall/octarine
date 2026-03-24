@@ -660,7 +660,10 @@ mod tests {
 
     #[test]
     fn test_redact_all_tokens_in_text() {
-        let text = &format!("JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c and key sk_live_{}", "EXAMPLE000000000KEY01abcdef");
+        let text = &format!(
+            "JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c and key sk_live_{}",
+            "EXAMPLE000000000KEY01abcdef"
+        );
         let redacted = redact_all_tokens_in_text(text, TextRedactionPolicy::Complete);
         assert!(redacted.contains("[JWT]"));
         assert!(redacted.contains("[API_KEY]"));

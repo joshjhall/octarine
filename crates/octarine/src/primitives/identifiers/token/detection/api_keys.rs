@@ -351,15 +351,9 @@ mod tests {
 
     #[test]
     fn test_is_github_token() {
-        assert!(is_github_token(
-            "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"
-        ));
-        assert!(is_github_token(
-            "gho_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"
-        ));
-        assert!(is_github_token(
-            "ghs_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"
-        ));
+        assert!(is_github_token("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
+        assert!(is_github_token("gho_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
+        assert!(is_github_token("ghs_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
         assert!(!is_github_token("ghp_short")); // Too short
         assert!(!is_github_token(
             "xyz_EXAMPLE0000000000KEY01abcdefwxyz123456"
@@ -376,8 +370,14 @@ mod tests {
 
     #[test]
     fn test_is_stripe_key() {
-        assert!(is_stripe_key(&format!("sk_live_{}", "EXAMPLE000000000KEY01abcdef")));
-        assert!(is_stripe_key(&format!("pk_test_{}", "EXAMPLE000000000KEY01abcdef")));
+        assert!(is_stripe_key(&format!(
+            "sk_live_{}",
+            "EXAMPLE000000000KEY01abcdef"
+        )));
+        assert!(is_stripe_key(&format!(
+            "pk_test_{}",
+            "EXAMPLE000000000KEY01abcdef"
+        )));
         assert!(!is_stripe_key("sk_prod_12345")); // Wrong environment
         assert!(!is_stripe_key("xk_live_12345")); // Wrong prefix
     }
