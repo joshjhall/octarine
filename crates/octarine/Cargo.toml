@@ -44,7 +44,10 @@ uuid = { workspace = true }
 # Cryptography and encoding
 base64 = "0.22"
 sha2 = "0.10"
-sha3 = "0.10.8"
+# Note: sha3 0.10.x is broken (yanked keccak 0.1.5 dep). Pin to RC matching ml-kem's rand_core.
+# keccak 0.2.0 broke API vs 0.2.0-rc.2; pin until sha3 releases a compatible stable version.
+sha3 = "=0.11.0-rc.3"
+keccak = "=0.2.0-rc.2"
 hex = "0.4"
 secrecy = "0.10"
 zeroize = { version = "1.8", features = ["derive"] }
