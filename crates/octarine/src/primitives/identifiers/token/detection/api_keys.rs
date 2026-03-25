@@ -43,12 +43,13 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Aws);
     }
 
-    // GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_)
+    // GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_, github_pat_)
     if key_lower.starts_with("ghp_")
         || key_lower.starts_with("gho_")
         || key_lower.starts_with("ghu_")
         || key_lower.starts_with("ghs_")
         || key_lower.starts_with("ghr_")
+        || key_lower.starts_with("github_pat_")
     {
         return Some(ApiKeyProvider::Github);
     }
@@ -129,7 +130,8 @@ pub fn is_gcp_api_key(value: &str) -> bool {
 
 /// Check if value is a GitHub Personal Access Token
 ///
-/// GitHub tokens start with "ghp_", "gho_", "ghs_", or "ghr_" followed by 36+ characters
+/// Matches classic tokens (ghp_, gho_, ghu_, ghs_, ghr_ + 36 chars) and
+/// fine-grained PATs (github_pat_ + 22 chars + _ + 59 chars)
 #[must_use]
 pub fn is_github_token(value: &str) -> bool {
     let trimmed = value.trim();
@@ -351,13 +353,32 @@ mod tests {
 
     #[test]
     fn test_is_github_token() {
+        // Classic token prefixes
         assert!(is_github_token("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
         assert!(is_github_token("gho_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
+        assert!(is_github_token("ghu_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
         assert!(is_github_token("ghs_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
+        assert!(is_github_token("ghr_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"));
+        // Fine-grained PAT (github_pat_ + 22 + _ + 59)
+        assert!(is_github_token(
+            "github_pat_ABCDEFGHIJKLMNOPQRSTUv_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456"
+        ));
+        // Negative cases
         assert!(!is_github_token("ghp_short")); // Too short
         assert!(!is_github_token(
             "xyz_EXAMPLE0000000000KEY01abcdefwxyz123456"
         )); // Wrong prefix
+        assert!(!is_github_token("github_pat_short_short")); // Fine-grained too short
+    }
+
+    #[test]
+    fn test_detect_github_fine_grained_pat() {
+        assert_eq!(
+            detect_api_key_provider(
+                "github_pat_ABCDEFGHIJKLMNOPQRSTUv_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456"
+            ),
+            Some(ApiKeyProvider::Github)
+        );
     }
 
     #[test]

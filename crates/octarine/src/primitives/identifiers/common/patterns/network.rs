@@ -249,10 +249,13 @@ pub static API_KEY_GCP: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\bAIza[0-9A-Za-z_-]{35}\b").expect("BUG: Invalid regex pattern"));
 
 /// GitHub Personal Access Token patterns
-/// Formats: ghp_ (personal), gho_ (OAuth), ghs_ (server-to-server), ghr_ (refresh)
+/// Formats: ghp_ (personal), gho_ (OAuth), ghu_ (user-to-server), ghs_ (server-to-server), ghr_ (refresh)
+/// Also matches fine-grained PATs: github_pat_{22}_{59}
 /// Example: "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"
-pub static API_KEY_GITHUB: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\bgh[prso]_[a-zA-Z0-9]{36,}\b").expect("BUG: Invalid regex pattern"));
+pub static API_KEY_GITHUB: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?:\bgh[prsou]_[a-zA-Z0-9]{36,}\b|\bgithub_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}\b)")
+        .expect("BUG: Invalid regex pattern")
+});
 
 /// GitLab Personal Access Token patterns
 /// Formats: glpat- (personal access token), gldt- (deploy token)

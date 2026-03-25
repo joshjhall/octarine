@@ -3,4 +3,8 @@
 crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-pat:354
 crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-oauth:355
 crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-app-token:356
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-app-token:359
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-refresh-token:361
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-fine-grained-pat:364
+crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-fine-grained-pat:378
 crates/octarine/src/primitives/identifiers/token/sanitization.rs:jwt:664
