@@ -259,6 +259,16 @@ pub fn redact_jwt(jwt: &str) -> String {
 }
 
 // ============================================================
+// AWS SHORTCUTS
+// ============================================================
+
+/// Check if value is an AWS session token (STS temporary credential)
+#[must_use]
+pub fn is_aws_session_token(value: &str) -> bool {
+    TokenBuilder::new().is_aws_session_token(value)
+}
+
+// ============================================================
 // MEDICAL SHORTCUTS (HIPAA)
 // ============================================================
 
@@ -656,7 +666,8 @@ pub fn is_api_keys_present(text: &str) -> bool {
         || text.contains("apiKey")
         || text.contains("ghp_")  // GitHub personal access token
         || text.contains("gho_")  // GitHub OAuth token
-        || text.contains("AKIA") // AWS access key
+        || text.contains("AKIA") // AWS long-term access key
+        || text.contains("ASIA") // AWS STS temporary access key
 }
 
 #[cfg(test)]

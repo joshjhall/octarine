@@ -46,6 +46,11 @@ impl TokenIdentifierBuilder {
         detection::is_aws_secret_key(value)
     }
 
+    /// Check if value is an AWS Session Token (STS temporary credential)
+    pub fn is_aws_session_token(&self, value: &str) -> bool {
+        detection::is_aws_session_token(value)
+    }
+
     /// Check if value is a GCP API key
     pub fn is_gcp_api_key(&self, value: &str) -> bool {
         detection::is_gcp_api_key(value)
@@ -412,6 +417,23 @@ impl TokenIdentifierBuilder {
     /// Mask AWS key (convenience wrapper)
     pub fn mask_aws_key(&self, key: &str) -> String {
         sanitization::mask_aws_key(key)
+    }
+
+    // =========================================================================
+    // Provider-Specific Redaction (AWS Session Token)
+    // =========================================================================
+
+    /// Redact AWS session token (show provider by default)
+    pub fn redact_aws_session_token(&self, token: &str) -> String {
+        sanitization::redact_aws_session_token(
+            token,
+            redaction::ApiKeyRedactionStrategy::ShowProvider,
+        )
+    }
+
+    /// Mask AWS session token (convenience wrapper)
+    pub fn mask_aws_session_token(&self, token: &str) -> String {
+        sanitization::mask_aws_session_token(token)
     }
 
     // =========================================================================

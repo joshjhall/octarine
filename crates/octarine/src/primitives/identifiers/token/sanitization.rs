@@ -347,6 +347,12 @@ pub fn redact_azure_key(key: &str, strategy: ApiKeyRedactionStrategy) -> String 
     redact_api_key(key, strategy)
 }
 
+/// Redact AWS session token
+#[must_use]
+pub fn redact_aws_session_token(token: &str, strategy: ApiKeyRedactionStrategy) -> String {
+    redact_api_key(token, strategy)
+}
+
 // ============================================================================
 // Text Redaction Functions
 // ============================================================================
@@ -555,6 +561,12 @@ pub fn mask_gcp_key(key: &str) -> String {
 #[must_use]
 pub fn mask_azure_key(key: &str) -> String {
     mask_api_key(key)
+}
+
+/// Mask AWS session token
+#[must_use]
+pub fn mask_aws_session_token(token: &str) -> String {
+    mask_api_key(token)
 }
 
 #[cfg(test)]

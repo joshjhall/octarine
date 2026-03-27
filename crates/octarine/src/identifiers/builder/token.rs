@@ -75,6 +75,12 @@ impl TokenBuilder {
         self.inner.is_aws_secret_key(value)
     }
 
+    /// Check if value is an AWS Session Token (STS temporary credential)
+    #[must_use]
+    pub fn is_aws_session_token(&self, value: &str) -> bool {
+        self.inner.is_aws_session_token(value)
+    }
+
     /// Check if value is a GCP API key
     #[must_use]
     pub fn is_gcp_api_key(&self, value: &str) -> bool {
@@ -443,6 +449,18 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_aws_key(&self, key: &str) -> String {
         self.inner.mask_aws_key(key)
+    }
+
+    /// Redact AWS session token
+    #[must_use]
+    pub fn redact_aws_session_token(&self, token: &str) -> String {
+        self.inner.redact_aws_session_token(token)
+    }
+
+    /// Mask AWS session token
+    #[must_use]
+    pub fn mask_aws_session_token(&self, token: &str) -> String {
+        self.inner.mask_aws_session_token(token)
     }
 
     /// Redact GitHub token

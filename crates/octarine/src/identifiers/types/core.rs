@@ -70,6 +70,8 @@ pub enum IdentifierType {
     GitLabToken,
     /// AWS access key
     AwsAccessKey,
+    /// AWS session token (STS temporary credential)
+    AwsSessionToken,
     /// JSON Web Token
     Jwt,
     /// Generic API key
@@ -168,6 +170,7 @@ impl From<crate::primitives::identifiers::IdentifierType> for IdentifierType {
             P::GitHubToken => Self::GitHubToken,
             P::GitLabToken => Self::GitLabToken,
             P::AwsAccessKey => Self::AwsAccessKey,
+            P::AwsSessionToken => Self::AwsSessionToken,
             P::Jwt => Self::Jwt,
             P::ApiKey => Self::ApiKey,
             P::SessionId => Self::SessionId,
@@ -226,6 +229,7 @@ impl From<IdentifierType> for crate::primitives::identifiers::IdentifierType {
             IdentifierType::GitHubToken => Self::GitHubToken,
             IdentifierType::GitLabToken => Self::GitLabToken,
             IdentifierType::AwsAccessKey => Self::AwsAccessKey,
+            IdentifierType::AwsSessionToken => Self::AwsSessionToken,
             IdentifierType::Jwt => Self::Jwt,
             IdentifierType::ApiKey => Self::ApiKey,
             IdentifierType::SessionId => Self::SessionId,

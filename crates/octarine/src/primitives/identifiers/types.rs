@@ -38,6 +38,7 @@ pub enum IdentifierType {
     GitHubToken,
     GitLabToken,
     AwsAccessKey,
+    AwsSessionToken,
     Jwt,
     ApiKey,
     SessionId,

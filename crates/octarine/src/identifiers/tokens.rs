@@ -172,6 +172,8 @@ pub enum RedactionToken {
     StripeKey,
     /// AWS access key
     AwsKey,
+    /// AWS session token (STS temporary credential)
+    AwsSessionToken,
     /// GitHub token
     GithubToken,
     /// GCP key
@@ -290,6 +292,7 @@ impl RedactionToken {
             Self::ApiKey => "[API_KEY]",
             Self::StripeKey => "[STRIPE_KEY]",
             Self::AwsKey => "[AWS_KEY]",
+            Self::AwsSessionToken => "[AWS_SESSION_TOKEN]",
             Self::GithubToken => "[GITHUB_TOKEN]",
             Self::GcpKey => "[GCP_KEY]",
             Self::OnePasswordToken => "[1PASSWORD_TOKEN]",
@@ -383,6 +386,7 @@ impl RedactionToken {
             Self::ApiKey => "API_KEY",
             Self::StripeKey => "STRIPE_KEY",
             Self::AwsKey => "AWS_KEY",
+            Self::AwsSessionToken => "AWS_SESSION_TOKEN",
             Self::GithubToken => "GITHUB_TOKEN",
             Self::GcpKey => "GCP_KEY",
             Self::OnePasswordToken => "1PASSWORD_TOKEN",
@@ -463,6 +467,7 @@ impl RedactionToken {
             Self::ApiKey
             | Self::StripeKey
             | Self::AwsKey
+            | Self::AwsSessionToken
             | Self::GithubToken
             | Self::GcpKey
             | Self::OnePasswordToken
