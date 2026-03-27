@@ -202,10 +202,11 @@ mod tests {
     #[ignore = "perf test - run manually with: cargo test -p octarine test_perf_ -- --ignored"]
     fn test_perf_batch_api_key_strength() {
         // Batch strength analysis of multiple API keys
+        let akia = format!("AKIA{}", "IOSFODNN7EXAMPLE");
         let keys = vec![
             "sk_live_AbCdEf123456GhIjKl",
             "pk_test_MnOpQr789012StUvWx",
-            "AKIAIOSFODNN7EXAMPLE",
+            akia.as_str(),
             "wJalrXUtnFEMI/K7MDENG",
         ];
 

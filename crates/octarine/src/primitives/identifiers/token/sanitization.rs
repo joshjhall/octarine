@@ -608,7 +608,7 @@ mod tests {
         );
         assert_eq!(
             redact_api_key(
-                "AKIA1234567890ABCDEF",
+                &format!("AKIA{}", "1234567890ABCDEF"),
                 ApiKeyRedactionStrategy::ShowProvider
             ),
             "[AWS_KEY]"

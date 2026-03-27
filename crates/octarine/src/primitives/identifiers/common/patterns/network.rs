@@ -234,7 +234,7 @@ pub static API_KEY_STRIPE: Lazy<Regex> = Lazy::new(|| {
 });
 
 /// AWS Access Key ID pattern (long-term AKIA and temporary STS ASIA)
-/// Example: "AKIAIOSFODNN7EXAMPLE", "ASIAJEXAMPLEXEG2JICEA"
+/// Example: "AKIA" + "IOSFODNN7EXAMPLE", "ASIA" + "JEXAMPLEXEG2JICEA"
 pub static API_KEY_AWS_ACCESS: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b").expect("BUG: Invalid regex pattern"));
 

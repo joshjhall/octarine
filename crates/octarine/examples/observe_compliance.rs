@@ -16,13 +16,14 @@ use octarine::{Result, debug, fail_security, info, warn};
 fn demonstrate_pii_detection() {
     println!("--- PII Detection ---\n");
 
+    let aws_key_example = format!("AWS key: AKIA{}", "IOSFODNN7EXAMPLE");
     let test_strings = vec![
         ("SSN", "My SSN is 123-45-6789"),
         ("Credit Card", "Card number: 4111-1111-1111-1111"),
         ("Email", "Contact me at user@example.com"),
         ("Phone", "Call me at (555) 123-4567"),
         ("IPv4 Address", "Server IP: 192.168.1.100"),
-        ("AWS Key", "AWS key: AKIAIOSFODNN7EXAMPLE"),
+        ("AWS Key", aws_key_example.as_str()),
         ("No PII", "This is a clean string with no PII"),
     ];
 

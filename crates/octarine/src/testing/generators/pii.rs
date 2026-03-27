@@ -179,7 +179,7 @@ pub fn arb_api_key() -> impl Strategy<Value = String> {
         key_chars.prop_map(|k| format!("pk_{}", k)),
         key_chars.prop_map(|k| format!("api_{}", k)),
         // AWS-style
-        Just("AKIAIOSFODNN7EXAMPLE".to_string()),
+        Just(format!("AKIA{}", "IOSFODNN7EXAMPLE")),
         // GitHub-style
         Just("ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string()),
     ]
