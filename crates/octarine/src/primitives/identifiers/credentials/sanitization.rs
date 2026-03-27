@@ -1,3 +1,5 @@
+// Static regex patterns are compile-time-known-valid; expect is intentional.
+#![allow(clippy::expect_used)]
 //! Credential sanitization (primitives layer)
 //!
 //! Pure redaction functions for credentials with NO logging.

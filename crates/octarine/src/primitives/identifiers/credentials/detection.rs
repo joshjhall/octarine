@@ -757,7 +757,8 @@ mod tests {
         let text = "Connect to postgres://admin:secret@db.example.com/mydb for the database";
         let matches = find_connection_strings_in_text(text);
         assert_eq!(matches.len(), 1);
-        assert!(matches[0].value.contains("postgres://"));
+        let first = matches.first().expect("expected at least one match");
+        assert!(first.value.contains("postgres://"));
     }
 
     #[test]

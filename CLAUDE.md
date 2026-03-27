@@ -228,6 +228,24 @@ See `docs/observe/` for detailed guides.
 
 See `docs/api/naming-conventions.md` for full details.
 
+### Clippy Lints (CRITICAL)
+
+The project enforces strict clippy lints via `Cargo.toml [lints.clippy]`. Key denied lints:
+
+| Lint | Level | Rule |
+|------|-------|------|
+| `unwrap_used` | **deny** | Use `?`, `.ok()`, `.unwrap_or()`, or `.expect()` with justification |
+| `indexing_slicing` | **deny** | Use `.get()`, `.first()`, `.last()`, or iterators instead of `[i]` |
+| `arithmetic_side_effects` | **deny** | Use `.saturating_*()`, `.checked_*()`, or `.wrapping_*()` for arithmetic |
+| `expect_used` | warn | Allowed in tests (`#[allow(clippy::expect_used)]`); avoid in production |
+| `panic` | **deny** | Never panic in production code |
+| `dbg_macro` | **deny** | No debug macros in committed code |
+| `print_stdout` / `print_stderr` | **deny** | Use `observe` module for all output |
+
+**In test modules**, add `#![allow(clippy::panic, clippy::expect_used)]` at the module level. Do NOT allow `indexing_slicing` — use `.first()`, `.get()`, etc. even in tests.
+
+**For static regexes**, use `#![allow(clippy::expect_used)]` at the file level with a comment explaining the patterns are compile-time-known-valid.
+
 ## Testing
 
 ### Feature Flag
