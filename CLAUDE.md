@@ -28,6 +28,34 @@ Layer 3: data/, runtime/ (pub)     - Uses primitives + observe
 
 See `docs/architecture/layer-architecture.md` for full details.
 
+## Development Skills (CRITICAL)
+
+When adding or modifying features, you MUST load the relevant project skills
+from `.claude/skills/` to prevent the most common implementation errors:
+
+- **`octarine-architecture`** — BEFORE adding modules, imports, builders,
+  shortcuts, or re-exports. Enforces layer boundaries, visibility chain,
+  and builder hierarchy. Load its `decision-trees.md` companion when deciding
+  module placement or diagnosing visibility issues.
+- **`octarine-identifier-checklist`** — BEFORE adding identifier types,
+  detection functions, or PII categories. Provides the 12-step checklist
+  ensuring complete implementations from detection through shortcuts.
+  Load its `implementation-template.md` companion for function signatures.
+- **`octarine-pii-bridge`** — WHEN adding identifier types that affect PII
+  detection. Ensures `IdentifierType`, `PiiType`, and scanner domains stay
+  in sync across the three parallel registries.
+- **`octarine-observe-integration`** — WHEN adding or modifying Layer 3
+  builders. Enforces metrics, events, silent mode, and the `define_metrics!`
+  macro pattern. Load its `patterns.md` companion for the metric registry.
+- **`octarine-test-resilience`** — WHEN writing tests involving timing,
+  async, sleep, or performance benchmarks. Prevents flaky CI failures from
+  hard timing assertions and fixed sleeps.
+
+Six project-specific audit agents are available in `.claude/agents/` for
+codebase audits: `audit-octarine-layers`, `audit-octarine-visibility`,
+`audit-octarine-identifiers`, `audit-octarine-pii-sync`,
+`audit-octarine-observe`, `audit-octarine-tests`.
+
 ## Module Structure
 
 ```text
