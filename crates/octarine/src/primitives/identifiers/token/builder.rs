@@ -71,6 +71,21 @@ impl TokenIdentifierBuilder {
         detection::is_stripe_key(value)
     }
 
+    /// Check if value is a Square API key
+    pub fn is_square_token(&self, value: &str) -> bool {
+        detection::is_square_token(value)
+    }
+
+    /// Check if value is a Shopify API token
+    pub fn is_shopify_token(&self, value: &str) -> bool {
+        detection::is_shopify_token(value)
+    }
+
+    /// Check if value is a PayPal/Braintree access token
+    pub fn is_paypal_token(&self, value: &str) -> bool {
+        detection::is_paypal_token(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -498,6 +513,25 @@ impl TokenIdentifierBuilder {
     /// Mask Azure key (convenience wrapper)
     pub fn mask_azure_key(&self, key: &str) -> String {
         sanitization::mask_azure_key(key)
+    }
+
+    // =========================================================================
+    // Provider-Specific Masking (Square, Shopify, PayPal)
+    // =========================================================================
+
+    /// Mask Square API key (convenience wrapper)
+    pub fn mask_square_token(&self, key: &str) -> String {
+        sanitization::mask_square_token(key)
+    }
+
+    /// Mask Shopify API token (convenience wrapper)
+    pub fn mask_shopify_token(&self, token: &str) -> String {
+        sanitization::mask_shopify_token(token)
+    }
+
+    /// Mask PayPal/Braintree access token (convenience wrapper)
+    pub fn mask_paypal_token(&self, token: &str) -> String {
+        sanitization::mask_paypal_token(token)
     }
 
     // =========================================================================

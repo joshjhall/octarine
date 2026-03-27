@@ -569,6 +569,24 @@ pub fn mask_aws_session_token(token: &str) -> String {
     mask_api_key(token)
 }
 
+/// Mask Square API key
+#[must_use]
+pub fn mask_square_token(key: &str) -> String {
+    mask_api_key(key)
+}
+
+/// Mask Shopify API token
+#[must_use]
+pub fn mask_shopify_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
+/// Mask PayPal/Braintree access token
+#[must_use]
+pub fn mask_paypal_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]

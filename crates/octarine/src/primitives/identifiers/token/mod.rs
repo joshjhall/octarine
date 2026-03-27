@@ -183,7 +183,8 @@ pub use conversion::JwtMetadata;
 // These provide common defaults without requiring strategy knowledge
 pub use sanitization::{
     mask_api_key, mask_aws_key, mask_aws_session_token, mask_azure_key, mask_gcp_key,
-    mask_github_token, mask_jwt, mask_session_id, mask_ssh_key, mask_stripe_key,
+    mask_github_token, mask_jwt, mask_paypal_token, mask_session_id, mask_shopify_token,
+    mask_square_token, mask_ssh_key, mask_stripe_key,
 };
 
 // Export test pattern detection functions (observe module testing)

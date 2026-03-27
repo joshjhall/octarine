@@ -23,6 +23,12 @@ pub enum ApiKeyProvider {
     Azure,
     /// 1Password tokens (ops_ service tokens, op:// vault references)
     OnePassword,
+    /// Square API keys (sq0atp-, sq0csp-, sq0idp-)
+    Square,
+    /// PayPal/Braintree tokens (access_token$production$..., access_token$sandbox$...)
+    PayPal,
+    /// Shopify API tokens (shpat_, shpca_, shppa_, shpss_)
+    Shopify,
     /// Generic or unknown provider
     Generic,
 }
@@ -36,6 +42,9 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Gcp => write!(f, "Google Cloud Platform"),
             Self::Azure => write!(f, "Azure"),
             Self::OnePassword => write!(f, "1Password"),
+            Self::Square => write!(f, "Square"),
+            Self::PayPal => write!(f, "PayPal"),
+            Self::Shopify => write!(f, "Shopify"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -190,4 +199,10 @@ pub enum TokenType {
     SessionId,
     /// URL with embedded credentials (https://user:pass@host)
     UrlWithCredentials,
+    /// Square API key (sq0atp-*, sq0csp-*, sq0idp-*)
+    SquareToken,
+    /// PayPal/Braintree access token (access_token$production$*$*)
+    PayPalToken,
+    /// Shopify API token (shpat_*, shpca_*, shppa_*, shpss_*)
+    ShopifyToken,
 }

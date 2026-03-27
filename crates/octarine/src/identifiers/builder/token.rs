@@ -105,6 +105,24 @@ impl TokenBuilder {
         self.inner.is_stripe_key(value)
     }
 
+    /// Check if value is a Square API key
+    #[must_use]
+    pub fn is_square_token(&self, value: &str) -> bool {
+        self.inner.is_square_token(value)
+    }
+
+    /// Check if value is a Shopify API token
+    #[must_use]
+    pub fn is_shopify_token(&self, value: &str) -> bool {
+        self.inner.is_shopify_token(value)
+    }
+
+    /// Check if value is a PayPal/Braintree access token
+    #[must_use]
+    pub fn is_paypal_token(&self, value: &str) -> bool {
+        self.inner.is_paypal_token(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -509,6 +527,24 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_azure_key(&self, key: &str) -> String {
         self.inner.mask_azure_key(key)
+    }
+
+    /// Mask Square API key
+    #[must_use]
+    pub fn mask_square_token(&self, key: &str) -> String {
+        self.inner.mask_square_token(key)
+    }
+
+    /// Mask Shopify API token
+    #[must_use]
+    pub fn mask_shopify_token(&self, token: &str) -> String {
+        self.inner.mask_shopify_token(token)
+    }
+
+    /// Mask PayPal/Braintree access token
+    #[must_use]
+    pub fn mask_paypal_token(&self, token: &str) -> String {
+        self.inner.mask_paypal_token(token)
     }
 
     // ============================================================================

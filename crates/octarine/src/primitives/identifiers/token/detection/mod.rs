@@ -46,8 +46,8 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 pub use api_keys::{
     detect_api_key_provider, is_api_key, is_aws_access_key, is_aws_secret_key,
     is_aws_session_token, is_azure_key, is_bearer_token, is_gcp_api_key, is_github_token,
-    is_gitlab_token, is_onepassword_token, is_onepassword_vault_ref, is_stripe_key,
-    is_test_api_key, is_url_with_credentials,
+    is_gitlab_token, is_onepassword_token, is_onepassword_vault_ref, is_paypal_token,
+    is_shopify_token, is_square_token, is_stripe_key, is_test_api_key, is_url_with_credentials,
 };
 
 // Re-export SSH functions
@@ -113,6 +113,15 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_stripe_key(trimmed) {
         return Some(TokenType::StripeKey);
+    }
+    if is_square_token(trimmed) {
+        return Some(TokenType::SquareToken);
+    }
+    if is_shopify_token(trimmed) {
+        return Some(TokenType::ShopifyToken);
+    }
+    if is_paypal_token(trimmed) {
+        return Some(TokenType::PayPalToken);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -236,6 +245,27 @@ mod tests {
         assert_eq!(
             detect_token_type("Ab3De8Gh2Jk5Mn9Pq4Rs7Tv0Wx3Yz6"),
             Some(TokenType::SessionId)
+        );
+
+        // Square
+        assert_eq!(
+            detect_token_type(&format!("sq0atp-{}", "ABCDEFghijklmnopqrstuv")),
+            Some(TokenType::SquareToken)
+        );
+
+        // Shopify
+        assert_eq!(
+            detect_token_type(&format!("shpat_{}", "abcdef1234567890abcdef1234567890")),
+            Some(TokenType::ShopifyToken)
+        );
+
+        // PayPal/Braintree
+        assert_eq!(
+            detect_token_type(&format!(
+                "access_token$production${}${}",
+                "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
+            )),
+            Some(TokenType::PayPalToken)
         );
 
         // Not a token

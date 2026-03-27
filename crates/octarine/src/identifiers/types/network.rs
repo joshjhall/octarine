@@ -84,6 +84,12 @@ pub enum ApiKeyProvider {
     Stripe,
     /// 1Password API key
     OnePassword,
+    /// Square API key
+    Square,
+    /// PayPal/Braintree API key
+    PayPal,
+    /// Shopify API key
+    Shopify,
     /// Generic/unknown provider
     Generic,
 }
@@ -97,6 +103,9 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Github => write!(f, "GitHub"),
             Self::Stripe => write!(f, "Stripe"),
             Self::OnePassword => write!(f, "1Password"),
+            Self::Square => write!(f, "Square"),
+            Self::PayPal => write!(f, "PayPal"),
+            Self::Shopify => write!(f, "Shopify"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -112,6 +121,9 @@ impl From<crate::primitives::identifiers::ApiKeyProvider> for ApiKeyProvider {
             P::Github => Self::Github,
             P::Stripe => Self::Stripe,
             P::OnePassword => Self::OnePassword,
+            P::Square => Self::Square,
+            P::PayPal => Self::PayPal,
+            P::Shopify => Self::Shopify,
             P::Generic => Self::Generic,
         }
     }
@@ -126,6 +138,9 @@ impl From<ApiKeyProvider> for crate::primitives::identifiers::ApiKeyProvider {
             ApiKeyProvider::Github => Self::Github,
             ApiKeyProvider::Stripe => Self::Stripe,
             ApiKeyProvider::OnePassword => Self::OnePassword,
+            ApiKeyProvider::Square => Self::Square,
+            ApiKeyProvider::PayPal => Self::PayPal,
+            ApiKeyProvider::Shopify => Self::Shopify,
             ApiKeyProvider::Generic => Self::Generic,
         }
     }

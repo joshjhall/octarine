@@ -69,6 +69,30 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::OnePassword);
     }
 
+    // Square API keys (sq0atp-, sq0csp-, sq0idp-)
+    if key_lower.starts_with("sq0atp-")
+        || key_lower.starts_with("sq0csp-")
+        || key_lower.starts_with("sq0idp-")
+    {
+        return Some(ApiKeyProvider::Square);
+    }
+
+    // Shopify API tokens (shpat_, shpca_, shppa_, shpss_)
+    if key_lower.starts_with("shpat_")
+        || key_lower.starts_with("shpca_")
+        || key_lower.starts_with("shppa_")
+        || key_lower.starts_with("shpss_")
+    {
+        return Some(ApiKeyProvider::Shopify);
+    }
+
+    // PayPal/Braintree access tokens (access_token$production$..., access_token$sandbox$...)
+    if key_lower.starts_with("access_token$production$")
+        || key_lower.starts_with("access_token$sandbox$")
+    {
+        return Some(ApiKeyProvider::PayPal);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -89,6 +113,9 @@ pub fn is_api_key(value: &str) -> bool {
         || patterns::network::API_KEY_AWS_SESSION.is_match(trimmed)
         || patterns::network::API_KEY_GCP.is_match(trimmed)
         || patterns::network::API_KEY_GITHUB.is_match(trimmed)
+        || patterns::network::API_KEY_SQUARE.is_match(trimmed)
+        || patterns::network::API_KEY_SHOPIFY.is_match(trimmed)
+        || patterns::network::API_KEY_PAYPAL_BRAINTREE.is_match(trimmed)
         || (trimmed.len() <= MAX_AZURE_KEY_LENGTH
             && patterns::network::API_KEY_AZURE.is_match(trimmed))
 }
@@ -240,6 +267,45 @@ pub fn is_url_with_credentials(value: &str) -> bool {
     patterns::network::URL_WITH_CREDENTIALS.is_match(trimmed)
 }
 
+/// Check if value is a Square API key
+///
+/// Square keys start with "sq0atp-" (OAuth access), "sq0csp-" (OAuth secret),
+/// or "sq0idp-" (Application ID)
+#[must_use]
+pub fn is_square_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_SQUARE.is_match(trimmed)
+}
+
+/// Check if value is a Shopify API token
+///
+/// Shopify tokens start with "shpat_" (app access), "shpca_" (custom app),
+/// "shppa_" (private app), or "shpss_" (shared secret), followed by 32 hex chars
+#[must_use]
+pub fn is_shopify_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_SHOPIFY.is_match(trimmed)
+}
+
+/// Check if value is a PayPal/Braintree access token
+///
+/// Braintree access tokens have the format:
+/// `access_token$production$[a-z0-9]{16}$[a-f0-9]{32}` (or sandbox)
+#[must_use]
+pub fn is_paypal_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_PAYPAL_BRAINTREE.is_match(trimmed)
+}
+
 /// Check if API key is a known test/development key
 ///
 /// Detects:
@@ -303,6 +369,16 @@ pub fn is_test_api_key(key: &str) -> bool {
         return true;
     }
 
+    // Square sandbox keys
+    if trimmed.starts_with("sandbox-sq0") {
+        return true;
+    }
+
+    // PayPal/Braintree sandbox tokens
+    if trimmed.starts_with("access_token$sandbox$") {
+        return true;
+    }
+
     // Check for all same character (after prefix)
     let prefix_len =
         if trimmed.starts_with("sk_") || trimmed.starts_with("pk_") || trimmed.starts_with("rk_") {
@@ -314,6 +390,17 @@ pub fn is_test_api_key(key: &str) -> bool {
         {
             4
         } else if trimmed.starts_with("glpat-") || trimmed.starts_with("gldt-") {
+            6
+        } else if trimmed.starts_with("sq0atp-")
+            || trimmed.starts_with("sq0csp-")
+            || trimmed.starts_with("sq0idp-")
+        {
+            7
+        } else if trimmed.starts_with("shpat_")
+            || trimmed.starts_with("shpca_")
+            || trimmed.starts_with("shppa_")
+            || trimmed.starts_with("shpss_")
+        {
             6
         } else {
             0
@@ -532,6 +619,133 @@ mod tests {
         assert!(is_bearer_token("BEARER MyLongTokenValue12345678"));
         assert!(!is_bearer_token("Bearer short")); // Too short
         assert!(!is_bearer_token("Token abc123")); // Wrong prefix
+    }
+
+    #[test]
+    fn test_is_square_token() {
+        // Valid Square OAuth access tokens (sq0atp- + 22+ chars)
+        assert!(is_square_token(&format!(
+            "sq0atp-{}",
+            "ABCDEFghijklmnopqrstuv"
+        )));
+        // Valid Square OAuth secret (sq0csp- + 43+ chars)
+        assert!(is_square_token(&format!(
+            "sq0csp-{}",
+            "ABCDEFghijklmnopqrstuvwxyz0123456789ABCDEFG"
+        )));
+        // Valid Square Application ID (sq0idp- + 22+ chars)
+        assert!(is_square_token(&format!(
+            "sq0idp-{}",
+            "ABCDEFghijklmnopqrstuv"
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_square_token("sq1atp-ABCDEFghijklmnopqrstuv"));
+        // Invalid: too short
+        assert!(!is_square_token("sq0atp-short"));
+    }
+
+    #[test]
+    fn test_detect_square_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("sq0atp-{}", "ABCDEFghijklmnopqrstuv")),
+            Some(ApiKeyProvider::Square)
+        );
+        assert_eq!(
+            detect_api_key_provider(&format!(
+                "sq0csp-{}",
+                "ABCDEFghijklmnopqrstuvwxyz0123456789ABCDEFG"
+            )),
+            Some(ApiKeyProvider::Square)
+        );
+    }
+
+    #[test]
+    fn test_is_shopify_token() {
+        // Valid Shopify app access token (shpat_ + 32 hex chars)
+        assert!(is_shopify_token(&format!(
+            "shpat_{}",
+            "abcdef1234567890abcdef1234567890"
+        )));
+        // Valid custom app token
+        assert!(is_shopify_token(&format!(
+            "shpca_{}",
+            "abcdef1234567890abcdef1234567890"
+        )));
+        // Valid private app token
+        assert!(is_shopify_token(&format!(
+            "shppa_{}",
+            "abcdef1234567890abcdef1234567890"
+        )));
+        // Valid shared secret
+        assert!(is_shopify_token(&format!(
+            "shpss_{}",
+            "ABCDEF1234567890ABCDEF1234567890"
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_shopify_token("shpxx_abcdef1234567890abcdef1234567890"));
+        // Invalid: too short
+        assert!(!is_shopify_token("shpat_abcdef"));
+        // Invalid: non-hex chars
+        assert!(!is_shopify_token("shpat_ghijklmnopqrstuvwxyz12345678zz"));
+    }
+
+    #[test]
+    fn test_detect_shopify_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("shpat_{}", "abcdef1234567890abcdef1234567890")),
+            Some(ApiKeyProvider::Shopify)
+        );
+    }
+
+    #[test]
+    fn test_is_paypal_token() {
+        // Valid Braintree production access token
+        let prod_token = format!(
+            "access_token$production${}${}",
+            "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
+        );
+        assert!(is_paypal_token(&prod_token));
+        // Valid Braintree sandbox access token
+        let sandbox_token = format!(
+            "access_token$sandbox${}${}",
+            "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
+        );
+        assert!(is_paypal_token(&sandbox_token));
+        // Invalid: wrong environment
+        assert!(!is_paypal_token(
+            "access_token$staging$abc1234567890xyz$abcdef1234567890abcdef1234567890"
+        ));
+        // Invalid: missing parts
+        assert!(!is_paypal_token("access_token$production$short"));
+    }
+
+    #[test]
+    fn test_detect_paypal_provider() {
+        let token = format!(
+            "access_token$production${}${}",
+            "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
+        );
+        assert_eq!(
+            detect_api_key_provider(&token),
+            Some(ApiKeyProvider::PayPal)
+        );
+    }
+
+    #[test]
+    fn test_is_test_api_key_square_sandbox() {
+        assert!(is_test_api_key(&format!(
+            "sandbox-sq0atp-{}",
+            "ABCDEFghijklmnopqrstuv"
+        )));
+    }
+
+    #[test]
+    fn test_is_test_api_key_paypal_sandbox() {
+        let sandbox = format!(
+            "access_token$sandbox${}${}",
+            "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
+        );
+        assert!(is_test_api_key(&sandbox));
     }
 
     #[test]

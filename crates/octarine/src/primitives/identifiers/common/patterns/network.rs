@@ -280,6 +280,28 @@ pub static API_KEY_AZURE: Lazy<Regex> = Lazy::new(|| {
 pub static API_KEY_1PASSWORD: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\bops_[A-Za-z0-9_-]{50,}\b").expect("BUG: Invalid regex pattern"));
 
+/// Square API key patterns (OAuth access token, OAuth secret, Application ID)
+/// Formats: sq0atp-{22}, sq0csp-{43}, sq0idp-{22} (and sandbox- prefixed variants)
+/// Example: "sq0atp-" + "ABCDEFghijklmnopqrstuv"
+pub static API_KEY_SQUARE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bsq0(?:atp|csp|idp)-[a-zA-Z0-9_-]{22,}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// Shopify API access token patterns
+/// Formats: shpat_{32hex}, shpca_{32hex}, shppa_{32hex}, shpss_{32hex}
+/// Example: "shpat_" + "abcdef1234567890abcdef1234567890"
+pub static API_KEY_SHOPIFY: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bshp(?:at|ca|pa|ss)_[a-fA-F0-9]{32}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// PayPal/Braintree access token pattern
+/// Format: access_token$production$[a-z0-9]{16}$[a-f0-9]{32}
+/// Example: "access_token$production$abc1234567890xyz$abcdef1234567890abcdef1234567890ab"
+pub static API_KEY_PAYPAL_BRAINTREE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\baccess_token\$(?:production|sandbox)\$[a-z0-9]{16}\$[a-f0-9]{32}\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -379,6 +401,9 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_GITLAB,
         &*API_KEY_AZURE,
         &*API_KEY_1PASSWORD,
+        &*API_KEY_SQUARE,
+        &*API_KEY_SHOPIFY,
+        &*API_KEY_PAYPAL_BRAINTREE,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -421,6 +446,9 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_GITLAB,
         &*API_KEY_AZURE,
         &*API_KEY_1PASSWORD,
+        &*API_KEY_SQUARE,
+        &*API_KEY_SHOPIFY,
+        &*API_KEY_PAYPAL_BRAINTREE,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,
