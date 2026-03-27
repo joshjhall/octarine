@@ -44,9 +44,10 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 
 // Re-export API key functions
 pub use api_keys::{
-    detect_api_key_provider, is_api_key, is_aws_access_key, is_aws_secret_key, is_azure_key,
-    is_bearer_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_onepassword_token,
-    is_onepassword_vault_ref, is_stripe_key, is_test_api_key, is_url_with_credentials,
+    detect_api_key_provider, is_api_key, is_aws_access_key, is_aws_secret_key,
+    is_aws_session_token, is_azure_key, is_bearer_token, is_gcp_api_key, is_github_token,
+    is_gitlab_token, is_onepassword_token, is_onepassword_vault_ref, is_stripe_key,
+    is_test_api_key, is_url_with_credentials,
 };
 
 // Re-export SSH functions
@@ -163,6 +164,11 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     // AWS secret key (40 base64 chars - check after JWT to avoid false matches)
     if is_aws_secret_key(trimmed) {
         return Some(TokenType::AwsSecretKey);
+    }
+
+    // AWS session token (100+ base64 chars from STS)
+    if is_aws_session_token(trimmed) {
+        return Some(TokenType::AwsSessionToken);
     }
 
     // Generic API keys (less specific)

@@ -38,8 +38,8 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Stripe);
     }
 
-    // AWS keys (starts with AKIA)
-    if key.starts_with("AKIA") && key.len() >= 20 {
+    // AWS keys (starts with AKIA for long-term or ASIA for temporary STS credentials)
+    if (key.starts_with("AKIA") || key.starts_with("ASIA")) && key.len() >= 20 {
         return Some(ApiKeyProvider::Aws);
     }
 
@@ -86,6 +86,7 @@ pub fn is_api_key(value: &str) -> bool {
         || patterns::network::API_KEY_STRIPE.is_match(trimmed)
         || patterns::network::API_KEY_AWS_ACCESS.is_match(trimmed)
         || patterns::network::API_KEY_AWS_SECRET.is_match(trimmed)
+        || patterns::network::API_KEY_AWS_SESSION.is_match(trimmed)
         || patterns::network::API_KEY_GCP.is_match(trimmed)
         || patterns::network::API_KEY_GITHUB.is_match(trimmed)
         || (trimmed.len() <= MAX_AZURE_KEY_LENGTH
@@ -94,7 +95,8 @@ pub fn is_api_key(value: &str) -> bool {
 
 /// Check if value is an AWS Access Key ID
 ///
-/// AWS Access Key IDs start with "AKIA" followed by 16 alphanumeric characters
+/// AWS Access Key IDs start with "AKIA" (long-term) or "ASIA" (temporary STS)
+/// followed by 16 alphanumeric characters
 #[must_use]
 pub fn is_aws_access_key(value: &str) -> bool {
     let trimmed = value.trim();
@@ -114,6 +116,19 @@ pub fn is_aws_secret_key(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_AWS_SECRET.is_match(trimmed)
+}
+
+/// Check if value is an AWS Session Token
+///
+/// AWS session tokens are long Base64 strings (100+ characters) that accompany
+/// temporary STS credentials (ASIA prefix access keys)
+#[must_use]
+pub fn is_aws_session_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_AWS_SESSION.is_match(trimmed)
 }
 
 /// Check if value is a Google Cloud Platform API key
@@ -257,10 +272,11 @@ pub fn is_test_api_key(key: &str) -> bool {
         return true;
     }
 
-    // AWS example keys from documentation
+    // AWS example keys from documentation (both AKIA and ASIA)
     let aws_examples = [
         "AKIAIOSFODNN7EXAMPLE",
         "AKIAI44QH8DHBEXAMPLE",
+        "ASIAIOSFODNN7EXAMPLE",
         "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
     ];
     for example in &aws_examples {
@@ -330,10 +346,29 @@ mod tests {
 
     #[test]
     fn test_is_aws_access_key() {
+        // Long-term AKIA keys
         assert!(is_aws_access_key("AKIAIOSFODNN7EXAMPLE"));
         assert!(is_aws_access_key("AKIAI44QH8DHBEXAMPLE"));
+        // Temporary STS ASIA keys
+        assert!(is_aws_access_key("ASIAIOSFODNN7EXAMPLE"));
+        assert!(is_aws_access_key("ASIAI44QH8DHBEXAMPLE"));
+        // Negative cases
         assert!(!is_aws_access_key("AKIA123")); // Too short
+        assert!(!is_aws_access_key("ASIA123")); // Too short
         assert!(!is_aws_access_key("BKIAIOSFODNN7EXAMPLE")); // Wrong prefix
+    }
+
+    #[test]
+    fn test_is_aws_access_key_asia_provider_detection() {
+        // ASIA temporary credentials should be detected as AWS
+        assert_eq!(
+            detect_api_key_provider("ASIAIOSFODNN7EXAMPLE"),
+            Some(ApiKeyProvider::Aws)
+        );
+        assert_eq!(
+            detect_api_key_provider("ASIAI44QH8DHBEXAMPLE"),
+            Some(ApiKeyProvider::Aws)
+        );
     }
 
     #[test]
@@ -342,6 +377,17 @@ mod tests {
             "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
         ));
         assert!(!is_aws_secret_key("short"));
+    }
+
+    #[test]
+    fn test_is_aws_session_token() {
+        // Valid session token (100+ Base64 characters)
+        let token = "FwoGZXIvYXdzEBYaDHVlTGhjaHJNTkxqayLIATCCAQIwggECMIIBAjCCAQIwggECMIIBAjCCAQIwggECabcdef";
+        // Pad to 100+ chars
+        let long_token = format!("{}{}", token, "A".repeat(20));
+        assert!(is_aws_session_token(&long_token));
+        // Too short
+        assert!(!is_aws_session_token("FwoGZXIvYXdzEBYaDHVl"));
     }
 
     #[test]

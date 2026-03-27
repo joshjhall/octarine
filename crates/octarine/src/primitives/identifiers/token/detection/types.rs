@@ -160,10 +160,12 @@ pub enum TokenType {
     GitHub,
     /// GitLab Personal Access Token (glpat-) or Deploy Token (gldt-)
     GitLab,
-    /// AWS Access Key ID (AKIA*)
+    /// AWS Access Key ID (AKIA* long-term, ASIA* temporary STS)
     AwsAccessKey,
     /// AWS Secret Access Key (40 base64 characters)
     AwsSecretKey,
+    /// AWS Session Token (long Base64 string from STS)
+    AwsSessionToken,
     /// Google Cloud Platform API Key (AIza*)
     GcpApiKey,
     /// Azure Storage Account Key

@@ -233,15 +233,20 @@ pub static API_KEY_STRIPE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?:sk|pk)_(?:live|test)_[a-zA-Z0-9]{24,}").expect("BUG: Invalid regex pattern")
 });
 
-/// AWS Access Key ID pattern
-/// Example: "AKIAIOSFODNN7EXAMPLE"
+/// AWS Access Key ID pattern (long-term AKIA and temporary STS ASIA)
+/// Example: "AKIAIOSFODNN7EXAMPLE", "ASIAJEXAMPLEXEG2JICEA"
 pub static API_KEY_AWS_ACCESS: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\bAKIA[0-9A-Z]{16}\b").expect("BUG: Invalid regex pattern"));
+    Lazy::new(|| Regex::new(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b").expect("BUG: Invalid regex pattern"));
 
 /// AWS Secret Access Key pattern (40 base64 characters)
 /// Example: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 pub static API_KEY_AWS_SECRET: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"[A-Za-z0-9/+=]{40}").expect("BUG: Invalid regex pattern"));
+
+/// AWS Session Token pattern (long Base64 string from STS)
+/// These accompany temporary ASIA credentials and are typically 100+ characters
+pub static API_KEY_AWS_SESSION: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"[A-Za-z0-9/+=]{100,}").expect("BUG: Invalid regex pattern"));
 
 /// Google Cloud Platform API key pattern
 /// Example: "AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3namBGewQe"
