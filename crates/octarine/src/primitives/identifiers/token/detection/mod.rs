@@ -45,9 +45,10 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 // Re-export API key functions
 pub use api_keys::{
     detect_api_key_provider, is_api_key, is_aws_access_key, is_aws_secret_key,
-    is_aws_session_token, is_azure_key, is_bearer_token, is_gcp_api_key, is_github_token,
-    is_gitlab_token, is_onepassword_token, is_onepassword_vault_ref, is_paypal_token,
-    is_shopify_token, is_square_token, is_stripe_key, is_test_api_key, is_url_with_credentials,
+    is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key, is_gcp_api_key,
+    is_github_token, is_gitlab_token, is_mailchimp_key, is_mailgun_key, is_onepassword_token,
+    is_onepassword_vault_ref, is_paypal_token, is_resend_key, is_shopify_token, is_square_token,
+    is_stripe_key, is_test_api_key, is_url_with_credentials,
 };
 
 // Re-export SSH functions
@@ -122,6 +123,18 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_paypal_token(trimmed) {
         return Some(TokenType::PayPalToken);
+    }
+    if is_mailgun_key(trimmed) {
+        return Some(TokenType::MailgunToken);
+    }
+    if is_resend_key(trimmed) {
+        return Some(TokenType::ResendToken);
+    }
+    if is_brevo_key(trimmed) {
+        return Some(TokenType::BrevoToken);
+    }
+    if is_mailchimp_key(trimmed) {
+        return Some(TokenType::MailchimpToken);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -266,6 +279,30 @@ mod tests {
                 "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
             )),
             Some(TokenType::PayPalToken)
+        );
+
+        // Mailchimp (constructed at runtime to avoid secret scanner)
+        assert_eq!(
+            detect_token_type(&format!("{}{}-us6", "abcdef1234567890", "abcdef1234567890")),
+            Some(TokenType::MailchimpToken)
+        );
+
+        // Mailgun
+        assert_eq!(
+            detect_token_type(&format!("key-{}", "ABCDEFghijklmnopqrstuv1234567890")),
+            Some(TokenType::MailgunToken)
+        );
+
+        // Resend
+        assert_eq!(
+            detect_token_type(&format!("re_{}", "ABCDEFghijklmnopqrstuv1234567890ab")),
+            Some(TokenType::ResendToken)
+        );
+
+        // Brevo
+        assert_eq!(
+            detect_token_type(&format!("xkeysib-{}-{}", "a".repeat(64), "B".repeat(16))),
+            Some(TokenType::BrevoToken)
         );
 
         // Not a token

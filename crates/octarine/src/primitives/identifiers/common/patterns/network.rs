@@ -302,6 +302,31 @@ pub static API_KEY_PAYPAL_BRAINTREE: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// Mailchimp API key pattern
+/// Format: [a-f0-9]{32}-us[0-9]{1,2} (32 hex chars + datacenter suffix)
+/// Example: "[32 hex chars]-us6"
+pub static API_KEY_MAILCHIMP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[a-f0-9]{32}-us[0-9]{1,2}\b").expect("BUG: Invalid regex pattern"));
+
+/// Mailgun API key pattern
+/// Format: key-[a-zA-Z0-9]{32}
+/// Example: "key-ABCDEFghijklmnopqrstuv1234567890"
+pub static API_KEY_MAILGUN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bkey-[a-zA-Z0-9]{32}\b").expect("BUG: Invalid regex pattern"));
+
+/// Resend API key pattern
+/// Format: re_[a-zA-Z0-9]{32,}
+/// Example: "re_ABCDEFghijklmnopqrstuv1234567890ab"
+pub static API_KEY_RESEND: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bre_[a-zA-Z0-9]{32,}\b").expect("BUG: Invalid regex pattern"));
+
+/// Brevo (Sendinblue) API key pattern
+/// Format: xkeysib-[a-f0-9]{64}-[a-zA-Z0-9]{16}
+/// Example: "xkeysib-<64hex>-<16alnum>"
+pub static API_KEY_BREVO: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bxkeysib-[a-f0-9]{64}-[a-zA-Z0-9]{16}\b").expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -404,6 +429,10 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_SQUARE,
         &*API_KEY_SHOPIFY,
         &*API_KEY_PAYPAL_BRAINTREE,
+        &*API_KEY_MAILCHIMP,
+        &*API_KEY_MAILGUN,
+        &*API_KEY_RESEND,
+        &*API_KEY_BREVO,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -449,6 +478,10 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_SQUARE,
         &*API_KEY_SHOPIFY,
         &*API_KEY_PAYPAL_BRAINTREE,
+        &*API_KEY_MAILCHIMP,
+        &*API_KEY_MAILGUN,
+        &*API_KEY_RESEND,
+        &*API_KEY_BREVO,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,

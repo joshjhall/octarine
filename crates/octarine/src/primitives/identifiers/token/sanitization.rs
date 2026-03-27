@@ -587,6 +587,30 @@ pub fn mask_paypal_token(token: &str) -> String {
     mask_api_key(token)
 }
 
+/// Mask Mailchimp API key
+#[must_use]
+pub fn mask_mailchimp_key(key: &str) -> String {
+    mask_api_key(key)
+}
+
+/// Mask Mailgun API key
+#[must_use]
+pub fn mask_mailgun_key(key: &str) -> String {
+    mask_api_key(key)
+}
+
+/// Mask Resend API key
+#[must_use]
+pub fn mask_resend_key(key: &str) -> String {
+    mask_api_key(key)
+}
+
+/// Mask Brevo API key
+#[must_use]
+pub fn mask_brevo_key(key: &str) -> String {
+    mask_api_key(key)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]

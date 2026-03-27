@@ -123,6 +123,30 @@ impl TokenBuilder {
         self.inner.is_paypal_token(value)
     }
 
+    /// Check if value is a Mailchimp API key
+    #[must_use]
+    pub fn is_mailchimp_key(&self, value: &str) -> bool {
+        self.inner.is_mailchimp_key(value)
+    }
+
+    /// Check if value is a Mailgun API key
+    #[must_use]
+    pub fn is_mailgun_key(&self, value: &str) -> bool {
+        self.inner.is_mailgun_key(value)
+    }
+
+    /// Check if value is a Resend API key
+    #[must_use]
+    pub fn is_resend_key(&self, value: &str) -> bool {
+        self.inner.is_resend_key(value)
+    }
+
+    /// Check if value is a Brevo API key
+    #[must_use]
+    pub fn is_brevo_key(&self, value: &str) -> bool {
+        self.inner.is_brevo_key(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -545,6 +569,30 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_paypal_token(&self, token: &str) -> String {
         self.inner.mask_paypal_token(token)
+    }
+
+    /// Mask Mailchimp API key
+    #[must_use]
+    pub fn mask_mailchimp_key(&self, key: &str) -> String {
+        self.inner.mask_mailchimp_key(key)
+    }
+
+    /// Mask Mailgun API key
+    #[must_use]
+    pub fn mask_mailgun_key(&self, key: &str) -> String {
+        self.inner.mask_mailgun_key(key)
+    }
+
+    /// Mask Resend API key
+    #[must_use]
+    pub fn mask_resend_key(&self, key: &str) -> String {
+        self.inner.mask_resend_key(key)
+    }
+
+    /// Mask Brevo API key
+    #[must_use]
+    pub fn mask_brevo_key(&self, key: &str) -> String {
+        self.inner.mask_brevo_key(key)
     }
 
     // ============================================================================

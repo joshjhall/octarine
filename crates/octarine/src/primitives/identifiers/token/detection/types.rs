@@ -29,6 +29,14 @@ pub enum ApiKeyProvider {
     PayPal,
     /// Shopify API tokens (shpat_, shpca_, shppa_, shpss_)
     Shopify,
+    /// Mailchimp API keys ([hex]{32}-us[N])
+    Mailchimp,
+    /// Mailgun API keys (key-[alnum]{32})
+    Mailgun,
+    /// Resend API keys (re_[alnum]{32+})
+    Resend,
+    /// Brevo/Sendinblue API keys (xkeysib-[hex]{64}-[alnum]{16})
+    Brevo,
     /// Generic or unknown provider
     Generic,
 }
@@ -45,6 +53,10 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Square => write!(f, "Square"),
             Self::PayPal => write!(f, "PayPal"),
             Self::Shopify => write!(f, "Shopify"),
+            Self::Mailchimp => write!(f, "Mailchimp"),
+            Self::Mailgun => write!(f, "Mailgun"),
+            Self::Resend => write!(f, "Resend"),
+            Self::Brevo => write!(f, "Brevo"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -205,4 +217,12 @@ pub enum TokenType {
     PayPalToken,
     /// Shopify API token (shpat_*, shpca_*, shppa_*, shpss_*)
     ShopifyToken,
+    /// Mailchimp API key ([hex]{32}-us[N])
+    MailchimpToken,
+    /// Mailgun API key (key-[alnum]{32})
+    MailgunToken,
+    /// Resend API key (re_[alnum]{32+})
+    ResendToken,
+    /// Brevo/Sendinblue API key (xkeysib-[hex]{64}-[alnum]{16})
+    BrevoToken,
 }

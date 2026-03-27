@@ -90,6 +90,14 @@ pub enum ApiKeyProvider {
     PayPal,
     /// Shopify API key
     Shopify,
+    /// Mailchimp API key
+    Mailchimp,
+    /// Mailgun API key
+    Mailgun,
+    /// Resend API key
+    Resend,
+    /// Brevo/Sendinblue API key
+    Brevo,
     /// Generic/unknown provider
     Generic,
 }
@@ -106,6 +114,10 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Square => write!(f, "Square"),
             Self::PayPal => write!(f, "PayPal"),
             Self::Shopify => write!(f, "Shopify"),
+            Self::Mailchimp => write!(f, "Mailchimp"),
+            Self::Mailgun => write!(f, "Mailgun"),
+            Self::Resend => write!(f, "Resend"),
+            Self::Brevo => write!(f, "Brevo"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -124,6 +136,10 @@ impl From<crate::primitives::identifiers::ApiKeyProvider> for ApiKeyProvider {
             P::Square => Self::Square,
             P::PayPal => Self::PayPal,
             P::Shopify => Self::Shopify,
+            P::Mailchimp => Self::Mailchimp,
+            P::Mailgun => Self::Mailgun,
+            P::Resend => Self::Resend,
+            P::Brevo => Self::Brevo,
             P::Generic => Self::Generic,
         }
     }
@@ -141,6 +157,10 @@ impl From<ApiKeyProvider> for crate::primitives::identifiers::ApiKeyProvider {
             ApiKeyProvider::Square => Self::Square,
             ApiKeyProvider::PayPal => Self::PayPal,
             ApiKeyProvider::Shopify => Self::Shopify,
+            ApiKeyProvider::Mailchimp => Self::Mailchimp,
+            ApiKeyProvider::Mailgun => Self::Mailgun,
+            ApiKeyProvider::Resend => Self::Resend,
+            ApiKeyProvider::Brevo => Self::Brevo,
             ApiKeyProvider::Generic => Self::Generic,
         }
     }

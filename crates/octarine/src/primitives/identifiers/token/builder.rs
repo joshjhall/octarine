@@ -86,6 +86,26 @@ impl TokenIdentifierBuilder {
         detection::is_paypal_token(value)
     }
 
+    /// Check if value is a Mailchimp API key
+    pub fn is_mailchimp_key(&self, value: &str) -> bool {
+        detection::is_mailchimp_key(value)
+    }
+
+    /// Check if value is a Mailgun API key
+    pub fn is_mailgun_key(&self, value: &str) -> bool {
+        detection::is_mailgun_key(value)
+    }
+
+    /// Check if value is a Resend API key
+    pub fn is_resend_key(&self, value: &str) -> bool {
+        detection::is_resend_key(value)
+    }
+
+    /// Check if value is a Brevo API key
+    pub fn is_brevo_key(&self, value: &str) -> bool {
+        detection::is_brevo_key(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -532,6 +552,26 @@ impl TokenIdentifierBuilder {
     /// Mask PayPal/Braintree access token (convenience wrapper)
     pub fn mask_paypal_token(&self, token: &str) -> String {
         sanitization::mask_paypal_token(token)
+    }
+
+    /// Mask Mailchimp API key (convenience wrapper)
+    pub fn mask_mailchimp_key(&self, key: &str) -> String {
+        sanitization::mask_mailchimp_key(key)
+    }
+
+    /// Mask Mailgun API key (convenience wrapper)
+    pub fn mask_mailgun_key(&self, key: &str) -> String {
+        sanitization::mask_mailgun_key(key)
+    }
+
+    /// Mask Resend API key (convenience wrapper)
+    pub fn mask_resend_key(&self, key: &str) -> String {
+        sanitization::mask_resend_key(key)
+    }
+
+    /// Mask Brevo API key (convenience wrapper)
+    pub fn mask_brevo_key(&self, key: &str) -> String {
+        sanitization::mask_brevo_key(key)
     }
 
     // =========================================================================
