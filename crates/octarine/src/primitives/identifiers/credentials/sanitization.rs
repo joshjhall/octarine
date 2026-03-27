@@ -27,6 +27,9 @@
 
 use std::borrow::Cow;
 
+use once_cell::sync::Lazy;
+use regex::Regex;
+
 use crate::primitives::data::tokens::RedactionTokenCore;
 
 use super::detection::{self, CredentialMatch, CredentialType};
@@ -188,6 +191,69 @@ fn redact_credential_match(m: &CredentialMatch, policy: TextRedactionPolicy) -> 
     }
 }
 
+// Connection string redaction
+
+/// Regex for password portion of a URL-based connection string
+static URL_PASSWORD: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(://[^:@\s]+:)([^@\s]+)(@)").expect("BUG: Invalid regex pattern"));
+
+/// Regex for password in MSSQL key-value connection string
+static MSSQL_PASSWORD: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)((?:Password|Pwd)=)([^;\s]+)").expect("BUG: Invalid regex pattern")
+});
+
+/// Regex for password in JDBC query parameter
+static JDBC_PASSWORD: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)(password=)([^\s&;]+)").expect("BUG: Invalid regex pattern"));
+
+/// Redact credentials in a connection string while preserving host/database
+///
+/// - URL format: `postgres://admin:****@db.example.com/mydb`
+/// - MSSQL: `Server=db.example.com;Password=****;Database=mydb`
+/// - JDBC: `jdbc:postgresql://host/db?password=****`
+#[must_use]
+pub fn redact_connection_string(value: &str) -> String {
+    let mut result = value.to_string();
+
+    // URL-based: replace user:PASSWORD@host with user:****@host
+    if URL_PASSWORD.is_match(&result) {
+        result = URL_PASSWORD
+            .replace_all(&result, "${1}****${3}")
+            .to_string();
+    }
+
+    // MSSQL key-value: replace Password=VALUE with Password=****
+    if MSSQL_PASSWORD.is_match(&result) {
+        result = MSSQL_PASSWORD.replace_all(&result, "${1}****").to_string();
+    }
+
+    // JDBC query param: replace password=VALUE with password=****
+    if JDBC_PASSWORD.is_match(&result) {
+        result = JDBC_PASSWORD.replace_all(&result, "${1}****").to_string();
+    }
+
+    result
+}
+
+/// Redact all connection strings in text while preserving host/database info
+#[must_use]
+pub fn redact_connection_strings_in_text(text: &str) -> Cow<'_, str> {
+    let matches = detection::find_connection_strings_in_text(text);
+    if matches.is_empty() {
+        return Cow::Borrowed(text);
+    }
+
+    let mut result = text.to_string();
+
+    // Replace from end to start to preserve positions
+    for m in matches.iter().rev() {
+        let redacted = redact_connection_string(&m.value);
+        result.replace_range(m.start..m.end, &redacted);
+    }
+
+    Cow::Owned(result)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -306,6 +372,54 @@ mod tests {
         let text = "pin=1234";
         let result = redact_pins_in_text(text, TextRedactionPolicy::Complete);
         assert_eq!(result, "pin=[PIN]");
+    }
+
+    // Connection string redaction tests
+
+    #[test]
+    fn test_redact_connection_string_url() {
+        let result = redact_connection_string("postgres://admin:secret@db.example.com/mydb");
+        assert_eq!(result, "postgres://admin:****@db.example.com/mydb");
+        assert!(!result.contains("secret"));
+    }
+
+    #[test]
+    fn test_redact_connection_string_mssql() {
+        let result =
+            redact_connection_string("Server=db.example.com;Password=secret123;Database=mydb");
+        assert_eq!(result, "Server=db.example.com;Password=****;Database=mydb");
+        assert!(!result.contains("secret123"));
+    }
+
+    #[test]
+    fn test_redact_connection_string_jdbc() {
+        let result = redact_connection_string("jdbc:postgresql://host/db?password=secret");
+        assert_eq!(result, "jdbc:postgresql://host/db?password=****");
+        assert!(!result.contains("secret"));
+    }
+
+    #[test]
+    fn test_redact_connection_string_preserves_host() {
+        let result = redact_connection_string("mysql://root:p@ssword@db.prod.example.com:3306/app");
+        assert!(result.contains("db.prod.example.com"));
+        assert!(result.contains("3306"));
+        assert!(result.contains("****"));
+    }
+
+    #[test]
+    fn test_redact_connection_strings_in_text_basic() {
+        let text = "Connect to postgres://admin:secret@db.example.com/mydb for data";
+        let result = redact_connection_strings_in_text(text);
+        assert!(result.contains("****"));
+        assert!(!result.contains("secret"));
+        assert!(result.contains("db.example.com"));
+    }
+
+    #[test]
+    fn test_redact_connection_strings_in_text_no_match() {
+        let text = "just regular text";
+        let result = redact_connection_strings_in_text(text);
+        assert_eq!(result, text);
     }
 
     #[test]

@@ -300,6 +300,29 @@ pub static URL_WITH_CREDENTIALS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"[a-z][a-z0-9+.-]*://[^:@\s]+:[^@\s]+@[^\s]+").expect("BUG: Invalid regex pattern")
 });
 
+/// MSSQL connection string with credentials (key-value format)
+/// Example: "Server=db.example.com;Database=mydb;Password=secret123"
+pub static CONNECTION_STRING_MSSQL: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(?:Server|Data Source)=[^;]+;(?:[^;]+;)*(?:Password|Pwd)=[^;\s]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// JDBC connection string with password parameter
+/// Example: "jdbc:postgresql://host:5432/db?user=admin&password=secret"
+pub static CONNECTION_STRING_JDBC: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)jdbc:[a-z:]+//[^\s?]+\?[^\s]*password=[^\s&]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Database URL connection string (URL-based with credentials)
+/// Matches postgres://, mysql://, mongodb://, redis://, amqp://, mqtt://
+pub static CONNECTION_STRING_DB_URL: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp|mqtt)s?://[^:@\s]+:[^@\s]+@[^\s]+",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
 // SSH key patterns
 /// SSH public key pattern
 /// Formats: ssh-rsa, ssh-ed25519, ssh-ecdsa, ssh-dss

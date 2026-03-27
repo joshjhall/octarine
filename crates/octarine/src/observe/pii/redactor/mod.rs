@@ -117,7 +117,8 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::OnePasswordToken
             | PiiType::OnePasswordVaultRef
             | PiiType::BearerToken
-            | PiiType::UrlWithCredentials => redact_api_keys(&result, profile),
+            | PiiType::UrlWithCredentials
+            | PiiType::ConnectionString => redact_api_keys(&result, profile),
             // Government IDs
             PiiType::Ssn => redact_ssns(&result, profile),
             PiiType::DriverLicense => redact_driver_licenses(&result, profile),

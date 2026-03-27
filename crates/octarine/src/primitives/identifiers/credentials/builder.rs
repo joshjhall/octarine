@@ -99,6 +99,38 @@ impl CredentialIdentifierBuilder {
         detection::detect_credentials(text)
     }
 
+    // Connection string detection methods
+
+    /// Check if value contains a connection string with embedded credentials
+    #[must_use]
+    pub fn is_connection_string_with_credentials(&self, value: &str) -> bool {
+        detection::is_connection_string_with_credentials(value)
+    }
+
+    /// Check if value is a database connection string (URL-based)
+    #[must_use]
+    pub fn is_database_connection_string(&self, value: &str) -> bool {
+        detection::is_database_connection_string(value)
+    }
+
+    /// Find all connection strings with credentials in text
+    #[must_use]
+    pub fn find_connection_strings_in_text(&self, text: &str) -> Vec<detection::CredentialMatch> {
+        detection::find_connection_strings_in_text(text)
+    }
+
+    /// Redact credentials in a connection string while preserving host/database
+    #[must_use]
+    pub fn redact_connection_string(&self, value: &str) -> String {
+        sanitization::redact_connection_string(value)
+    }
+
+    /// Redact all connection strings in text
+    #[must_use]
+    pub fn redact_connection_strings_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        sanitization::redact_connection_strings_in_text(text)
+    }
+
     // Weak pattern detection methods
 
     /// Check if password is a known weak/common pattern
@@ -418,6 +450,46 @@ mod tests {
             .redact_passwords_in_text_with_policy(text, redaction::TextRedactionPolicy::Complete);
         // When no matches, should return Borrowed (same pointer)
         assert_eq!(result, text);
+    }
+
+    // Connection string tests
+
+    #[test]
+    fn test_is_connection_string_with_credentials() {
+        let builder = CredentialIdentifierBuilder::new();
+        assert!(
+            builder.is_connection_string_with_credentials(
+                "postgres://admin:secret@db.example.com/mydb"
+            )
+        );
+        assert!(
+            builder.is_connection_string_with_credentials("Server=db.example.com;Password=secret")
+        );
+        assert!(!builder.is_connection_string_with_credentials("https://example.com"));
+    }
+
+    #[test]
+    fn test_is_database_connection_string() {
+        let builder = CredentialIdentifierBuilder::new();
+        assert!(builder.is_database_connection_string("postgres://admin:pw@host/db"));
+        assert!(builder.is_database_connection_string("mysql://root:pw@host/db"));
+        assert!(!builder.is_database_connection_string("https://example.com"));
+    }
+
+    #[test]
+    fn test_redact_connection_string() {
+        let builder = CredentialIdentifierBuilder::new();
+        let result = builder.redact_connection_string("postgres://admin:secret@host/db");
+        assert_eq!(result, "postgres://admin:****@host/db");
+    }
+
+    #[test]
+    fn test_redact_connection_strings_in_text() {
+        let builder = CredentialIdentifierBuilder::new();
+        let text = "DB: postgres://admin:secret@host/db";
+        let result = builder.redact_connection_strings_in_text(text);
+        assert!(!result.contains("secret"));
+        assert!(result.contains("****"));
     }
 
     // Weak pattern detection tests

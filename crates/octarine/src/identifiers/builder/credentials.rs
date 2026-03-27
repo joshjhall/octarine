@@ -240,6 +240,80 @@ impl CredentialsBuilder {
     }
 
     // =========================================================================
+    // Connection String Methods
+    // =========================================================================
+
+    /// Check if value contains a connection string with embedded credentials
+    #[must_use]
+    pub fn is_connection_string_with_credentials(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_connection_string_with_credentials(value);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+
+            if result {
+                increment_by(metric_names::secrets_found(), 1);
+                observe::warn(
+                    "connection_string_credentials",
+                    "Connection string with embedded credentials detected",
+                );
+            }
+        }
+
+        result
+    }
+
+    /// Check if value is a database connection string (URL-based)
+    #[must_use]
+    pub fn is_database_connection_string(&self, value: &str) -> bool {
+        self.inner.is_database_connection_string(value)
+    }
+
+    /// Find all connection strings with credentials in text
+    #[must_use]
+    pub fn find_connection_strings_in_text(&self, text: &str) -> Vec<CredentialMatch> {
+        let matches = self.inner.find_connection_strings_in_text(text);
+
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::secrets_found(), matches.len() as u64);
+            observe::warn(
+                "connection_strings_in_text",
+                format!(
+                    "Found {} connection string(s) with credentials",
+                    matches.len()
+                ),
+            );
+        }
+
+        matches
+    }
+
+    /// Redact credentials in a connection string while preserving host/database
+    #[must_use]
+    pub fn redact_connection_string(&self, value: &str) -> String {
+        self.inner.redact_connection_string(value)
+    }
+
+    /// Redact all connection strings in text
+    #[must_use]
+    pub fn redact_connection_strings_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        let result = self.inner.redact_connection_strings_in_text(text);
+
+        if self.emit_events && result != text {
+            observe::info(
+                "connection_strings_redacted",
+                "Connection string credentials redacted from text",
+            );
+        }
+
+        result
+    }
+
+    // =========================================================================
     // Weak Pattern Detection Methods
     // =========================================================================
 
@@ -401,6 +475,43 @@ mod tests {
             builder.redact_password_with_strategy("hunter2", PasswordRedactionStrategy::Token),
             "[PASSWORD]"
         );
+    }
+
+    #[test]
+    fn test_is_connection_string_with_credentials() {
+        let builder = CredentialsBuilder::silent();
+        assert!(
+            builder.is_connection_string_with_credentials(
+                "postgres://admin:secret@db.example.com/mydb"
+            )
+        );
+        assert!(
+            builder.is_connection_string_with_credentials("Server=db.example.com;Password=secret")
+        );
+        assert!(!builder.is_connection_string_with_credentials("https://example.com"));
+    }
+
+    #[test]
+    fn test_is_database_connection_string() {
+        let builder = CredentialsBuilder::silent();
+        assert!(builder.is_database_connection_string("postgres://admin:pw@host/db"));
+        assert!(!builder.is_database_connection_string("https://example.com"));
+    }
+
+    #[test]
+    fn test_redact_connection_string() {
+        let builder = CredentialsBuilder::silent();
+        let result = builder.redact_connection_string("postgres://admin:secret@host/db");
+        assert_eq!(result, "postgres://admin:****@host/db");
+    }
+
+    #[test]
+    fn test_redact_connection_strings_in_text() {
+        let builder = CredentialsBuilder::silent();
+        let text = "DB: postgres://admin:secret@host/db";
+        let result = builder.redact_connection_strings_in_text(text);
+        assert!(!result.contains("secret"));
+        assert!(result.contains("****"));
     }
 
     #[test]

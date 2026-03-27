@@ -34,10 +34,11 @@
 
 use super::types::{IdentifierMatch, IdentifierType};
 use super::{
-    biometric::BiometricIdentifierBuilder, financial::FinancialIdentifierBuilder,
-    government::GovernmentIdentifierBuilder, location::LocationIdentifierBuilder,
-    medical::MedicalIdentifierBuilder, network::NetworkIdentifierBuilder,
-    organizational::OrganizationalIdentifierBuilder, personal::PersonalIdentifierBuilder,
+    biometric::BiometricIdentifierBuilder, credentials::CredentialIdentifierBuilder,
+    financial::FinancialIdentifierBuilder, government::GovernmentIdentifierBuilder,
+    location::LocationIdentifierBuilder, medical::MedicalIdentifierBuilder,
+    network::NetworkIdentifierBuilder, organizational::OrganizationalIdentifierBuilder,
+    personal::PersonalIdentifierBuilder,
 };
 use crate::primitives::collections::{BufferError, BufferStats, RingBuffer};
 
@@ -330,9 +331,17 @@ impl StreamingScanner {
                 IdentifierType::GitHubToken
                 | IdentifierType::GitLabToken
                 | IdentifierType::AwsAccessKey
-                | IdentifierType::ConnectionString => {
+                | IdentifierType::AwsSessionToken => {
                     // Not yet implemented in primitives
                     continue;
+                }
+
+                // Connection string detection
+                IdentifierType::ConnectionString => {
+                    let creds = CredentialIdentifierBuilder::new();
+                    if creds.is_connection_string_with_credentials(text) {
+                        total = total.saturating_add(1);
+                    }
                 }
 
                 // Government identifiers

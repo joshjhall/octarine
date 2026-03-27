@@ -212,6 +212,11 @@ pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
     // Credentials
     let credential = CredentialIdentifierBuilder::new();
 
+    // Connection strings with credentials (MSSQL, JDBC, database URLs)
+    if credential.is_connection_string_with_credentials(text) {
+        pii_types.push(PiiType::ConnectionString);
+    }
+
     if credential.is_passwords_present(text) {
         pii_types.push(PiiType::Password);
     }

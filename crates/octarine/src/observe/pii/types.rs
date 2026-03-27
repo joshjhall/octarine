@@ -142,6 +142,8 @@ pub enum PiiType {
     BearerToken,
     /// URL with embedded credentials
     UrlWithCredentials,
+    /// Connection string with embedded credentials (MSSQL, JDBC, database URLs)
+    ConnectionString,
 
     // =========================================================================
     // Credential Domain (NIST 800-63 Factor 1: Something You Know)
@@ -219,6 +221,7 @@ impl PiiType {
             Self::OnePasswordVaultRef => "onepassword_vault_ref",
             Self::BearerToken => "bearer_token",
             Self::UrlWithCredentials => "url_with_credentials",
+            Self::ConnectionString => "connection_string",
             // Credential
             Self::Password => "password",
             Self::Pin => "pin",
@@ -259,7 +262,8 @@ impl PiiType {
             | Self::OnePasswordToken
             | Self::OnePasswordVaultRef
             | Self::BearerToken
-            | Self::UrlWithCredentials => "token",
+            | Self::UrlWithCredentials
+            | Self::ConnectionString => "token",
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase => "credential",
             Self::Generic => "generic",
         }
@@ -283,7 +287,8 @@ impl PiiType {
             // Authentication (security breach)
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase |
             Self::ApiKey | Self::Jwt | Self::SessionId | Self::OAuthToken | Self::SshKey |
-            Self::OnePasswordToken | Self::OnePasswordVaultRef | Self::BearerToken | Self::UrlWithCredentials
+            Self::OnePasswordToken | Self::OnePasswordVaultRef | Self::BearerToken | Self::UrlWithCredentials |
+            Self::ConnectionString
         )
     }
 
@@ -344,6 +349,7 @@ impl PiiType {
                 | Self::OnePasswordVaultRef
                 | Self::BearerToken
                 | Self::UrlWithCredentials
+                | Self::ConnectionString
         )
     }
 }

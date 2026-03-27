@@ -18,6 +18,7 @@
 //! - Returns match positions and types
 
 use super::super::common::patterns::credentials::{passphrase, password, pin, security_answer};
+use super::super::common::patterns::network;
 
 // Re-export types from shared types module
 pub use super::super::types::{CredentialMatch, CredentialType};
@@ -264,6 +265,97 @@ pub fn detect_credentials(text: &str) -> Vec<CredentialMatch> {
     matches.extend(detect_passphrases(text));
 
     // Sort by position
+    matches.sort_by_key(|m| m.start);
+    matches
+}
+
+// ============================================================================
+// Connection String Detection
+// ============================================================================
+
+/// Known database URL schemes
+const DB_SCHEMES: &[&str] = &[
+    "postgres://",
+    "postgresql://",
+    "mysql://",
+    "mongodb://",
+    "mongodb+srv://",
+    "redis://",
+    "rediss://",
+    "amqp://",
+    "amqps://",
+    "mqtt://",
+    "mqtts://",
+];
+
+/// Check if value is a connection string with embedded credentials
+///
+/// Detects URL-based connection strings (postgres://, mysql://, etc.),
+/// MSSQL key-value format (Server=...;Password=...), and JDBC with
+/// password parameters.
+#[must_use]
+pub fn is_connection_string_with_credentials(value: &str) -> bool {
+    let trimmed = value.trim();
+    network::CONNECTION_STRING_DB_URL.is_match(trimmed)
+        || network::CONNECTION_STRING_MSSQL.is_match(trimmed)
+        || network::CONNECTION_STRING_JDBC.is_match(trimmed)
+}
+
+/// Check if value is a database connection string (URL-based)
+///
+/// Returns true if the value uses a known database URL scheme
+/// (postgres://, mysql://, mongodb://, redis://, amqp://, mqtt://).
+/// Does NOT require credentials to be present.
+#[must_use]
+pub fn is_database_connection_string(value: &str) -> bool {
+    let lower = value.trim().to_lowercase();
+    DB_SCHEMES.iter().any(|scheme| lower.starts_with(scheme))
+}
+
+/// Find all connection strings with credentials in text
+#[must_use]
+pub fn find_connection_strings_in_text(text: &str) -> Vec<CredentialMatch> {
+    let mut matches = Vec::new();
+
+    // URL-based database connection strings
+    for m in network::CONNECTION_STRING_DB_URL.find_iter(text) {
+        matches.push(CredentialMatch {
+            start: m.start(),
+            end: m.end(),
+            value: m.as_str().to_string(),
+            credential_type: CredentialType::Generic,
+            label: "connection_string".to_string(),
+        });
+    }
+
+    // MSSQL key-value connection strings
+    for m in network::CONNECTION_STRING_MSSQL.find_iter(text) {
+        let start = m.start();
+        if !matches.iter().any(|existing| existing.start == start) {
+            matches.push(CredentialMatch {
+                start,
+                end: m.end(),
+                value: m.as_str().to_string(),
+                credential_type: CredentialType::Generic,
+                label: "connection_string".to_string(),
+            });
+        }
+    }
+
+    // JDBC connection strings
+    for m in network::CONNECTION_STRING_JDBC.find_iter(text) {
+        let start = m.start();
+        if !matches.iter().any(|existing| existing.start == start) {
+            matches.push(CredentialMatch {
+                start,
+                end: m.end(),
+                value: m.as_str().to_string(),
+                credential_type: CredentialType::Generic,
+                label: "connection_string".to_string(),
+            });
+        }
+    }
+
     matches.sort_by_key(|m| m.start);
     matches
 }
@@ -573,6 +665,113 @@ mod tests {
         assert_eq!(by_type(CredentialType::Pin), 1);
         assert_eq!(by_type(CredentialType::SecurityAnswer), 1);
         assert_eq!(by_type(CredentialType::Passphrase), 1);
+    }
+
+    // =========================================================================
+    // Connection String Detection Tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_connection_string_with_credentials_postgres() {
+        assert!(is_connection_string_with_credentials(
+            "postgres://admin:secret@db.example.com/mydb"
+        ));
+        assert!(is_connection_string_with_credentials(
+            "postgresql://user:p@ss@localhost:5432/test"
+        ));
+    }
+
+    #[test]
+    fn test_is_connection_string_with_credentials_mysql() {
+        assert!(is_connection_string_with_credentials(
+            "mysql://root:password123@db.example.com:3306/app"
+        ));
+    }
+
+    #[test]
+    fn test_is_connection_string_with_credentials_mongodb() {
+        assert!(is_connection_string_with_credentials(
+            "mongodb://admin:secret@mongo.example.com:27017/mydb"
+        ));
+        assert!(is_connection_string_with_credentials(
+            "mongodb+srv://user:pass@cluster0.example.net/test"
+        ));
+    }
+
+    #[test]
+    fn test_is_connection_string_with_credentials_redis() {
+        assert!(is_connection_string_with_credentials(
+            "redis://default:password@redis.example.com:6379"
+        ));
+    }
+
+    #[test]
+    fn test_is_connection_string_with_credentials_mssql() {
+        assert!(is_connection_string_with_credentials(
+            "Server=db.example.com;Database=mydb;Password=secret123"
+        ));
+        assert!(is_connection_string_with_credentials(
+            "Data Source=myserver;Pwd=hunter2"
+        ));
+    }
+
+    #[test]
+    fn test_is_connection_string_with_credentials_jdbc() {
+        assert!(is_connection_string_with_credentials(
+            "jdbc:postgresql://host/db?password=secret"
+        ));
+    }
+
+    #[test]
+    fn test_is_connection_string_without_credentials() {
+        // URL without credentials
+        assert!(!is_connection_string_with_credentials(
+            "https://example.com"
+        ));
+        // Database URL without password
+        assert!(!is_connection_string_with_credentials(
+            "postgres://db.example.com/mydb"
+        ));
+        // Plain text
+        assert!(!is_connection_string_with_credentials("just plain text"));
+    }
+
+    #[test]
+    fn test_is_database_connection_string() {
+        assert!(is_database_connection_string(
+            "postgres://admin:secret@host/db"
+        ));
+        assert!(is_database_connection_string(
+            "mysql://root:pw@host:3306/app"
+        ));
+        assert!(is_database_connection_string("mongodb://user:pass@host/db"));
+        assert!(is_database_connection_string("redis://default:pw@host"));
+        assert!(is_database_connection_string("amqp://guest:guest@host"));
+
+        assert!(!is_database_connection_string("https://example.com"));
+        assert!(!is_database_connection_string("ftp://files.example.com"));
+    }
+
+    #[test]
+    fn test_find_connection_strings_in_text() {
+        let text = "Connect to postgres://admin:secret@db.example.com/mydb for the database";
+        let matches = find_connection_strings_in_text(text);
+        assert_eq!(matches.len(), 1);
+        assert!(matches[0].value.contains("postgres://"));
+    }
+
+    #[test]
+    fn test_find_connection_strings_special_chars() {
+        let text = "postgres://user:p%40ss%3Aw0rd!@host/db";
+        let matches = find_connection_strings_in_text(text);
+        assert_eq!(matches.len(), 1);
+    }
+
+    #[test]
+    fn test_find_connection_strings_multiple() {
+        let text = "DB1: postgres://u:p@host1/db1 and DB2: mysql://u:p@host2/db2";
+        let matches = find_connection_strings_in_text(text);
+        assert_eq!(matches.len(), 2);
     }
 
     // =========================================================================
