@@ -13,6 +13,8 @@
 //! added by subsequent modules.
 
 pub(crate) mod proximity;
+pub(crate) mod rules;
 mod types;
 
+pub(crate) use rules::is_credential_pair;
 pub(crate) use types::{CorrelationConfig, CorrelationMatch, CredentialPairType};
