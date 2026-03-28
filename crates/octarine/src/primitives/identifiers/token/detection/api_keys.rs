@@ -113,6 +113,24 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Mailchimp);
     }
 
+    // Databricks access tokens (dapi[hex]{32})
+    if key_lower.starts_with("dapi") && key.len() >= 36 {
+        return Some(ApiKeyProvider::Databricks);
+    }
+
+    // HashiCorp Vault tokens (hvs., s., b.)
+    if key.starts_with("hvs.")
+        || (key.starts_with("b.") && key.len() >= 26)
+        || (key.starts_with("s.") && key.len() == 26)
+    {
+        return Some(ApiKeyProvider::HashicorpVault);
+    }
+
+    // Cloudflare Origin CA key (v1.0-[hex]{24}-[hex]{146})
+    if key.starts_with("v1.0-") && key.len() >= 175 {
+        return Some(ApiKeyProvider::Cloudflare);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -140,6 +158,9 @@ pub fn is_api_key(value: &str) -> bool {
         || patterns::network::API_KEY_MAILGUN.is_match(trimmed)
         || patterns::network::API_KEY_RESEND.is_match(trimmed)
         || patterns::network::API_KEY_BREVO.is_match(trimmed)
+        || patterns::network::API_KEY_DATABRICKS.is_match(trimmed)
+        || patterns::network::API_KEY_VAULT.is_match(trimmed)
+        || patterns::network::API_KEY_CLOUDFLARE_CA.is_match(trimmed)
         || (trimmed.len() <= MAX_AZURE_KEY_LENGTH
             && patterns::network::API_KEY_AZURE.is_match(trimmed))
 }
@@ -379,6 +400,44 @@ pub fn is_brevo_key(value: &str) -> bool {
     patterns::network::API_KEY_BREVO.is_match(trimmed)
 }
 
+/// Check if value is a Databricks access token
+///
+/// Databricks tokens start with "dapi" followed by 32 hex characters,
+/// with an optional "-N" suffix
+#[must_use]
+pub fn is_databricks_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_DATABRICKS.is_match(trimmed)
+}
+
+/// Check if value is a HashiCorp Vault token
+///
+/// Matches modern tokens (hvs.), batch tokens (b.), and legacy service tokens (s.)
+#[must_use]
+pub fn is_vault_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_VAULT.is_match(trimmed)
+}
+
+/// Check if value is a Cloudflare Origin CA key
+///
+/// Origin CA keys start with "v1.0-" followed by 24 hex characters,
+/// a dash, and 146 hex characters (175+ chars total)
+#[must_use]
+pub fn is_cloudflare_ca_key(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_CLOUDFLARE_CA.is_match(trimmed)
+}
+
 /// Check if API key is a known test/development key
 ///
 /// Detects:
@@ -481,6 +540,12 @@ pub fn is_test_api_key(key: &str) -> bool {
             3 // Resend
         } else if trimmed.starts_with("xkeysib-") {
             8 // Brevo
+        } else if trimmed.starts_with("dapi") || trimmed.starts_with("hvs.") {
+            4 // Databricks or Vault modern
+        } else if trimmed.starts_with("s.") || trimmed.starts_with("b.") {
+            2 // Vault legacy/batch
+        } else if trimmed.starts_with("v1.0-") {
+            5 // Cloudflare CA
         } else {
             0
         };
@@ -923,6 +988,88 @@ mod tests {
         assert_eq!(
             detect_api_key_provider(&format!("xkeysib-{hex64}-{alnum16}")),
             Some(ApiKeyProvider::Brevo)
+        );
+    }
+
+    #[test]
+    fn test_is_databricks_token() {
+        // Valid Databricks token (dapi + 32 hex)
+        assert!(is_databricks_token(&format!("dapi{}", "a".repeat(32))));
+        // Valid with suffix
+        assert!(is_databricks_token(&format!("dapi{}-2", "a".repeat(32))));
+        // Invalid: wrong prefix
+        assert!(!is_databricks_token(&format!("dapx{}", "a".repeat(32))));
+        // Invalid: too short
+        assert!(!is_databricks_token("dapi1234"));
+    }
+
+    #[test]
+    fn test_detect_databricks_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("dapi{}", "a".repeat(32))),
+            Some(ApiKeyProvider::Databricks)
+        );
+    }
+
+    #[test]
+    fn test_is_vault_token() {
+        // Valid modern token (hvs. + 24+ chars)
+        assert!(is_vault_token(&format!("hvs.{}", "A".repeat(24))));
+        // Valid wrapped token
+        assert!(is_vault_token(&format!("hvs.CAESI{}", "B".repeat(30))));
+        // Valid batch token (b. + 24+ chars)
+        assert!(is_vault_token(&format!("b.{}", "A".repeat(24))));
+        // Valid legacy service token (s. + exactly 24 chars)
+        assert!(is_vault_token(&format!("s.{}", "A".repeat(24))));
+        // Invalid: s. with wrong length (23 chars)
+        assert!(!is_vault_token(&format!("s.{}", "A".repeat(23))));
+        // Invalid: wrong prefix
+        assert!(!is_vault_token(&format!("x.{}", "A".repeat(24))));
+        // Invalid: too short hvs.
+        assert!(!is_vault_token("hvs.short"));
+    }
+
+    #[test]
+    fn test_detect_vault_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("hvs.{}", "A".repeat(24))),
+            Some(ApiKeyProvider::HashicorpVault)
+        );
+        assert_eq!(
+            detect_api_key_provider(&format!("s.{}", "A".repeat(24))),
+            Some(ApiKeyProvider::HashicorpVault)
+        );
+        assert_eq!(
+            detect_api_key_provider(&format!("b.{}", "A".repeat(24))),
+            Some(ApiKeyProvider::HashicorpVault)
+        );
+    }
+
+    #[test]
+    fn test_is_cloudflare_ca_key() {
+        // Valid Origin CA key (v1.0- + 24 hex + - + 146 hex)
+        let key = format!("v1.0-{}-{}", "a".repeat(24), "b".repeat(146));
+        assert!(is_cloudflare_ca_key(&key));
+        // Invalid: too short
+        assert!(!is_cloudflare_ca_key(&format!(
+            "v1.0-{}-{}",
+            "a".repeat(24),
+            "b".repeat(10)
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_cloudflare_ca_key(&format!(
+            "v2.0-{}-{}",
+            "a".repeat(24),
+            "b".repeat(146)
+        )));
+    }
+
+    #[test]
+    fn test_detect_cloudflare_provider() {
+        let key = format!("v1.0-{}-{}", "a".repeat(24), "b".repeat(146));
+        assert_eq!(
+            detect_api_key_provider(&key),
+            Some(ApiKeyProvider::Cloudflare)
         );
     }
 

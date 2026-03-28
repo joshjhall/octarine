@@ -147,6 +147,24 @@ impl TokenBuilder {
         self.inner.is_brevo_key(value)
     }
 
+    /// Check if value is a Databricks access token
+    #[must_use]
+    pub fn is_databricks_token(&self, value: &str) -> bool {
+        self.inner.is_databricks_token(value)
+    }
+
+    /// Check if value is a HashiCorp Vault token
+    #[must_use]
+    pub fn is_vault_token(&self, value: &str) -> bool {
+        self.inner.is_vault_token(value)
+    }
+
+    /// Check if value is a Cloudflare Origin CA key
+    #[must_use]
+    pub fn is_cloudflare_ca_key(&self, value: &str) -> bool {
+        self.inner.is_cloudflare_ca_key(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -593,6 +611,24 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_brevo_key(&self, key: &str) -> String {
         self.inner.mask_brevo_key(key)
+    }
+
+    /// Mask Databricks access token
+    #[must_use]
+    pub fn mask_databricks_token(&self, token: &str) -> String {
+        self.inner.mask_databricks_token(token)
+    }
+
+    /// Mask HashiCorp Vault token
+    #[must_use]
+    pub fn mask_vault_token(&self, token: &str) -> String {
+        self.inner.mask_vault_token(token)
+    }
+
+    /// Mask Cloudflare Origin CA key
+    #[must_use]
+    pub fn mask_cloudflare_ca_key(&self, key: &str) -> String {
+        self.inner.mask_cloudflare_ca_key(key)
     }
 
     // ============================================================================

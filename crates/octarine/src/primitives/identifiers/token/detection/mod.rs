@@ -45,10 +45,11 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 // Re-export API key functions
 pub use api_keys::{
     detect_api_key_provider, is_api_key, is_aws_access_key, is_aws_secret_key,
-    is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key, is_gcp_api_key,
-    is_github_token, is_gitlab_token, is_mailchimp_key, is_mailgun_key, is_onepassword_token,
-    is_onepassword_vault_ref, is_paypal_token, is_resend_key, is_shopify_token, is_square_token,
-    is_stripe_key, is_test_api_key, is_url_with_credentials,
+    is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key, is_cloudflare_ca_key,
+    is_databricks_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_mailchimp_key,
+    is_mailgun_key, is_onepassword_token, is_onepassword_vault_ref, is_paypal_token, is_resend_key,
+    is_shopify_token, is_square_token, is_stripe_key, is_test_api_key, is_url_with_credentials,
+    is_vault_token,
 };
 
 // Re-export SSH functions
@@ -135,6 +136,15 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_mailchimp_key(trimmed) {
         return Some(TokenType::MailchimpToken);
+    }
+    if is_databricks_token(trimmed) {
+        return Some(TokenType::DatabricksToken);
+    }
+    if is_vault_token(trimmed) {
+        return Some(TokenType::VaultToken);
+    }
+    if is_cloudflare_ca_key(trimmed) {
+        return Some(TokenType::CloudflareOriginCaKey);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -303,6 +313,24 @@ mod tests {
         assert_eq!(
             detect_token_type(&format!("xkeysib-{}-{}", "a".repeat(64), "B".repeat(16))),
             Some(TokenType::BrevoToken)
+        );
+
+        // Databricks
+        assert_eq!(
+            detect_token_type(&format!("dapi{}", "a".repeat(32))),
+            Some(TokenType::DatabricksToken)
+        );
+
+        // Vault
+        assert_eq!(
+            detect_token_type(&format!("hvs.{}", "A".repeat(24))),
+            Some(TokenType::VaultToken)
+        );
+
+        // Cloudflare Origin CA
+        assert_eq!(
+            detect_token_type(&format!("v1.0-{}-{}", "a".repeat(24), "b".repeat(146))),
+            Some(TokenType::CloudflareOriginCaKey)
         );
 
         // Not a token

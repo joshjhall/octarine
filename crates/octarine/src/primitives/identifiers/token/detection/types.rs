@@ -37,6 +37,12 @@ pub enum ApiKeyProvider {
     Resend,
     /// Brevo/Sendinblue API keys (xkeysib-[hex]{64}-[alnum]{16})
     Brevo,
+    /// Databricks access tokens (dapi[hex]{32})
+    Databricks,
+    /// HashiCorp Vault tokens (hvs., s., b.)
+    HashicorpVault,
+    /// Cloudflare tokens (v1.0-... origin CA key)
+    Cloudflare,
     /// Generic or unknown provider
     Generic,
 }
@@ -57,6 +63,9 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Mailgun => write!(f, "Mailgun"),
             Self::Resend => write!(f, "Resend"),
             Self::Brevo => write!(f, "Brevo"),
+            Self::Databricks => write!(f, "Databricks"),
+            Self::HashicorpVault => write!(f, "HashiCorp Vault"),
+            Self::Cloudflare => write!(f, "Cloudflare"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -225,4 +234,10 @@ pub enum TokenType {
     ResendToken,
     /// Brevo/Sendinblue API key (xkeysib-[hex]{64}-[alnum]{16})
     BrevoToken,
+    /// Databricks access token (dapi[hex]{32})
+    DatabricksToken,
+    /// HashiCorp Vault token (hvs., s., b.)
+    VaultToken,
+    /// Cloudflare Origin CA key (v1.0-[hex]{24}-[hex]{146})
+    CloudflareOriginCaKey,
 }

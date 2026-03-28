@@ -106,6 +106,21 @@ impl TokenIdentifierBuilder {
         detection::is_brevo_key(value)
     }
 
+    /// Check if value is a Databricks access token
+    pub fn is_databricks_token(&self, value: &str) -> bool {
+        detection::is_databricks_token(value)
+    }
+
+    /// Check if value is a HashiCorp Vault token
+    pub fn is_vault_token(&self, value: &str) -> bool {
+        detection::is_vault_token(value)
+    }
+
+    /// Check if value is a Cloudflare Origin CA key
+    pub fn is_cloudflare_ca_key(&self, value: &str) -> bool {
+        detection::is_cloudflare_ca_key(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -572,6 +587,21 @@ impl TokenIdentifierBuilder {
     /// Mask Brevo API key (convenience wrapper)
     pub fn mask_brevo_key(&self, key: &str) -> String {
         sanitization::mask_brevo_key(key)
+    }
+
+    /// Mask Databricks access token (convenience wrapper)
+    pub fn mask_databricks_token(&self, token: &str) -> String {
+        sanitization::mask_databricks_token(token)
+    }
+
+    /// Mask HashiCorp Vault token (convenience wrapper)
+    pub fn mask_vault_token(&self, token: &str) -> String {
+        sanitization::mask_vault_token(token)
+    }
+
+    /// Mask Cloudflare Origin CA key (convenience wrapper)
+    pub fn mask_cloudflare_ca_key(&self, key: &str) -> String {
+        sanitization::mask_cloudflare_ca_key(key)
     }
 
     // =========================================================================

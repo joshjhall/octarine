@@ -611,6 +611,24 @@ pub fn mask_brevo_key(key: &str) -> String {
     mask_api_key(key)
 }
 
+/// Mask Databricks access token
+#[must_use]
+pub fn mask_databricks_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
+/// Mask HashiCorp Vault token
+#[must_use]
+pub fn mask_vault_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
+/// Mask Cloudflare Origin CA key
+#[must_use]
+pub fn mask_cloudflare_ca_key(key: &str) -> String {
+    mask_api_key(key)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]

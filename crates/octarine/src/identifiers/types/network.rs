@@ -98,6 +98,12 @@ pub enum ApiKeyProvider {
     Resend,
     /// Brevo/Sendinblue API key
     Brevo,
+    /// Databricks API key
+    Databricks,
+    /// HashiCorp Vault token
+    HashicorpVault,
+    /// Cloudflare API key
+    Cloudflare,
     /// Generic/unknown provider
     Generic,
 }
@@ -118,6 +124,9 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Mailgun => write!(f, "Mailgun"),
             Self::Resend => write!(f, "Resend"),
             Self::Brevo => write!(f, "Brevo"),
+            Self::Databricks => write!(f, "Databricks"),
+            Self::HashicorpVault => write!(f, "HashiCorp Vault"),
+            Self::Cloudflare => write!(f, "Cloudflare"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -140,6 +149,9 @@ impl From<crate::primitives::identifiers::ApiKeyProvider> for ApiKeyProvider {
             P::Mailgun => Self::Mailgun,
             P::Resend => Self::Resend,
             P::Brevo => Self::Brevo,
+            P::Databricks => Self::Databricks,
+            P::HashicorpVault => Self::HashicorpVault,
+            P::Cloudflare => Self::Cloudflare,
             P::Generic => Self::Generic,
         }
     }
@@ -161,6 +173,9 @@ impl From<ApiKeyProvider> for crate::primitives::identifiers::ApiKeyProvider {
             ApiKeyProvider::Mailgun => Self::Mailgun,
             ApiKeyProvider::Resend => Self::Resend,
             ApiKeyProvider::Brevo => Self::Brevo,
+            ApiKeyProvider::Databricks => Self::Databricks,
+            ApiKeyProvider::HashicorpVault => Self::HashicorpVault,
+            ApiKeyProvider::Cloudflare => Self::Cloudflare,
             ApiKeyProvider::Generic => Self::Generic,
         }
     }

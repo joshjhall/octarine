@@ -327,6 +327,28 @@ pub static API_KEY_BREVO: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\bxkeysib-[a-f0-9]{64}-[a-zA-Z0-9]{16}\b").expect("BUG: Invalid regex pattern")
 });
 
+/// Databricks access token pattern
+/// Format: dapi[a-f0-9]{32} with optional -[0-9] suffix
+/// Example: "dapi" + 32 hex chars
+pub static API_KEY_DATABRICKS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bdapi[a-f0-9]{32}(?:-[0-9])?\b").expect("BUG: Invalid regex pattern")
+});
+
+/// HashiCorp Vault token pattern (modern hvs., batch b., legacy service s.)
+/// Formats: hvs.[24+ chars], b.[24+ chars], s.[exactly 24 chars]
+/// Example: "hvs." + 24+ alnum chars
+pub static API_KEY_VAULT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:hvs\.[a-zA-Z0-9_-]{24,}|b\.[a-zA-Z0-9]{24,}|s\.[a-zA-Z0-9]{24})\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Cloudflare Origin CA key pattern
+/// Format: v1.0-[24 hex]-[146 hex]
+/// Example: "v1.0-" + 24 hex + "-" + 146 hex (175+ chars total)
+pub static API_KEY_CLOUDFLARE_CA: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bv1\.0-[a-f0-9]{24}-[a-f0-9]{146}\b").expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -433,6 +455,9 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_MAILGUN,
         &*API_KEY_RESEND,
         &*API_KEY_BREVO,
+        &*API_KEY_DATABRICKS,
+        &*API_KEY_VAULT,
+        &*API_KEY_CLOUDFLARE_CA,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -482,6 +507,9 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_MAILGUN,
         &*API_KEY_RESEND,
         &*API_KEY_BREVO,
+        &*API_KEY_DATABRICKS,
+        &*API_KEY_VAULT,
+        &*API_KEY_CLOUDFLARE_CA,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,
