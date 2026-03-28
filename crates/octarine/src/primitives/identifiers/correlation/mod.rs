@@ -12,6 +12,7 @@
 //! Detection logic, proximity scanning, and pair recognition rules are
 //! added by subsequent modules.
 
+pub(crate) mod proximity;
 mod types;
 
 pub(crate) use types::{CorrelationConfig, CorrelationMatch, CredentialPairType};
