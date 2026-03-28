@@ -267,9 +267,20 @@ The `testing/` module provides:
 ### Running Tests
 
 ```bash
+just test                                 # All workspace tests
+just test-octarine                        # Octarine crate only
+just test-mod "module::path"              # Unit tests by module path (e.g., "correlation::proximity")
+just test-filter PATTERN                  # Filter by test name across workspace
+just test-verbose                         # All tests with output visible
+just test-with-fixtures                   # With testing feature enabled
+```
+
+**Equivalent cargo commands** (prefer `just` recipes above):
+
+```bash
 cargo test -p octarine                    # All tests
+cargo test -p octarine --lib -- "module"  # Unit tests by module (--lib is required)
 cargo test -p octarine --features testing # With test utilities
-cargo test -p octarine -- --nocapture     # See output
 ```
 
 ### Performance Tests
@@ -278,7 +289,7 @@ Performance tests (`test_perf_*`) are **ignored by default** due to flaky timing
 assertions under CI coverage. Run them manually before releases:
 
 ```bash
-cargo test -p octarine test_perf_ -- --ignored
+just test-perf
 ```
 
 See `docs/architecture/testing-patterns.md` for thresholds and details.

@@ -51,21 +51,27 @@ Everything you need to develop, test, and contribute to octarine.
 
 ```bash
 # Development cycle
-make dev          # Format, build, test
-make check        # Full validation suite
+just default      # Check, clippy, and test (default recipe)
+just preflight    # Full pre-push validation: fmt-check, clippy, tests
 
 # Testing
-make test         # Run all tests
-make test-unit    # Unit tests only
-cargo test --doc  # Documentation tests
+just test                        # Run all workspace tests
+just test-octarine               # Octarine crate only
+just test-mod "module::path"     # Unit tests by module path
+just test-filter PATTERN         # Filter by test name
+just test-verbose                # Tests with output visible
+just test-with-fixtures          # With testing feature enabled
+just test-perf                   # Performance tests (ignored by default)
 
 # Code quality
-make format       # Auto-format code
-make lint         # Run clippy
+just fmt                         # Auto-format code
+just fmt-check                   # Check formatting without fixing
+just clippy                      # Run clippy
 
-# Security
-make security     # Security audit
-make audit        # Dependency vulnerabilities
+# Dependencies
+just deps-check                  # Full dependency health check
+just deps-audit                  # Security vulnerability audit
+just deps-outdated               # Show outdated dependencies
 ```
 
 ## Development Principles

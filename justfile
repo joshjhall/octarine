@@ -58,6 +58,10 @@ test-with-fixtures:
 test-filter PATTERN:
     cargo test --workspace -j4 -- {{PATTERN}}
 
+# Run lib unit tests in octarine by module path (e.g., `just test-mod correlation::proximity`)
+test-mod PATTERN:
+    cargo test -p octarine --lib -j4 -- {{PATTERN}}
+
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
 # Full pre-push validation: fmt, clippy, tests

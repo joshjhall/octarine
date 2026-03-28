@@ -484,7 +484,7 @@ that security operations remain fast enough for production use.
 
 ```bash
 # Run all performance tests
-cargo test -p octarine test_perf_ -- --ignored
+just test-perf
 
 # Run a specific performance test
 cargo test -p octarine test_perf_shannon_entropy -- --ignored
