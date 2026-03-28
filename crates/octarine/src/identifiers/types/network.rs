@@ -104,6 +104,16 @@ pub enum ApiKeyProvider {
     HashicorpVault,
     /// Cloudflare API key
     Cloudflare,
+    /// NPM access token
+    Npm,
+    /// PyPI API token
+    PyPi,
+    /// NuGet API key
+    NuGet,
+    /// JFrog Artifactory API key
+    Artifactory,
+    /// Docker Hub PAT
+    DockerHub,
     /// Generic/unknown provider
     Generic,
 }
@@ -127,6 +137,11 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Databricks => write!(f, "Databricks"),
             Self::HashicorpVault => write!(f, "HashiCorp Vault"),
             Self::Cloudflare => write!(f, "Cloudflare"),
+            Self::Npm => write!(f, "NPM"),
+            Self::PyPi => write!(f, "PyPI"),
+            Self::NuGet => write!(f, "NuGet"),
+            Self::Artifactory => write!(f, "Artifactory"),
+            Self::DockerHub => write!(f, "Docker Hub"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -152,6 +167,11 @@ impl From<crate::primitives::identifiers::ApiKeyProvider> for ApiKeyProvider {
             P::Databricks => Self::Databricks,
             P::HashicorpVault => Self::HashicorpVault,
             P::Cloudflare => Self::Cloudflare,
+            P::Npm => Self::Npm,
+            P::PyPi => Self::PyPi,
+            P::NuGet => Self::NuGet,
+            P::Artifactory => Self::Artifactory,
+            P::DockerHub => Self::DockerHub,
             P::Generic => Self::Generic,
         }
     }
@@ -176,6 +196,11 @@ impl From<ApiKeyProvider> for crate::primitives::identifiers::ApiKeyProvider {
             ApiKeyProvider::Databricks => Self::Databricks,
             ApiKeyProvider::HashicorpVault => Self::HashicorpVault,
             ApiKeyProvider::Cloudflare => Self::Cloudflare,
+            ApiKeyProvider::Npm => Self::Npm,
+            ApiKeyProvider::PyPi => Self::PyPi,
+            ApiKeyProvider::NuGet => Self::NuGet,
+            ApiKeyProvider::Artifactory => Self::Artifactory,
+            ApiKeyProvider::DockerHub => Self::DockerHub,
             ApiKeyProvider::Generic => Self::Generic,
         }
     }

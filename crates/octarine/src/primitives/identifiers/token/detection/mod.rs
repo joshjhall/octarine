@@ -44,10 +44,11 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 
 // Re-export API key functions
 pub use api_keys::{
-    detect_api_key_provider, is_api_key, is_aws_access_key, is_aws_secret_key,
-    is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key, is_cloudflare_ca_key,
-    is_databricks_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_mailchimp_key,
-    is_mailgun_key, is_onepassword_token, is_onepassword_vault_ref, is_paypal_token, is_resend_key,
+    detect_api_key_provider, is_api_key, is_artifactory_token, is_aws_access_key,
+    is_aws_secret_key, is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key,
+    is_cloudflare_ca_key, is_databricks_token, is_docker_hub_token, is_gcp_api_key,
+    is_github_token, is_gitlab_token, is_mailchimp_key, is_mailgun_key, is_npm_token, is_nuget_key,
+    is_onepassword_token, is_onepassword_vault_ref, is_paypal_token, is_pypi_token, is_resend_key,
     is_shopify_token, is_square_token, is_stripe_key, is_test_api_key, is_url_with_credentials,
     is_vault_token,
 };
@@ -145,6 +146,21 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_cloudflare_ca_key(trimmed) {
         return Some(TokenType::CloudflareOriginCaKey);
+    }
+    if is_npm_token(trimmed) {
+        return Some(TokenType::NpmToken);
+    }
+    if is_pypi_token(trimmed) {
+        return Some(TokenType::PyPiToken);
+    }
+    if is_nuget_key(trimmed) {
+        return Some(TokenType::NuGetKey);
+    }
+    if is_artifactory_token(trimmed) {
+        return Some(TokenType::ArtifactoryToken);
+    }
+    if is_docker_hub_token(trimmed) {
+        return Some(TokenType::DockerHubToken);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -331,6 +347,36 @@ mod tests {
         assert_eq!(
             detect_token_type(&format!("v1.0-{}-{}", "a".repeat(24), "b".repeat(146))),
             Some(TokenType::CloudflareOriginCaKey)
+        );
+
+        // NPM
+        assert_eq!(
+            detect_token_type(&format!("npm_{}", "A".repeat(36))),
+            Some(TokenType::NpmToken)
+        );
+
+        // PyPI
+        assert_eq!(
+            detect_token_type(&format!("pypi-AgEIcHlwaS5vcmc{}", "A".repeat(50))),
+            Some(TokenType::PyPiToken)
+        );
+
+        // NuGet
+        assert_eq!(
+            detect_token_type(&format!("oy2{}", "a".repeat(43))),
+            Some(TokenType::NuGetKey)
+        );
+
+        // Artifactory
+        assert_eq!(
+            detect_token_type(&format!("AKC{}", "a".repeat(10))),
+            Some(TokenType::ArtifactoryToken)
+        );
+
+        // Docker Hub
+        assert_eq!(
+            detect_token_type(&format!("dckr_pat_{}", "A".repeat(27))),
+            Some(TokenType::DockerHubToken)
         );
 
         // Not a token

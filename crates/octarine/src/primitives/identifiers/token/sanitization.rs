@@ -629,6 +629,36 @@ pub fn mask_cloudflare_ca_key(key: &str) -> String {
     mask_api_key(key)
 }
 
+/// Mask NPM access token
+#[must_use]
+pub fn mask_npm_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
+/// Mask PyPI API token
+#[must_use]
+pub fn mask_pypi_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
+/// Mask NuGet API key
+#[must_use]
+pub fn mask_nuget_key(key: &str) -> String {
+    mask_api_key(key)
+}
+
+/// Mask Artifactory API key
+#[must_use]
+pub fn mask_artifactory_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
+/// Mask Docker Hub PAT
+#[must_use]
+pub fn mask_docker_hub_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]

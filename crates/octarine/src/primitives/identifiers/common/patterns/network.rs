@@ -349,6 +349,38 @@ pub static API_KEY_CLOUDFLARE_CA: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\bv1\.0-[a-f0-9]{24}-[a-f0-9]{146}\b").expect("BUG: Invalid regex pattern")
 });
 
+/// NPM access token pattern
+/// Format: npm_[a-zA-Z0-9]{36}
+/// Example: "npm_" + 36 alnum chars
+pub static API_KEY_NPM: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bnpm_[a-zA-Z0-9]{36}\b").expect("BUG: Invalid regex pattern"));
+
+/// PyPI API token pattern
+/// Format: pypi-AgEIcHlwaS5vcmc[base64]{50+}
+/// Example: "pypi-AgEIcHlwaS5vcmc" + 50+ base64 chars
+pub static API_KEY_PYPI: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bpypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// NuGet API key pattern
+/// Format: oy2[a-z0-9]{43}
+/// Example: "oy2" + 43 lowercase alnum chars
+pub static API_KEY_NUGET: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\boy2[a-z0-9]{43}\b").expect("BUG: Invalid regex pattern"));
+
+/// JFrog Artifactory API key pattern
+/// Format: AKC[a-zA-Z0-9]{10,}
+/// Example: "AKC" + 10+ alnum chars
+pub static API_KEY_ARTIFACTORY: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bAKC[a-zA-Z0-9]{10,}\b").expect("BUG: Invalid regex pattern"));
+
+/// Docker Hub Personal Access Token pattern
+/// Format: dckr_pat_[a-zA-Z0-9_-]{27,}
+/// Example: "dckr_pat_" + 27+ alnum chars
+pub static API_KEY_DOCKER_HUB: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bdckr_pat_[a-zA-Z0-9_-]{27,}\b").expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -458,6 +490,11 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_DATABRICKS,
         &*API_KEY_VAULT,
         &*API_KEY_CLOUDFLARE_CA,
+        &*API_KEY_NPM,
+        &*API_KEY_PYPI,
+        &*API_KEY_NUGET,
+        &*API_KEY_ARTIFACTORY,
+        &*API_KEY_DOCKER_HUB,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -510,6 +547,11 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_DATABRICKS,
         &*API_KEY_VAULT,
         &*API_KEY_CLOUDFLARE_CA,
+        &*API_KEY_NPM,
+        &*API_KEY_PYPI,
+        &*API_KEY_NUGET,
+        &*API_KEY_ARTIFACTORY,
+        &*API_KEY_DOCKER_HUB,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,

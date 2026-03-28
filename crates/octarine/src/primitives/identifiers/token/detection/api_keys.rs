@@ -131,6 +131,31 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Cloudflare);
     }
 
+    // NPM access tokens (npm_[alnum]{36})
+    if key_lower.starts_with("npm_") && key.len() >= 40 {
+        return Some(ApiKeyProvider::Npm);
+    }
+
+    // PyPI API tokens (pypi-AgEIcHlwaS5vcmc...)
+    if key.starts_with("pypi-") {
+        return Some(ApiKeyProvider::PyPi);
+    }
+
+    // NuGet API keys (oy2[a-z0-9]{43})
+    if key_lower.starts_with("oy2") && key.len() == 46 {
+        return Some(ApiKeyProvider::NuGet);
+    }
+
+    // Artifactory API keys (AKC[alnum]{10+})
+    if key.starts_with("AKC") && key.len() >= 13 {
+        return Some(ApiKeyProvider::Artifactory);
+    }
+
+    // Docker Hub PATs (dckr_pat_[alnum]{27+})
+    if key_lower.starts_with("dckr_pat_") {
+        return Some(ApiKeyProvider::DockerHub);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -161,6 +186,11 @@ pub fn is_api_key(value: &str) -> bool {
         || patterns::network::API_KEY_DATABRICKS.is_match(trimmed)
         || patterns::network::API_KEY_VAULT.is_match(trimmed)
         || patterns::network::API_KEY_CLOUDFLARE_CA.is_match(trimmed)
+        || patterns::network::API_KEY_NPM.is_match(trimmed)
+        || patterns::network::API_KEY_PYPI.is_match(trimmed)
+        || patterns::network::API_KEY_NUGET.is_match(trimmed)
+        || patterns::network::API_KEY_ARTIFACTORY.is_match(trimmed)
+        || patterns::network::API_KEY_DOCKER_HUB.is_match(trimmed)
         || (trimmed.len() <= MAX_AZURE_KEY_LENGTH
             && patterns::network::API_KEY_AZURE.is_match(trimmed))
 }
@@ -438,6 +468,66 @@ pub fn is_cloudflare_ca_key(value: &str) -> bool {
     patterns::network::API_KEY_CLOUDFLARE_CA.is_match(trimmed)
 }
 
+/// Check if value is an NPM access token
+///
+/// NPM tokens start with "npm_" followed by 36 alphanumeric characters
+#[must_use]
+pub fn is_npm_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_NPM.is_match(trimmed)
+}
+
+/// Check if value is a PyPI API token
+///
+/// PyPI tokens start with "pypi-AgEIcHlwaS5vcmc" followed by 50+ base64 characters
+#[must_use]
+pub fn is_pypi_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_PYPI.is_match(trimmed)
+}
+
+/// Check if value is a NuGet API key
+///
+/// NuGet keys start with "oy2" followed by exactly 43 lowercase alphanumeric characters
+#[must_use]
+pub fn is_nuget_key(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_NUGET.is_match(trimmed)
+}
+
+/// Check if value is a JFrog Artifactory API key
+///
+/// Artifactory keys start with "AKC" followed by 10+ alphanumeric characters
+#[must_use]
+pub fn is_artifactory_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_ARTIFACTORY.is_match(trimmed)
+}
+
+/// Check if value is a Docker Hub Personal Access Token
+///
+/// Docker Hub PATs start with "dckr_pat_" followed by 27+ alphanumeric characters
+#[must_use]
+pub fn is_docker_hub_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_DOCKER_HUB.is_match(trimmed)
+}
+
 /// Check if API key is a known test/development key
 ///
 /// Detects:
@@ -546,6 +636,14 @@ pub fn is_test_api_key(key: &str) -> bool {
             2 // Vault legacy/batch
         } else if trimmed.starts_with("v1.0-") {
             5 // Cloudflare CA
+        } else if trimmed.starts_with("npm_") {
+            4 // NPM
+        } else if trimmed.starts_with("pypi-") {
+            5 // PyPI
+        } else if trimmed.starts_with("oy2") || trimmed.starts_with("AKC") {
+            3 // NuGet or Artifactory
+        } else if trimmed.starts_with("dckr_pat_") {
+            9 // Docker Hub
         } else {
             0
         };
@@ -1070,6 +1168,105 @@ mod tests {
         assert_eq!(
             detect_api_key_provider(&key),
             Some(ApiKeyProvider::Cloudflare)
+        );
+    }
+
+    #[test]
+    fn test_is_npm_token() {
+        // Valid NPM token (npm_ + 36 alnum)
+        assert!(is_npm_token(&format!("npm_{}", "A".repeat(36))));
+        // Invalid: wrong prefix
+        assert!(!is_npm_token(&format!("npx_{}", "A".repeat(36))));
+        // Invalid: too short
+        assert!(!is_npm_token("npm_short"));
+    }
+
+    #[test]
+    fn test_detect_npm_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("npm_{}", "A".repeat(36))),
+            Some(ApiKeyProvider::Npm)
+        );
+    }
+
+    #[test]
+    fn test_is_pypi_token() {
+        // Valid PyPI token (pypi-AgEIcHlwaS5vcmc + 50+ base64)
+        assert!(is_pypi_token(&format!(
+            "pypi-AgEIcHlwaS5vcmc{}",
+            "A".repeat(50)
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_pypi_token(&format!("pypi-XYZ{}", "A".repeat(50))));
+        // Invalid: too short
+        assert!(!is_pypi_token("pypi-AgEIcHlwaS5vcmcShort"));
+    }
+
+    #[test]
+    fn test_detect_pypi_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("pypi-AgEIcHlwaS5vcmc{}", "A".repeat(50))),
+            Some(ApiKeyProvider::PyPi)
+        );
+    }
+
+    #[test]
+    fn test_is_nuget_key() {
+        // Valid NuGet key (oy2 + 43 lowercase alnum)
+        assert!(is_nuget_key(&format!("oy2{}", "a".repeat(43))));
+        // Invalid: wrong prefix
+        assert!(!is_nuget_key(&format!("oy3{}", "a".repeat(43))));
+        // Invalid: too short
+        assert!(!is_nuget_key("oy2short"));
+        // Invalid: uppercase chars (NuGet keys are lowercase)
+        assert!(!is_nuget_key(&format!("oy2{}", "A".repeat(43))));
+    }
+
+    #[test]
+    fn test_detect_nuget_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("oy2{}", "a".repeat(43))),
+            Some(ApiKeyProvider::NuGet)
+        );
+    }
+
+    #[test]
+    fn test_is_artifactory_token() {
+        // Valid Artifactory key (AKC + 10+ alnum)
+        assert!(is_artifactory_token(&format!("AKC{}", "a".repeat(10))));
+        assert!(is_artifactory_token(&format!("AKC{}", "B".repeat(20))));
+        // Invalid: wrong prefix
+        assert!(!is_artifactory_token(&format!("AKD{}", "a".repeat(10))));
+        // Invalid: too short
+        assert!(!is_artifactory_token("AKCshort"));
+    }
+
+    #[test]
+    fn test_detect_artifactory_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("AKC{}", "a".repeat(10))),
+            Some(ApiKeyProvider::Artifactory)
+        );
+    }
+
+    #[test]
+    fn test_is_docker_hub_token() {
+        // Valid Docker Hub PAT (dckr_pat_ + 27+ alnum)
+        assert!(is_docker_hub_token(&format!("dckr_pat_{}", "A".repeat(27))));
+        // Invalid: wrong prefix
+        assert!(!is_docker_hub_token(&format!(
+            "dckr_xxx_{}",
+            "A".repeat(27)
+        )));
+        // Invalid: too short
+        assert!(!is_docker_hub_token("dckr_pat_short"));
+    }
+
+    #[test]
+    fn test_detect_docker_hub_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("dckr_pat_{}", "A".repeat(27))),
+            Some(ApiKeyProvider::DockerHub)
         );
     }
 

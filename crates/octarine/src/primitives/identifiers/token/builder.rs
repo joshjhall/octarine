@@ -121,6 +121,31 @@ impl TokenIdentifierBuilder {
         detection::is_cloudflare_ca_key(value)
     }
 
+    /// Check if value is an NPM access token
+    pub fn is_npm_token(&self, value: &str) -> bool {
+        detection::is_npm_token(value)
+    }
+
+    /// Check if value is a PyPI API token
+    pub fn is_pypi_token(&self, value: &str) -> bool {
+        detection::is_pypi_token(value)
+    }
+
+    /// Check if value is a NuGet API key
+    pub fn is_nuget_key(&self, value: &str) -> bool {
+        detection::is_nuget_key(value)
+    }
+
+    /// Check if value is an Artifactory API key
+    pub fn is_artifactory_token(&self, value: &str) -> bool {
+        detection::is_artifactory_token(value)
+    }
+
+    /// Check if value is a Docker Hub PAT
+    pub fn is_docker_hub_token(&self, value: &str) -> bool {
+        detection::is_docker_hub_token(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -602,6 +627,31 @@ impl TokenIdentifierBuilder {
     /// Mask Cloudflare Origin CA key (convenience wrapper)
     pub fn mask_cloudflare_ca_key(&self, key: &str) -> String {
         sanitization::mask_cloudflare_ca_key(key)
+    }
+
+    /// Mask NPM access token (convenience wrapper)
+    pub fn mask_npm_token(&self, token: &str) -> String {
+        sanitization::mask_npm_token(token)
+    }
+
+    /// Mask PyPI API token (convenience wrapper)
+    pub fn mask_pypi_token(&self, token: &str) -> String {
+        sanitization::mask_pypi_token(token)
+    }
+
+    /// Mask NuGet API key (convenience wrapper)
+    pub fn mask_nuget_key(&self, key: &str) -> String {
+        sanitization::mask_nuget_key(key)
+    }
+
+    /// Mask Artifactory API key (convenience wrapper)
+    pub fn mask_artifactory_token(&self, token: &str) -> String {
+        sanitization::mask_artifactory_token(token)
+    }
+
+    /// Mask Docker Hub PAT (convenience wrapper)
+    pub fn mask_docker_hub_token(&self, token: &str) -> String {
+        sanitization::mask_docker_hub_token(token)
     }
 
     // =========================================================================

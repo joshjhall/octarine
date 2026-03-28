@@ -165,6 +165,36 @@ impl TokenBuilder {
         self.inner.is_cloudflare_ca_key(value)
     }
 
+    /// Check if value is an NPM access token
+    #[must_use]
+    pub fn is_npm_token(&self, value: &str) -> bool {
+        self.inner.is_npm_token(value)
+    }
+
+    /// Check if value is a PyPI API token
+    #[must_use]
+    pub fn is_pypi_token(&self, value: &str) -> bool {
+        self.inner.is_pypi_token(value)
+    }
+
+    /// Check if value is a NuGet API key
+    #[must_use]
+    pub fn is_nuget_key(&self, value: &str) -> bool {
+        self.inner.is_nuget_key(value)
+    }
+
+    /// Check if value is an Artifactory API key
+    #[must_use]
+    pub fn is_artifactory_token(&self, value: &str) -> bool {
+        self.inner.is_artifactory_token(value)
+    }
+
+    /// Check if value is a Docker Hub PAT
+    #[must_use]
+    pub fn is_docker_hub_token(&self, value: &str) -> bool {
+        self.inner.is_docker_hub_token(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -629,6 +659,36 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_cloudflare_ca_key(&self, key: &str) -> String {
         self.inner.mask_cloudflare_ca_key(key)
+    }
+
+    /// Mask NPM access token
+    #[must_use]
+    pub fn mask_npm_token(&self, token: &str) -> String {
+        self.inner.mask_npm_token(token)
+    }
+
+    /// Mask PyPI API token
+    #[must_use]
+    pub fn mask_pypi_token(&self, token: &str) -> String {
+        self.inner.mask_pypi_token(token)
+    }
+
+    /// Mask NuGet API key
+    #[must_use]
+    pub fn mask_nuget_key(&self, key: &str) -> String {
+        self.inner.mask_nuget_key(key)
+    }
+
+    /// Mask Artifactory API key
+    #[must_use]
+    pub fn mask_artifactory_token(&self, token: &str) -> String {
+        self.inner.mask_artifactory_token(token)
+    }
+
+    /// Mask Docker Hub PAT
+    #[must_use]
+    pub fn mask_docker_hub_token(&self, token: &str) -> String {
+        self.inner.mask_docker_hub_token(token)
     }
 
     // ============================================================================

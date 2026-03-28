@@ -43,6 +43,16 @@ pub enum ApiKeyProvider {
     HashicorpVault,
     /// Cloudflare tokens (v1.0-... origin CA key)
     Cloudflare,
+    /// NPM access tokens (npm_[alnum]{36})
+    Npm,
+    /// PyPI API tokens (pypi-AgEIcHlwaS5vcmc[base64]{50+})
+    PyPi,
+    /// NuGet API keys (oy2[a-z0-9]{43})
+    NuGet,
+    /// JFrog Artifactory API keys (AKC[alnum]{10+})
+    Artifactory,
+    /// Docker Hub Personal Access Tokens (dckr_pat_[alnum]{27+})
+    DockerHub,
     /// Generic or unknown provider
     Generic,
 }
@@ -66,6 +76,11 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Databricks => write!(f, "Databricks"),
             Self::HashicorpVault => write!(f, "HashiCorp Vault"),
             Self::Cloudflare => write!(f, "Cloudflare"),
+            Self::Npm => write!(f, "NPM"),
+            Self::PyPi => write!(f, "PyPI"),
+            Self::NuGet => write!(f, "NuGet"),
+            Self::Artifactory => write!(f, "Artifactory"),
+            Self::DockerHub => write!(f, "Docker Hub"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -240,4 +255,14 @@ pub enum TokenType {
     VaultToken,
     /// Cloudflare Origin CA key (v1.0-[hex]{24}-[hex]{146})
     CloudflareOriginCaKey,
+    /// NPM access token (npm_[alnum]{36})
+    NpmToken,
+    /// PyPI API token (pypi-AgEIcHlwaS5vcmc...)
+    PyPiToken,
+    /// NuGet API key (oy2[a-z0-9]{43})
+    NuGetKey,
+    /// JFrog Artifactory API key (AKC[alnum]{10+})
+    ArtifactoryToken,
+    /// Docker Hub PAT (dckr_pat_[alnum]{27+})
+    DockerHubToken,
 }
