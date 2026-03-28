@@ -8,7 +8,7 @@ Foundation library for security and observability in Rust. Named after the eight
 - **Compliance-Grade Observability** — Automatic WHO/WHAT/WHEN/WHERE context capture, PII redaction, SOC2/HIPAA/GDPR/PCI-DSS control mapping
 - **Three-Layer Architecture** — Clean separation of primitives, observability, and instrumented operations
 - **Post-Quantum Cryptography** — ML-KEM and X25519 key exchange, ChaCha20-Poly1305 and AES-GCM encryption
-- **Modular Feature Flags** — Enable only what you need (17 feature flags)
+- **Modular Feature Flags** — Enable only what you need (20 feature flags)
 
 ## Quick Start
 
@@ -38,12 +38,16 @@ octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.2.0", defa
 | `derive` | `#[derive(Config)]` macro |
 | `http` | Axum/Tower middleware stack |
 | `auth` | JWT authentication (OWASP ASVS) |
+| `auth-hibp` | HIBP breach checking for passwords |
+| `auth-totp` | TOTP/MFA support |
 | `auth-full` | Auth + HIBP breach checking + TOTP/MFA |
 | `postgres` | PostgreSQL support via sqlx |
 | `sqlite` | SQLite support via sqlx |
 | `otel` | OpenTelemetry integration |
 | `crypto-validation` | PEM, X.509, SSH key validation |
+| `database` | Database utilities (GraphQL parsing) |
 | `formats` | XML and YAML parsing |
+| `shell` | Shell scripting support |
 | `testing` | Test infrastructure (fixtures, generators, assertions) |
 
 ## Usage
