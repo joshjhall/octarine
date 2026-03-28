@@ -62,6 +62,9 @@ mod token;
 // Network module - pub(crate) for IP types used by observe
 pub(crate) mod network;
 
+// Correlation module - credential pair detection via proximity
+pub(crate) mod correlation;
+
 // Identifier validation modules (for observe module to use)
 pub(crate) mod database;
 pub(crate) mod environment;
@@ -92,6 +95,9 @@ pub(crate) use types::{
     CredentialMatch, CredentialType, CreditCardType, DetectionConfidence, DetectionResult,
     IdentifierMatch, IdentifierType, PhoneRegion,
 };
+
+// Re-export correlation types for crate-internal use
+pub(crate) use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
 
 // Re-export builder for crate-internal use
 pub(crate) use builder::IdentifierBuilder;
