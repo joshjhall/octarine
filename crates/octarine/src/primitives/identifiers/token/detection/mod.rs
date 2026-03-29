@@ -49,8 +49,8 @@ pub use api_keys::{
     is_cloudflare_ca_key, is_databricks_token, is_docker_hub_token, is_gcp_api_key,
     is_github_token, is_gitlab_token, is_mailchimp_key, is_mailgun_key, is_npm_token, is_nuget_key,
     is_onepassword_token, is_onepassword_vault_ref, is_paypal_token, is_pypi_token, is_resend_key,
-    is_shopify_token, is_square_token, is_stripe_key, is_test_api_key, is_url_with_credentials,
-    is_vault_token,
+    is_shopify_token, is_square_token, is_stripe_key, is_telegram_bot_token, is_test_api_key,
+    is_url_with_credentials, is_vault_token,
 };
 
 // Re-export SSH functions
@@ -161,6 +161,9 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_docker_hub_token(trimmed) {
         return Some(TokenType::DockerHubToken);
+    }
+    if is_telegram_bot_token(trimmed) {
+        return Some(TokenType::TelegramToken);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -377,6 +380,12 @@ mod tests {
         assert_eq!(
             detect_token_type(&format!("dckr_pat_{}", "A".repeat(27))),
             Some(TokenType::DockerHubToken)
+        );
+
+        // Telegram
+        assert_eq!(
+            detect_token_type(&format!("12345678:{}", "A".repeat(35))),
+            Some(TokenType::TelegramToken)
         );
 
         // Not a token

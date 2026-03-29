@@ -381,6 +381,13 @@ pub static API_KEY_DOCKER_HUB: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\bdckr_pat_[a-zA-Z0-9_-]{27,}\b").expect("BUG: Invalid regex pattern")
 });
 
+/// Telegram bot token pattern
+/// Format: [0-9]{8,10}:[a-zA-Z0-9_-]{35}
+/// Example: "123456789:ABCDEFGHIJKLmnopqrstuvwxyz0123456789"
+pub static API_KEY_TELEGRAM: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[0-9]{8,10}:[a-zA-Z0-9_-]{35}\b").expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -495,6 +502,7 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_NUGET,
         &*API_KEY_ARTIFACTORY,
         &*API_KEY_DOCKER_HUB,
+        &*API_KEY_TELEGRAM,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -552,6 +560,7 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_NUGET,
         &*API_KEY_ARTIFACTORY,
         &*API_KEY_DOCKER_HUB,
+        &*API_KEY_TELEGRAM,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,

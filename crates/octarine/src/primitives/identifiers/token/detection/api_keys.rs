@@ -156,6 +156,11 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::DockerHub);
     }
 
+    // Telegram bot tokens ([0-9]{8,10}:[a-zA-Z0-9_-]{35})
+    if patterns::network::API_KEY_TELEGRAM.is_match(key) {
+        return Some(ApiKeyProvider::Telegram);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -526,6 +531,19 @@ pub fn is_docker_hub_token(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_DOCKER_HUB.is_match(trimmed)
+}
+
+/// Check if value is a Telegram bot token
+///
+/// Telegram bot tokens have the format `{numeric_id}:{secret}` where
+/// the numeric ID is 8-10 digits and the secret is 35 alphanumeric/dash/underscore characters.
+#[must_use]
+pub fn is_telegram_bot_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_TELEGRAM.is_match(trimmed)
 }
 
 /// Check if API key is a known test/development key
@@ -1266,6 +1284,45 @@ mod tests {
         assert_eq!(
             detect_api_key_provider(&format!("dckr_pat_{}", "A".repeat(27))),
             Some(ApiKeyProvider::DockerHub)
+        );
+    }
+
+    #[test]
+    fn test_is_telegram_bot_token() {
+        // Valid: 8-digit ID + 35-char secret
+        assert!(is_telegram_bot_token(&format!(
+            "12345678:{}",
+            "A".repeat(35)
+        )));
+        // Valid: 10-digit ID + 35-char secret
+        assert!(is_telegram_bot_token(&format!(
+            "1234567890:{}",
+            "ABCDEFghij_-klmnopqrstuv01234567890"
+        )));
+        // Invalid: numeric prefix too short (7 digits)
+        assert!(!is_telegram_bot_token(&format!(
+            "1234567:{}",
+            "A".repeat(35)
+        )));
+        // Invalid: numeric prefix too long (11 digits)
+        assert!(!is_telegram_bot_token(&format!(
+            "12345678901:{}",
+            "A".repeat(35)
+        )));
+        // Invalid: secret too short
+        assert!(!is_telegram_bot_token(&format!(
+            "12345678:{}",
+            "A".repeat(34)
+        )));
+        // Invalid: no colon separator
+        assert!(!is_telegram_bot_token("not-a-telegram-token"));
+    }
+
+    #[test]
+    fn test_detect_telegram_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("12345678:{}", "A".repeat(35))),
+            Some(ApiKeyProvider::Telegram)
         );
     }
 

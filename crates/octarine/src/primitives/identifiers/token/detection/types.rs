@@ -53,6 +53,8 @@ pub enum ApiKeyProvider {
     Artifactory,
     /// Docker Hub Personal Access Tokens (dckr_pat_[alnum]{27+})
     DockerHub,
+    /// Telegram bot tokens ([0-9]{8,10}:[a-zA-Z0-9_-]{35})
+    Telegram,
     /// Generic or unknown provider
     Generic,
 }
@@ -81,6 +83,7 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::NuGet => write!(f, "NuGet"),
             Self::Artifactory => write!(f, "Artifactory"),
             Self::DockerHub => write!(f, "Docker Hub"),
+            Self::Telegram => write!(f, "Telegram"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -265,4 +268,6 @@ pub enum TokenType {
     ArtifactoryToken,
     /// Docker Hub PAT (dckr_pat_[alnum]{27+})
     DockerHubToken,
+    /// Telegram bot token ([0-9]{8,10}:[a-zA-Z0-9_-]{35})
+    TelegramToken,
 }
