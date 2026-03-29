@@ -50,6 +50,8 @@ mod problem;
 
 // Re-export commonly used types
 #[allow(unused_imports)]
-pub use dates::{get_current_year, is_leap_year, parse_eu_date, parse_iso_date, parse_us_date};
+pub(crate) use dates::{
+    get_current_year, is_leap_year, parse_eu_date, parse_iso_date, parse_us_date,
+};
 pub use network::PortRange;
 pub use problem::{Problem, Result};
