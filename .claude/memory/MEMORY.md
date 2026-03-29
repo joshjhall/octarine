@@ -1,0 +1,1 @@
+- [Use just recipes](feedback_just_recipes.md) — reference just recipes in plans/docs, never raw cargo/bash commands
