@@ -7,11 +7,11 @@ use std::time::Instant;
 
 use crate::observe;
 use crate::observe::metrics::{MetricName, increment_by, record};
-use crate::primitives::identifiers::IdentifierMatch as PrimitiveMatch;
 use crate::primitives::identifiers::correlation::builder::CorrelationBuilder as PrimitiveCorrelationBuilder;
 
-use super::super::types::IdentifierMatch;
-use super::super::types::correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
+use super::super::types::{
+    CorrelationConfig, CorrelationMatch, CredentialPairType, IdentifierMatch,
+};
 
 // Pre-validated metric names
 #[allow(clippy::expect_used)]
@@ -104,7 +104,7 @@ impl CorrelationBuilder {
             }
         }
 
-        prim_results.into_iter().map(Into::into).collect()
+        prim_results
     }
 
     /// Detect credential pairs in text with custom configuration.
@@ -115,8 +115,7 @@ impl CorrelationBuilder {
         config: CorrelationConfig,
     ) -> Vec<CorrelationMatch> {
         let start = Instant::now();
-        let prim_config = config.into();
-        let prim_results = self.inner.detect_pairs_with_config(text, &prim_config);
+        let prim_results = self.inner.detect_pairs_with_config(text, &config);
         let count = prim_results.len();
 
         if self.emit_events {
@@ -134,7 +133,7 @@ impl CorrelationBuilder {
             }
         }
 
-        prim_results.into_iter().map(Into::into).collect()
+        prim_results
     }
 
     /// Check if two identifier matches form a known credential pair.
@@ -146,11 +145,7 @@ impl CorrelationBuilder {
         primary: &IdentifierMatch,
         secondary: &IdentifierMatch,
     ) -> Option<CredentialPairType> {
-        let prim_a: PrimitiveMatch = primary.clone().into();
-        let prim_b: PrimitiveMatch = secondary.clone().into();
-        self.inner
-            .is_credential_pair(&prim_a, &prim_b)
-            .map(Into::into)
+        self.inner.is_credential_pair(primary, secondary)
     }
 }
 

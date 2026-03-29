@@ -25,8 +25,7 @@ use crate::primitives::identifiers::{
 };
 
 use super::super::types::{
-    CreditCardType, DetectionResult, FinancialTextPolicy as PublicFinancialTextPolicy,
-    IdentifierMatch, IdentifierType,
+    CreditCardType, DetectionResult, FinancialTextPolicy, IdentifierMatch, IdentifierType,
 };
 
 // Pre-validated metric names
@@ -130,7 +129,7 @@ impl FinancialBuilder {
             }
         }
 
-        result.map(Into::into)
+        result
     }
 
     /// Check if value is any financial identifier
@@ -170,21 +169,19 @@ impl FinancialBuilder {
         value: &str,
         context: Option<&str>,
     ) -> Option<DetectionResult> {
-        self.inner
-            .detect_credit_card_with_context(value, context)
-            .map(Into::into)
+        self.inner.detect_credit_card_with_context(value, context)
     }
 
     /// Detect routing number with ABA checksum validation
     #[must_use]
     pub fn detect_routing_number(&self, value: &str) -> Option<DetectionResult> {
-        self.inner.detect_routing_number(value).map(Into::into)
+        self.inner.detect_routing_number(value)
     }
 
     /// Detect credit card brand (Visa, MasterCard, etc.)
     #[must_use]
     pub fn detect_card_brand(&self, value: &str) -> Option<CreditCardType> {
-        self.inner.detect_card_brand(value).map(Into::into)
+        self.inner.detect_card_brand(value)
     }
 
     /// Check if text contains any financial identifier
@@ -226,27 +223,19 @@ impl FinancialBuilder {
             increment_by(metric_names::pci_data_found(), matches.len() as u64);
         }
 
-        matches.into_iter().map(Into::into).collect()
+        matches
     }
 
     /// Detect all payment tokens in text
     #[must_use]
     pub fn detect_payment_tokens_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .detect_payment_tokens_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.detect_payment_tokens_in_text(text)
     }
 
     /// Detect all bank accounts in text
     #[must_use]
     pub fn detect_bank_accounts_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .detect_bank_accounts_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.detect_bank_accounts_in_text(text)
     }
 
     /// Detect all financial identifiers in text
@@ -258,7 +247,7 @@ impl FinancialBuilder {
             increment_by(metric_names::detected(), matches.len() as u64);
         }
 
-        matches.into_iter().map(Into::into).collect()
+        matches
     }
 
     // ========================================================================
@@ -284,13 +273,13 @@ impl FinancialBuilder {
             }
         }
 
-        result.map(Into::into)
+        result
     }
 
     /// Detect credit card type from pattern
     #[must_use]
     pub fn detect_card_type(&self, card: &str) -> CreditCardType {
-        self.inner.detect_card_type(card).into()
+        self.inner.detect_card_type(card)
     }
 
     /// Check if text matches credit card pattern
@@ -381,12 +370,10 @@ impl FinancialBuilder {
     pub fn redact_all_in_text_with_policy(
         &self,
         text: &str,
-        policy: PublicFinancialTextPolicy,
+        policy: FinancialTextPolicy,
     ) -> String {
         let start = Instant::now();
-        let result = self
-            .inner
-            .redact_all_in_text_with_policy(text, policy.into());
+        let result = self.inner.redact_all_in_text_with_policy(text, policy);
 
         if self.emit_events {
             record(
@@ -430,8 +417,7 @@ impl FinancialBuilder {
     /// Extract card display info (type and last 4)
     #[must_use]
     pub fn extract_card_display_info(&self, card: &str) -> (CreditCardType, String) {
-        let (card_type, last4) = self.inner.extract_card_display_info(card);
-        (card_type.into(), last4)
+        self.inner.extract_card_display_info(card)
     }
 
     /// Extract BIN (first 6 digits)
@@ -502,7 +488,7 @@ impl FinancialBuilder {
     /// ```
     #[must_use]
     pub fn cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.cache_stats().into()
+        self.inner.cache_stats()
     }
 
     /// Get Luhn validation cache statistics (credit card checksums)
@@ -510,7 +496,7 @@ impl FinancialBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn luhn_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.luhn_cache_stats().into()
+        self.inner.luhn_cache_stats()
     }
 
     /// Get ABA routing number validation cache statistics
@@ -518,7 +504,7 @@ impl FinancialBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn aba_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.aba_cache_stats().into()
+        self.inner.aba_cache_stats()
     }
 
     /// Clear all financial identifier caches

@@ -89,7 +89,7 @@ impl NetworkBuilder {
             }
         }
 
-        result.map(Into::into)
+        result
     }
 
     /// Check if value is any network identifier
@@ -195,51 +195,31 @@ impl NetworkBuilder {
     /// Find all UUIDs in text
     #[must_use]
     pub fn find_uuids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_uuids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_uuids_in_text(text)
     }
 
     /// Find all IP addresses in text
     #[must_use]
     pub fn find_ip_addresses_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_ip_addresses_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_ip_addresses_in_text(text)
     }
 
     /// Find all MAC addresses in text
     #[must_use]
     pub fn find_mac_addresses_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_mac_addresses_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_mac_addresses_in_text(text)
     }
 
     /// Find all URLs in text
     #[must_use]
     pub fn find_urls_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_urls_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_urls_in_text(text)
     }
 
     /// Find all API keys in text
     #[must_use]
     pub fn find_api_keys_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_api_keys_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_api_keys_in_text(text)
     }
 
     /// Find all network identifiers in text
@@ -251,7 +231,7 @@ impl NetworkBuilder {
             increment_by(metric_names::detected(), matches.len() as u64);
         }
 
-        matches.into_iter().map(Into::into).collect()
+        matches
     }
 
     // ========================================================================
@@ -265,17 +245,17 @@ impl NetworkBuilder {
     ///
     /// Returns the UUID version on success. For bool check, use `.is_ok()`.
     pub fn validate_uuid_v4(&self, uuid: &str) -> Result<UuidVersion, Problem> {
-        self.inner.validate_uuid_v4(uuid).map(Into::into)
+        self.inner.validate_uuid_v4(uuid)
     }
 
     /// Validate UUID v5 format
     pub fn validate_uuid_v5(&self, uuid: &str) -> Result<UuidVersion, Problem> {
-        self.inner.validate_uuid_v5(uuid).map(Into::into)
+        self.inner.validate_uuid_v5(uuid)
     }
 
     /// Validate UUID any format
     pub fn validate_uuid(&self, uuid: &str) -> Result<UuidVersion, Problem> {
-        self.inner.validate_uuid(uuid).map(Into::into)
+        self.inner.validate_uuid(uuid)
     }
 
     /// Validate MAC address format
@@ -602,9 +582,7 @@ impl NetworkBuilder {
         min_length: usize,
         max_length: usize,
     ) -> Result<ApiKeyProvider, Problem> {
-        self.inner
-            .validate_api_key(key, min_length, max_length)
-            .map(Into::into)
+        self.inner.validate_api_key(key, min_length, max_length)
     }
 
     /// Validate session ID format (returns Result)
@@ -699,7 +677,7 @@ impl NetworkBuilder {
     pub fn detect_batch<'a>(&self, values: &'a [&str]) -> Vec<(&'a str, Option<IdentifierType>)> {
         values
             .iter()
-            .map(|&value| (value, self.inner.detect(value).map(Into::into)))
+            .map(|&value| (value, self.inner.detect(value)))
             .collect()
     }
 
@@ -713,7 +691,7 @@ impl NetworkBuilder {
         values: &'a [&str],
         expected_type: IdentifierType,
     ) -> Vec<(&'a str, bool)> {
-        self.inner.validate_batch_as(values, expected_type.into())
+        self.inner.validate_batch_as(values, expected_type)
     }
 
     /// Filter batch to only valid identifiers
@@ -729,11 +707,7 @@ impl NetworkBuilder {
     /// Returns a count of how many of each identifier type were found.
     #[must_use]
     pub fn count_by_type(&self, values: &[&str]) -> HashMap<IdentifierType, usize> {
-        self.inner
-            .count_by_type(values)
-            .into_iter()
-            .map(|(k, v)| (k.into(), v))
-            .collect()
+        self.inner.count_by_type(values)
     }
 
     /// Partition batch into valid and invalid identifiers

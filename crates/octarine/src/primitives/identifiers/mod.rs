@@ -63,7 +63,7 @@ mod token;
 pub(crate) mod network;
 
 // Correlation module - credential pair detection via proximity
-pub(crate) mod correlation;
+pub mod correlation;
 
 // Identifier validation modules (for observe module to use)
 pub(crate) mod database;
@@ -89,15 +89,14 @@ pub(crate) mod crypto;
 // - TokenIdentifierBuilder (JWTs, OAuth tokens)
 // - NetworkIdentifierBuilder (IPs, MACs, URLs)
 
-// Re-export types for crate-internal use
-// These will become pub when IdentifierBuilder is complete
-pub(crate) use types::{
+// Re-export types — pub so L3 modules can re-export them in the public API
+pub use types::{
     CredentialMatch, CredentialType, CreditCardType, DetectionConfidence, DetectionResult,
     IdentifierMatch, IdentifierType, PhoneRegion,
 };
 
-// Re-export correlation types for crate-internal use
-pub(crate) use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
+// Re-export correlation types — pub so L3 modules can re-export them
+pub use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
 
 // Re-export builder for crate-internal use
 pub(crate) use builder::IdentifierBuilder;
@@ -131,18 +130,18 @@ pub(crate) use crypto::{
     CertificateType, CryptoDetectionResult, KeyFormat, KeyType, SignatureAlgorithm,
 };
 
-// Re-export TextRedactionPolicy types for crate-internal use by observe/pii
-pub(crate) use biometric::redaction::TextRedactionPolicy as BiometricTextPolicy;
+// Re-export TextRedactionPolicy types — pub so L3 can re-export
+pub use biometric::redaction::TextRedactionPolicy as BiometricTextPolicy;
 
-// Re-export biometric redaction strategies for data layer
-pub(crate) use biometric::builder::{
+// Re-export biometric redaction strategies — pub so L3 can re-export
+pub use biometric::builder::{
     BiometricTemplateRedactionStrategy, DnaRedactionStrategy, FacialIdRedactionStrategy,
     FingerprintRedactionStrategy, IrisIdRedactionStrategy, VoiceIdRedactionStrategy,
 };
 pub(crate) use credentials::redaction::TextRedactionPolicy as CredentialTextPolicy;
-pub(crate) use government::TextRedactionPolicy as GovernmentTextPolicy;
-pub(crate) use location::redaction::TextRedactionPolicy as LocationTextPolicy;
-pub(crate) use medical::redaction::TextRedactionPolicy as MedicalTextPolicy;
+pub use government::TextRedactionPolicy as GovernmentTextPolicy;
+pub use location::redaction::TextRedactionPolicy as LocationTextPolicy;
+pub use medical::redaction::TextRedactionPolicy as MedicalTextPolicy;
 pub(crate) use personal::TextRedactionPolicy as PersonalTextPolicy;
 
 // Re-export domain-specific redaction strategies for observe/pii config
@@ -169,24 +168,25 @@ pub(crate) use medical::{
 
 // Re-export location builder types for data layer
 pub(crate) use location::{
-    AddressRedactionStrategy, GpsFormat, GpsRedactionStrategy, PostalCodeNormalization,
-    PostalCodeRedactionStrategy, PostalCodeType,
+    AddressRedactionStrategy, GpsRedactionStrategy, PostalCodeRedactionStrategy,
 };
+pub use location::{GpsFormat, PostalCodeNormalization, PostalCodeType};
 
 // Re-export token builder types for data layer
+pub use token::ApiKeyProvider;
 pub(crate) use token::TextRedactionPolicy as TokenTextPolicy;
 pub(crate) use token::{
-    ApiKeyProvider, ApiKeyRedactionStrategy, JwtAlgorithm, JwtMetadata, JwtRedactionStrategy,
+    ApiKeyRedactionStrategy, JwtAlgorithm, JwtMetadata, JwtRedactionStrategy,
     SessionIdRedactionStrategy, SshFingerprintRedactionStrategy, SshKeyRedactionStrategy,
     TokenType,
 };
 
 // Re-export network builder types for data layer
+pub use network::UuidVersion;
 pub(crate) use network::{
     ApiKeyRedactionStrategy as NetworkApiKeyRedactionStrategy, IpAddress, IpAddressList,
     IpClassification, IpRedactionStrategy, MacRedactionStrategy, NetworkInterface, PortRange,
     TextRedactionPolicy as NetworkTextPolicy, UrlRedactionStrategy, UuidRedactionStrategy,
-    UuidVersion,
 };
 
 // Re-export credential builder types for data layer
@@ -196,10 +196,10 @@ pub(crate) use credentials::{
 };
 
 // Re-export financial builder types for data layer
-pub(crate) use financial::TextRedactionPolicy as FinancialTextPolicy;
+pub use financial::TextRedactionPolicy as FinancialTextPolicy;
 
 // Re-export organizational builder types for data layer
-pub(crate) use organizational::TextRedactionPolicy as OrganizationalTextPolicy;
+pub use organizational::TextRedactionPolicy as OrganizationalTextPolicy;
 
 // NOTE: Strategy-based text redaction functions are NOT re-exported.
 // Access these through the domain-specific builders:

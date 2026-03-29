@@ -91,7 +91,7 @@ impl BiometricBuilder {
             event::debug("Biometric identifier detected".to_string());
         }
 
-        result.map(Into::into)
+        result
     }
 
     /// Check if value is any biometric identifier
@@ -211,12 +211,7 @@ impl BiometricBuilder {
     /// Detect all fingerprints in text
     #[must_use]
     pub fn detect_fingerprints_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_fingerprints_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_fingerprints_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!("Found {} fingerprint(s) in text", results.len()));
@@ -228,12 +223,7 @@ impl BiometricBuilder {
     /// Detect all facial data in text
     #[must_use]
     pub fn detect_facial_data_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_facial_data_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_facial_data_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!(
@@ -248,12 +238,7 @@ impl BiometricBuilder {
     /// Detect all iris scans in text
     #[must_use]
     pub fn detect_iris_scans_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_iris_scans_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_iris_scans_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!("Found {} iris scan(s) in text", results.len()));
@@ -265,12 +250,7 @@ impl BiometricBuilder {
     /// Detect all voice prints in text
     #[must_use]
     pub fn detect_voice_prints_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_voice_prints_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_voice_prints_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!("Found {} voice print(s) in text", results.len()));
@@ -282,12 +262,7 @@ impl BiometricBuilder {
     /// Detect all DNA sequences in text
     #[must_use]
     pub fn detect_dna_sequences_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_dna_sequences_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_dna_sequences_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!("Found {} DNA sequence(s) in text", results.len()));
@@ -299,12 +274,7 @@ impl BiometricBuilder {
     /// Detect all biometric templates in text
     #[must_use]
     pub fn detect_biometric_templates_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_biometric_templates_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_biometric_templates_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!(
@@ -319,12 +289,7 @@ impl BiometricBuilder {
     /// Detect all biometric identifiers in text
     #[must_use]
     pub fn detect_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .detect_all_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.detect_all_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!(
@@ -412,7 +377,7 @@ impl BiometricBuilder {
         strategy: FingerprintRedactionStrategy,
     ) -> String {
         self.inner
-            .redact_fingerprint_with_strategy(fingerprint, strategy.into())
+            .redact_fingerprint_with_strategy(fingerprint, strategy)
     }
 
     /// Redact a single facial recognition identifier with custom strategy
@@ -423,7 +388,7 @@ impl BiometricBuilder {
         strategy: FacialIdRedactionStrategy,
     ) -> String {
         self.inner
-            .redact_facial_id_with_strategy(facial_id, strategy.into())
+            .redact_facial_id_with_strategy(facial_id, strategy)
     }
 
     /// Redact a single iris scan identifier with custom strategy
@@ -433,8 +398,7 @@ impl BiometricBuilder {
         iris_id: &str,
         strategy: IrisIdRedactionStrategy,
     ) -> String {
-        self.inner
-            .redact_iris_id_with_strategy(iris_id, strategy.into())
+        self.inner.redact_iris_id_with_strategy(iris_id, strategy)
     }
 
     /// Redact a single voice print identifier with custom strategy
@@ -444,8 +408,7 @@ impl BiometricBuilder {
         voice_id: &str,
         strategy: VoiceIdRedactionStrategy,
     ) -> String {
-        self.inner
-            .redact_voice_id_with_strategy(voice_id, strategy.into())
+        self.inner.redact_voice_id_with_strategy(voice_id, strategy)
     }
 
     /// Redact a single DNA sequence with custom strategy
@@ -455,8 +418,7 @@ impl BiometricBuilder {
         dna: &str,
         strategy: DnaRedactionStrategy,
     ) -> String {
-        self.inner
-            .redact_dna_sequence_with_strategy(dna, strategy.into())
+        self.inner.redact_dna_sequence_with_strategy(dna, strategy)
     }
 
     /// Redact a single biometric template with custom strategy
@@ -467,7 +429,7 @@ impl BiometricBuilder {
         strategy: BiometricTemplateRedactionStrategy,
     ) -> String {
         self.inner
-            .redact_biometric_template_with_strategy(template, strategy.into())
+            .redact_biometric_template_with_strategy(template, strategy)
     }
 
     // =========================================================================
@@ -481,7 +443,7 @@ impl BiometricBuilder {
         text: &'a str,
         policy: BiometricTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_fingerprints_in_text(text, policy.into())
+        self.inner.redact_fingerprints_in_text(text, policy)
     }
 
     /// Redact facial data in text
@@ -491,7 +453,7 @@ impl BiometricBuilder {
         text: &'a str,
         policy: BiometricTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_facial_data_in_text(text, policy.into())
+        self.inner.redact_facial_data_in_text(text, policy)
     }
 
     /// Redact iris scans in text
@@ -501,7 +463,7 @@ impl BiometricBuilder {
         text: &'a str,
         policy: BiometricTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_iris_scans_in_text(text, policy.into())
+        self.inner.redact_iris_scans_in_text(text, policy)
     }
 
     /// Redact voice prints in text
@@ -511,7 +473,7 @@ impl BiometricBuilder {
         text: &'a str,
         policy: BiometricTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_voice_prints_in_text(text, policy.into())
+        self.inner.redact_voice_prints_in_text(text, policy)
     }
 
     /// Redact DNA sequences in text
@@ -521,7 +483,7 @@ impl BiometricBuilder {
         text: &'a str,
         policy: BiometricTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_dna_sequences_in_text(text, policy.into())
+        self.inner.redact_dna_sequences_in_text(text, policy)
     }
 
     /// Redact biometric templates in text
@@ -531,15 +493,14 @@ impl BiometricBuilder {
         text: &'a str,
         policy: BiometricTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner
-            .redact_biometric_templates_in_text(text, policy.into())
+        self.inner.redact_biometric_templates_in_text(text, policy)
     }
 
     /// Redact all biometric identifiers in text using Complete policy
     #[must_use]
     pub fn redact_all_in_text(&self, text: &str) -> String {
         self.inner
-            .redact_all_in_text_with_policy(text, BiometricTextPolicy::Complete.into())
+            .redact_all_in_text_with_policy(text, BiometricTextPolicy::Complete)
     }
 
     /// Redact all biometric identifiers in text with custom policy
@@ -549,8 +510,7 @@ impl BiometricBuilder {
         text: &str,
         policy: BiometricTextPolicy,
     ) -> String {
-        self.inner
-            .redact_all_in_text_with_policy(text, policy.into())
+        self.inner.redact_all_in_text_with_policy(text, policy)
     }
 }
 

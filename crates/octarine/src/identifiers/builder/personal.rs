@@ -101,7 +101,7 @@ impl PersonalBuilder {
             }
         }
 
-        result.map(Into::into)
+        result
     }
 
     /// Check if value is a personal identifier
@@ -166,7 +166,7 @@ impl PersonalBuilder {
             increment_by(metric_names::detected(), matches.len() as u64);
         }
 
-        matches.into_iter().map(Into::into).collect()
+        matches
     }
 
     /// Find all phones in text
@@ -178,27 +178,19 @@ impl PersonalBuilder {
             increment_by(metric_names::detected(), matches.len() as u64);
         }
 
-        matches.into_iter().map(Into::into).collect()
+        matches
     }
 
     /// Find all names in text
     #[must_use]
     pub fn find_names_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .detect_names_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.detect_names_in_text(text)
     }
 
     /// Find all birthdates in text
     #[must_use]
     pub fn find_birthdates_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .detect_birthdates_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.detect_birthdates_in_text(text)
     }
 
     /// Find all personal identifiers in text
@@ -214,13 +206,13 @@ impl PersonalBuilder {
             );
         }
 
-        matches.into_iter().map(Into::into).collect()
+        matches
     }
 
     /// Detect phone region
     #[must_use]
     pub fn find_phone_region(&self, phone: &str) -> Option<PhoneRegion> {
-        self.inner.find_phone_region(phone).map(Into::into)
+        self.inner.find_phone_region(phone)
     }
 
     // ========================================================================
@@ -258,7 +250,7 @@ impl PersonalBuilder {
             );
         }
 
-        result.map(Into::into)
+        result
     }
 
     /// Validate username format (returns Result)
@@ -523,7 +515,7 @@ impl PersonalBuilder {
     /// ```
     #[must_use]
     pub fn cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.cache_stats().into()
+        self.inner.cache_stats()
     }
 
     /// Get email validation cache statistics
@@ -531,7 +523,7 @@ impl PersonalBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn email_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.email_cache_stats().into()
+        self.inner.email_cache_stats()
     }
 
     /// Get phone validation cache statistics
@@ -539,7 +531,7 @@ impl PersonalBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn phone_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.phone_cache_stats().into()
+        self.inner.phone_cache_stats()
     }
 
     /// Clear all personal identifier caches

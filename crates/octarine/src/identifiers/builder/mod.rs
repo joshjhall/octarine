@@ -311,7 +311,7 @@ impl IdentifierBuilder {
         }
 
         // Drain and convert matches from primitive to local types
-        let matches: Vec<IdentifierMatch> = scanner.drain().into_iter().map(Into::into).collect();
+        let matches: Vec<IdentifierMatch> = scanner.drain();
 
         if !matches.is_empty() {
             // Check for sensitive types

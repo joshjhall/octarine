@@ -366,11 +366,7 @@ pub fn is_database_connection_string(value: &str) -> bool {
 /// Find all connection strings with credentials in text
 #[must_use]
 pub fn find_connection_strings(text: &str) -> Vec<CredentialMatch> {
-    CredentialsBuilder::new()
-        .find_connection_strings_in_text(text)
-        .into_iter()
-        .map(CredentialMatch::from)
-        .collect()
+    CredentialsBuilder::new().find_connection_strings_in_text(text)
 }
 
 /// Redact credentials in a connection string while preserving host/database
@@ -408,7 +404,7 @@ pub fn redact_pii(text: &str) -> String {
     // Redact government identifiers
     result = builder
         .government()
-        .redact_all_in_text_with_policy(&result, GovernmentTextPolicy::Complete.into());
+        .redact_all_in_text_with_policy(&result, GovernmentTextPolicy::Complete);
 
     // Redact financial identifiers
     result = builder
@@ -449,7 +445,7 @@ pub fn redact_all(text: &str) -> String {
         .redact_all_in_text_with_policy(&result, PersonalTextPolicy::Complete);
     result = builder
         .government()
-        .redact_all_in_text_with_policy(&result, GovernmentTextPolicy::Complete.into());
+        .redact_all_in_text_with_policy(&result, GovernmentTextPolicy::Complete);
     result = builder
         .financial()
         .redact_all_in_text_with_policy(&result, FinancialTextPolicy::Complete);
@@ -530,9 +526,6 @@ pub fn scan_credentials(text: &str) -> Vec<CredentialMatch> {
     IdentifierBuilder::new()
         .credentials()
         .detect_credentials(text)
-        .into_iter()
-        .map(CredentialMatch::from)
-        .collect()
 }
 
 /// Detect the data type of a single value
@@ -718,7 +711,7 @@ pub fn is_api_keys_present(text: &str) -> bool {
 /// Scans for all identifier types, finds proximate pairs, and classifies
 /// known credential pair patterns (e.g., AWS key + secret, username + password).
 #[must_use]
-pub fn detect_credential_pairs(text: &str) -> Vec<super::types::correlation::CorrelationMatch> {
+pub fn detect_credential_pairs(text: &str) -> Vec<super::types::CorrelationMatch> {
     super::CorrelationBuilder::new().detect_pairs(text)
 }
 
@@ -729,7 +722,7 @@ pub fn detect_credential_pairs(text: &str) -> Vec<super::types::correlation::Cor
 pub fn is_credential_pair(
     primary: &IdentifierMatch,
     secondary: &IdentifierMatch,
-) -> Option<super::types::correlation::CredentialPairType> {
+) -> Option<super::types::CredentialPairType> {
     super::CorrelationBuilder::new().is_credential_pair(primary, secondary)
 }
 

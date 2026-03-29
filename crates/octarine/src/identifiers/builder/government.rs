@@ -94,12 +94,7 @@ impl GovernmentBuilder {
     /// Find all SSNs in text
     #[must_use]
     pub fn find_ssns_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        let results: Vec<IdentifierMatch> = self
-            .inner
-            .find_ssns_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let results = self.inner.find_ssns_in_text(text);
 
         if self.emit_events && !results.is_empty() {
             event::debug(format!("Found {} SSN(s) in text", results.len()));
@@ -181,11 +176,7 @@ impl GovernmentBuilder {
     /// Find all tax IDs in text
     #[must_use]
     pub fn find_tax_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_tax_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_tax_ids_in_text(text)
     }
 
     /// Validate EIN format
@@ -248,11 +239,7 @@ impl GovernmentBuilder {
     /// Find all driver's licenses in text
     #[must_use]
     pub fn find_driver_licenses_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_driver_licenses_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_driver_licenses_in_text(text)
     }
 
     /// Validate driver's license format for a specific state
@@ -310,11 +297,7 @@ impl GovernmentBuilder {
     /// Find all passport numbers in text
     #[must_use]
     pub fn find_passports_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_passports_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_passports_in_text(text)
     }
 
     /// Redact a passport number with explicit strategy
@@ -351,11 +334,7 @@ impl GovernmentBuilder {
     /// Find all national IDs in text
     #[must_use]
     pub fn find_national_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_national_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_national_ids_in_text(text)
     }
 
     /// Redact a national ID with explicit strategy
@@ -393,11 +372,7 @@ impl GovernmentBuilder {
     /// Find all vehicle IDs in text
     #[must_use]
     pub fn find_vehicle_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_vehicle_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_vehicle_ids_in_text(text)
     }
 
     /// Validate VIN format
@@ -481,11 +456,7 @@ impl GovernmentBuilder {
     /// Find all government IDs in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_all_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_all_in_text(text)
     }
 
     /// Redact all government IDs in text with explicit policy
@@ -500,8 +471,7 @@ impl GovernmentBuilder {
         text: &str,
         policy: super::super::types::GovernmentTextPolicy,
     ) -> String {
-        self.inner
-            .redact_all_in_text_with_policy(text, policy.into())
+        self.inner.redact_all_in_text_with_policy(text, policy)
     }
 
     // ========================================================================
@@ -576,7 +546,7 @@ impl GovernmentBuilder {
     /// ```
     #[must_use]
     pub fn cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.cache_stats().into()
+        self.inner.cache_stats()
     }
 
     /// Get SSN validation cache statistics
@@ -584,7 +554,7 @@ impl GovernmentBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn ssn_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.ssn_cache_stats().into()
+        self.inner.ssn_cache_stats()
     }
 
     /// Get VIN validation cache statistics
@@ -592,7 +562,7 @@ impl GovernmentBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn vin_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.vin_cache_stats().into()
+        self.inner.vin_cache_stats()
     }
 
     /// Clear all government identifier caches

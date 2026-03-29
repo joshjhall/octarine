@@ -2,6 +2,9 @@
 //!
 //! Pure type definitions with no dependencies on other rust-core modules.
 
+// Variants use inline comments; adding full doc comments is tracked separately
+#![allow(missing_docs)]
+
 /// Types of identifiers that can be detected
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IdentifierType {

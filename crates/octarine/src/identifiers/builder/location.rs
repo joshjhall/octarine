@@ -58,7 +58,7 @@ impl LocationBuilder {
     /// Detect location identifier type from input string
     #[must_use]
     pub fn detect(&self, value: &str) -> Option<IdentifierType> {
-        self.inner.detect(value).map(Into::into)
+        self.inner.detect(value)
     }
 
     /// Check if value is a location identifier
@@ -88,41 +88,25 @@ impl LocationBuilder {
     /// Find all GPS coordinates in text
     #[must_use]
     pub fn find_gps_coordinates_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_gps_coordinates_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_gps_coordinates_in_text(text)
     }
 
     /// Find all street addresses in text
     #[must_use]
     pub fn find_addresses_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_addresses_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_addresses_in_text(text)
     }
 
     /// Find all postal codes in text
     #[must_use]
     pub fn find_postal_codes_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_postal_codes_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_postal_codes_in_text(text)
     }
 
     /// Find all location identifiers in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_all_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_all_in_text(text)
     }
 
     // =========================================================================
@@ -147,9 +131,7 @@ impl LocationBuilder {
 
     /// Validate GPS coordinate format (returns Result)
     pub fn validate_gps_coordinate(&self, coordinate: &str) -> Result<GpsFormat, Problem> {
-        self.inner
-            .validate_gps_coordinate(coordinate)
-            .map(Into::into)
+        self.inner.validate_gps_coordinate(coordinate)
     }
 
     /// Validate street address format (returns Result)
@@ -159,7 +141,7 @@ impl LocationBuilder {
 
     /// Validate postal code format (returns Result)
     pub fn validate_postal_code(&self, postal_code: &str) -> Result<PostalCodeType, Problem> {
-        self.inner.validate_postal_code(postal_code).map(Into::into)
+        self.inner.validate_postal_code(postal_code)
     }
 
     // =========================================================================
@@ -210,7 +192,7 @@ impl LocationBuilder {
         policy: LocationTextPolicy,
     ) -> Cow<'a, str> {
         self.inner
-            .redact_gps_coordinates_in_text_with_strategy(text, policy.into())
+            .redact_gps_coordinates_in_text_with_strategy(text, policy)
     }
 
     /// Redact all street addresses in text with explicit strategy
@@ -221,7 +203,7 @@ impl LocationBuilder {
         policy: LocationTextPolicy,
     ) -> Cow<'a, str> {
         self.inner
-            .redact_addresses_in_text_with_strategy(text, policy.into())
+            .redact_addresses_in_text_with_strategy(text, policy)
     }
 
     /// Redact all postal codes in text with explicit strategy
@@ -232,7 +214,7 @@ impl LocationBuilder {
         policy: LocationTextPolicy,
     ) -> Cow<'a, str> {
         self.inner
-            .redact_postal_codes_in_text_with_strategy(text, policy.into())
+            .redact_postal_codes_in_text_with_strategy(text, policy)
     }
 
     /// Redact all location data with explicit strategy
@@ -242,8 +224,7 @@ impl LocationBuilder {
         text: &str,
         policy: LocationTextPolicy,
     ) -> String {
-        self.inner
-            .redact_all_in_text_with_strategy(text, policy.into())
+        self.inner.redact_all_in_text_with_strategy(text, policy)
     }
 
     // =========================================================================
@@ -287,7 +268,7 @@ impl LocationBuilder {
     /// ```
     #[must_use]
     pub fn cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.cache_stats().into()
+        self.inner.cache_stats()
     }
 
     /// Get GPS coordinate validation cache statistics
@@ -295,7 +276,7 @@ impl LocationBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn gps_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.gps_cache_stats().into()
+        self.inner.gps_cache_stats()
     }
 
     /// Get postal code validation cache statistics
@@ -303,7 +284,7 @@ impl LocationBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn postal_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.postal_cache_stats().into()
+        self.inner.postal_cache_stats()
     }
 
     /// Clear all location identifier caches
@@ -340,7 +321,7 @@ impl LocationBuilder {
     /// Returns the format of a GPS coordinate string, or None if not recognized.
     #[must_use]
     pub fn detect_gps_format(&self, coordinate: &str) -> Option<GpsFormat> {
-        self.inner.detect_gps_format(coordinate).map(Into::into)
+        self.inner.detect_gps_format(coordinate)
     }
 
     /// Normalize postal code to standard format
@@ -352,7 +333,7 @@ impl LocationBuilder {
         postal_code: &str,
         mode: PostalCodeNormalization,
     ) -> Result<String, Problem> {
-        self.inner.normalize_postal_code(postal_code, mode.into())
+        self.inner.normalize_postal_code(postal_code, mode)
     }
 
     /// Detect the type of postal code
@@ -361,9 +342,7 @@ impl LocationBuilder {
     /// or Canadian postal code based on format patterns.
     #[must_use]
     pub fn detect_postal_code_type(&self, postal_code: &str) -> Option<PostalCodeType> {
-        self.inner
-            .detect_postal_code_type(postal_code)
-            .map(Into::into)
+        self.inner.detect_postal_code_type(postal_code)
     }
 }
 

@@ -56,7 +56,7 @@ impl MedicalBuilder {
     /// Detect the type of medical identifier
     #[must_use]
     pub fn detect(&self, value: &str) -> Option<IdentifierType> {
-        self.inner.detect(value).map(Into::into)
+        self.inner.detect(value)
     }
 
     /// Check if value is any medical identifier
@@ -108,61 +108,37 @@ impl MedicalBuilder {
     /// Find all MRNs in text
     #[must_use]
     pub fn find_mrns_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_mrns_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_mrns_in_text(text)
     }
 
     /// Find all insurance IDs in text
     #[must_use]
     pub fn find_insurance_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_insurance_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_insurance_ids_in_text(text)
     }
 
     /// Find all prescriptions in text
     #[must_use]
     pub fn find_prescriptions_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_prescriptions_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_prescriptions_in_text(text)
     }
 
     /// Find all provider IDs (NPI) in text
     #[must_use]
     pub fn find_provider_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_provider_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_provider_ids_in_text(text)
     }
 
     /// Find all medical codes in text
     #[must_use]
     pub fn find_medical_codes_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_medical_codes_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_medical_codes_in_text(text)
     }
 
     /// Find all medical identifiers in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_all_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_all_in_text(text)
     }
 
     // =========================================================================
@@ -227,7 +203,7 @@ impl MedicalBuilder {
     /// Redact MRNs in text using text redaction policy
     #[must_use]
     pub fn redact_mrn_in_text<'a>(&self, text: &'a str, policy: MedicalTextPolicy) -> Cow<'a, str> {
-        self.inner.redact_mrn_in_text(text, policy.into())
+        self.inner.redact_mrn_in_text(text, policy)
     }
 
     /// Redact a health insurance number with explicit strategy
@@ -248,7 +224,7 @@ impl MedicalBuilder {
         text: &'a str,
         policy: MedicalTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_insurance_in_text(text, policy.into())
+        self.inner.redact_insurance_in_text(text, policy)
     }
 
     /// Redact a prescription number with explicit strategy
@@ -269,7 +245,7 @@ impl MedicalBuilder {
         text: &'a str,
         policy: MedicalTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_prescriptions_in_text(text, policy.into())
+        self.inner.redact_prescriptions_in_text(text, policy)
     }
 
     /// Redact a National Provider Identifier (NPI) with explicit strategy
@@ -295,7 +271,7 @@ impl MedicalBuilder {
         text: &'a str,
         policy: MedicalTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_provider_ids_in_text(text, policy.into())
+        self.inner.redact_provider_ids_in_text(text, policy)
     }
 
     /// Redact a medical code (ICD-10, CPT) with explicit strategy
@@ -315,7 +291,7 @@ impl MedicalBuilder {
         text: &'a str,
         policy: MedicalTextPolicy,
     ) -> Cow<'a, str> {
-        self.inner.redact_medical_codes_in_text(text, policy.into())
+        self.inner.redact_medical_codes_in_text(text, policy)
     }
 
     /// Redact all medical identifiers in text using Complete policy
@@ -327,8 +303,7 @@ impl MedicalBuilder {
     /// Redact all medical identifiers in text with custom policy
     #[must_use]
     pub fn redact_all_in_text_with_policy(&self, text: &str, policy: MedicalTextPolicy) -> String {
-        self.inner
-            .redact_all_in_text_with_policy(text, policy.into())
+        self.inner.redact_all_in_text_with_policy(text, policy)
     }
 
     // =========================================================================
@@ -417,7 +392,7 @@ impl MedicalBuilder {
     /// ```
     #[must_use]
     pub fn cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.cache_stats().into()
+        self.inner.cache_stats()
     }
 
     /// Get NPI validation cache statistics
@@ -425,7 +400,7 @@ impl MedicalBuilder {
     /// Use this for debugging specific cache performance.
     #[must_use]
     pub fn npi_cache_stats(&self) -> super::super::types::CacheStats {
-        self.inner.npi_cache_stats().into()
+        self.inner.npi_cache_stats()
     }
 
     /// Clear all medical identifier caches

@@ -52,7 +52,7 @@ impl OrganizationalBuilder {
     /// Detect organizational identifier type from input string
     #[must_use]
     pub fn detect(&self, value: &str) -> Option<IdentifierType> {
-        self.inner.detect(value).map(Into::into)
+        self.inner.detect(value)
     }
 
     /// Check if value is an organizational identifier
@@ -82,41 +82,25 @@ impl OrganizationalBuilder {
     /// Find all employee IDs in text
     #[must_use]
     pub fn find_employee_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_employee_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_employee_ids_in_text(text)
     }
 
     /// Find all student IDs in text
     #[must_use]
     pub fn find_student_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_student_ids_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_student_ids_in_text(text)
     }
 
     /// Find all badge numbers in text
     #[must_use]
     pub fn find_badge_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_badge_numbers_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_badge_numbers_in_text(text)
     }
 
     /// Find all organizational IDs in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner
-            .find_all_in_text(text)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+        self.inner.find_all_in_text(text)
     }
 
     /// Check if text contains any organizational identifiers
@@ -231,8 +215,7 @@ impl OrganizationalBuilder {
         text: &str,
         policy: OrganizationalTextPolicy,
     ) -> String {
-        self.inner
-            .redact_all_in_text_with_policy(text, policy.into())
+        self.inner.redact_all_in_text_with_policy(text, policy)
     }
 }
 
