@@ -40,11 +40,11 @@ target/criterion/
 !**/.env.example
 !**/.env.*.example
 
-# Added by devcontainer health check
 # FUSE artifacts (bindfs)
 .fuse_hidden*
 
-# Added by devcontainer health check
 # Claude Code local state
 .claude/settings.local.json
 .claude/memory/tmp/
+.claude/worktrees/
+.worktrees/
