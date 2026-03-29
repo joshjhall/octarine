@@ -56,6 +56,18 @@ repos:
         exclude: ^\.devcontainer/
 
   # ==========================================================================
+  # Architecture enforcement
+  # ==========================================================================
+  - repo: local
+    hooks:
+      - id: arch-check
+        name: architecture checks
+        entry: bash scripts/arch-check.sh --staged-only
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+  # ==========================================================================
   # Custom guards
   # ==========================================================================
   - repo: local

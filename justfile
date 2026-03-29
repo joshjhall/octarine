@@ -62,10 +62,16 @@ test-filter PATTERN:
 test-mod PATTERN:
     cargo test -p octarine --lib -j4 -- {{PATTERN}}
 
+# ─── Architecture ────────────────────────────────────────────────────────────
+
+# Run architecture enforcement checks (layer boundaries, naming, lint rules)
+arch-check:
+    bash scripts/arch-check.sh
+
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, tests
-preflight: fmt-check clippy test
+# Full pre-push validation: fmt, clippy, arch-check, tests
+preflight: fmt-check clippy arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
