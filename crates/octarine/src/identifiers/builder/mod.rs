@@ -64,6 +64,7 @@
 
 // Domain-specific builders
 mod biometric;
+mod correlation;
 mod credentials;
 mod database;
 mod environment;
@@ -80,6 +81,7 @@ mod token;
 
 // Re-export all domain builders
 pub use biometric::BiometricBuilder;
+pub use correlation::CorrelationBuilder;
 pub use credentials::CredentialsBuilder;
 pub use database::DatabaseBuilder;
 pub use environment::EnvironmentBuilder;
@@ -242,6 +244,12 @@ impl IdentifierBuilder {
     #[must_use]
     pub fn metrics(&self) -> MetricsBuilder {
         MetricsBuilder::new()
+    }
+
+    /// Get credential pair correlation builder
+    #[must_use]
+    pub fn correlation(&self) -> CorrelationBuilder {
+        CorrelationBuilder::new()
     }
 
     // ========================================================================

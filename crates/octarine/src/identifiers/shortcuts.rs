@@ -711,6 +711,28 @@ pub fn is_api_keys_present(text: &str) -> bool {
         || text.contains("ASIA") // AWS STS temporary access key
 }
 
+// CREDENTIAL PAIR CORRELATION SHORTCUTS
+
+/// Detect credential pairs in text using default configuration.
+///
+/// Scans for all identifier types, finds proximate pairs, and classifies
+/// known credential pair patterns (e.g., AWS key + secret, username + password).
+#[must_use]
+pub fn detect_credential_pairs(text: &str) -> Vec<super::types::correlation::CorrelationMatch> {
+    super::CorrelationBuilder::new().detect_pairs(text)
+}
+
+/// Check if two identifier matches form a known credential pair.
+///
+/// Order-independent: `(A, B)` and `(B, A)` both match.
+#[must_use]
+pub fn is_credential_pair(
+    primary: &IdentifierMatch,
+    secondary: &IdentifierMatch,
+) -> Option<super::types::correlation::CredentialPairType> {
+    super::CorrelationBuilder::new().is_credential_pair(primary, secondary)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]

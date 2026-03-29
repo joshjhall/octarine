@@ -12,11 +12,13 @@
 //! Detection logic, proximity scanning, and pair recognition rules are
 //! added by subsequent modules.
 
+pub(crate) mod builder;
 pub(crate) mod detection;
 pub(crate) mod proximity;
 pub(crate) mod rules;
 mod types;
 
+pub(crate) use builder::CorrelationBuilder;
 pub(crate) use detection::{detect_credential_pairs, detect_credential_pairs_with_config};
 pub(crate) use rules::is_credential_pair;
 pub(crate) use types::{CorrelationConfig, CorrelationMatch, CredentialPairType};

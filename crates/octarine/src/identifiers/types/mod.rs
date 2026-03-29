@@ -42,3 +42,7 @@ pub use location::{GpsFormat, LocationTextPolicy, PostalCodeNormalization, Posta
 pub use network::{ApiKeyProvider, UuidVersion};
 pub use personal::{CredentialMatch, CredentialType, PhoneRegion};
 pub use policies::{GovernmentTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy};
+
+// Correlation types (public wrappers of primitives)
+pub mod correlation;
+pub use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};

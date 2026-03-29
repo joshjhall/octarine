@@ -116,19 +116,20 @@ pub use facade::Identifiers;
 
 // Re-export all domain-specific builders
 pub use builder::{
-    BiometricBuilder, CredentialsBuilder, DatabaseBuilder, EnvironmentBuilder, FinancialBuilder,
-    GenericBuilder, GovernmentBuilder, LocationBuilder, MedicalBuilder, MetricsBuilder,
-    NetworkBuilder, OrganizationalBuilder, PersonalBuilder, TokenBuilder,
+    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EnvironmentBuilder,
+    FinancialBuilder, GenericBuilder, GovernmentBuilder, LocationBuilder, MedicalBuilder,
+    MetricsBuilder, NetworkBuilder, OrganizationalBuilder, PersonalBuilder, TokenBuilder,
 };
 
 // Re-export types for public API
 pub use types::{
     ApiKeyProvider, BiometricTemplateRedactionStrategy, BiometricTextPolicy, CacheStats,
-    CredentialMatch, CredentialType, CreditCardType, DetectionConfidence, DetectionResult,
-    DnaRedactionStrategy, FacialIdRedactionStrategy, FinancialTextPolicy,
-    FingerprintRedactionStrategy, GovernmentTextPolicy, GpsFormat, IdentifierMatch, IdentifierType,
-    IrisIdRedactionStrategy, LocationTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy,
-    PhoneRegion, PostalCodeNormalization, PostalCodeType, UuidVersion, VoiceIdRedactionStrategy,
+    CorrelationConfig, CorrelationMatch, CredentialMatch, CredentialPairType, CredentialType,
+    CreditCardType, DetectionConfidence, DetectionResult, DnaRedactionStrategy,
+    FacialIdRedactionStrategy, FinancialTextPolicy, FingerprintRedactionStrategy,
+    GovernmentTextPolicy, GpsFormat, IdentifierMatch, IdentifierType, IrisIdRedactionStrategy,
+    LocationTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy, PhoneRegion,
+    PostalCodeNormalization, PostalCodeType, UuidVersion, VoiceIdRedactionStrategy,
 };
 
 // Re-export RedactionToken (public API for redaction tokens)
