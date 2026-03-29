@@ -57,7 +57,7 @@ pub fn redact_phone_with_strategy(phone: &str, strategy: PhoneRedactionStrategy)
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]

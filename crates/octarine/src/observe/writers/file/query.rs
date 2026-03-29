@@ -161,7 +161,7 @@ fn read_gzip_file(path: &std::path::Path) -> Result<String, WriterError> {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::observe::types::{Event, EventType, Severity};
@@ -414,10 +414,12 @@ mod tests {
 
         // Check parse error details
         let errors = &result.parse_errors;
-        assert!(errors[0].line_number == 4 || errors[1].line_number == 4);
+        let err0 = errors.first().expect("should have parse error 0");
+        let err1 = errors.get(1).expect("should have parse error 1");
+        assert!(err0.line_number == 4 || err1.line_number == 4);
         assert!(
-            errors[0].line_preview.contains("not valid json")
-                || errors[1].line_preview.contains("not valid json")
+            err0.line_preview.contains("not valid json")
+                || err1.line_preview.contains("not valid json")
         );
 
         // Cleanup

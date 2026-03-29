@@ -130,7 +130,7 @@ pub fn validate_hostname_rfc1123(hostname: &str) -> Result<(), Problem> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -394,7 +394,7 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
     use proptest::prelude::*;
 

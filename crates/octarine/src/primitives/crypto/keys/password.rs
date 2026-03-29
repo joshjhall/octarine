@@ -672,7 +672,7 @@ pub fn generate_password(length: usize, charset: PasswordCharset) -> Result<Stri
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -765,9 +765,18 @@ mod tests {
         assert_eq!(keys.len(), 3);
 
         // Each key should be unique
-        assert_ne!(keys[0], keys[1]);
-        assert_ne!(keys[1], keys[2]);
-        assert_ne!(keys[0], keys[2]);
+        assert_ne!(
+            keys.first().expect("should have at least 1 key"),
+            keys.get(1).expect("should have at least 2 keys")
+        );
+        assert_ne!(
+            keys.get(1).expect("should have at least 2 keys"),
+            keys.get(2).expect("should have at least 3 keys")
+        );
+        assert_ne!(
+            keys.first().expect("should have at least 1 key"),
+            keys.get(2).expect("should have at least 3 keys")
+        );
 
         // Each key should be 32 bytes
         for key in &keys {
@@ -892,6 +901,9 @@ mod tests {
             .expect("Failed");
 
         assert_eq!(keys.len(), 2);
-        assert_ne!(keys[0], keys[1]);
+        assert_ne!(
+            keys.first().expect("should have at least 1 key"),
+            keys.get(1).expect("should have at least 2 keys")
+        );
     }
 }

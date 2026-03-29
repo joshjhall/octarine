@@ -174,7 +174,7 @@ pub fn derive_versioned(
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -207,9 +207,12 @@ mod tests {
             derive_multiple(master, &[("enc", 32), ("auth", 32)]).expect("Multi-derivation failed");
 
         assert_eq!(keys.len(), 2);
-        assert_eq!(keys[0].len(), 32);
-        assert_eq!(keys[1].len(), 32);
-        assert_ne!(keys[0], keys[1]); // Different purposes = different keys
+        assert_eq!(keys.first().expect("should have key 0").len(), 32);
+        assert_eq!(keys.get(1).expect("should have key 1").len(), 32);
+        assert_ne!(
+            keys.first().expect("should have key 0"),
+            keys.get(1).expect("should have key 1")
+        ); // Different purposes = different keys
     }
 
     #[test]

@@ -163,7 +163,7 @@ pub fn is_public_ipv6(ip: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]

@@ -247,7 +247,7 @@ pub fn random_u64_range(min: u64, max: u64) -> Result<u64, CryptoError> {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -316,7 +316,9 @@ mod tests {
 
         for _ in 0..iterations {
             let value = random_u32_bounded(10).expect("Bounded");
-            counts[value as usize] += 1;
+            *counts
+                .get_mut(value as usize)
+                .expect("value is always < 10 per bounded range") += 1;
         }
 
         // Each bucket should get roughly 10% (allow wide tolerance for random variation)

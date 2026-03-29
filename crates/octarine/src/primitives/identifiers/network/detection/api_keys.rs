@@ -154,7 +154,7 @@ pub fn find_api_keys_in_text(text: &str) -> Vec<IdentifierMatch> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]

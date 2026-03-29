@@ -107,7 +107,7 @@ pub fn validate_jwt_algorithm(token: &str, allow_hmac: bool) -> Result<JwtAlgori
 // ============================================================================
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
     use proptest::prelude::*;
     use serial_test::serial;

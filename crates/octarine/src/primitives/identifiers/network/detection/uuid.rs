@@ -212,7 +212,7 @@ pub fn is_test_uuid(uuid: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -258,7 +258,10 @@ mod tests {
         let matches = find_uuids_in_text(text);
         assert_eq!(matches.len(), 1);
         assert_eq!(
-            matches[0].matched_text,
+            matches
+                .first()
+                .expect("should have at least one match")
+                .matched_text,
             "550e8400-e29b-41d4-a716-446655440000"
         );
     }

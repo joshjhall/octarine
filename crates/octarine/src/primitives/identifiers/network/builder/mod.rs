@@ -174,7 +174,7 @@ impl NetworkIdentifierBuilder {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -268,10 +268,19 @@ mod tests {
         let results = builder.detect_batch(&inputs);
 
         assert_eq!(results.len(), 4);
-        assert_eq!(results[0].1, Some(IdentifierType::Uuid));
-        assert_eq!(results[1].1, Some(IdentifierType::IpAddress));
-        assert_eq!(results[2].1, Some(IdentifierType::MacAddress));
-        assert_eq!(results[3].1, None);
+        assert_eq!(
+            results.first().expect("should have result 0").1,
+            Some(IdentifierType::Uuid)
+        );
+        assert_eq!(
+            results.get(1).expect("should have result 1").1,
+            Some(IdentifierType::IpAddress)
+        );
+        assert_eq!(
+            results.get(2).expect("should have result 2").1,
+            Some(IdentifierType::MacAddress)
+        );
+        assert_eq!(results.get(3).expect("should have result 3").1, None);
     }
 
     #[test]
@@ -282,10 +291,10 @@ mod tests {
         let results = builder.validate_batch_as(&ips, IdentifierType::IpAddress);
 
         assert_eq!(results.len(), 4);
-        assert!(results[0].1); // Valid IP
-        assert!(results[1].1); // Valid IP
-        assert!(!results[2].1); // Invalid
-        assert!(results[3].1); // Valid IP
+        assert!(results.first().expect("should have result 0").1); // Valid IP
+        assert!(results.get(1).expect("should have result 1").1); // Valid IP
+        assert!(!results.get(2).expect("should have result 2").1); // Invalid
+        assert!(results.get(3).expect("should have result 3").1); // Valid IP
     }
 
     #[test]
@@ -297,8 +306,8 @@ mod tests {
         let results = builder.validate_batch_as(&mixed, IdentifierType::Uuid);
 
         assert_eq!(results.len(), 2);
-        assert!(!results[0].1); // IP, not UUID
-        assert!(results[1].1); // UUID
+        assert!(!results.first().expect("should have result 0").1); // IP, not UUID
+        assert!(results.get(1).expect("should have result 1").1); // UUID
     }
 
     #[test]
@@ -415,11 +424,14 @@ mod tests {
         let results = builder.detect_batch(&inputs);
 
         // Results should be in same order as input
-        assert_eq!(results[0].0, "!!!");
-        assert_eq!(results[1].0, "192.168.1.1");
-        assert_eq!(results[2].0, "@@@");
-        assert_eq!(results[3].0, "10.0.0.1");
-        assert_eq!(results[4].0, "###");
+        assert_eq!(results.first().expect("should have result 0").0, "!!!");
+        assert_eq!(
+            results.get(1).expect("should have result 1").0,
+            "192.168.1.1"
+        );
+        assert_eq!(results.get(2).expect("should have result 2").0, "@@@");
+        assert_eq!(results.get(3).expect("should have result 3").0, "10.0.0.1");
+        assert_eq!(results.get(4).expect("should have result 4").0, "###");
     }
 
     #[test]

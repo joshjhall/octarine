@@ -54,7 +54,7 @@ pub fn validate_mac_address(mac: &str) -> Result<(), Problem> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]

@@ -41,7 +41,7 @@ pub(crate) fn parse_json_with_options(input: &str, options: &ParseOptions) -> Re
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -49,7 +49,7 @@ mod tests {
         let result = parse_json(r#"{"key": "value"}"#);
         assert!(result.is_ok());
         let value = result.expect("valid json");
-        assert_eq!(value["key"], "value");
+        assert_eq!(value.get("key").expect("should have key"), "value");
     }
 
     #[test]

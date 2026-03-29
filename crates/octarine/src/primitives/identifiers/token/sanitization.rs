@@ -661,7 +661,7 @@ pub fn mask_docker_hub_token(token: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     // ===== Individual Redaction Tests - JWT =====

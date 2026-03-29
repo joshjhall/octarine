@@ -143,7 +143,7 @@ pub fn partition_identifiers<'a>(values: &'a [&str]) -> (Vec<&'a str>, Vec<&'a s
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -156,9 +156,9 @@ mod tests {
 
         let results = validate_batch_as(&values, IdentifierType::Uuid);
         assert_eq!(results.len(), 3);
-        assert!(results[0].1); // First is UUID
-        assert!(!results[1].1); // Second is not
-        assert!(results[2].1); // Third is UUID
+        assert!(results.first().expect("should have result 0").1); // First is UUID
+        assert!(!results.get(1).expect("should have result 1").1); // Second is not
+        assert!(results.get(2).expect("should have result 2").1); // Third is UUID
     }
 
     #[test]

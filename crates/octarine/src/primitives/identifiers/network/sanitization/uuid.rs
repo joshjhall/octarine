@@ -118,7 +118,7 @@ pub fn redact_uuids_in_text(text: &str, policy: TextRedactionPolicy) -> Cow<'_, 
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]

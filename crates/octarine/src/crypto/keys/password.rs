@@ -426,7 +426,7 @@ pub fn generate(length: usize, charset: PasswordCharset) -> Result<String, Crypt
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -489,6 +489,9 @@ mod tests {
             .expect("Derive failed");
 
         assert_eq!(keys.len(), 2);
-        assert_ne!(keys[0], keys[1]);
+        assert_ne!(
+            keys.first().expect("should have key 0"),
+            keys.get(1).expect("should have key 1")
+        );
     }
 }

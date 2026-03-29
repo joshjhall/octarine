@@ -49,9 +49,7 @@ pub fn is_der_format(data: &[u8]) -> bool {
     }
 
     // DER-encoded structures typically start with SEQUENCE (0x30)
-    // SAFETY: We've validated data.len() >= 2 above
-    #[allow(clippy::indexing_slicing)]
-    if data[0] != 0x30 {
+    if data.first() != Some(&0x30) {
         return false;
     }
 

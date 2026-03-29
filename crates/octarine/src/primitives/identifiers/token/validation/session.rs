@@ -72,7 +72,7 @@ pub fn validate_session_id(
 // ============================================================================
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
     use proptest::prelude::*;
 

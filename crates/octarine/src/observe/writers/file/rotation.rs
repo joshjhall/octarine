@@ -302,7 +302,7 @@ pub(super) async fn enforce_retention(writer: &FileWriter) -> Result<usize, Prob
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::observe::types::{Event, EventType};

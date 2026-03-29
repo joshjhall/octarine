@@ -490,7 +490,7 @@ pub fn validate_domain_tld(domain: &str) -> Result<(), Problem> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -788,7 +788,7 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
     use proptest::prelude::*;
 

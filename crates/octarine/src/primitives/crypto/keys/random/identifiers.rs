@@ -129,7 +129,7 @@ pub fn random_base64_url(byte_len: usize) -> Result<String, CryptoError> {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -139,14 +139,14 @@ mod tests {
 
         // Check format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
         assert_eq!(uuid.len(), 36);
-        assert_eq!(&uuid[8..9], "-");
-        assert_eq!(&uuid[13..14], "-");
-        assert_eq!(&uuid[14..15], "4"); // Version 4
-        assert_eq!(&uuid[18..19], "-");
+        assert_eq!(uuid.get(8..9).expect("uuid has char at index 8"), "-");
+        assert_eq!(uuid.get(13..14).expect("uuid has char at index 13"), "-");
+        assert_eq!(uuid.get(14..15).expect("uuid has char at index 14"), "4"); // Version 4
+        assert_eq!(uuid.get(18..19).expect("uuid has char at index 18"), "-");
         // Variant should be 8, 9, a, or b
-        let variant = &uuid[19..20];
+        let variant = uuid.get(19..20).expect("uuid has char at index 19");
         assert!(["8", "9", "a", "b"].contains(&variant));
-        assert_eq!(&uuid[23..24], "-");
+        assert_eq!(uuid.get(23..24).expect("uuid has char at index 23"), "-");
     }
 
     #[test]

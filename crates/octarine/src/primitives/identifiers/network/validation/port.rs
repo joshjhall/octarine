@@ -114,7 +114,7 @@ pub fn validate_port_user_safe(port: u32) -> Result<(), Problem> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     // Note: PortRange type tests are in primitives/types/network.rs

@@ -201,7 +201,7 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -216,7 +216,10 @@ mod tests {
         assert_eq!(root.name, "root");
         assert_eq!(root.children.len(), 1);
 
-        let child = &root.children[0];
+        let child = root
+            .children
+            .first()
+            .expect("root should have at least 1 child");
         assert_eq!(child.name, "child");
         assert_eq!(child.text, Some("text".to_string()));
     }

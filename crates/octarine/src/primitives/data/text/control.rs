@@ -426,7 +426,7 @@ pub fn is_bidi_overrides_present(s: &str) -> bool {
 // ============================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+#[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
 

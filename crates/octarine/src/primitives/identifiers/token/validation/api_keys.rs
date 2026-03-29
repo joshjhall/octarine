@@ -118,7 +118,7 @@ pub fn validate_api_key(
 // ============================================================================
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::super::{analyze_key_strength, validate_key_entropy};
     use super::*;
     use proptest::prelude::*;

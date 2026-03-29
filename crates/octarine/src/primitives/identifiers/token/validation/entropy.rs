@@ -220,7 +220,7 @@ pub fn analyze_key_strength(key: &str) -> (f64, usize, u32, u8) {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::panic, clippy::expect_used, clippy::indexing_slicing)]
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::super::validate_jwt;
     use super::*;
     use proptest::prelude::*;
