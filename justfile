@@ -69,10 +69,14 @@ test-mod PATTERN:
 arch-check:
     bash scripts/arch-check.sh
 
+# Lint shell scripts with shellcheck
+shellcheck:
+    shellcheck scripts/*.sh
+
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, arch-check, tests
-preflight: fmt-check clippy arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, arch-check, tests
+preflight: fmt-check clippy shellcheck arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
