@@ -53,14 +53,41 @@ pub(crate) fn detect_credential_pairs_with_config(
 
     // Step 1: Collect all identifiers from text
     let matches = collect_all_identifiers(text);
+
+    // Delegate to shared logic
+    detect_credential_pairs_from_matches(text, &matches, config)
+}
+
+/// Detect credential pairs from pre-collected identifier matches.
+///
+/// This is the shared core algorithm used by both `detect_credential_pairs_with_config`
+/// (which scans text first) and `StreamingScanner::detect_credential_pairs` (which
+/// uses already-buffered matches).
+///
+/// # Arguments
+///
+/// * `text` - The original text (needed for proximity line-distance calculation)
+/// * `matches` - Pre-collected identifier matches to correlate
+/// * `config` - Custom proximity window and enabled pair types
+///
+/// # Returns
+///
+/// A vec of `CorrelationMatch` values, each with `High` confidence.
+/// Empty if fewer than 2 matches or no pairs found.
+#[must_use]
+pub(crate) fn detect_credential_pairs_from_matches(
+    text: &str,
+    matches: &[IdentifierMatch],
+    config: &CorrelationConfig,
+) -> Vec<CorrelationMatch> {
     if matches.len() < 2 {
         return Vec::new();
     }
 
-    // Step 2: Find all pairs within proximity window
-    let proximate_pairs = proximity::find_proximate_pairs(text, &matches, config);
+    // Find all pairs within proximity window
+    let proximate_pairs = proximity::find_proximate_pairs(text, matches, config);
 
-    // Step 3: Classify each proximate pair using recognition rules
+    // Classify each proximate pair using recognition rules
     let mut results = Vec::new();
     for pair in proximate_pairs {
         let (Some(match_a), Some(match_b)) = (matches.get(pair.index_a), matches.get(pair.index_b))
@@ -69,7 +96,7 @@ pub(crate) fn detect_credential_pairs_with_config(
         };
 
         if let Some(pair_type) = rules::is_credential_pair(match_a, match_b) {
-            // Step 3b: Filter by enabled pairs in config
+            // Filter by enabled pairs in config
             if !config.enabled_pairs.contains(&pair_type) {
                 continue;
             }
@@ -326,5 +353,24 @@ mod tests {
             has_password,
             "Should detect password via credential builder: {matches:?}"
         );
+    }
+
+    #[test]
+    fn test_detect_from_matches_same_as_full_detection() {
+        let text = "username: admin@example.com\npassword: SuperSecret123!";
+        let matches = collect_all_identifiers(text);
+        let config = CorrelationConfig::default();
+
+        let from_text = detect_credential_pairs_with_config(text, &config);
+        let from_matches = detect_credential_pairs_from_matches(text, &matches, &config);
+
+        assert_eq!(
+            from_text.len(),
+            from_matches.len(),
+            "Pre-collected matches should produce same results as full detection"
+        );
+        for (a, b) in from_text.iter().zip(from_matches.iter()) {
+            assert_eq!(a.pair_type, b.pair_type);
+        }
     }
 }

@@ -32,7 +32,9 @@
 //! - O(n) time where n is document length
 //! - Suitable for documents >10MB
 
+use super::correlation;
 use super::types::{IdentifierMatch, IdentifierType};
+use super::{CorrelationConfig, CorrelationMatch};
 use super::{
     biometric::BiometricIdentifierBuilder, credentials::CredentialIdentifierBuilder,
     financial::FinancialIdentifierBuilder, government::GovernmentIdentifierBuilder,
@@ -525,12 +527,59 @@ impl StreamingScanner {
     pub fn capacity(&self) -> usize {
         self.capacity
     }
+
+    /// Detect credential pairs from buffered matches using default configuration.
+    ///
+    /// Runs proximity and pair recognition on the matches already in the ring buffer,
+    /// avoiding re-scanning the text. The original text is needed for line-distance
+    /// calculation.
+    ///
+    /// Uses default proximity window: 5 lines, 500 chars, all pair types enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The original text that was scanned (needed for proximity calculation)
+    ///
+    /// # Returns
+    ///
+    /// A vec of `CorrelationMatch` values with `High` confidence.
+    /// Empty if fewer than 2 buffered matches or no pairs found.
+    #[must_use]
+    pub fn detect_credential_pairs(&self, text: &str) -> Vec<CorrelationMatch> {
+        self.detect_credential_pairs_with_config(text, &CorrelationConfig::default())
+    }
+
+    /// Detect credential pairs from buffered matches with custom configuration.
+    ///
+    /// Runs proximity and pair recognition on the matches already in the ring buffer,
+    /// avoiding re-scanning the text. The original text is needed for line-distance
+    /// calculation.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The original text that was scanned (needed for proximity calculation)
+    /// * `config` - Custom proximity window and enabled pair types
+    ///
+    /// # Returns
+    ///
+    /// A vec of `CorrelationMatch` values with `High` confidence.
+    /// Empty if fewer than 2 buffered matches or no pairs found.
+    #[must_use]
+    pub fn detect_credential_pairs_with_config(
+        &self,
+        text: &str,
+        config: &CorrelationConfig,
+    ) -> Vec<CorrelationMatch> {
+        let matches = self.snapshot();
+        correlation::detect_credential_pairs_from_matches(text, &matches, config)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
+    use crate::primitives::identifiers::CredentialPairType;
 
     #[test]
     fn test_scanner_creation() {
@@ -581,5 +630,83 @@ mod tests {
 
         let stats = scanner.stats();
         assert!(stats.total_dropped > 0); // Some should be dropped
+    }
+
+    #[test]
+    fn test_detect_credential_pairs_from_buffer() {
+        let scanner = StreamingScanner::new(1000);
+        // Scanner detects emails and UUIDs; these don't form a known credential pair,
+        // so we verify the mechanism runs correctly and returns empty
+        let text = "user@example.com and 550e8400-e29b-41d4-a716-446655440000";
+
+        let count = scanner.scan_all_identifiers(text);
+        assert!(count >= 2, "Should detect email and UUID");
+
+        let pairs = scanner.detect_credential_pairs(text);
+        // Email + UUID isn't a known credential pair type
+        assert!(
+            pairs.is_empty(),
+            "Email + UUID should not form a credential pair: {pairs:?}"
+        );
+    }
+
+    #[test]
+    fn test_detect_credential_pairs_with_custom_config() {
+        let scanner = StreamingScanner::new(1000);
+        let text = "user@example.com and 550e8400-e29b-41d4-a716-446655440000";
+
+        scanner.scan_all_identifiers(text);
+
+        let config = CorrelationConfig {
+            max_proximity_lines: 1,
+            max_proximity_chars: 500,
+            ..CorrelationConfig::default()
+        };
+        let pairs = scanner.detect_credential_pairs_with_config(text, &config);
+        // Custom config works without error
+        assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn test_detect_credential_pairs_empty_buffer() {
+        let scanner = StreamingScanner::new(1000);
+        // No scan performed — buffer is empty
+        let pairs = scanner.detect_credential_pairs("some text");
+        assert!(pairs.is_empty(), "Empty buffer should produce no pairs");
+    }
+
+    #[test]
+    fn test_detect_credential_pairs_after_overflow() {
+        // Use a very small buffer so earlier matches get dropped
+        let scanner = StreamingScanner::new(3);
+        // Many emails — only last 3 matches kept
+        let text =
+            "a@x.com b@x.com c@x.com d@x.com e@x.com and 550e8400-e29b-41d4-a716-446655440000";
+
+        scanner.scan_all_identifiers(text);
+        let stats = scanner.stats();
+        assert!(stats.total_dropped > 0, "Some matches should be dropped");
+
+        // Pair detection should work on retained matches only (no panic)
+        let pairs = scanner.detect_credential_pairs(text);
+        assert!(pairs.len() <= stats.current_size);
+    }
+
+    #[test]
+    fn test_detect_credential_pairs_uses_snapshot() {
+        let scanner = StreamingScanner::new(1000);
+        let text = "user@example.com";
+
+        scanner.scan_all_identifiers(text);
+        let buffer_before = scanner.len();
+
+        // detect_credential_pairs should use snapshot (non-destructive)
+        let _ = scanner.detect_credential_pairs(text);
+
+        assert_eq!(
+            scanner.len(),
+            buffer_before,
+            "Pair detection should not drain the buffer"
+        );
     }
 }

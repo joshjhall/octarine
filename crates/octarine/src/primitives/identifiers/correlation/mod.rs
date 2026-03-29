@@ -19,6 +19,9 @@ pub(crate) mod rules;
 mod types;
 
 pub(crate) use builder::CorrelationBuilder;
-pub(crate) use detection::{detect_credential_pairs, detect_credential_pairs_with_config};
+pub(crate) use detection::{
+    detect_credential_pairs, detect_credential_pairs_from_matches,
+    detect_credential_pairs_with_config,
+};
 pub(crate) use rules::is_credential_pair;
 pub use types::{CorrelationConfig, CorrelationMatch, CredentialPairType};

@@ -21,9 +21,10 @@
 //! ```
 
 use super::builder::{
-    BiometricBuilder, CredentialsBuilder, DatabaseBuilder, EnvironmentBuilder, FinancialBuilder,
-    GenericBuilder, GovernmentBuilder, IdentifierBuilder, LocationBuilder, MedicalBuilder,
-    MetricsBuilder, NetworkBuilder, OrganizationalBuilder, PersonalBuilder, TokenBuilder,
+    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EnvironmentBuilder,
+    FinancialBuilder, GenericBuilder, GovernmentBuilder, IdentifierBuilder, LocationBuilder,
+    MedicalBuilder, MetricsBuilder, NetworkBuilder, OrganizationalBuilder, PersonalBuilder,
+    TokenBuilder,
 };
 use super::types::{IdentifierMatch, IdentifierType};
 
@@ -278,6 +279,26 @@ impl Identifiers {
     #[must_use]
     pub fn metrics(&self) -> MetricsBuilder {
         self.inner.metrics()
+    }
+
+    /// Access credential pair correlation operations
+    ///
+    /// Detects related credentials that appear near each other in text
+    /// (e.g., AWS access key + secret key within a few lines).
+    ///
+    /// Compliance: SOC2 CC6.1, PCI-DSS Requirement 3
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use octarine::identifiers::Identifiers;
+    ///
+    /// let identifiers = Identifiers::new();
+    /// let pairs = identifiers.correlation().detect_pairs("username: admin@example.com\npassword: SuperSecret123!");
+    /// ```
+    #[must_use]
+    pub fn correlation(&self) -> CorrelationBuilder {
+        self.inner.correlation()
     }
 
     /// Detect the type of an identifier
