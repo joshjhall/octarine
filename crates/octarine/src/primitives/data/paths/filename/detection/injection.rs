@@ -2,10 +2,8 @@
 //!
 //! Functions to detect command substitution and variable expansion patterns.
 
-// Allow arithmetic operations and indexing in this module - they are intentional
-// and bounds-checked appropriately
+// Allow arithmetic operations in this module - they are intentional and bounds-checked
 #![allow(clippy::arithmetic_side_effects)]
-#![allow(clippy::indexing_slicing)]
 
 use super::characters::is_dangerous_shell_chars_present;
 
@@ -52,7 +50,7 @@ pub fn is_command_substitution_present(filename: &str) -> bool {
 pub fn is_variable_expansion_present(filename: &str) -> bool {
     let chars: Vec<char> = filename.chars().collect();
     for i in 0..chars.len() {
-        if chars[i] == '$'
+        if chars.get(i).copied() == Some('$')
             && let Some(&next) = chars.get(i + 1)
         {
             // $VAR pattern (letter or underscore after $)

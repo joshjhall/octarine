@@ -307,8 +307,12 @@ impl MockMcpServer {
             "tools/list" => McpResponse::tools_list_response(request.id, self.tools.clone()),
 
             "tools/call" => {
-                let name = request.params["name"].as_str().unwrap_or("");
-                let arguments = request.params["arguments"].clone();
+                let name = request
+                    .params
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let arguments = request.params.get("arguments").cloned().unwrap_or_default();
 
                 if let Some(handler) = self.handlers.get(name) {
                     match handler(arguments) {
@@ -345,7 +349,7 @@ mod tests {
     fn test_mcp_request_call_tool() {
         let req = McpRequest::call_tool(2, "my_tool", serde_json::json!({"arg": "value"}));
         assert_eq!(req.method, "tools/call");
-        assert_eq!(req.params["name"], "my_tool");
+        assert_eq!(req.params.get("name").expect("should have name"), "my_tool");
     }
 
     #[test]
@@ -374,7 +378,11 @@ mod tests {
 
         assert!(resp.result.is_some());
         assert_eq!(
-            resp.result.as_ref().expect("Result should be present")["protocolVersion"],
+            resp.result
+                .as_ref()
+                .expect("Result should be present")
+                .get("protocolVersion")
+                .expect("should have protocolVersion"),
             "2024-11-05"
         );
     }
@@ -387,9 +395,23 @@ mod tests {
         let req = McpRequest::list_tools(1);
         let resp = server.handle(req);
 
-        let tools = &resp.result.as_ref().expect("Result should be present")["tools"];
+        let tools = resp
+            .result
+            .as_ref()
+            .expect("Result should be present")
+            .get("tools")
+            .expect("should have tools");
         assert_eq!(tools.as_array().expect("Tools should be an array").len(), 1);
-        assert_eq!(tools[0]["name"], "test_tool");
+        assert_eq!(
+            tools
+                .as_array()
+                .expect("tools is array")
+                .first()
+                .expect("should have tool 0")
+                .get("name")
+                .expect("tool should have name"),
+            "test_tool"
+        );
     }
 
     #[test]
@@ -397,15 +419,32 @@ mod tests {
         let mut server = MockMcpServer::new();
         server.register_tool(McpTool::simple("greet", "Greet someone"));
         server.register_handler("greet", |params| {
-            let name = params["name"].as_str().unwrap_or("World");
+            let name = params
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("World");
             Ok(vec![McpContent::text(&format!("Hello, {}!", name))])
         });
 
         let req = McpRequest::call_tool(1, "greet", serde_json::json!({"name": "Alice"}));
         let resp = server.handle(req);
 
-        let content = &resp.result.as_ref().expect("Result should be present")["content"];
-        assert_eq!(content[0]["text"], "Hello, Alice!");
+        let content = resp
+            .result
+            .as_ref()
+            .expect("Result should be present")
+            .get("content")
+            .expect("should have content");
+        assert_eq!(
+            content
+                .as_array()
+                .expect("content is array")
+                .first()
+                .expect("should have content item 0")
+                .get("text")
+                .expect("content should have text"),
+            "Hello, Alice!"
+        );
     }
 
     #[test]

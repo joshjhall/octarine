@@ -30,15 +30,16 @@ pub fn is_private_ipv4(ip: &str) -> bool {
         return false;
     }
 
+    let (Some(octet0), Some(octet1)) = (octets.first().copied(), octets.get(1).copied()) else {
+        return false;
+    };
+
     // 10.0.0.0/8
-    #[allow(clippy::indexing_slicing)] // Safe: is_ipv4() validates octets.len() == 4
-    {
-        octets[0] == 10
-            // 172.16.0.0/12
-            || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
-            // 192.168.0.0/16
-            || (octets[0] == 192 && octets[1] == 168)
-    }
+    octet0 == 10
+        // 172.16.0.0/12
+        || (octet0 == 172 && (16..=31).contains(&octet1))
+        // 192.168.0.0/16
+        || (octet0 == 192 && octet1 == 168)
 }
 
 /// Check if IPv4 address is a loopback address (RFC 1122)

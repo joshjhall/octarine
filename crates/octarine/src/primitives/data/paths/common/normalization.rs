@@ -1,5 +1,4 @@
 // Allow clippy lints that are overly strict for this utility module
-#![allow(clippy::indexing_slicing)]
 #![allow(clippy::manual_strip)]
 
 //! Path normalization utilities

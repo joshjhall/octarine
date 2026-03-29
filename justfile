@@ -22,9 +22,6 @@ build:
 clippy:
     cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-# Run clippy with indexing_slicing explicitly denied (catches test code too)
-clippy-strict:
-    cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::indexing_slicing
 
 # Run cargo fmt (check only)
 fmt-check:

@@ -1,6 +1,5 @@
 // Allow clippy lints that are overly strict for this utility module
 #![allow(clippy::arithmetic_side_effects)]
-#![allow(clippy::indexing_slicing)]
 #![allow(clippy::manual_strip)]
 
 //! Path component extraction utilities
@@ -59,7 +58,7 @@ pub fn find_parent(path: &str) -> Option<&str> {
 
     match last_sep {
         Some(0) => Some("/"), // Path like "/home" -> parent is "/"
-        Some(pos) => Some(&path[..pos]),
+        Some(pos) => path.get(..pos),
         None => None, // No separator, no parent
     }
 }
@@ -113,7 +112,7 @@ pub fn filename(path: &str) -> &str {
     let last_sep = path.rfind('/').or_else(|| path.rfind('\\'));
 
     match last_sep {
-        Some(pos) => &path[pos + 1..],
+        Some(pos) => path.get(pos.saturating_add(1)..).unwrap_or(""),
         None => path, // No separator, entire path is filename
     }
 }
@@ -137,14 +136,14 @@ pub fn stem(path: &str) -> &str {
     let name = filename(path);
 
     // Handle hidden files (starting with dot)
-    if name.starts_with('.') && !name[1..].contains('.') {
+    if name.starts_with('.') && !name.get(1..).unwrap_or("").contains('.') {
         return name; // .hidden has no extension
     }
 
     // Find the last dot
     match name.rfind('.') {
         Some(0) => name, // .hidden or similar
-        Some(pos) => &name[..pos],
+        Some(pos) => name.get(..pos).unwrap_or(name),
         None => name, // No extension
     }
 }
@@ -173,14 +172,14 @@ pub fn find_extension(path: &str) -> Option<&str> {
     let name = filename(path);
 
     // Handle hidden files (starting with dot)
-    if name.starts_with('.') && !name[1..].contains('.') {
+    if name.starts_with('.') && !name.get(1..).unwrap_or("").contains('.') {
         return None; // .hidden has no extension
     }
 
     // Find the last dot
     match name.rfind('.') {
         Some(0) => None, // .hidden or similar
-        Some(pos) => Some(&name[pos + 1..]),
+        Some(pos) => name.get(pos.saturating_add(1)..),
         None => None, // No extension
     }
 }
@@ -222,7 +221,7 @@ pub fn extensions(path: &str) -> Vec<&str> {
 
     // Handle hidden files
     let name = if name.starts_with('.') {
-        &name[1..]
+        name.get(1..).unwrap_or("")
     } else {
         name
     };
@@ -230,7 +229,7 @@ pub fn extensions(path: &str) -> Vec<&str> {
     // Split by dots and skip the first part (the stem)
     let parts: Vec<&str> = name.split('.').collect();
     if parts.len() > 1 {
-        parts[1..].to_vec()
+        parts.get(1..).unwrap_or(&[]).to_vec()
     } else {
         Vec::new()
     }

@@ -40,9 +40,12 @@ pub fn parse_ssh_public_key(data: &str) -> Result<ParsedSshPublicKey, Problem> {
         ));
     }
 
-    // SAFETY: We've validated parts.len() >= 2 above
-    #[allow(clippy::indexing_slicing)]
-    let algorithm = parts[0];
+    let Some(algorithm) = parts.first() else {
+        return Err(Problem::validation(
+            "Invalid SSH public key format: expected 'algorithm base64-data [comment]'",
+        ));
+    };
+    let algorithm = *algorithm;
     let key_type = match algorithm {
         "ssh-rsa" => KeyType::SshRsa,
         "ssh-ed25519" => KeyType::SshEd25519,

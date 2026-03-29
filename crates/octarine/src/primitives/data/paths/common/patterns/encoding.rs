@@ -1,6 +1,5 @@
 // Allow clippy lints that are overly strict for this utility module
 #![allow(clippy::arithmetic_side_effects)]
-#![allow(clippy::indexing_slicing)]
 
 //! Encoding attack detection patterns
 //!
@@ -48,13 +47,13 @@ pub fn is_url_encoding_present(path: &str) -> bool {
     let mut i = 0;
 
     while i < bytes.len() {
-        if bytes[i] == b'%' {
+        if bytes.get(i).copied() == Some(b'%') {
             // Check if followed by two hex digits
             if let Some(slice) = bytes.get(i + 1..i + 3)
                 && slice.len() == 2
             {
-                let c1 = slice[0] as char;
-                let c2 = slice[1] as char;
+                let c1 = slice.first().copied().unwrap_or(0) as char;
+                let c2 = slice.get(1).copied().unwrap_or(0) as char;
                 if c1.is_ascii_hexdigit() && c2.is_ascii_hexdigit() {
                     return true;
                 }
@@ -105,9 +104,12 @@ pub fn is_multiple_encoding_present(path: &str) -> bool {
             && slice.len() >= 5
         {
             // Looking for %25XX where XX is hex
-            if slice[0] == b'%' && slice[1] == b'2' && slice[2] == b'5' {
-                let c1 = slice[3] as char;
-                let c2 = slice[4] as char;
+            if slice.first().copied() == Some(b'%')
+                && slice.get(1).copied() == Some(b'2')
+                && slice.get(2).copied() == Some(b'5')
+            {
+                let c1 = slice.get(3).copied().unwrap_or(0) as char;
+                let c2 = slice.get(4).copied().unwrap_or(0) as char;
                 if c1.is_ascii_hexdigit() && c2.is_ascii_hexdigit() {
                     return true;
                 }
@@ -228,7 +230,7 @@ pub fn decode_percent_sequence(s: &str) -> Option<u8> {
         return None;
     }
 
-    let hex = &s[1..3];
+    let hex = s.get(1..3).unwrap_or("");
     u8::from_str_radix(hex, 16).ok()
 }
 

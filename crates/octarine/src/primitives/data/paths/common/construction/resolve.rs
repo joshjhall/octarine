@@ -1,5 +1,4 @@
 // Allow clippy lints that are overly strict for this utility module
-#![allow(clippy::indexing_slicing)]
 #![allow(clippy::unnecessary_map_or)]
 
 //! Path resolution utilities
@@ -251,10 +250,10 @@ pub fn clean_path_std(path: &str) -> String {
 
     if components.is_empty() {
         ".".to_string()
-    } else if components.len() == 1 && components[0] == "/" {
+    } else if components.len() == 1 && components.first().map(String::as_str) == Some("/") {
         "/".to_string()
-    } else if components[0] == "/" {
-        format!("/{}", components[1..].join("/"))
+    } else if components.first().map(String::as_str) == Some("/") {
+        format!("/{}", components.get(1..).unwrap_or(&[]).join("/"))
     } else {
         components.join("/")
     }
@@ -281,11 +280,15 @@ pub fn with_extension(path: &str, new_ext: &str) -> String {
     let name = filename(path);
 
     // Find extension start
-    let stem = if name.starts_with('.') && !name[1..].contains('.') {
+    let stem = if name.starts_with('.') && !name.get(1..).unwrap_or("").contains('.') {
         // Hidden file without extension
         name
     } else if let Some(pos) = name.rfind('.') {
-        if pos == 0 { name } else { &name[..pos] }
+        if pos == 0 {
+            name
+        } else {
+            name.get(..pos).unwrap_or(name)
+        }
     } else {
         name
     };

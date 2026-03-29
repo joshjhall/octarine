@@ -58,7 +58,6 @@
 // These lints are appropriate for production code but not for test infrastructure.
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
-#![allow(clippy::indexing_slicing)]
 #![allow(clippy::type_complexity)]
 
 pub mod api;

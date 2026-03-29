@@ -547,7 +547,6 @@ pub fn is_docker_hub_token(value: &str) -> bool {
 /// assert!(!is_test_api_key("sk_live_realproductionkey")); // Production key
 /// ```
 #[must_use]
-#[allow(clippy::indexing_slicing)]
 pub fn is_test_api_key(key: &str) -> bool {
     let trimmed = key.trim();
     let upper = trimmed.to_uppercase();
@@ -649,7 +648,7 @@ pub fn is_test_api_key(key: &str) -> bool {
         };
 
     if prefix_len > 0 && prefix_len < trimmed.len() {
-        let suffix = &trimmed[prefix_len..];
+        let suffix = trimmed.get(prefix_len..).unwrap_or("");
         if !suffix.is_empty() {
             let first_char = suffix.chars().next().unwrap_or('x');
             if suffix.chars().all(|c| c == first_char) {

@@ -266,6 +266,11 @@ The `testing/` module provides:
 
 ### Running Tests
 
+**CRITICAL: Always use `just` recipes** — never invoke `cargo test`, `cargo clippy`,
+`cargo fmt`, or `bash scripts/` directly. `just` recipes ensure consistent flags
+(`--all-features`, `-j4`, etc.) across agents, CI, and human developers. Raw
+commands can miss feature-gated code or use wrong flags.
+
 ```bash
 just test                                 # All workspace tests
 just test-octarine                        # Octarine crate only
@@ -275,12 +280,14 @@ just test-verbose                         # All tests with output visible
 just test-with-fixtures                   # With testing feature enabled
 ```
 
-**Equivalent cargo commands** (prefer `just` recipes above):
+### Linting & Architecture
 
 ```bash
-cargo test -p octarine                    # All tests
-cargo test -p octarine --lib -- "module"  # Unit tests by module (--lib is required)
-cargo test -p octarine --features testing # With test utilities
+just clippy                               # Clippy with all targets + all features
+just fmt-check                            # Check formatting (no changes)
+just fmt                                  # Apply formatting
+just arch-check                           # Architecture enforcement (layer boundaries, naming, lint rules)
+just preflight                            # Full pre-push: fmt + clippy + arch-check + test
 ```
 
 ### Performance Tests

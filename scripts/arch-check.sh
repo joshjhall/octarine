@@ -136,7 +136,7 @@ if should_run "test-lint"; then
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     while IFS=: read -r line _rest; do
-      add_warning "[WARN]  test-lint: $(rel "$file"):${line} -- indexing_slicing must not be allowed (use .get()/.first()/.last())"
+      add_error "[ERROR] test-lint: $(rel "$file"):${line} -- indexing_slicing must not be allowed (use .get()/.first()/.last())"
     done < <(grep -n 'allow.*clippy::indexing_slicing' "$file" 2>/dev/null || true)
   done < <(files_to_check)
 fi

@@ -2,9 +2,6 @@
 //!
 //! Functions to detect and analyze file extensions.
 
-// Allow indexing in this module - bounds are checked appropriately
-#![allow(clippy::indexing_slicing)]
-
 use super::constants::DANGEROUS_EXTENSIONS;
 
 // ============================================================================
@@ -45,7 +42,7 @@ pub fn is_extension_present(filename: &str) -> bool {
 #[must_use]
 pub fn find_extension(filename: &str) -> Option<&str> {
     // Handle dot files - they don't have extensions
-    if filename.starts_with('.') && !filename[1..].contains('.') {
+    if filename.starts_with('.') && !filename.get(1..).unwrap_or("").contains('.') {
         return None;
     }
 
@@ -55,7 +52,7 @@ pub fn find_extension(filename: &str) -> Option<&str> {
         } else {
             // pos + 1 is safe: pos < filename.len() (from rfind) and pos > 0 (checked above)
             let start = pos.saturating_add(1);
-            Some(&filename[start..])
+            filename.get(start..)
         }
     })
 }
@@ -75,12 +72,12 @@ pub fn find_extension(filename: &str) -> Option<&str> {
 #[must_use]
 pub fn stem(filename: &str) -> &str {
     // Handle dot files
-    if filename.starts_with('.') && !filename[1..].contains('.') {
+    if filename.starts_with('.') && !filename.get(1..).unwrap_or("").contains('.') {
         return filename;
     }
 
     match filename.rfind('.') {
-        Some(pos) if pos > 0 => &filename[..pos],
+        Some(pos) if pos > 0 => filename.get(..pos).unwrap_or(filename),
         _ => filename,
     }
 }
@@ -102,7 +99,7 @@ pub fn stem(filename: &str) -> &str {
 #[must_use]
 pub fn is_double_extension_present(filename: &str) -> bool {
     let start = if filename.starts_with('.') { 1 } else { 0 };
-    filename[start..].matches('.').count() >= 2
+    filename.get(start..).unwrap_or("").matches('.').count() >= 2
 }
 
 /// Check if filename has a dangerous extension

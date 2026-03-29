@@ -2,10 +2,8 @@
 //!
 //! Functions for glob-style pattern matching on filenames.
 
-// Allow arithmetic operations and indexing in this module - they are intentional
-// and bounds-checked appropriately for the glob matching algorithm
+// Allow arithmetic operations in this module - they are intentional and bounds-checked
 #![allow(clippy::arithmetic_side_effects)]
-#![allow(clippy::indexing_slicing)]
 
 // ============================================================================
 // Pattern Matching
@@ -42,7 +40,7 @@ fn match_glob_recursive(text: &[char], pattern: &[char], ti: usize, pi: usize) -
         return ti >= text.len();
     }
 
-    if pattern[pi] == '*' {
+    if pattern.get(pi).copied() == Some('*') {
         // Try matching zero or more characters
         for skip in 0..=(text.len() - ti) {
             if match_glob_recursive(text, pattern, ti + skip, pi + 1) {
@@ -52,10 +50,14 @@ fn match_glob_recursive(text: &[char], pattern: &[char], ti: usize, pi: usize) -
         false
     } else if ti >= text.len() {
         false
-    } else if pattern[pi] == '?' || pattern[pi] == text[ti] {
-        match_glob_recursive(text, pattern, ti + 1, pi + 1)
     } else {
-        false
+        let pc = pattern.get(pi).copied();
+        let tc = text.get(ti).copied();
+        if pc == Some('?') || pc == tc {
+            match_glob_recursive(text, pattern, ti + 1, pi + 1)
+        } else {
+            false
+        }
     }
 }
 

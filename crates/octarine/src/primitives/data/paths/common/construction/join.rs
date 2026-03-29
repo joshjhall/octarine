@@ -1,5 +1,4 @@
 // Allow clippy lints that are overly strict for this utility module
-#![allow(clippy::indexing_slicing)]
 #![allow(clippy::unnecessary_map_or)]
 
 //! Path joining utilities
@@ -129,8 +128,9 @@ pub fn join_many_unix(segments: &[&str]) -> String {
         return String::new();
     }
 
-    let mut result = segments[0].to_string();
-    for segment in &segments[1..] {
+    let first = segments.first().unwrap_or(&"");
+    let mut result = (*first).to_string();
+    for segment in segments.get(1..).unwrap_or(&[]) {
         result = join_unix(&result, segment);
     }
     result
@@ -154,8 +154,9 @@ pub fn join_many_windows(segments: &[&str]) -> String {
         return String::new();
     }
 
-    let mut result = segments[0].to_string();
-    for segment in &segments[1..] {
+    let first = segments.first().unwrap_or(&"");
+    let mut result = (*first).to_string();
+    for segment in segments.get(1..).unwrap_or(&[]) {
         result = join_windows(&result, segment);
     }
     result
