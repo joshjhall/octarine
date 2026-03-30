@@ -46,11 +46,11 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 pub use api_keys::{
     detect_api_key_provider, is_api_key, is_artifactory_token, is_aws_access_key,
     is_aws_secret_key, is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key,
-    is_cloudflare_ca_key, is_databricks_token, is_docker_hub_token, is_gcp_api_key,
-    is_github_token, is_gitlab_token, is_mailchimp_key, is_mailgun_key, is_npm_token, is_nuget_key,
-    is_onepassword_token, is_onepassword_vault_ref, is_paypal_token, is_pypi_token, is_resend_key,
-    is_shopify_token, is_square_token, is_stripe_key, is_telegram_bot_token, is_test_api_key,
-    is_url_with_credentials, is_vault_token,
+    is_cloudflare_ca_key, is_databricks_token, is_discord_token, is_discord_webhook,
+    is_docker_hub_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_mailchimp_key,
+    is_mailgun_key, is_npm_token, is_nuget_key, is_onepassword_token, is_onepassword_vault_ref,
+    is_paypal_token, is_pypi_token, is_resend_key, is_shopify_token, is_square_token,
+    is_stripe_key, is_telegram_bot_token, is_test_api_key, is_url_with_credentials, is_vault_token,
 };
 
 // Re-export SSH functions
@@ -164,6 +164,9 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_telegram_bot_token(trimmed) {
         return Some(TokenType::TelegramToken);
+    }
+    if is_discord_token(trimmed) || is_discord_webhook(trimmed) {
+        return Some(TokenType::DiscordToken);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -386,6 +389,25 @@ mod tests {
         assert_eq!(
             detect_token_type(&format!("12345678:{}", "A".repeat(35))),
             Some(TokenType::TelegramToken)
+        );
+
+        // Discord bot token
+        assert_eq!(
+            detect_token_type(&format!(
+                "M{}.{}.{}",
+                "A".repeat(23),
+                "AbCdEf",
+                "a".repeat(27)
+            )),
+            Some(TokenType::DiscordToken)
+        );
+
+        // Discord webhook URL
+        assert_eq!(
+            detect_token_type(
+                "https://discord.com/api/webhooks/123456789/abcdefABCDEF_-0123456789"
+            ),
+            Some(TokenType::DiscordToken)
         );
 
         // Not a token

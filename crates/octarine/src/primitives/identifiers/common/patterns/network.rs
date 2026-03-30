@@ -388,6 +388,22 @@ pub static API_KEY_TELEGRAM: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\b[0-9]{8,10}:[a-zA-Z0-9_-]{35}\b").expect("BUG: Invalid regex pattern")
 });
 
+/// Discord bot token pattern
+/// Format: [MN][A-Za-z\d]{23,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}
+/// (example omitted — GitHub push protection flags realistic patterns)
+pub static API_KEY_DISCORD_BOT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[MN][A-Za-z0-9]{23,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Discord webhook URL pattern
+/// Format: https://discord(app)?.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+
+/// Example: "https://discord.com/api/webhooks/123456789/abcdef..."
+pub static API_KEY_DISCORD_WEBHOOK: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"https://discord(?:app)?\.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -503,6 +519,8 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_ARTIFACTORY,
         &*API_KEY_DOCKER_HUB,
         &*API_KEY_TELEGRAM,
+        &*API_KEY_DISCORD_BOT,
+        &*API_KEY_DISCORD_WEBHOOK,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -561,6 +579,8 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_ARTIFACTORY,
         &*API_KEY_DOCKER_HUB,
         &*API_KEY_TELEGRAM,
+        &*API_KEY_DISCORD_BOT,
+        &*API_KEY_DISCORD_WEBHOOK,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,

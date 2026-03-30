@@ -55,6 +55,8 @@ pub enum ApiKeyProvider {
     DockerHub,
     /// Telegram bot tokens ([0-9]{8,10}:[a-zA-Z0-9_-]{35})
     Telegram,
+    /// Discord bot tokens and webhook URLs
+    Discord,
     /// Generic or unknown provider
     Generic,
 }
@@ -84,6 +86,7 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Artifactory => write!(f, "Artifactory"),
             Self::DockerHub => write!(f, "Docker Hub"),
             Self::Telegram => write!(f, "Telegram"),
+            Self::Discord => write!(f, "Discord"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -270,4 +273,6 @@ pub enum TokenType {
     DockerHubToken,
     /// Telegram bot token ([0-9]{8,10}:[a-zA-Z0-9_-]{35})
     TelegramToken,
+    /// Discord bot token or webhook URL
+    DiscordToken,
 }

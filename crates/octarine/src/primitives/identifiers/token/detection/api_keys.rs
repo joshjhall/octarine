@@ -161,6 +161,13 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Telegram);
     }
 
+    // Discord bot tokens or webhook URLs
+    if patterns::network::API_KEY_DISCORD_BOT.is_match(key)
+        || patterns::network::API_KEY_DISCORD_WEBHOOK.is_match(key)
+    {
+        return Some(ApiKeyProvider::Discord);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -544,6 +551,31 @@ pub fn is_telegram_bot_token(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_TELEGRAM.is_match(trimmed)
+}
+
+/// Check if value is a Discord bot token
+///
+/// Discord bot tokens have three base64-encoded segments separated by dots.
+/// The first segment starts with M or N (base64 encoding of numeric user IDs).
+#[must_use]
+pub fn is_discord_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_DISCORD_BOT.is_match(trimmed)
+}
+
+/// Check if value is a Discord webhook URL
+///
+/// Discord webhook URLs match `https://discord(app)?.com/api/webhooks/{id}/{token}`
+#[must_use]
+pub fn is_discord_webhook(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_DISCORD_WEBHOOK.is_match(trimmed)
 }
 
 /// Check if API key is a known test/development key
@@ -1323,6 +1355,86 @@ mod tests {
         assert_eq!(
             detect_api_key_provider(&format!("12345678:{}", "A".repeat(35))),
             Some(ApiKeyProvider::Telegram)
+        );
+    }
+
+    #[test]
+    fn test_is_discord_token() {
+        // Valid: starts with M, 24+ chars, dot, 6 chars, dot, 27+ chars
+        assert!(is_discord_token(&format!(
+            "M{}.{}.{}",
+            "A".repeat(23),
+            "AbCdEf",
+            "a".repeat(27)
+        )));
+        // Valid: starts with N
+        assert!(is_discord_token(&format!(
+            "N{}.{}.{}",
+            "B".repeat(25),
+            "X1y2Z3",
+            "b".repeat(30)
+        )));
+        // Invalid: starts with A (not M or N)
+        assert!(!is_discord_token(&format!(
+            "A{}.{}.{}",
+            "A".repeat(23),
+            "AbCdEf",
+            "a".repeat(27)
+        )));
+        // Invalid: middle segment too short
+        assert!(!is_discord_token(&format!(
+            "M{}.{}.{}",
+            "A".repeat(23),
+            "Ab",
+            "a".repeat(27)
+        )));
+        // Invalid: last segment too short
+        assert!(!is_discord_token(&format!(
+            "M{}.{}.{}",
+            "A".repeat(23),
+            "AbCdEf",
+            "a".repeat(5)
+        )));
+        assert!(!is_discord_token("not-a-discord-token"));
+    }
+
+    #[test]
+    fn test_is_discord_webhook() {
+        // Valid webhook URL
+        assert!(is_discord_webhook(
+            "https://discord.com/api/webhooks/123456789/abcdefABCDEF_-0123456789"
+        ));
+        // Valid with discordapp.com
+        assert!(is_discord_webhook(
+            "https://discordapp.com/api/webhooks/987654321/tokenvalue123"
+        ));
+        // Invalid: wrong domain
+        assert!(!is_discord_webhook(
+            "https://example.com/api/webhooks/123/abc"
+        ));
+        // Invalid: not a webhook path
+        assert!(!is_discord_webhook("https://discord.com/api/users/123"));
+        assert!(!is_discord_webhook("not-a-url"));
+    }
+
+    #[test]
+    fn test_detect_discord_provider() {
+        // Bot token
+        assert_eq!(
+            detect_api_key_provider(&format!(
+                "M{}.{}.{}",
+                "A".repeat(23),
+                "AbCdEf",
+                "a".repeat(27)
+            )),
+            Some(ApiKeyProvider::Discord)
+        );
+        // Webhook URL
+        assert_eq!(
+            detect_api_key_provider(
+                "https://discord.com/api/webhooks/123456789/abcdefABCDEF_-0123456789"
+            ),
+            Some(ApiKeyProvider::Discord)
         );
     }
 
