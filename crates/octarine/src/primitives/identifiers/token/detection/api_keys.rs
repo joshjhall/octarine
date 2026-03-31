@@ -176,6 +176,15 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Slack);
     }
 
+    // Twilio Account SIDs (AC...) and API Key SIDs (SK...)
+    if (key.starts_with("AC") || key.starts_with("SK"))
+        && key.len() == 34
+        && (patterns::network::API_KEY_TWILIO_SID.is_match(key)
+            || patterns::network::API_KEY_TWILIO_API_KEY.is_match(key))
+    {
+        return Some(ApiKeyProvider::Twilio);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -609,6 +618,30 @@ pub fn is_slack_webhook(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_SLACK_WEBHOOK.is_match(trimmed)
+}
+
+/// Check if value is a Twilio Account SID
+///
+/// Twilio Account SIDs start with "AC" followed by 32 lowercase hex characters (34 total).
+#[must_use]
+pub fn is_twilio_account_sid(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_TWILIO_SID.is_match(trimmed)
+}
+
+/// Check if value is a Twilio API Key SID
+///
+/// Twilio API Key SIDs start with "SK" followed by 32 lowercase hex characters (34 total).
+#[must_use]
+pub fn is_twilio_api_key_sid(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_TWILIO_API_KEY.is_match(trimmed)
 }
 
 /// Check if API key is a known test/development key
@@ -1532,6 +1565,50 @@ mod tests {
                 "c".repeat(24)
             )),
             Some(ApiKeyProvider::Slack)
+        );
+    }
+
+    #[test]
+    fn test_is_twilio_account_sid() {
+        // Valid: AC + 32 hex chars
+        assert!(is_twilio_account_sid(&format!("AC{}", "a".repeat(32))));
+        assert!(is_twilio_account_sid(&format!(
+            "AC{}",
+            "0123456789abcdef".repeat(2)
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_twilio_account_sid(&format!("AB{}", "a".repeat(32))));
+        // Invalid: uppercase hex (pattern requires lowercase)
+        assert!(!is_twilio_account_sid(&format!("AC{}", "A".repeat(32))));
+        // Invalid: too short
+        assert!(!is_twilio_account_sid(&format!("AC{}", "a".repeat(31))));
+        // Invalid: too long
+        assert!(!is_twilio_account_sid(&format!("AC{}", "a".repeat(33))));
+        assert!(!is_twilio_account_sid("not-a-twilio-sid"));
+    }
+
+    #[test]
+    fn test_is_twilio_api_key_sid() {
+        // Valid: SK + 32 hex chars
+        assert!(is_twilio_api_key_sid(&format!("SK{}", "a".repeat(32))));
+        // Invalid: wrong prefix
+        assert!(!is_twilio_api_key_sid(&format!("SL{}", "a".repeat(32))));
+        // Invalid: too short
+        assert!(!is_twilio_api_key_sid(&format!("SK{}", "a".repeat(31))));
+        assert!(!is_twilio_api_key_sid("not-a-twilio-key"));
+    }
+
+    #[test]
+    fn test_detect_twilio_provider() {
+        // Account SID
+        assert_eq!(
+            detect_api_key_provider(&format!("AC{}", "a".repeat(32))),
+            Some(ApiKeyProvider::Twilio)
+        );
+        // API Key SID
+        assert_eq!(
+            detect_api_key_provider(&format!("SK{}", "b".repeat(32))),
+            Some(ApiKeyProvider::Twilio)
         );
     }
 

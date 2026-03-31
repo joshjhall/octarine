@@ -419,6 +419,16 @@ pub static API_KEY_SLACK_WEBHOOK: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// Twilio Account SID pattern
+/// Format: AC[a-f0-9]{32}
+pub static API_KEY_TWILIO_SID: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bAC[a-f0-9]{32}\b").expect("BUG: Invalid regex pattern"));
+
+/// Twilio API Key SID pattern
+/// Format: SK[a-f0-9]{32}
+pub static API_KEY_TWILIO_API_KEY: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bSK[a-f0-9]{32}\b").expect("BUG: Invalid regex pattern"));
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -538,6 +548,8 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_DISCORD_WEBHOOK,
         &*API_KEY_SLACK,
         &*API_KEY_SLACK_WEBHOOK,
+        &*API_KEY_TWILIO_SID,
+        &*API_KEY_TWILIO_API_KEY,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -600,6 +612,8 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_DISCORD_WEBHOOK,
         &*API_KEY_SLACK,
         &*API_KEY_SLACK_WEBHOOK,
+        &*API_KEY_TWILIO_SID,
+        &*API_KEY_TWILIO_API_KEY,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,

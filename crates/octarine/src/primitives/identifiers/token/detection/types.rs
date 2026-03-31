@@ -59,6 +59,8 @@ pub enum ApiKeyProvider {
     Discord,
     /// Slack tokens (bot, user, app, config, legacy) and webhook URLs
     Slack,
+    /// Twilio Account SIDs (AC...) and API Key SIDs (SK...)
+    Twilio,
     /// Generic or unknown provider
     Generic,
 }
@@ -90,6 +92,7 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Telegram => write!(f, "Telegram"),
             Self::Discord => write!(f, "Discord"),
             Self::Slack => write!(f, "Slack"),
+            Self::Twilio => write!(f, "Twilio"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -280,4 +283,6 @@ pub enum TokenType {
     DiscordToken,
     /// Slack token (bot, user, app, config, legacy) or webhook URL
     SlackToken,
+    /// Twilio Account SID (AC...) or API Key SID (SK...)
+    TwilioToken,
 }
