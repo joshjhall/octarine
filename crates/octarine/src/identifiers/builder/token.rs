@@ -195,6 +195,12 @@ impl TokenBuilder {
         self.inner.is_docker_hub_token(value)
     }
 
+    /// Check if value is a Telegram bot token
+    #[must_use]
+    pub fn is_telegram_bot_token(&self, value: &str) -> bool {
+        self.inner.is_telegram_bot_token(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -689,6 +695,12 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_docker_hub_token(&self, token: &str) -> String {
         self.inner.mask_docker_hub_token(token)
+    }
+
+    /// Mask Telegram bot token
+    #[must_use]
+    pub fn mask_telegram_bot_token(&self, token: &str) -> String {
+        self.inner.mask_telegram_bot_token(token)
     }
 
     // ============================================================================

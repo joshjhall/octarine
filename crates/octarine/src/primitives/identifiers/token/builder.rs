@@ -146,6 +146,11 @@ impl TokenIdentifierBuilder {
         detection::is_docker_hub_token(value)
     }
 
+    /// Check if value is a Telegram bot token
+    pub fn is_telegram_bot_token(&self, value: &str) -> bool {
+        detection::is_telegram_bot_token(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -652,6 +657,11 @@ impl TokenIdentifierBuilder {
     /// Mask Docker Hub PAT (convenience wrapper)
     pub fn mask_docker_hub_token(&self, token: &str) -> String {
         sanitization::mask_docker_hub_token(token)
+    }
+
+    /// Mask Telegram bot token (convenience wrapper)
+    pub fn mask_telegram_bot_token(&self, token: &str) -> String {
+        sanitization::mask_telegram_bot_token(token)
     }
 
     // =========================================================================

@@ -1,1 +1,2 @@
 - [Use just recipes](feedback_just_recipes.md) — reference just recipes in plans/docs, never raw cargo/bash commands
+- [Complete provider integration](feedback_complete_provider_integration.md) — new providers need builder, sanitization, and Layer 3 wrapping, not just detection

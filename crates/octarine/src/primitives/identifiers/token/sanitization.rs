@@ -659,6 +659,18 @@ pub fn mask_docker_hub_token(token: &str) -> String {
     mask_api_key(token)
 }
 
+/// Mask Telegram bot token, preserving the numeric ID prefix
+///
+/// Format: `{numeric_id}:{secret}` → `{numeric_id}:****`
+#[must_use]
+pub fn mask_telegram_bot_token(token: &str) -> String {
+    let trimmed = token.trim();
+    match trimmed.split_once(':') {
+        Some((id, _secret)) if !id.is_empty() => format!("{id}:****"),
+        _ => "[TELEGRAM_TOKEN]".to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -787,5 +799,22 @@ mod tests {
     fn test_mask_session_id() {
         let session = "a1b2c3d4e5f6g7h8i9j0";
         assert_eq!(mask_session_id(session), "a1b2c3d4****");
+    }
+
+    #[test]
+    fn test_mask_telegram_bot_token() {
+        // Valid token: preserves numeric ID, masks secret
+        let token = format!("123456789:{}", "A".repeat(35));
+        assert_eq!(mask_telegram_bot_token(&token), "123456789:****");
+
+        // Whitespace trimmed
+        let padded = format!("  123456789:{}  ", "B".repeat(35));
+        assert_eq!(mask_telegram_bot_token(&padded), "123456789:****");
+
+        // Malformed: no colon
+        assert_eq!(mask_telegram_bot_token("not-a-token"), "[TELEGRAM_TOKEN]");
+
+        // Malformed: empty string
+        assert_eq!(mask_telegram_bot_token(""), "[TELEGRAM_TOKEN]");
     }
 }
