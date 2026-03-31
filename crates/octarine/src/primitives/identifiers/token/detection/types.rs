@@ -57,6 +57,8 @@ pub enum ApiKeyProvider {
     Telegram,
     /// Discord bot tokens and webhook URLs
     Discord,
+    /// Slack tokens (bot, user, app, config, legacy) and webhook URLs
+    Slack,
     /// Generic or unknown provider
     Generic,
 }
@@ -87,6 +89,7 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::DockerHub => write!(f, "Docker Hub"),
             Self::Telegram => write!(f, "Telegram"),
             Self::Discord => write!(f, "Discord"),
+            Self::Slack => write!(f, "Slack"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -275,4 +278,6 @@ pub enum TokenType {
     TelegramToken,
     /// Discord bot token or webhook URL
     DiscordToken,
+    /// Slack token (bot, user, app, config, legacy) or webhook URL
+    SlackToken,
 }

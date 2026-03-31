@@ -404,6 +404,21 @@ pub static API_KEY_DISCORD_WEBHOOK: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// Slack token pattern (matches bot, user, config, and legacy xox* formats)
+/// Formats: xoxb-..., xoxp-..., xoxe.xoxp-..., xoxs-..., xoxa-..., xapp-...
+/// (examples omitted — GitHub push protection flags realistic patterns)
+pub static API_KEY_SLACK: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b(?:xox[bpseari]|xapp)-[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]+)*\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Slack webhook URL pattern
+/// Format: https://hooks.slack.com/services/T.../B.../...
+pub static API_KEY_SLACK_WEBHOOK: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Vault Reference pattern
 /// Example: "op://vault/item/field" or "op://vault/item"
 pub static ONEPASSWORD_VAULT_REF: Lazy<Regex> = Lazy::new(|| {
@@ -521,6 +536,8 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_TELEGRAM,
         &*API_KEY_DISCORD_BOT,
         &*API_KEY_DISCORD_WEBHOOK,
+        &*API_KEY_SLACK,
+        &*API_KEY_SLACK_WEBHOOK,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
     ]
@@ -581,6 +598,8 @@ pub fn all() -> Vec<&'static Regex> {
         &*API_KEY_TELEGRAM,
         &*API_KEY_DISCORD_BOT,
         &*API_KEY_DISCORD_WEBHOOK,
+        &*API_KEY_SLACK,
+        &*API_KEY_SLACK_WEBHOOK,
         &*ONEPASSWORD_VAULT_REF,
         &*BEARER_TOKEN,
         &*SSH_PUBLIC_KEY,

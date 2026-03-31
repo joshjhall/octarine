@@ -168,6 +168,14 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Discord);
     }
 
+    // Slack tokens (xox*, xapp-) or webhook URLs
+    if key_lower.starts_with("xox") || key_lower.starts_with("xapp-") {
+        return Some(ApiKeyProvider::Slack);
+    }
+    if patterns::network::API_KEY_SLACK_WEBHOOK.is_match(key) {
+        return Some(ApiKeyProvider::Slack);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -576,6 +584,31 @@ pub fn is_discord_webhook(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_DISCORD_WEBHOOK.is_match(trimmed)
+}
+
+/// Check if value is a Slack token (any format)
+///
+/// Matches bot (xoxb-), user (xoxp-), app (xapp-), config (xoxe.xoxp-),
+/// and legacy (xoxs-, xoxa-) token formats.
+#[must_use]
+pub fn is_slack_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_SLACK.is_match(trimmed)
+}
+
+/// Check if value is a Slack webhook URL
+///
+/// Matches `https://hooks.slack.com/services/T.../B.../...` format.
+#[must_use]
+pub fn is_slack_webhook(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_SLACK_WEBHOOK.is_match(trimmed)
 }
 
 /// Check if API key is a known test/development key
@@ -1435,6 +1468,70 @@ mod tests {
                 "https://discord.com/api/webhooks/123456789/abcdefABCDEF_-0123456789"
             ),
             Some(ApiKeyProvider::Discord)
+        );
+    }
+
+    #[test]
+    fn test_is_slack_token() {
+        // Valid: bot token (xoxb-)
+        assert!(is_slack_token(&format!(
+            "xoxb-{}-{}",
+            "1".repeat(12),
+            "A".repeat(24)
+        )));
+        // Valid: user token (xoxp-)
+        assert!(is_slack_token(&format!(
+            "xoxp-{}-{}",
+            "2".repeat(12),
+            "b".repeat(32)
+        )));
+        // Valid: app token (xapp-)
+        assert!(is_slack_token(&format!(
+            "xapp-{}-{}",
+            "3".repeat(10),
+            "c".repeat(20)
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_slack_token("xoxz-1234567890-abcdef"));
+        // Invalid: too short after prefix
+        assert!(!is_slack_token("xoxb-short"));
+        assert!(!is_slack_token("not-a-slack-token"));
+    }
+
+    #[test]
+    fn test_is_slack_webhook() {
+        // Valid webhook
+        assert!(is_slack_webhook(&format!(
+            "https://hooks.slack.com/services/T{}/B{}/{}",
+            "A".repeat(10),
+            "B".repeat(10),
+            "c".repeat(24)
+        )));
+        // Invalid: wrong domain
+        assert!(!is_slack_webhook(
+            "https://example.com/services/TABC/BBCD/xyz"
+        ));
+        // Invalid: not a webhook path
+        assert!(!is_slack_webhook("https://hooks.slack.com/api/users"));
+        assert!(!is_slack_webhook("not-a-url"));
+    }
+
+    #[test]
+    fn test_detect_slack_provider() {
+        // Bot token
+        assert_eq!(
+            detect_api_key_provider(&format!("xoxb-{}-{}", "1".repeat(12), "A".repeat(24))),
+            Some(ApiKeyProvider::Slack)
+        );
+        // Webhook URL
+        assert_eq!(
+            detect_api_key_provider(&format!(
+                "https://hooks.slack.com/services/T{}/B{}/{}",
+                "A".repeat(10),
+                "B".repeat(10),
+                "c".repeat(24)
+            )),
+            Some(ApiKeyProvider::Slack)
         );
     }
 
