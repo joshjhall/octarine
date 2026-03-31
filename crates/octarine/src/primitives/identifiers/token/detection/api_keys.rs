@@ -185,6 +185,11 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Twilio);
     }
 
+    // SendGrid API keys (SG.{22}.{43})
+    if key.starts_with("SG.") {
+        return Some(ApiKeyProvider::SendGrid);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -642,6 +647,19 @@ pub fn is_twilio_api_key_sid(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_TWILIO_API_KEY.is_match(trimmed)
+}
+
+/// Check if value is a SendGrid API key
+///
+/// SendGrid keys start with "SG." followed by two base64-like segments
+/// (22 chars, dot, 43 chars).
+#[must_use]
+pub fn is_sendgrid_key(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_SENDGRID.is_match(trimmed)
 }
 
 /// Check if API key is a known test/development key
@@ -1609,6 +1627,48 @@ mod tests {
         assert_eq!(
             detect_api_key_provider(&format!("SK{}", "b".repeat(32))),
             Some(ApiKeyProvider::Twilio)
+        );
+    }
+
+    #[test]
+    fn test_is_sendgrid_key() {
+        // Valid: SG. + 22 chars + . + 43 chars
+        assert!(is_sendgrid_key(&format!(
+            "SG.{}.{}",
+            "A".repeat(22),
+            "b".repeat(43)
+        )));
+        // Valid: with underscores and dashes
+        assert!(is_sendgrid_key(&format!(
+            "SG.{}.{}",
+            "Ab_-Cd0123456789012345", "abcdefghijklmnopqrstuvwxyz01234567890123456"
+        )));
+        // Invalid: wrong prefix
+        assert!(!is_sendgrid_key(&format!(
+            "XX.{}.{}",
+            "A".repeat(22),
+            "b".repeat(43)
+        )));
+        // Invalid: first segment too short
+        assert!(!is_sendgrid_key(&format!(
+            "SG.{}.{}",
+            "A".repeat(21),
+            "b".repeat(43)
+        )));
+        // Invalid: second segment too short
+        assert!(!is_sendgrid_key(&format!(
+            "SG.{}.{}",
+            "A".repeat(22),
+            "b".repeat(42)
+        )));
+        assert!(!is_sendgrid_key("not-a-sendgrid-key"));
+    }
+
+    #[test]
+    fn test_detect_sendgrid_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("SG.{}.{}", "A".repeat(22), "b".repeat(43))),
+            Some(ApiKeyProvider::SendGrid)
         );
     }
 

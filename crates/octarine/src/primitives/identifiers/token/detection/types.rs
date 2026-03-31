@@ -61,6 +61,8 @@ pub enum ApiKeyProvider {
     Slack,
     /// Twilio Account SIDs (AC...) and API Key SIDs (SK...)
     Twilio,
+    /// SendGrid API keys (SG.{22}.{43})
+    SendGrid,
     /// Generic or unknown provider
     Generic,
 }
@@ -93,6 +95,7 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Discord => write!(f, "Discord"),
             Self::Slack => write!(f, "Slack"),
             Self::Twilio => write!(f, "Twilio"),
+            Self::SendGrid => write!(f, "SendGrid"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -285,4 +288,6 @@ pub enum TokenType {
     SlackToken,
     /// Twilio Account SID (AC...) or API Key SID (SK...)
     TwilioToken,
+    /// SendGrid API key (SG.{22}.{43})
+    SendGridToken,
 }
