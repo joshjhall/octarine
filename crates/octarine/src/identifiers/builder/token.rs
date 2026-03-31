@@ -201,6 +201,12 @@ impl TokenBuilder {
         self.inner.is_telegram_bot_token(value)
     }
 
+    /// Check if value is a SendGrid API key
+    #[must_use]
+    pub fn is_sendgrid_key(&self, value: &str) -> bool {
+        self.inner.is_sendgrid_key(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -701,6 +707,12 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_telegram_bot_token(&self, token: &str) -> String {
         self.inner.mask_telegram_bot_token(token)
+    }
+
+    /// Mask SendGrid API key
+    #[must_use]
+    pub fn mask_sendgrid_key(&self, key: &str) -> String {
+        self.inner.mask_sendgrid_key(key)
     }
 
     // ============================================================================

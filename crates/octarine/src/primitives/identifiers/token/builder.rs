@@ -151,6 +151,11 @@ impl TokenIdentifierBuilder {
         detection::is_telegram_bot_token(value)
     }
 
+    /// Check if value is a SendGrid API key
+    pub fn is_sendgrid_key(&self, value: &str) -> bool {
+        detection::is_sendgrid_key(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -662,6 +667,11 @@ impl TokenIdentifierBuilder {
     /// Mask Telegram bot token (convenience wrapper)
     pub fn mask_telegram_bot_token(&self, token: &str) -> String {
         sanitization::mask_telegram_bot_token(token)
+    }
+
+    /// Mask SendGrid API key (convenience wrapper)
+    pub fn mask_sendgrid_key(&self, key: &str) -> String {
+        sanitization::mask_sendgrid_key(key)
     }
 
     // =========================================================================

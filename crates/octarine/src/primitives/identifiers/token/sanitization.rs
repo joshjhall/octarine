@@ -671,6 +671,21 @@ pub fn mask_telegram_bot_token(token: &str) -> String {
     }
 }
 
+/// Mask SendGrid API key, preserving the `SG.` prefix and first 4 chars
+///
+/// Format: `SG.{seg1}.{seg2}` → `SG.{first4}****`
+#[must_use]
+pub fn mask_sendgrid_key(key: &str) -> String {
+    let trimmed = key.trim();
+    if let Some(rest) = trimmed.strip_prefix("SG.") {
+        let preview_len = rest.len().min(4);
+        let preview = rest.get(..preview_len).unwrap_or_default();
+        format!("SG.{preview}****")
+    } else {
+        "[SENDGRID_KEY]".to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -799,6 +814,23 @@ mod tests {
     fn test_mask_session_id() {
         let session = "a1b2c3d4e5f6g7h8i9j0";
         assert_eq!(mask_session_id(session), "a1b2c3d4****");
+    }
+
+    #[test]
+    fn test_mask_sendgrid_key() {
+        // Valid key: preserves SG. prefix and first 4 chars
+        let key = format!("SG.{}.{}", "A".repeat(22), "b".repeat(43));
+        assert_eq!(mask_sendgrid_key(&key), "SG.AAAA****");
+
+        // Whitespace trimmed
+        let padded = format!("  SG.{}.{}  ", "X".repeat(22), "y".repeat(43));
+        assert_eq!(mask_sendgrid_key(&padded), "SG.XXXX****");
+
+        // Malformed: wrong prefix
+        assert_eq!(mask_sendgrid_key("XX.something"), "[SENDGRID_KEY]");
+
+        // Malformed: empty string
+        assert_eq!(mask_sendgrid_key(""), "[SENDGRID_KEY]");
     }
 
     #[test]
