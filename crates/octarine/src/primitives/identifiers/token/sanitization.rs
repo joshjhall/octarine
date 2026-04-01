@@ -686,6 +686,36 @@ pub fn mask_sendgrid_key(key: &str) -> String {
     }
 }
 
+/// Mask Twilio Account SID, preserving the `AC` prefix and first 4 hex chars
+///
+/// Format: `AC{32 hex}` → `ACabcd****`
+#[must_use]
+pub fn mask_twilio_account_sid(sid: &str) -> String {
+    let trimmed = sid.trim();
+    if let Some(rest) = trimmed.strip_prefix("AC") {
+        let preview_len = rest.len().min(4);
+        let preview = rest.get(..preview_len).unwrap_or_default();
+        format!("AC{preview}****")
+    } else {
+        "[TWILIO_SID]".to_string()
+    }
+}
+
+/// Mask Twilio API Key SID, preserving the `SK` prefix and first 4 hex chars
+///
+/// Format: `SK{32 hex}` → `SKabcd****`
+#[must_use]
+pub fn mask_twilio_api_key_sid(sid: &str) -> String {
+    let trimmed = sid.trim();
+    if let Some(rest) = trimmed.strip_prefix("SK") {
+        let preview_len = rest.len().min(4);
+        let preview = rest.get(..preview_len).unwrap_or_default();
+        format!("SK{preview}****")
+    } else {
+        "[TWILIO_API_KEY]".to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -814,6 +844,36 @@ mod tests {
     fn test_mask_session_id() {
         let session = "a1b2c3d4e5f6g7h8i9j0";
         assert_eq!(mask_session_id(session), "a1b2c3d4****");
+    }
+
+    #[test]
+    fn test_mask_twilio_account_sid() {
+        // Valid: preserves AC prefix + first 4 hex chars
+        let sid = format!("AC{}", "a".repeat(32));
+        assert_eq!(mask_twilio_account_sid(&sid), "ACaaaa****");
+
+        // Whitespace trimmed
+        let padded = format!("  AC{}  ", "b".repeat(32));
+        assert_eq!(mask_twilio_account_sid(&padded), "ACbbbb****");
+
+        // Malformed: wrong prefix
+        assert_eq!(mask_twilio_account_sid("AB1234"), "[TWILIO_SID]");
+
+        // Malformed: empty string
+        assert_eq!(mask_twilio_account_sid(""), "[TWILIO_SID]");
+    }
+
+    #[test]
+    fn test_mask_twilio_api_key_sid() {
+        // Valid: preserves SK prefix + first 4 hex chars
+        let sid = format!("SK{}", "c".repeat(32));
+        assert_eq!(mask_twilio_api_key_sid(&sid), "SKcccc****");
+
+        // Malformed: wrong prefix
+        assert_eq!(mask_twilio_api_key_sid("SL1234"), "[TWILIO_API_KEY]");
+
+        // Malformed: empty string
+        assert_eq!(mask_twilio_api_key_sid(""), "[TWILIO_API_KEY]");
     }
 
     #[test]

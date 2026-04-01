@@ -187,7 +187,8 @@ pub use sanitization::{
     mask_gcp_key, mask_github_token, mask_jwt, mask_mailchimp_key, mask_mailgun_key,
     mask_npm_token, mask_nuget_key, mask_paypal_token, mask_pypi_token, mask_resend_key,
     mask_sendgrid_key, mask_session_id, mask_shopify_token, mask_square_token, mask_ssh_key,
-    mask_stripe_key, mask_telegram_bot_token, mask_vault_token,
+    mask_stripe_key, mask_telegram_bot_token, mask_twilio_account_sid, mask_twilio_api_key_sid,
+    mask_vault_token,
 };
 
 // Export test pattern detection functions (observe module testing)

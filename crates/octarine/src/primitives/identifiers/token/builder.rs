@@ -156,6 +156,16 @@ impl TokenIdentifierBuilder {
         detection::is_sendgrid_key(value)
     }
 
+    /// Check if value is a Twilio Account SID
+    pub fn is_twilio_account_sid(&self, value: &str) -> bool {
+        detection::is_twilio_account_sid(value)
+    }
+
+    /// Check if value is a Twilio API Key SID
+    pub fn is_twilio_api_key_sid(&self, value: &str) -> bool {
+        detection::is_twilio_api_key_sid(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -672,6 +682,16 @@ impl TokenIdentifierBuilder {
     /// Mask SendGrid API key (convenience wrapper)
     pub fn mask_sendgrid_key(&self, key: &str) -> String {
         sanitization::mask_sendgrid_key(key)
+    }
+
+    /// Mask Twilio Account SID (convenience wrapper)
+    pub fn mask_twilio_account_sid(&self, sid: &str) -> String {
+        sanitization::mask_twilio_account_sid(sid)
+    }
+
+    /// Mask Twilio API Key SID (convenience wrapper)
+    pub fn mask_twilio_api_key_sid(&self, sid: &str) -> String {
+        sanitization::mask_twilio_api_key_sid(sid)
     }
 
     // =========================================================================
