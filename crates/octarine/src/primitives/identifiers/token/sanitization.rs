@@ -716,6 +716,32 @@ pub fn mask_twilio_api_key_sid(sid: &str) -> String {
     }
 }
 
+/// Mask Slack token, preserving the type prefix (xoxb-, xoxp-, xapp-, etc.)
+///
+/// Format: `{prefix}-{rest}` → `{prefix}-****`
+#[must_use]
+pub fn mask_slack_token(token: &str) -> String {
+    let trimmed = token.trim();
+    match trimmed.split_once('-') {
+        Some((prefix, _rest)) if prefix.starts_with("xox") || prefix.starts_with("xapp") => {
+            format!("{prefix}-****")
+        }
+        _ => "[SLACK_TOKEN]".to_string(),
+    }
+}
+
+/// Mask Slack webhook URL, preserving the domain and masking service path segments
+///
+/// Format: `https://hooks.slack.com/services/T.../B.../...` → `https://hooks.slack.com/services/****`
+#[must_use]
+pub fn mask_slack_webhook(url: &str) -> String {
+    let trimmed = url.trim();
+    match trimmed.strip_prefix("https://hooks.slack.com/services/") {
+        Some(rest) if !rest.is_empty() => "https://hooks.slack.com/services/****".to_string(),
+        _ => "[SLACK_WEBHOOK]".to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -844,6 +870,62 @@ mod tests {
     fn test_mask_session_id() {
         let session = "a1b2c3d4e5f6g7h8i9j0";
         assert_eq!(mask_session_id(session), "a1b2c3d4****");
+    }
+
+    #[test]
+    fn test_mask_slack_token() {
+        // Valid: bot token preserves prefix
+        assert_eq!(
+            mask_slack_token(&format!("xoxb-{}-{}", "1".repeat(12), "A".repeat(24))),
+            "xoxb-****"
+        );
+
+        // Valid: user token
+        assert_eq!(
+            mask_slack_token(&format!("xoxp-{}-{}", "2".repeat(12), "B".repeat(32))),
+            "xoxp-****"
+        );
+
+        // Valid: app token
+        assert_eq!(
+            mask_slack_token(&format!("xapp-{}-{}", "3".repeat(10), "C".repeat(20))),
+            "xapp-****"
+        );
+
+        // Malformed: wrong prefix
+        assert_eq!(mask_slack_token("invalid-token"), "[SLACK_TOKEN]");
+
+        // Malformed: empty
+        assert_eq!(mask_slack_token(""), "[SLACK_TOKEN]");
+    }
+
+    #[test]
+    fn test_mask_slack_webhook() {
+        // Valid webhook
+        assert_eq!(
+            mask_slack_webhook(&format!(
+                "https://hooks.slack.com/services/T{}/B{}/{}",
+                "A".repeat(10),
+                "B".repeat(10),
+                "c".repeat(24)
+            )),
+            "https://hooks.slack.com/services/****"
+        );
+
+        // Whitespace trimmed
+        assert_eq!(
+            mask_slack_webhook("  https://hooks.slack.com/services/TABC/BBCD/xyz  "),
+            "https://hooks.slack.com/services/****"
+        );
+
+        // Malformed: wrong domain
+        assert_eq!(
+            mask_slack_webhook("https://example.com/services/T/B/x"),
+            "[SLACK_WEBHOOK]"
+        );
+
+        // Malformed: empty
+        assert_eq!(mask_slack_webhook(""), "[SLACK_WEBHOOK]");
     }
 
     #[test]

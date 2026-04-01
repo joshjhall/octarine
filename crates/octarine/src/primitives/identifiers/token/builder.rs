@@ -166,6 +166,16 @@ impl TokenIdentifierBuilder {
         detection::is_twilio_api_key_sid(value)
     }
 
+    /// Check if value is a Slack token (any format)
+    pub fn is_slack_token(&self, value: &str) -> bool {
+        detection::is_slack_token(value)
+    }
+
+    /// Check if value is a Slack webhook URL
+    pub fn is_slack_webhook(&self, value: &str) -> bool {
+        detection::is_slack_webhook(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -692,6 +702,16 @@ impl TokenIdentifierBuilder {
     /// Mask Twilio API Key SID (convenience wrapper)
     pub fn mask_twilio_api_key_sid(&self, sid: &str) -> String {
         sanitization::mask_twilio_api_key_sid(sid)
+    }
+
+    /// Mask Slack token (convenience wrapper)
+    pub fn mask_slack_token(&self, token: &str) -> String {
+        sanitization::mask_slack_token(token)
+    }
+
+    /// Mask Slack webhook URL (convenience wrapper)
+    pub fn mask_slack_webhook(&self, url: &str) -> String {
+        sanitization::mask_slack_webhook(url)
     }
 
     // =========================================================================

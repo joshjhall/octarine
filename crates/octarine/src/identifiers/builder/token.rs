@@ -219,6 +219,18 @@ impl TokenBuilder {
         self.inner.is_twilio_api_key_sid(value)
     }
 
+    /// Check if value is a Slack token (any format)
+    #[must_use]
+    pub fn is_slack_token(&self, value: &str) -> bool {
+        self.inner.is_slack_token(value)
+    }
+
+    /// Check if value is a Slack webhook URL
+    #[must_use]
+    pub fn is_slack_webhook(&self, value: &str) -> bool {
+        self.inner.is_slack_webhook(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -737,6 +749,18 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_twilio_api_key_sid(&self, sid: &str) -> String {
         self.inner.mask_twilio_api_key_sid(sid)
+    }
+
+    /// Mask Slack token
+    #[must_use]
+    pub fn mask_slack_token(&self, token: &str) -> String {
+        self.inner.mask_slack_token(token)
+    }
+
+    /// Mask Slack webhook URL
+    #[must_use]
+    pub fn mask_slack_webhook(&self, url: &str) -> String {
+        self.inner.mask_slack_webhook(url)
     }
 
     // ============================================================================
