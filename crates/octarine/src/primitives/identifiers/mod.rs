@@ -59,6 +59,9 @@ mod organizational;
 mod personal;
 mod token;
 
+// Entropy module - shared entropy primitives used by multiple detection domains
+pub(crate) mod entropy;
+
 // Network module - pub(crate) for IP types used by observe
 pub(crate) mod network;
 

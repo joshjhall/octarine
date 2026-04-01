@@ -2,9 +2,8 @@
 //!
 //! Pure validation functions for token identifiers.
 
-use super::super::super::common::patterns;
 use crate::primitives::Problem;
-use std::collections::{HashMap, HashSet};
+use crate::primitives::identifiers::entropy as entropy_core;
 
 // ============================================================================
 // Entropy Analysis for API Keys and Tokens
@@ -40,29 +39,7 @@ use std::collections::{HashMap, HashSet};
 /// ```
 #[must_use]
 pub fn calculate_shannon_entropy(s: &str) -> f64 {
-    if s.is_empty() {
-        return 0.0;
-    }
-
-    // Count character frequencies
-    let mut freq_map = std::collections::HashMap::new();
-    for c in s.chars() {
-        #[allow(clippy::arithmetic_side_effects)] // Safe: counting character occurrences
-        {
-            *freq_map.entry(c).or_insert(0) += 1;
-        }
-    }
-
-    let len = s.chars().count() as f64;
-    let mut entropy = 0.0;
-
-    // Calculate Shannon entropy: H = -Σ(p(x) * log2(p(x)))
-    for &count in freq_map.values() {
-        let probability = count as f64 / len;
-        entropy -= probability * probability.log2();
-    }
-
-    entropy
+    entropy_core::calculate_shannon_entropy(s)
 }
 
 /// Calculate character set diversity metrics
@@ -92,27 +69,7 @@ pub fn calculate_shannon_entropy(s: &str) -> f64 {
 /// ```
 #[must_use]
 pub fn calculate_char_diversity(s: &str) -> (usize, u8) {
-    let mut unique_chars = std::collections::HashSet::new();
-    let mut char_types = 0u8;
-
-    for c in s.chars() {
-        unique_chars.insert(c);
-
-        if c.is_lowercase() {
-            char_types |= 0b0001; // Bit 0: lowercase
-        }
-        if c.is_uppercase() {
-            char_types |= 0b0010; // Bit 1: uppercase
-        }
-        if c.is_numeric() {
-            char_types |= 0b0100; // Bit 2: digits
-        }
-        if !c.is_alphanumeric() {
-            char_types |= 0b1000; // Bit 3: special chars
-        }
-    }
-
-    (unique_chars.len(), char_types)
+    entropy_core::calculate_char_diversity(s)
 }
 
 /// Validate that a key/token meets minimum entropy requirements (strict - returns Result)
