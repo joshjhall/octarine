@@ -176,6 +176,16 @@ impl TokenIdentifierBuilder {
         detection::is_slack_webhook(value)
     }
 
+    /// Check if value is a Discord bot token
+    pub fn is_discord_token(&self, value: &str) -> bool {
+        detection::is_discord_token(value)
+    }
+
+    /// Check if value is a Discord webhook URL
+    pub fn is_discord_webhook(&self, value: &str) -> bool {
+        detection::is_discord_webhook(value)
+    }
+
     /// Check if value is a GitLab token
     pub fn is_gitlab_token(&self, value: &str) -> bool {
         detection::is_gitlab_token(value)
@@ -712,6 +722,16 @@ impl TokenIdentifierBuilder {
     /// Mask Slack webhook URL (convenience wrapper)
     pub fn mask_slack_webhook(&self, url: &str) -> String {
         sanitization::mask_slack_webhook(url)
+    }
+
+    /// Mask Discord bot token (convenience wrapper)
+    pub fn mask_discord_token(&self, token: &str) -> String {
+        sanitization::mask_discord_token(token)
+    }
+
+    /// Mask Discord webhook URL (convenience wrapper)
+    pub fn mask_discord_webhook(&self, url: &str) -> String {
+        sanitization::mask_discord_webhook(url)
     }
 
     // =========================================================================

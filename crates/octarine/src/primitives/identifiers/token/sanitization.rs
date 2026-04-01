@@ -742,6 +742,49 @@ pub fn mask_slack_webhook(url: &str) -> String {
     }
 }
 
+/// Mask Discord bot token, preserving the first segment (base64 user ID)
+///
+/// Format: `{user_id_b64}.{timestamp}.{hmac}` → `{user_id_b64}.****`
+#[must_use]
+pub fn mask_discord_token(token: &str) -> String {
+    let trimmed = token.trim();
+    match trimmed.split_once('.') {
+        Some((first_segment, _rest))
+            if first_segment.starts_with('M') || first_segment.starts_with('N') =>
+        {
+            format!("{first_segment}.****")
+        }
+        _ => "[DISCORD_TOKEN]".to_string(),
+    }
+}
+
+/// Mask Discord webhook URL, preserving the domain and webhook ID
+///
+/// Format: `https://discord(app)?.com/api/webhooks/{id}/{token}` → `...webhooks/{id}/****`
+#[must_use]
+pub fn mask_discord_webhook(url: &str) -> String {
+    let trimmed = url.trim();
+    let after_webhooks = trimmed
+        .strip_prefix("https://discord.com/api/webhooks/")
+        .or_else(|| trimmed.strip_prefix("https://discordapp.com/api/webhooks/"));
+    match after_webhooks {
+        Some(rest) if !rest.is_empty() => {
+            let domain = if trimmed.starts_with("https://discordapp.com") {
+                "https://discordapp.com"
+            } else {
+                "https://discord.com"
+            };
+            match rest.split_once('/') {
+                Some((id, _token)) if !id.is_empty() => {
+                    format!("{domain}/api/webhooks/{id}/****")
+                }
+                _ => format!("{domain}/api/webhooks/****"),
+            }
+        }
+        _ => "[DISCORD_WEBHOOK]".to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -870,6 +913,55 @@ mod tests {
     fn test_mask_session_id() {
         let session = "a1b2c3d4e5f6g7h8i9j0";
         assert_eq!(mask_session_id(session), "a1b2c3d4****");
+    }
+
+    #[test]
+    fn test_mask_discord_token() {
+        // Valid: preserves first segment (base64 user ID)
+        let token = format!("M{}.{}.{}", "A".repeat(23), "AbCdEf", "a".repeat(27));
+        assert_eq!(
+            mask_discord_token(&token),
+            format!("M{}.****", "A".repeat(23))
+        );
+
+        // Valid: starts with N
+        let token_n = format!("N{}.{}.{}", "B".repeat(25), "X1y2Z3", "b".repeat(30));
+        assert_eq!(
+            mask_discord_token(&token_n),
+            format!("N{}.****", "B".repeat(25))
+        );
+
+        // Malformed: wrong prefix
+        assert_eq!(mask_discord_token("invalid.token.here"), "[DISCORD_TOKEN]");
+
+        // Malformed: empty
+        assert_eq!(mask_discord_token(""), "[DISCORD_TOKEN]");
+    }
+
+    #[test]
+    fn test_mask_discord_webhook() {
+        // Valid webhook
+        assert_eq!(
+            mask_discord_webhook(
+                "https://discord.com/api/webhooks/123456789/abcdefABCDEF_-0123456789"
+            ),
+            "https://discord.com/api/webhooks/123456789/****"
+        );
+
+        // Valid with discordapp.com
+        assert_eq!(
+            mask_discord_webhook("https://discordapp.com/api/webhooks/987654321/tokenvalue123"),
+            "https://discordapp.com/api/webhooks/987654321/****"
+        );
+
+        // Malformed: wrong domain
+        assert_eq!(
+            mask_discord_webhook("https://example.com/api/webhooks/123/abc"),
+            "[DISCORD_WEBHOOK]"
+        );
+
+        // Malformed: empty
+        assert_eq!(mask_discord_webhook(""), "[DISCORD_WEBHOOK]");
     }
 
     #[test]

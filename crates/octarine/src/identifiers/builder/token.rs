@@ -231,6 +231,18 @@ impl TokenBuilder {
         self.inner.is_slack_webhook(value)
     }
 
+    /// Check if value is a Discord bot token
+    #[must_use]
+    pub fn is_discord_token(&self, value: &str) -> bool {
+        self.inner.is_discord_token(value)
+    }
+
+    /// Check if value is a Discord webhook URL
+    #[must_use]
+    pub fn is_discord_webhook(&self, value: &str) -> bool {
+        self.inner.is_discord_webhook(value)
+    }
+
     /// Check if value is a GitLab token
     #[must_use]
     pub fn is_gitlab_token(&self, value: &str) -> bool {
@@ -761,6 +773,18 @@ impl TokenBuilder {
     #[must_use]
     pub fn mask_slack_webhook(&self, url: &str) -> String {
         self.inner.mask_slack_webhook(url)
+    }
+
+    /// Mask Discord bot token
+    #[must_use]
+    pub fn mask_discord_token(&self, token: &str) -> String {
+        self.inner.mask_discord_token(token)
+    }
+
+    /// Mask Discord webhook URL
+    #[must_use]
+    pub fn mask_discord_webhook(&self, url: &str) -> String {
+        self.inner.mask_discord_webhook(url)
     }
 
     // ============================================================================
