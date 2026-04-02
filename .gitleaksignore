@@ -8,3 +8,7 @@ crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-re
 crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-fine-grained-pat:364
 crates/octarine/src/primitives/identifiers/token/detection/api_keys.rs:github-fine-grained-pat:378
 crates/octarine/src/primitives/identifiers/token/sanitization.rs:jwt:664
+crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:121
+crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:564
+crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:589
+crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:640

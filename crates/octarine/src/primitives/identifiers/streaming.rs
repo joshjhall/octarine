@@ -462,6 +462,11 @@ impl StreamingScanner {
                     continue;
                 }
 
+                IdentifierType::HighEntropyString => {
+                    // Entropy scanning integrated in issue #128
+                    continue;
+                }
+
                 IdentifierType::Unknown => {
                     // Don't scan for unknown types
                     continue;

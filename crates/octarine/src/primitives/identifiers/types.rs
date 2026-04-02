@@ -45,6 +45,7 @@ pub enum IdentifierType {
     Jwt,
     ApiKey,
     SessionId,
+    HighEntropyString, // Entropy-detected potential secrets
 
     // Database identifiers
     ConnectionString,
