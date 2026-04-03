@@ -116,9 +116,10 @@ pub use facade::Identifiers;
 
 // Re-export all domain-specific builders
 pub use builder::{
-    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EnvironmentBuilder,
-    FinancialBuilder, GenericBuilder, GovernmentBuilder, LocationBuilder, MedicalBuilder,
-    MetricsBuilder, NetworkBuilder, OrganizationalBuilder, PersonalBuilder, TokenBuilder,
+    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EntropyBuilder,
+    EnvironmentBuilder, FinancialBuilder, GenericBuilder, GovernmentBuilder, LocationBuilder,
+    MedicalBuilder, MetricsBuilder, NetworkBuilder, OrganizationalBuilder, PersonalBuilder,
+    TokenBuilder,
 };
 
 // Re-export types for public API

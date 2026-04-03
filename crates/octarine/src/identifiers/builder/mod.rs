@@ -67,6 +67,7 @@ mod biometric;
 mod correlation;
 mod credentials;
 mod database;
+mod entropy;
 mod environment;
 mod financial;
 mod generic;
@@ -84,6 +85,7 @@ pub use biometric::BiometricBuilder;
 pub use correlation::CorrelationBuilder;
 pub use credentials::CredentialsBuilder;
 pub use database::DatabaseBuilder;
+pub use entropy::EntropyBuilder;
 pub use environment::EnvironmentBuilder;
 pub use financial::FinancialBuilder;
 pub use generic::GenericBuilder;
@@ -244,6 +246,12 @@ impl IdentifierBuilder {
     #[must_use]
     pub fn metrics(&self) -> MetricsBuilder {
         MetricsBuilder::new()
+    }
+
+    /// Get entropy identifier builder (high-entropy string detection)
+    #[must_use]
+    pub fn entropy(&self) -> EntropyBuilder {
+        EntropyBuilder::new()
     }
 
     /// Get credential pair correlation builder

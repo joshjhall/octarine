@@ -21,10 +21,10 @@
 //! ```
 
 use super::builder::{
-    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EnvironmentBuilder,
-    FinancialBuilder, GenericBuilder, GovernmentBuilder, IdentifierBuilder, LocationBuilder,
-    MedicalBuilder, MetricsBuilder, NetworkBuilder, OrganizationalBuilder, PersonalBuilder,
-    TokenBuilder,
+    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EntropyBuilder,
+    EnvironmentBuilder, FinancialBuilder, GenericBuilder, GovernmentBuilder, IdentifierBuilder,
+    LocationBuilder, MedicalBuilder, MetricsBuilder, NetworkBuilder, OrganizationalBuilder,
+    PersonalBuilder, TokenBuilder,
 };
 use super::types::{IdentifierMatch, IdentifierType};
 
@@ -279,6 +279,17 @@ impl Identifiers {
     #[must_use]
     pub fn metrics(&self) -> MetricsBuilder {
         self.inner.metrics()
+    }
+
+    /// Access entropy identifier operations
+    ///
+    /// Detects high-entropy strings that may be secrets, API keys,
+    /// or generated passwords.
+    ///
+    /// Compliance: SOC2 CC6.1
+    #[must_use]
+    pub fn entropy(&self) -> EntropyBuilder {
+        self.inner.entropy()
     }
 
     /// Access credential pair correlation operations

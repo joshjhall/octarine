@@ -33,6 +33,7 @@
 //! - Suitable for documents >10MB
 
 use super::correlation;
+use super::entropy;
 use super::types::{IdentifierMatch, IdentifierType};
 use super::{CorrelationConfig, CorrelationMatch};
 use super::{
@@ -208,6 +209,12 @@ impl StreamingScanner {
 
         // Scan location identifiers
         for m in location.find_all_in_text(text) {
+            let _ = self.buffer.push(m);
+            total = total.saturating_add(1);
+        }
+
+        // Scan for high-entropy strings (potential secrets)
+        for m in entropy::detect_high_entropy_strings_in_text(text) {
             let _ = self.buffer.push(m);
             total = total.saturating_add(1);
         }
@@ -463,8 +470,10 @@ impl StreamingScanner {
                 }
 
                 IdentifierType::HighEntropyString => {
-                    // Entropy scanning integrated in issue #128
-                    continue;
+                    for m in entropy::detect_high_entropy_strings_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
                 }
 
                 IdentifierType::Unknown => {
