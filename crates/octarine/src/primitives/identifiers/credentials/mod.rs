@@ -125,6 +125,7 @@ pub mod redaction;
 // Internal modules - not directly accessible outside credentials/
 mod detection;
 mod sanitization;
+mod validation;
 
 // Re-export builder for convenient access
 pub use builder::CredentialIdentifierBuilder;

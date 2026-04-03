@@ -4,7 +4,7 @@
 
 use std::borrow::Cow;
 
-use super::{detection, redaction, sanitization};
+use super::{detection, redaction, sanitization, validation};
 
 /// Builder for credential identifier operations
 ///
@@ -129,6 +129,32 @@ impl CredentialIdentifierBuilder {
     #[must_use]
     pub fn redact_connection_strings_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
         sanitization::redact_connection_strings_in_text(text)
+    }
+
+    // Validation methods
+
+    /// Validate a connection string with embedded credentials
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the connection string format is invalid
+    pub fn validate_connection_string(
+        &self,
+        value: &str,
+    ) -> Result<(), crate::primitives::Problem> {
+        validation::validate_connection_string(value)
+    }
+
+    /// Validate a database connection string format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the database connection string format is invalid
+    pub fn validate_database_connection_string(
+        &self,
+        value: &str,
+    ) -> Result<(), crate::primitives::Problem> {
+        validation::validate_database_connection_string(value)
     }
 
     // Weak pattern detection methods
@@ -524,5 +550,55 @@ mod tests {
         let builder = CredentialIdentifierBuilder::new();
         assert!(builder.is_weak_passphrase("correct horse battery staple"));
         assert!(!builder.is_weak_passphrase("purple elephant dancing gracefully"));
+    }
+
+    // Validation tests
+
+    #[test]
+    fn test_validate_connection_string() {
+        let builder = CredentialIdentifierBuilder::new();
+
+        assert!(
+            builder
+                .validate_connection_string(
+                    "postgres://admin:strongP@ss99@db.example.com:5432/mydb"
+                )
+                .is_ok()
+        );
+        assert!(
+            builder
+                .validate_connection_string(
+                    "Server=db.example.com;Database=mydb;Password=Str0ngP@ss"
+                )
+                .is_ok()
+        );
+        assert!(builder.validate_connection_string("").is_err());
+        assert!(
+            builder
+                .validate_connection_string("not-a-connection-string")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validate_database_connection_string() {
+        let builder = CredentialIdentifierBuilder::new();
+
+        assert!(
+            builder
+                .validate_database_connection_string("postgres://host:5432/db")
+                .is_ok()
+        );
+        assert!(
+            builder
+                .validate_database_connection_string("redis://localhost:6379")
+                .is_ok()
+        );
+        assert!(builder.validate_database_connection_string("").is_err());
+        assert!(
+            builder
+                .validate_database_connection_string("http://example.com")
+                .is_err()
+        );
     }
 }
