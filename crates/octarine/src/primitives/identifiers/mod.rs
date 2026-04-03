@@ -112,6 +112,7 @@ pub(crate) use streaming::StreamingScanner;
 
 // Re-export domain builders for crate-internal use
 pub(crate) use biometric::BiometricIdentifierBuilder;
+pub(crate) use confidence::ConfidenceBuilder as ConfidenceIdentifierBuilder;
 pub(crate) use credentials::CredentialIdentifierBuilder;
 pub(crate) use database::DatabaseBuilder;
 pub(crate) use entropy::EntropyBuilder as EntropyIdentifierBuilder;
