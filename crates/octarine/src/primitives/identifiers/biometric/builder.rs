@@ -218,6 +218,29 @@ impl BiometricIdentifierBuilder {
         validation::validate_voice_id(id)
     }
 
+    /// Validate DNA sequence format
+    ///
+    /// Validates FASTA/FASTQ nucleotide sequences (A, T, C, G) and STR markers.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the DNA sequence format is invalid
+    pub fn validate_dna_sequence(&self, sequence: &str) -> Result<(), Problem> {
+        validation::validate_dna_sequence(sequence)
+    }
+
+    /// Validate biometric template format
+    ///
+    /// Validates templates with recognized prefixes (FMR, FIR, FTR, IIR,
+    /// biometric, bio_template) and base64-encoded content.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the biometric template format is invalid
+    pub fn validate_biometric_template(&self, template: &str) -> Result<(), Problem> {
+        validation::validate_biometric_template(template)
+    }
+
     // =========================================================================
     // Sanitization Methods - Individual Redaction (With Strategy)
     // =========================================================================
@@ -503,5 +526,42 @@ mod tests {
         let builder = BiometricIdentifierBuilder::new();
         let text = "voiceprint: VP1234567890ABCDEF";
         assert!(builder.is_biometric_present(text));
+    }
+
+    #[test]
+    fn test_builder_validate_dna_sequence() {
+        let builder = BiometricIdentifierBuilder::new();
+
+        assert!(
+            builder
+                .validate_dna_sequence("ATCGATCGATCGATCGATCG")
+                .is_ok()
+        );
+        assert!(builder.validate_dna_sequence("D3S1358: 15").is_ok());
+        assert!(builder.validate_dna_sequence("ATCG").is_err()); // Too short
+        assert!(builder.validate_dna_sequence("").is_err());
+    }
+
+    #[test]
+    fn test_builder_validate_biometric_template() {
+        let builder = BiometricIdentifierBuilder::new();
+
+        let content = "SGVsbG8gV29ybGQhIFRoaXMgaXMgYSB0ZXN0ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+        assert!(
+            builder
+                .validate_biometric_template(&format!("FMR: {content}"))
+                .is_ok()
+        );
+        assert!(
+            builder
+                .validate_biometric_template(&format!("biometric: {content}"))
+                .is_ok()
+        );
+        assert!(builder.validate_biometric_template("").is_err());
+        assert!(
+            builder
+                .validate_biometric_template("UNKNOWN: data")
+                .is_err()
+        );
     }
 }
