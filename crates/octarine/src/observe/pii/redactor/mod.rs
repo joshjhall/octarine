@@ -123,8 +123,8 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::Ssn => redact_ssns(&result, profile),
             PiiType::DriverLicense => redact_driver_licenses(&result, profile),
             PiiType::Passport => redact_passports(&result, profile),
-            PiiType::Vin | PiiType::Ein | PiiType::TaxId => {
-                // VIN, EIN, and Tax IDs use generic government ID redaction
+            PiiType::Vin | PiiType::Ein | PiiType::TaxId | PiiType::NationalId => {
+                // VIN, EIN, Tax IDs, and National IDs use generic government ID redaction
                 redact_government_ids(&result, profile)
             }
             // Financial
@@ -163,7 +163,11 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::IpAddress => redact_ip_addresses(&result, profile),
             PiiType::MacAddress => redact_mac_addresses(&result, profile),
             PiiType::Uuid => redact_uuids(&result, profile),
-            PiiType::Domain | PiiType::Url => redact_urls(&result, profile),
+            PiiType::Domain | PiiType::Url | PiiType::Hostname => redact_urls(&result, profile),
+            PiiType::Port => {
+                // Ports are too short to redact meaningfully
+                result
+            }
             // Catch-all
             PiiType::Generic => result,
         };

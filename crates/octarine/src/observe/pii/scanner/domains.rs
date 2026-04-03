@@ -67,6 +67,9 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     if !government.find_tax_ids_in_text(text).is_empty() {
         pii_types.push(PiiType::TaxId);
     }
+    if !government.find_national_ids_in_text(text).is_empty() {
+        pii_types.push(PiiType::NationalId);
+    }
 }
 
 /// Scan for medical PII (MRN, NPI, insurance, ICD codes, prescriptions)
@@ -294,6 +297,7 @@ pub(super) fn is_pii_present_with_config_impl(text: &str, config: &PiiScannerCon
             || !government.find_driver_licenses_in_text(text).is_empty()
             || !government.find_passports_in_text(text).is_empty()
             || !government.find_tax_ids_in_text(text).is_empty()
+            || !government.find_national_ids_in_text(text).is_empty()
         {
             return true;
         }

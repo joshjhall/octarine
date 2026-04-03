@@ -3,12 +3,12 @@
 //! Covers all 9 identifier domains:
 //! - Personal: Email, Phone, SSN, Name, Birthdate, Username
 //! - Financial: Credit Card, Bank Account, Routing Number
-//! - Government: SSN, Driver License, Passport, VIN, EIN, Tax ID
+//! - Government: SSN, Driver License, Passport, VIN, EIN, Tax ID, National ID
 //! - Medical: MRN, NPI, Insurance Number, ICD Code, Prescription
 //! - Biometric: Fingerprint ID, Face ID, Voice ID, Iris ID, DNA ID
 //! - Location: GPS Coordinates, Address, Postal Code
 //! - Organizational: Employee ID, Student ID, Badge Number
-//! - Network: IP Address, MAC Address, UUID, Domain, URL
+//! - Network: IP Address, MAC Address, UUID, Domain, URL, Hostname, Port
 //! - Token: API Key, JWT, Session ID, OAuth Token, SSH Key
 
 use serde::{Deserialize, Serialize};
@@ -58,6 +58,8 @@ pub enum PiiType {
     Ein,
     /// Tax ID (generic)
     TaxId,
+    /// National ID number (non-US government identifiers)
+    NationalId,
 
     // =========================================================================
     // Medical Domain (PHI - Protected Health Information)
@@ -120,6 +122,10 @@ pub enum PiiType {
     Domain,
     /// URL
     Url,
+    /// Hostname (bare hostname without scheme)
+    Hostname,
+    /// Network port number
+    Port,
 
     // =========================================================================
     // Token Domain (Secrets)
@@ -185,6 +191,7 @@ impl PiiType {
             Self::Vin => "vin",
             Self::Ein => "ein",
             Self::TaxId => "tax_id",
+            Self::NationalId => "national_id",
             // Medical
             Self::Mrn => "mrn",
             Self::Npi => "npi",
@@ -211,6 +218,8 @@ impl PiiType {
             Self::Uuid => "uuid",
             Self::Domain => "domain",
             Self::Url => "url",
+            Self::Hostname => "hostname",
+            Self::Port => "port",
             // Token
             Self::ApiKey => "api_key",
             Self::Jwt => "jwt",
@@ -242,7 +251,8 @@ impl PiiType {
             | Self::Passport
             | Self::Vin
             | Self::Ein
-            | Self::TaxId => "government",
+            | Self::TaxId
+            | Self::NationalId => "government",
             Self::Mrn
             | Self::Npi
             | Self::InsuranceNumber
@@ -253,7 +263,13 @@ impl PiiType {
             }
             Self::GpsCoordinates | Self::Address | Self::PostalCode => "location",
             Self::EmployeeId | Self::StudentId | Self::BadgeNumber => "organizational",
-            Self::IpAddress | Self::MacAddress | Self::Uuid | Self::Domain | Self::Url => "network",
+            Self::IpAddress
+            | Self::MacAddress
+            | Self::Uuid
+            | Self::Domain
+            | Self::Url
+            | Self::Hostname
+            | Self::Port => "network",
             Self::ApiKey
             | Self::Jwt
             | Self::SessionId
@@ -279,7 +295,7 @@ impl PiiType {
             // Financial
             Self::CreditCard | Self::BankAccount | Self::RoutingNumber |
             // Government (identity theft risk)
-            Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId |
+            Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber |
             // Biometric (irreplaceable)
@@ -299,7 +315,7 @@ impl PiiType {
             // Personal data
             Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username |
             // Government IDs
-            Self::Ssn | Self::DriverLicense | Self::Passport | Self::TaxId |
+            Self::Ssn | Self::DriverLicense | Self::Passport | Self::TaxId | Self::NationalId |
             // Location
             Self::IpAddress | Self::GpsCoordinates | Self::Address | Self::PostalCode |
             // Biometric
@@ -489,6 +505,36 @@ mod tests {
         assert!(!PiiType::Email.is_secret());
         assert!(!PiiType::Ssn.is_secret());
         assert!(!PiiType::CreditCard.is_secret());
+    }
+
+    #[test]
+    fn test_national_id_classifications() {
+        assert_eq!(PiiType::NationalId.name(), "national_id");
+        assert_eq!(PiiType::NationalId.domain(), "government");
+        assert!(PiiType::NationalId.is_high_risk());
+        assert!(PiiType::NationalId.is_gdpr_protected());
+        assert!(!PiiType::NationalId.is_pci_protected());
+        assert!(!PiiType::NationalId.is_secret());
+    }
+
+    #[test]
+    fn test_hostname_classifications() {
+        assert_eq!(PiiType::Hostname.name(), "hostname");
+        assert_eq!(PiiType::Hostname.domain(), "network");
+        assert!(!PiiType::Hostname.is_high_risk());
+        assert!(!PiiType::Hostname.is_gdpr_protected());
+        assert!(!PiiType::Hostname.is_pci_protected());
+        assert!(!PiiType::Hostname.is_secret());
+    }
+
+    #[test]
+    fn test_port_classifications() {
+        assert_eq!(PiiType::Port.name(), "port");
+        assert_eq!(PiiType::Port.domain(), "network");
+        assert!(!PiiType::Port.is_high_risk());
+        assert!(!PiiType::Port.is_gdpr_protected());
+        assert!(!PiiType::Port.is_pci_protected());
+        assert!(!PiiType::Port.is_secret());
     }
 
     #[test]
