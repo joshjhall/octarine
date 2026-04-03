@@ -14,6 +14,8 @@ setup-glab
 # --- Git hooks via pre-commit ---
 if command -v pre-commit &>/dev/null; then
     echo "==> Installing pre-commit hooks..."
+    # pre-commit refuses to install when core.hooksPath is set
+    git config --unset-all core.hooksPath 2>/dev/null || true
     pre-commit install --install-hooks
     pre-commit install --hook-type pre-push
 else
