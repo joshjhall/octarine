@@ -82,7 +82,7 @@ pub fn is_high_entropy_hex(value: &str) -> bool {
 
 /// Check if a string has high entropy with custom configuration
 #[must_use]
-fn is_high_entropy_with_config(value: &str, config: &EntropyConfig) -> bool {
+pub fn is_high_entropy_with_config(value: &str, config: &EntropyConfig) -> bool {
     if value.len() < config.min_length {
         return false;
     }

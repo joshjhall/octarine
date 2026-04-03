@@ -111,6 +111,7 @@ pub(crate) use streaming::StreamingScanner;
 pub(crate) use biometric::BiometricIdentifierBuilder;
 pub(crate) use credentials::CredentialIdentifierBuilder;
 pub(crate) use database::DatabaseBuilder;
+pub(crate) use entropy::EntropyBuilder as EntropyIdentifierBuilder;
 pub(crate) use environment::EnvironmentBuilder;
 pub(crate) use financial::FinancialIdentifierBuilder;
 pub(crate) use generic::GenericBuilder;
