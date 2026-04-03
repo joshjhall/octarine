@@ -1052,4 +1052,35 @@ mod tests {
         let expired = EncryptedStorageError::Expired("key".to_string());
         assert_eq!(expired.to_string(), "secret 'key' has expired");
     }
+
+    #[tokio::test]
+    async fn test_with_secret_bytes_not_found() {
+        let storage = EncryptedSecretStorage::new();
+
+        let result = storage.with_secret_bytes("missing", "test", |_| ()).await;
+
+        assert!(matches!(result, Err(EncryptedStorageError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_with_secret_bytes_expired() {
+        let storage = EncryptedSecretStorage::new();
+
+        storage
+            .insert_typed(
+                "ephemeral",
+                "temp",
+                SecretType::AuthToken,
+                Classification::Confidential,
+                Some(Duration::from_nanos(1)),
+            )
+            .await
+            .expect("insert_typed");
+
+        tokio::time::sleep(Duration::from_millis(1)).await;
+
+        let result = storage.with_secret_bytes("ephemeral", "test", |_| ()).await;
+
+        assert!(matches!(result, Err(EncryptedStorageError::Expired(_))));
+    }
 }

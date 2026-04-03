@@ -397,4 +397,29 @@ mod tests {
         assert!(verify_multipart(key, parts, &mac));
         assert!(!verify_multipart(key, &[b"wrong", b"parts"], &mac));
     }
+
+    #[test]
+    fn test_compute_empty_key() {
+        let mac = compute(b"", b"message");
+        assert_eq!(mac.len(), 32);
+    }
+
+    #[test]
+    fn test_compute_empty_message() {
+        let mac = compute(b"secret-key", b"");
+        assert_eq!(mac.len(), 32);
+    }
+
+    #[test]
+    fn test_verify_wrong_length_mac() {
+        let key = b"secret-key";
+        let message = b"test message";
+
+        // Too short (16 bytes)
+        assert!(!verify(key, message, &[0u8; 16]));
+        // Too long (64 bytes)
+        assert!(!verify(key, message, &[0u8; 64]));
+        // Empty
+        assert!(!verify(key, message, &[]));
+    }
 }

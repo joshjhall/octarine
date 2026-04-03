@@ -224,4 +224,25 @@ mod tests {
 
         assert_ne!(v1, v2); // Different versions = different keys
     }
+
+    #[test]
+    fn test_derive_zero_length() {
+        let ikm = b"high-entropy-master-key-12345678";
+        let key = derive(ikm, None, DomainSeparator::new("test"), 0).expect("Zero-length failed");
+        assert!(key.is_empty());
+    }
+
+    #[test]
+    fn test_derive_exceeds_max() {
+        let ikm = b"high-entropy-master-key-12345678";
+        let result = derive(ikm, None, DomainSeparator::new("test"), 8161);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_derive_multiple_empty_purposes() {
+        let master = b"master-key-for-testing";
+        let keys = derive_multiple(master, &[]).expect("Empty purposes failed");
+        assert!(keys.is_empty());
+    }
 }

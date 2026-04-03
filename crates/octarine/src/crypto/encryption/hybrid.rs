@@ -187,4 +187,15 @@ mod tests {
         let result = decrypt(&keypair2, &encrypted);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_encrypt_decrypt_empty_plaintext() {
+        let keypair = generate_keypair().expect("Keygen failed");
+        let public_key = keypair.public_key();
+
+        let encrypted = encrypt(&public_key, b"").expect("Empty encrypt failed");
+        let decrypted = decrypt(&keypair, &encrypted).expect("Empty decrypt failed");
+
+        assert!(decrypted.is_empty());
+    }
 }
