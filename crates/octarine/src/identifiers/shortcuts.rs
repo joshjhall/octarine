@@ -689,19 +689,11 @@ pub fn is_phones_present(text: &str) -> bool {
 
 /// Check if text contains API keys
 ///
-/// Checks for common API key patterns and prefixes.
+/// Delegates to `NetworkBuilder::find_api_keys_in_text` for consistent
+/// detection using the builder's pattern matching.
 #[must_use]
 pub fn is_api_keys_present(text: &str) -> bool {
-    // Check for common API key prefixes
-    text.contains("sk_")
-        || text.contains("pk_")
-        || text.contains("api_key")
-        || text.contains("API_KEY")
-        || text.contains("apiKey")
-        || text.contains("ghp_")  // GitHub personal access token
-        || text.contains("gho_")  // GitHub OAuth token
-        || text.contains("AKIA") // AWS long-term access key
-        || text.contains("ASIA") // AWS STS temporary access key
+    !NetworkBuilder::new().find_api_keys_in_text(text).is_empty()
 }
 
 // CREDENTIAL PAIR CORRELATION SHORTCUTS
