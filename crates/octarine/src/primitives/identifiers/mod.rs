@@ -59,6 +59,9 @@ mod organizational;
 mod personal;
 mod token;
 
+// Confidence module - context-aware confidence scoring primitives
+pub(crate) mod confidence;
+
 // Entropy module - shared entropy primitives used by multiple detection domains
 pub(crate) mod entropy;
 

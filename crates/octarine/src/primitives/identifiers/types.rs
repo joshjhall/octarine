@@ -94,6 +94,27 @@ pub enum DetectionConfidence {
     High,   // Pattern match + validation
 }
 
+impl DetectionConfidence {
+    /// Boost confidence when contextual keywords are found near a match.
+    ///
+    /// When `context_present` is true, upgrades confidence one level:
+    /// - Low → Medium
+    /// - Medium → High
+    /// - High → High (already maximum)
+    ///
+    /// When `context_present` is false, returns `self` unchanged.
+    #[must_use]
+    pub fn with_context_boost(self, context_present: bool) -> Self {
+        if !context_present {
+            return self;
+        }
+        match self {
+            Self::Low => Self::Medium,
+            Self::Medium | Self::High => Self::High,
+        }
+    }
+}
+
 /// Phone number region enumeration
 ///
 /// Detected based on country code prefix in E.164 format.
@@ -374,5 +395,49 @@ impl CredentialMatch {
             self.credential_type.to_identifier_type(),
             DetectionConfidence::High,
         )
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+#[allow(clippy::panic, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_context_boost_low_to_medium() {
+        let boosted = DetectionConfidence::Low.with_context_boost(true);
+        assert_eq!(boosted, DetectionConfidence::Medium);
+    }
+
+    #[test]
+    fn test_context_boost_medium_to_high() {
+        let boosted = DetectionConfidence::Medium.with_context_boost(true);
+        assert_eq!(boosted, DetectionConfidence::High);
+    }
+
+    #[test]
+    fn test_context_boost_high_stays_high() {
+        let boosted = DetectionConfidence::High.with_context_boost(true);
+        assert_eq!(boosted, DetectionConfidence::High);
+    }
+
+    #[test]
+    fn test_context_boost_false_no_change() {
+        assert_eq!(
+            DetectionConfidence::Low.with_context_boost(false),
+            DetectionConfidence::Low
+        );
+        assert_eq!(
+            DetectionConfidence::Medium.with_context_boost(false),
+            DetectionConfidence::Medium
+        );
+        assert_eq!(
+            DetectionConfidence::High.with_context_boost(false),
+            DetectionConfidence::High
+        );
     }
 }
