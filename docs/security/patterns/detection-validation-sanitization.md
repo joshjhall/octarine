@@ -16,11 +16,11 @@ ______________________________________________________________________
 
 ```rust
 // Detection is intentionally sensitive
-pub fn has_traversal(path: &str) -> bool {
+pub fn is_traversal_present(path: &str) -> bool {
     path.contains("..")  // Will flag "file..txt" - that's OK for detection
 }
 
-pub fn has_command_injection(path: &str) -> bool {
+pub fn is_command_injection_present(path: &str) -> bool {
     path.contains("$(") || path.contains('`')  // Pattern matching
 }
 ```
@@ -95,13 +95,13 @@ ______________________________________________________________________
 
 ```rust
 // Validation is precise - uses Path::components()
-pub fn has_traversal_attempt(path: &str) -> bool {
+pub fn is_traversal_attempt_present(path: &str) -> bool {
     // Only flags actual traversal, not "file..txt"
     path.components().any(|c| c == Component::ParentDir)
 }
 
 pub fn validate_no_traversal(path: &str) -> Result<()> {
-    if has_traversal_attempt(path) {
+    if is_traversal_attempt_present(path) {
         Err(Problem::validation("Path contains directory traversal"))
     } else {
         Ok(())
@@ -111,7 +111,7 @@ pub fn validate_no_traversal(path: &str) -> Result<()> {
 
 **Why Validation Has Both `bool` and `Result`**:
 
-- `has_*` functions: Internal helpers for builder logic
+- `is_*_present` functions: Internal helpers for builder logic
 - `validate_*` functions: Public API for enforcement
 - Different implementation than detection (stricter)
 
@@ -179,7 +179,7 @@ ______________________________________________________________________
         │             │             │
         v             v             v
    DETECTION     VALIDATION    SANITIZATION
-   (has_*)       (validate_*)  (sanitize_*)
+   (is_*_present) (validate_*) (sanitize_*)
    → bool        → Result<()>  → Result<String>
 ```
 
@@ -189,7 +189,7 @@ ______________________________________________________________________
 
 ```rust
 // Step 1: DETECT potential issues (logging)
-if detection::has_traversal(path) {
+if detection::is_traversal_present(path) {
     observe::warn("suspicious_upload", "Potential traversal detected");
 }
 
@@ -205,9 +205,9 @@ let safe_path = sanitization::sanitize_path_strict(path)?;
 ```rust
 // Use DETECTION only - we want to find everything
 let issues = vec![
-    detection::has_traversal(path),
-    detection::has_command_injection(path),
-    detection::has_null_bytes(path),
+    detection::is_traversal_present(path),
+    detection::is_command_injection_present(path),
+    detection::is_null_bytes_present(path),
 ];
 
 generate_security_report(issues);  // Report includes false positives
@@ -234,15 +234,14 @@ ______________________________________________________________________
 
 | Pattern | Return | Module | Example |
 |---------|--------|--------|---------|
-| `is_*` | `bool` | All | `is_absolute`, `is_hidden_file` |
-| `has_*` | `bool` | Detection, Validation | `has_traversal`, `has_command_injection` |
+| `is_*` / `is_*_present` | `bool` | All | `is_absolute`, `is_traversal_present` |
 | `detect_*` | `Result<Details>` | Detection | `detect_path_type` |
 | `validate_*` | `Result<()>` | Validation | `validate_no_traversal` |
 | `sanitize_*` | `Result<String>` | Sanitization | `sanitize_path_strict` |
 
 ### Anti-Patterns (Avoid)
 
-❌ `check_*` - Ambiguous, use `has_*` or `validate_*` instead
+❌ `check_*` - Ambiguous, use `is_*_present` or `validate_*` instead
 ❌ `verify_*` - Ambiguous, use `validate_*` instead
 ❌ `ensure_*` - Ambiguous, use `validate_*` or `sanitize_*`
 
@@ -254,12 +253,12 @@ ______________________________________________________________________
 
 ```rust
 // DETECTION - Lenient (string matching)
-pub fn has_traversal(path: &str) -> bool {
+pub fn is_traversal_present(path: &str) -> bool {
     path.contains("..")  // Simple, sensitive
 }
 
 // VALIDATION - Strict (proper parsing)
-pub fn has_traversal_attempt(path: &str) -> bool {
+pub fn is_traversal_attempt_present(path: &str) -> bool {
     path.components().any(|c| c == Component::ParentDir)  // Precise
 }
 ```
@@ -277,7 +276,7 @@ ______________________________________________________________________
 
 ```rust
 // Don't do this!
-if detection::has_traversal(path) {
+if detection::is_traversal_present(path) {
     return Err("Traversal detected");  // False positives!
 }
 ```
@@ -303,7 +302,7 @@ for path in all_paths {
 
 ```rust
 for path in all_paths {
-    if detection::has_traversal(path) {
+    if detection::is_traversal_present(path) {
         log_threat(path);  // Catches everything
     }
 }
@@ -313,11 +312,11 @@ ______________________________________________________________________
 
 ## FAQ
 
-### Q: Why does Validation have both `has_*` and `validate_*`?
+### Q: Why does Validation have both `is_*_present` and `validate_*`?
 
 **A**: Different purposes within the module:
 
-- `has_*`: Quick boolean checks for internal builder logic
+- `is_*_present`: Quick boolean checks for internal builder logic
 - `validate_*`: Public API with error messages for enforcement
 
 They use the same strict philosophy (unlike detection's lenient approach).
@@ -326,8 +325,8 @@ They use the same strict philosophy (unlike detection's lenient approach).
 
 **A**: No! They serve different purposes:
 
-- Detection `has_*`: Lenient pattern matching
-- Validation `has_*`: Strict checking (used internally)
+- Detection `is_*_present`: Lenient pattern matching
+- Validation `is_*_present`: Strict checking (used internally)
 
 Different implementations, different philosophies.
 

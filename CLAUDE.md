@@ -136,7 +136,7 @@ This separation ensures:
 
 ```rust
 // DETECTION - Lenient (pattern matching, may have false positives)
-detection::has_traversal(path)  // "file..txt" -> true (sensitive)
+detection::is_traversal_present(path)  // "file..txt" -> true (sensitive)
 
 // VALIDATION - Strict (precise, no false positives)
 validation::validate_no_traversal(path)?;  // Uses Path::components()
