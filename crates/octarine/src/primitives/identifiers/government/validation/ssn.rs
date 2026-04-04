@@ -456,7 +456,8 @@ mod tests {
     }
 
     #[test]
-    fn test_ssn_very_long_input() {
+    #[ignore = "timing-sensitive: run with just test-perf"]
+    fn test_perf_ssn_very_long_input() {
         let long_input = "1".repeat(10000);
         let start = std::time::Instant::now();
         let _ = validate_ssn(&long_input);

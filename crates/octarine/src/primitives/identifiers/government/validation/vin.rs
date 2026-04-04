@@ -358,7 +358,8 @@ mod tests {
     }
 
     #[test]
-    fn test_vin_redos_protection() {
+    #[ignore = "timing-sensitive: run with just test-perf"]
+    fn test_perf_vin_redos_protection() {
         let pathological = "A".repeat(1000);
         let start = std::time::Instant::now();
         let _ = validate_vin(&pathological);

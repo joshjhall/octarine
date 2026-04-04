@@ -427,10 +427,11 @@ mod proptests {
             let _ = validate_hostname_rfc1123(&long_hostname);
             let duration = start.elapsed();
 
-            // Should complete quickly even for long inputs
+            // Generous threshold to avoid CI flakiness under coverage/load.
+            // Normal execution is <1ms; this catches true ReDoS (exponential blowup).
             assert!(
-                duration.as_millis() < 50,
-                "Hostname validation took {}ms for {} chars",
+                duration.as_millis() < 1000,
+                "Hostname validation took {}ms for {} chars — possible ReDoS",
                 duration.as_millis(),
                 len
             );

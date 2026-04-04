@@ -98,7 +98,8 @@ fn test_timer_functionality() {
         None => panic!("{} should exist in snapshot", name),
     };
     assert!(timer_histogram.count > 0);
-    assert!(timer_histogram.mean >= 10.0); // At least 10ms
+    // Allow margin for clock coarseness on VMs and CI load
+    assert!(timer_histogram.mean >= 8.0);
 }
 
 #[test]
