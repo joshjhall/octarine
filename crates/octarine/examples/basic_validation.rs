@@ -1,66 +1,85 @@
-//! Basic validation example showing how to use rust-core security features
-//! TODO: Re-enable this example when security module is fixed
+//! Basic validation example showing path and input security checks
+//!
+//! This example demonstrates:
+//! - Path traversal detection with security shortcuts
+//! - Path validation with observability
+//! - Input validation with error handling
+//! - Logging validation results
 
-fn main() {
-    // Examples are disabled during refactoring
-    // println!("Security module examples are temporarily disabled during refactoring");
-}
+#![allow(clippy::expect_used, clippy::print_stdout)]
 
-// Original code commented out:
-/*
-use octarine::security::input::validation;
-use octarine::{Event, Problem, Result};
+use octarine::data::paths::validate_path;
+use octarine::security::paths::is_path_traversal_present;
+use octarine::{Result, fail_validation, info, success, warn};
 
-fn validate_user_registration(email: &str, username: &str, path: &str) -> Result<()> {
-    // Validate email address
-    validation::network::validate_email(email)?;
-    Event::info("registration", format!("Valid email: {}", email));
-
-    // Validate username (alphanumeric, 3-20 chars)
+/// Validate a user registration request
+fn validate_user_registration(username: &str, path: &str) -> Result<()> {
+    // Validate username (alphanumeric + underscores, 3-20 chars)
     if username.len() < 3 || username.len() > 20 {
-        return Err(Problem::validation("Username must be 3-20 characters"));
+        return Err(fail_validation(
+            "username",
+            "Username must be 3-20 characters",
+        ));
     }
+
     if !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return Err(Problem::validation("Username must be alphanumeric"));
+        return Err(fail_validation(
+            "username",
+            "Username must be alphanumeric or underscores",
+        ));
     }
-    Event::info("registration", format!("Valid username: {}", username));
 
-    // Validate file path (no traversal)
-    if validation::paths::check_has_traversal(path) {
-        return Err(Problem::validation("Path contains directory traversal"));
+    info("registration", format!("Valid username: {}", username));
+
+    // Check for path traversal attacks (detection — lenient, pattern-based)
+    if is_path_traversal_present(path) {
+        warn(
+            "registration",
+            format!("Path traversal detected in: {}", path),
+        );
+        return Err(fail_validation("path", "Path contains directory traversal"));
     }
-    Event::info("registration", format!("Valid path: {}", path));
 
-    Event::success("registration", "All validations passed!");
+    // Validate the path with observability (strict validation)
+    validate_path(path)?;
+
+    success(
+        "registration",
+        format!("All validations passed for user '{}'", username),
+    );
     Ok(())
 }
 
 fn main() {
-    // Set up console output for events
-    octarine::observe::functions::init_console();
+    println!("=== Basic Validation Example ===\n");
 
-    println!("=== Testing Valid Input ===");
-    match validate_user_registration("user@example.com", "john_doe", "profile/avatar.jpg") {
-        Ok(_) => println!("✓ Registration validation successful"),
-        Err(e) => println!("✗ Validation failed: {}", e),
+    // 1. Valid input
+    println!("--- Valid Input ---");
+    match validate_user_registration("john_doe", "profile/avatar.jpg") {
+        Ok(()) => println!("Registration validation successful"),
+        Err(e) => println!("Validation failed: {}", e),
     }
 
-    println!("\n=== Testing Invalid Email ===");
-    match validate_user_registration("not-an-email", "john_doe", "profile/avatar.jpg") {
-        Ok(_) => println!("✓ Registration validation successful"),
-        Err(e) => println!("✗ Validation failed: {}", e),
+    // 2. Path traversal attack
+    println!("\n--- Path Traversal Attack ---");
+    match validate_user_registration("john_doe", "../../../etc/passwd") {
+        Ok(()) => println!("Registration validation successful"),
+        Err(e) => println!("Validation failed: {}", e),
     }
 
-    println!("\n=== Testing Path Traversal ===");
-    match validate_user_registration("user@example.com", "john_doe", "../../../etc/passwd") {
-        Ok(_) => println!("✓ Registration validation successful"),
-        Err(e) => println!("✗ Validation failed: {}", e),
+    // 3. Invalid username (too short)
+    println!("\n--- Invalid Username ---");
+    match validate_user_registration("a", "profile/avatar.jpg") {
+        Ok(()) => println!("Registration validation successful"),
+        Err(e) => println!("Validation failed: {}", e),
     }
 
-    println!("\n=== Testing Invalid Username ===");
-    match validate_user_registration("user@example.com", "a", "profile/avatar.jpg") {
-        Ok(_) => println!("✓ Registration validation successful"),
-        Err(e) => println!("✗ Validation failed: {}", e),
+    // 4. Invalid username (special characters)
+    println!("\n--- Invalid Username Characters ---");
+    match validate_user_registration("user@name!", "profile/avatar.jpg") {
+        Ok(()) => println!("Registration validation successful"),
+        Err(e) => println!("Validation failed: {}", e),
     }
+
+    println!("\n=== Example Complete ===");
 }
-*/
