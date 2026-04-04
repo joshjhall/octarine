@@ -14,16 +14,15 @@
 //!
 //! This means `ObservableCmd` offers two tiers of argument handling:
 //!
-//! - **`arg()` / `args()`** — Lenient mode. Detects dangerous patterns and
-//!   logs warnings + metrics for audit trails, but still adds the argument.
-//!   This is safe because xshell does not interpret the patterns. Use this
-//!   when you want visibility into what arguments are being passed without
-//!   blocking execution.
+//! - **`arg()` / `args()`** — Strict mode (default). Rejects arguments
+//!   containing dangerous patterns by returning an error. Use this for all
+//!   arguments, especially untrusted input. Although xshell itself does not
+//!   interpret shell metacharacters, the target program may (e.g., `sh -c`).
 //!
-//! - **`arg_validated()` / `args_validated()`** — Strict mode. Rejects
-//!   arguments containing dangerous patterns by returning an error. Use this
-//!   when arguments come from untrusted input and you want defense-in-depth
-//!   regardless of the execution backend.
+//! - **`arg_unchecked()` / `args_unchecked()`** — Lenient mode. Detects
+//!   dangerous patterns and logs warnings + metrics for audit trails, but
+//!   still adds the argument. Use this when you know the target program does
+//!   not interpret shell metacharacters.
 //!
 //! # Example
 //!
@@ -31,7 +30,7 @@
 //! use octarine::runtime::shell::ObservableShell;
 //!
 //! let shell = ObservableShell::new()?;
-//! let output = shell.cmd("git").args(["status", "--short"]).read()?;
+//! let output = shell.cmd("git").args(["status", "--short"])?.read()?;
 //! ```
 
 mod command;

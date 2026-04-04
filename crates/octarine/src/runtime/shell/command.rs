@@ -34,10 +34,10 @@ static METRIC_FAILURES: Lazy<MetricName> =
 /// executed — they are passed as literal strings.
 ///
 /// This struct provides two argument APIs:
-/// - [`arg()`](Self::arg) — logs a warning for dangerous patterns (audit trail)
-///   but still adds the argument, since xshell does not interpret them.
-/// - [`arg_validated()`](Self::arg_validated) — rejects dangerous patterns with
-///   an error, for defense-in-depth with untrusted input.
+/// - [`arg()`](Self::arg) — rejects dangerous patterns with an error (secure
+///   by default).
+/// - [`arg_unchecked()`](Self::arg_unchecked) — logs a warning but still adds
+///   the argument, for cases where the target program is known-safe.
 pub struct ObservableCmd<'a> {
     inner: Cmd<'a>,
     program: String,
@@ -68,19 +68,56 @@ impl<'a> ObservableCmd<'a> {
         self
     }
 
-    // ========== Argument Methods (with validation) ==========
+    // ========== Argument Methods ==========
 
-    /// Add a single argument with audit logging for dangerous patterns.
+    /// Add a single argument, rejecting dangerous patterns.
     ///
-    /// Checks the argument for shell metacharacters and logs a warning if found,
-    /// but still adds the argument. This is safe because xshell uses direct
-    /// `execvp` — shell metacharacters are never interpreted, just passed as
-    /// literal strings. The warning exists for audit trail visibility.
+    /// Validates the argument against shell metacharacter patterns. If a
+    /// dangerous pattern is detected (e.g., `$(...)`, backticks, pipes),
+    /// the argument is rejected and an error is returned.
     ///
-    /// Use [`arg_validated()`](Self::arg_validated) instead if you want to
-    /// reject dangerous patterns as an error (defense-in-depth).
+    /// Although xshell uses direct `execvp` and does not interpret shell
+    /// metacharacters itself, the target program may (e.g., `sh -c`).
+    /// This method provides defense-in-depth by default.
+    ///
+    /// Use [`arg_unchecked()`](Self::arg_unchecked) to add arguments that
+    /// contain shell metacharacters when you know the target program will
+    /// not interpret them.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the argument contains dangerous patterns.
+    pub fn arg<P: AsRef<OsStr>>(mut self, arg: P) -> Result<Self, Problem> {
+        let arg_str = arg.as_ref().to_string_lossy();
+
+        if !self.skip_validation {
+            validate_safe_arg(&arg_str).inspect_err(|_| {
+                metrics::increment(METRIC_ARGS_REJECTED.clone());
+                observe::warn(
+                    "shell.cmd.arg_rejected",
+                    format!(
+                        "Unsafe argument rejected for '{}': [REDACTED]",
+                        self.program
+                    ),
+                );
+            })?;
+        }
+
+        self.inner = self.inner.arg(arg);
+        Ok(self)
+    }
+
+    /// Add a single argument without rejection, logging a warning for
+    /// dangerous patterns.
+    ///
+    /// Unlike [`arg()`](Self::arg), this method always adds the argument
+    /// even if dangerous patterns are detected. A warning is logged for
+    /// audit trail visibility but execution is not blocked.
+    ///
+    /// Use this when you know the target program does not interpret shell
+    /// metacharacters (e.g., passing literal strings to `echo` or `grep`).
     #[must_use]
-    pub fn arg<P: AsRef<OsStr>>(mut self, arg: P) -> Self {
+    pub fn arg_unchecked<P: AsRef<OsStr>>(mut self, arg: P) -> Self {
         let arg_str = arg.as_ref().to_string_lossy();
 
         if !self.skip_validation && is_dangerous_arg(&arg_str) {
@@ -99,56 +136,34 @@ impl<'a> ObservableCmd<'a> {
         self
     }
 
-    /// Add a validated argument (returns error if dangerous)
+    /// Add multiple arguments, rejecting on first dangerous pattern.
     ///
     /// # Errors
     ///
-    /// Returns an error if the argument contains dangerous patterns
-    pub fn arg_validated<P: AsRef<OsStr>>(mut self, arg: P) -> Result<Self, Problem> {
-        let arg_str = arg.as_ref().to_string_lossy();
-
-        validate_safe_arg(&arg_str).inspect_err(|_| {
-            metrics::increment(METRIC_ARGS_REJECTED.clone());
-            observe::warn(
-                "shell.cmd.arg_rejected",
-                format!(
-                    "Unsafe argument rejected for '{}': [REDACTED]",
-                    self.program
-                ),
-            );
-        })?;
-
-        self.inner = self.inner.arg(arg);
-        Ok(self)
-    }
-
-    /// Add multiple arguments
-    #[must_use]
-    pub fn args<I, P>(mut self, args: I) -> Self
+    /// Returns error on first dangerous argument encountered.
+    pub fn args<I, P>(mut self, args: I) -> Result<Self, Problem>
     where
         I: IntoIterator<Item = P>,
         P: AsRef<OsStr>,
     {
         for arg in args {
-            self = self.arg(arg);
+            self = self.arg(arg)?;
+        }
+        Ok(self)
+    }
+
+    /// Add multiple arguments without rejection, logging warnings for
+    /// dangerous patterns.
+    #[must_use]
+    pub fn args_unchecked<I, P>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = P>,
+        P: AsRef<OsStr>,
+    {
+        for arg in args {
+            self = self.arg_unchecked(arg);
         }
         self
-    }
-
-    /// Add multiple validated arguments (returns error if any is dangerous)
-    ///
-    /// # Errors
-    ///
-    /// Returns error on first dangerous argument encountered
-    pub fn args_validated<I, P>(mut self, args: I) -> Result<Self, Problem>
-    where
-        I: IntoIterator<Item = P>,
-        P: AsRef<OsStr>,
-    {
-        for arg in args {
-            self = self.arg_validated(arg)?;
-        }
-        Ok(self)
     }
 
     // ========== Environment Methods ==========
@@ -528,7 +543,7 @@ mod tests {
     #[test]
     fn test_simple_command() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell.cmd("echo").arg("hello").read();
+        let result = shell.cmd("echo").arg("hello").expect("safe arg").read();
         assert!(result.is_ok());
         assert_eq!(result.expect("read failed"), "hello");
     }
@@ -536,7 +551,11 @@ mod tests {
     #[test]
     fn test_command_with_args() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell.cmd("echo").args(["one", "two", "three"]).read();
+        let result = shell
+            .cmd("echo")
+            .args(["one", "two", "three"])
+            .expect("safe args")
+            .read();
         assert!(result.is_ok());
         assert_eq!(result.expect("read failed"), "one two three");
     }
@@ -544,9 +563,13 @@ mod tests {
     #[test]
     fn test_trusted_skips_validation() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        // This would normally warn, but trusted() skips validation
-        let result = shell.cmd("echo").trusted().arg("$(whoami)").read();
-        // Note: echo doesn't execute the substitution, just prints it
+        // trusted() skips validation, so dangerous patterns are accepted
+        let result = shell
+            .cmd("echo")
+            .trusted()
+            .arg("$(whoami)")
+            .expect("trusted skips validation")
+            .read();
         assert!(result.is_ok());
     }
 
@@ -558,17 +581,21 @@ mod tests {
     }
 
     #[test]
-    fn test_arg_validated_rejects_dangerous() {
+    fn test_arg_rejects_dangerous() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let cmd = shell.cmd("echo");
-        let result = cmd.arg_validated("$(rm -rf /)");
+        let result = shell.cmd("echo").arg("$(rm -rf /)");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_quiet_command() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell.cmd("echo").quiet().arg("hello").read();
+        let result = shell
+            .cmd("echo")
+            .quiet()
+            .arg("hello")
+            .expect("safe arg")
+            .read();
         assert!(result.is_ok());
     }
 
@@ -577,7 +604,7 @@ mod tests {
         let shell = ObservableShell::new().expect("shell creation failed");
         let result = shell
             .cmd("sh")
-            .args(["-c", "echo $TEST_VAR"])
+            .args_unchecked(["-c", "echo $TEST_VAR"])
             .env("TEST_VAR", "hello")
             .read();
         assert!(result.is_ok());
@@ -595,7 +622,6 @@ mod tests {
     #[test]
     fn test_ignore_status() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        // false command returns exit code 1
         let result = shell.cmd("false").ignore_status().run();
         assert!(result.is_ok());
     }
@@ -605,7 +631,7 @@ mod tests {
         let shell = ObservableShell::new().expect("shell creation failed");
         let output = shell
             .cmd("sh")
-            .args(["-c", "exit 42"])
+            .args_unchecked(["-c", "exit 42"])
             .ignore_status()
             .output();
         assert!(output.is_ok());
@@ -614,28 +640,26 @@ mod tests {
     }
 
     #[test]
-    fn test_dangerous_arg_still_executes() {
-        // Dangerous args warn but still execute (lenient mode)
+    fn test_arg_unchecked_still_executes_dangerous() {
+        // arg_unchecked warns but still executes (lenient mode)
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell.cmd("echo").arg("$(whoami)").read();
+        let result = shell.cmd("echo").arg_unchecked("$(whoami)").read();
         // echo doesn't interpret, just prints literal
         assert!(result.is_ok());
         assert_eq!(result.expect("read failed"), "$(whoami)");
     }
 
     #[test]
-    fn test_args_validated_rejects_on_first_bad() {
+    fn test_args_rejects_on_first_bad() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell
-            .cmd("echo")
-            .args_validated(["safe", "$(bad)", "also_safe"]);
+        let result = shell.cmd("echo").args(["safe", "$(bad)", "also_safe"]);
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_args_validated_accepts_all_safe() {
+    fn test_args_accepts_all_safe() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell.cmd("echo").args_validated(["one", "two", "three"]);
+        let result = shell.cmd("echo").args(["one", "two", "three"]);
         assert!(result.is_ok());
     }
 
@@ -644,7 +668,7 @@ mod tests {
         let shell = ObservableShell::new().expect("shell creation failed");
         let result = shell
             .cmd("sh")
-            .args(["-c", "echo $MY_VAR"])
+            .args_unchecked(["-c", "echo $MY_VAR"])
             .env_validated("MY_VAR", "safe_value");
         assert!(result.is_ok());
     }
@@ -684,8 +708,11 @@ mod tests {
     #[test]
     fn test_read_json_parses_valid() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result: Result<serde_json::Value, _> =
-            shell.cmd("echo").arg(r#"{"key": "value"}"#).read_json();
+        let result: Result<serde_json::Value, _> = shell
+            .cmd("echo")
+            .arg(r#"{"key": "value"}"#)
+            .expect("safe arg")
+            .read_json();
         assert!(result.is_ok());
         let json = result.expect("json parse failed");
         assert_eq!(json.get("key").expect("key not found"), "value");
@@ -694,7 +721,11 @@ mod tests {
     #[test]
     fn test_read_json_fails_on_invalid() {
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result: Result<serde_json::Value, _> = shell.cmd("echo").arg("not json").read_json();
+        let result: Result<serde_json::Value, _> = shell
+            .cmd("echo")
+            .arg("not json")
+            .expect("safe arg")
+            .read_json();
         assert!(result.is_err());
     }
 
@@ -702,10 +733,13 @@ mod tests {
     fn test_read_secret_returns_secret_string() {
         use crate::crypto::secrets::ExposeSecret;
         let shell = ObservableShell::new().expect("shell creation failed");
-        let result = shell.cmd("echo").arg("secret_value").read_secret();
+        let result = shell
+            .cmd("echo")
+            .arg("secret_value")
+            .expect("safe arg")
+            .read_secret();
         assert!(result.is_ok());
         let secret = result.expect("read_secret failed");
-        // Must use expose_secret() to access value
         assert_eq!(secret.expose_secret().trim(), "secret_value");
     }
 
