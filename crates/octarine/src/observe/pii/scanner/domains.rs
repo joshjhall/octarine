@@ -44,9 +44,8 @@ pub(super) fn scan_financial(text: &str, pii_types: &mut Vec<PiiType>) {
         if !financial.detect_bank_accounts_in_text(text).is_empty() {
             pii_types.push(PiiType::BankAccount);
         }
-        // Routing numbers are detected via payment_tokens
         if !financial.detect_payment_tokens_in_text(text).is_empty() {
-            pii_types.push(PiiType::RoutingNumber);
+            pii_types.push(PiiType::PaymentToken);
         }
     }
 }

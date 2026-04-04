@@ -130,7 +130,9 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             // Financial
             PiiType::CreditCard => redact_credit_cards(&result, profile),
             PiiType::BankAccount => redact_bank_accounts(&result, profile),
-            PiiType::RoutingNumber => redact_routing_numbers(&result, profile),
+            PiiType::RoutingNumber | PiiType::PaymentToken => {
+                redact_payment_tokens(&result, profile)
+            }
             // Personal
             PiiType::Email => redact_emails(&result, profile),
             PiiType::Phone => redact_phones(&result, profile),

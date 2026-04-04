@@ -42,6 +42,8 @@ pub enum PiiType {
     BankAccount,
     /// Bank routing number
     RoutingNumber,
+    /// Payment token (Stripe, PayPal, etc.)
+    PaymentToken,
 
     // =========================================================================
     // Government Domain
@@ -184,6 +186,7 @@ impl PiiType {
             Self::CreditCard => "credit_card",
             Self::BankAccount => "bank_account",
             Self::RoutingNumber => "routing_number",
+            Self::PaymentToken => "payment_token",
             // Government
             Self::Ssn => "ssn",
             Self::DriverLicense => "driver_license",
@@ -245,7 +248,9 @@ impl PiiType {
     pub fn domain(&self) -> &'static str {
         match self {
             Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username => "personal",
-            Self::CreditCard | Self::BankAccount | Self::RoutingNumber => "financial",
+            Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken => {
+                "financial"
+            }
             Self::Ssn
             | Self::DriverLicense
             | Self::Passport
@@ -293,7 +298,7 @@ impl PiiType {
         matches!(
             self,
             // Financial
-            Self::CreditCard | Self::BankAccount | Self::RoutingNumber |
+            Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken |
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId |
             // Medical (HIPAA)
@@ -329,7 +334,7 @@ impl PiiType {
     pub fn is_pci_protected(&self) -> bool {
         matches!(
             self,
-            Self::CreditCard | Self::BankAccount | Self::RoutingNumber
+            Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken
         )
     }
 
@@ -366,6 +371,7 @@ impl PiiType {
                 | Self::BearerToken
                 | Self::UrlWithCredentials
                 | Self::ConnectionString
+                | Self::PaymentToken
         )
     }
 }
@@ -535,6 +541,16 @@ mod tests {
         assert!(!PiiType::Port.is_gdpr_protected());
         assert!(!PiiType::Port.is_pci_protected());
         assert!(!PiiType::Port.is_secret());
+    }
+
+    #[test]
+    fn test_payment_token_classifications() {
+        assert_eq!(PiiType::PaymentToken.name(), "payment_token");
+        assert_eq!(PiiType::PaymentToken.domain(), "financial");
+        assert!(PiiType::PaymentToken.is_high_risk());
+        assert!(!PiiType::PaymentToken.is_gdpr_protected());
+        assert!(PiiType::PaymentToken.is_pci_protected());
+        assert!(PiiType::PaymentToken.is_secret());
     }
 
     #[test]

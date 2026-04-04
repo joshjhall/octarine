@@ -33,7 +33,7 @@ pub(super) fn redact_bank_accounts(text: &str, profile: RedactionProfile) -> Str
 }
 
 /// Redact payment tokens based on profile
-pub(super) fn redact_routing_numbers(text: &str, profile: RedactionProfile) -> String {
+pub(super) fn redact_payment_tokens(text: &str, profile: RedactionProfile) -> String {
     let strategy = match profile {
         RedactionProfile::ProductionStrict | RedactionProfile::ProductionLenient => {
             PaymentTokenRedactionStrategy::Token
