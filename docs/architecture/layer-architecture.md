@@ -16,14 +16,14 @@ octarine uses a **four-layer architecture** where each layer can only depend on 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Layer 3: Application Modules (pub)                                          │
 │                                                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │  security/  │  │  runtime/   │  │  [future]   │  │  [future]   │        │
-│  │             │  │             │  │             │  │             │        │
-│  │ Public API  │  │ Public API  │  │             │  │             │        │
-│  │ with full   │  │ with full   │  │             │  │             │        │
-│  │ observabil- │  │ observabil- │  │             │  │             │        │
-│  │ ity         │  │ ity         │  │             │  │             │        │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
+│  │  data/   │ │security/ │ │identifi- │ │ runtime/ │ │ crypto/  │          │
+│  │          │ │          │ │  ers/    │ │          │ │          │          │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                                   │
+│  │   io/    │ │  auth/   │ │  http/   │  All: Public API with full         │
+│  │          │ │          │ │          │  observability                      │
+│  └──────────┘ └──────────┘ └──────────┘                                    │
 │                                                                             │
 │  Can use: primitives, observe                                               │
 │  Cannot use: testing (except in #[cfg(test)] blocks)                        │
@@ -128,9 +128,9 @@ use crate::testing::*;        // No testing dependency
 ```rust
 // testing/generators/attacks.rs
 // ✅ ALLOWED - testing can use everything
-use crate::primitives::paths;
+use crate::primitives::data::paths;
 use crate::observe::pii;
-use crate::security::data::detection;
+use crate::security::paths as security_paths;
 
 pub fn arb_path_traversal() -> impl Strategy<Value = String> {
     // Generate attacks that security should catch

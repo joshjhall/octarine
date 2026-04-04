@@ -16,14 +16,15 @@ Layer 1: primitives/ (pub(crate))  - Pure functions, NO observe dependencies
             ↓
 Layer 2: observe/ (pub)            - Observability, uses primitives only
             ↓
-Layer 3: data/, runtime/ (pub)     - Uses primitives + observe
+Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/ (pub)
+                                   - Uses primitives + observe
 ```
 
 **Golden Rules:**
 
 1. `primitives/` has NO internal dependencies (external crates + Problem type only)
 1. `observe/` uses primitives ONLY
-1. Layer 3 (`data/`, `runtime/`) uses primitives + observe
+1. Layer 3 (`data/`, `security/`, `identifiers/`, `runtime/`, `crypto/`, `io/`, `auth/`, `http/`) uses primitives + observe
 1. Production code NEVER imports `testing/`
 
 See `docs/architecture/layer-architecture.md` for full details.
@@ -59,7 +60,7 @@ codebase audits: `audit-octarine-layers`, `audit-octarine-visibility`,
 ## Module Structure
 
 ```text
-src/
+crates/octarine/src/
 ├── primitives/     # Layer 1: Internal foundation (pub(crate))
 │   ├── crypto/     # Cryptographic primitives
 │   ├── data/       # FORMAT: Normalization, canonicalization
@@ -90,9 +91,15 @@ src/
 │   ├── paths/      # Path operations with observability
 │   ├── network/    # Network operations with observability
 │   ├── text/       # Text operations with observability
-│   └── identifiers/# Identifier operations with observability
+│   ├── formats/    # Data format operations
+│   └── tokens/     # Token operations
+├── security/       # Layer 3: Security operations with observe (pub)
+├── identifiers/    # Layer 3: Identifier operations with observe (pub)
 ├── runtime/        # Layer 3: Runtime operations (pub)
 ├── crypto/         # Layer 3: Crypto operations (pub)
+├── io/             # Layer 3: I/O operations (pub)
+├── auth/           # Layer 3: Auth operations (pub)
+├── http/           # Layer 3: HTTP operations (pub)
 └── testing/        # Test infrastructure (feature-gated)
 ```
 
@@ -319,15 +326,16 @@ See `docs/architecture/testing-patterns.md` for thresholds and details.
 ### Layer 3 Wrapping Pattern
 
 ```rust
-// In data/paths/validation.rs
-use crate::primitives::paths::validation as prim;
-use crate::observe::{event, Problem};
+// In security/paths/builder.rs
+use crate::primitives::security::paths::SecurityBuilder as PrimitiveSecurityBuilder;
+use crate::observe::{warn, Problem};
 
-pub fn validate_path(path: &str) -> Result<(), Problem> {
-    let result = prim::validate_no_traversal(path);
+pub fn validate_path(&self, path: &str) -> Result<(), Problem> {
+    let prim = PrimitiveSecurityBuilder::new();
+    let result = prim.validate_path(path);
 
     if result.is_err() {
-        event::security("path_validation_failed", path);
+        warn("path_validation", format!("Path validation failed: {}", path));
     }
 
     result
