@@ -25,7 +25,19 @@ static METRIC_EXECUTIONS: Lazy<MetricName> =
 static METRIC_FAILURES: Lazy<MetricName> =
     Lazy::new(|| MetricName::from_static_str("shell.cmd.failures"));
 
-/// Observable command - wraps xshell Cmd with full octarine integration
+/// Observable command — wraps xshell `Cmd` with security auditing and metrics.
+///
+/// # Security Model
+///
+/// xshell passes arguments directly via `execvp` without shell interpretation,
+/// so shell metacharacters (`$(...)`, backticks, pipes, semicolons) are never
+/// executed — they are passed as literal strings.
+///
+/// This struct provides two argument APIs:
+/// - [`arg()`](Self::arg) — logs a warning for dangerous patterns (audit trail)
+///   but still adds the argument, since xshell does not interpret them.
+/// - [`arg_validated()`](Self::arg_validated) — rejects dangerous patterns with
+///   an error, for defense-in-depth with untrusted input.
 pub struct ObservableCmd<'a> {
     inner: Cmd<'a>,
     program: String,
@@ -58,11 +70,15 @@ impl<'a> ObservableCmd<'a> {
 
     // ========== Argument Methods (with validation) ==========
 
-    /// Add a single argument (validated for injection attacks)
+    /// Add a single argument with audit logging for dangerous patterns.
     ///
-    /// By default, arguments are checked for dangerous patterns. If a dangerous
-    /// pattern is detected, a warning is logged but the argument is still added.
-    /// Use `.arg_validated()` for strict rejection.
+    /// Checks the argument for shell metacharacters and logs a warning if found,
+    /// but still adds the argument. This is safe because xshell uses direct
+    /// `execvp` — shell metacharacters are never interpreted, just passed as
+    /// literal strings. The warning exists for audit trail visibility.
+    ///
+    /// Use [`arg_validated()`](Self::arg_validated) instead if you want to
+    /// reject dangerous patterns as an error (defense-in-depth).
     #[must_use]
     pub fn arg<P: AsRef<OsStr>>(mut self, arg: P) -> Self {
         let arg_str = arg.as_ref().to_string_lossy();
