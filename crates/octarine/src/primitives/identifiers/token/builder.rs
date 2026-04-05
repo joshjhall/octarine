@@ -66,6 +66,11 @@ impl TokenIdentifierBuilder {
         detection::is_azure_key(value)
     }
 
+    /// Check if value is an Azure connection string (Storage, Service Bus, Cosmos DB, SQL, App Config)
+    pub fn is_azure_connection_string(&self, value: &str) -> bool {
+        detection::is_azure_connection_string(value)
+    }
+
     /// Check if value is a Stripe key
     pub fn is_stripe_key(&self, value: &str) -> bool {
         detection::is_stripe_key(value)

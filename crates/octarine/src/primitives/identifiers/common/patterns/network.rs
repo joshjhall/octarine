@@ -306,6 +306,41 @@ pub static API_KEY_AZURE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i:AccountKey)=([A-Za-z0-9+/=]{88})").expect("BUG: Invalid regex pattern")
 });
 
+/// Azure Storage Account connection string
+/// Example: "DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=abc...==;EndpointSuffix=core.windows.net"
+pub static AZURE_STORAGE_CONN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)DefaultEndpointsProtocol=https?;AccountName=[a-z0-9]{3,24};AccountKey=[A-Za-z0-9+/=]{88};EndpointSuffix=[^\s;]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Azure Service Bus / Event Hub connection string
+/// Example: "Endpoint=sb://mybus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc...=="
+pub static AZURE_SERVICE_BUS_CONN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)Endpoint=sb://[a-z0-9-]+\.servicebus\.windows\.net/?;SharedAccessKeyName=[^;\s]+;SharedAccessKey=[A-Za-z0-9+/=]{44}")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Azure Cosmos DB connection string
+/// Example: "AccountEndpoint=https://mydb.documents.azure.com:443/;AccountKey=abc...=="
+pub static AZURE_COSMOS_CONN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)AccountEndpoint=https://[a-z0-9-]+\.documents\.azure\.com:\d+/?;AccountKey=[A-Za-z0-9+/=]{88}")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Azure SQL connection string with password
+/// Example: "Server=tcp:myserver.database.windows.net,1433;...Password=secret123"
+pub static AZURE_SQL_CONN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)Server=tcp:[a-z0-9-]+\.database\.windows\.net[^;]*;(?:[^;]+;)*(?:Password|Pwd)=[^;\s]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Azure App Configuration connection string
+/// Example: "Endpoint=https://myconfig.azconfig.io;Id=abc;Secret=def...=="
+pub static AZURE_APP_CONFIG_CONN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)Endpoint=https://[a-z0-9-]+\.azconfig\.io;Id=[^;\s]+;Secret=[A-Za-z0-9+/=]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
 /// 1Password Service Account Token pattern
 /// Example: "ops_eyJzaWduSW5BZGRyZXNzIjoi..."
 pub static API_KEY_1PASSWORD: Lazy<Regex> =
