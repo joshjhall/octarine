@@ -1118,7 +1118,7 @@ mod tests {
     fn test_is_azure_connection_string_app_config() {
         let secret = "a".repeat(40) + "==";
         let conn = format!("Endpoint=https://myconfig.azconfig.io;Id=abc123;Secret={secret}");
-        assert!(is_azure_connection_string(conn));
+        assert!(is_azure_connection_string(&conn));
     }
 
     #[test]
