@@ -10,8 +10,10 @@ all-features = true
 [advisories]
 ignore = [
     # rsa crate has a known timing side-channel with no patch available.
-    # Transitive dep only — we don't use RSA directly.
-    { id = "RUSTSEC-2023-0071", reason = "no patch available, transitive dep only" },
+    # Transitive dep only — we don't use RSA directly for signing or verification.
+    # Re-evaluate by 2026-10-01: check if upstream has patched or if we can drop the dep.
+    # CRITICAL: if RS256 server-side signing is ever added, this MUST be resolved first.
+    { id = "RUSTSEC-2023-0071", reason = "no patch available, transitive dep only — re-evaluate 2026-10-01" },
 ]
 
 # ─── Licenses ────────────────────────────────────────────────────────────────

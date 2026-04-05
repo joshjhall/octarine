@@ -28,6 +28,11 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
 
+// audit:acknowledge category=insecure-crypto
+// SHA-1 is required by the HIBP k-anonymity protocol (https://haveibeenpwned.com/API/v3).
+// The first 5 hex chars of the SHA-1 hash are sent as a prefix query — this is not
+// a security-critical use of SHA-1 (no collision resistance needed). Do not use SHA-1
+// for any other purpose in this codebase.
 use sha1::{Digest, Sha1};
 
 use crate::observe;
