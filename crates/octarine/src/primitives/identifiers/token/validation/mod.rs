@@ -20,6 +20,7 @@ mod api_keys;
 mod entropy;
 mod jwt;
 mod session;
+mod ssh;
 
 // Re-export all validation functions
 //
@@ -28,7 +29,13 @@ mod session;
 // - `validate_*` returns `Result<T, E>` (validation with error details)
 
 // API Key validation
-pub use api_keys::validate_api_key;
+pub use api_keys::{
+    validate_api_key, validate_bearer_token, validate_gitlab_token, validate_onepassword_token,
+    validate_onepassword_vault_ref,
+};
+
+// SSH validation
+pub use ssh::{validate_ssh_fingerprint, validate_ssh_private_key, validate_ssh_public_key};
 
 // JWT validation
 pub use jwt::{validate_jwt, validate_jwt_algorithm};

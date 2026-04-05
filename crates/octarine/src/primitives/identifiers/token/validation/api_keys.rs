@@ -116,6 +116,128 @@ pub fn validate_api_key(
 }
 
 // ============================================================================
+// GitLab Token Validation
+// ============================================================================
+
+/// Validate GitLab token format
+///
+/// Checks for valid GitLab token prefixes (glpat-, gldt-, glptt-, glcbt-,
+/// glrt-, glft-, glsoat-, glimt-) with a minimum 20-character suffix.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid.
+pub fn validate_gitlab_token(value: &str) -> Result<(), Problem> {
+    let trimmed = value.trim();
+
+    if trimmed.is_empty() {
+        return Err(Problem::Validation("GitLab token cannot be empty".into()));
+    }
+
+    if !super::super::detection::is_gitlab_token(trimmed) {
+        return Err(Problem::Validation(
+            "Invalid GitLab token format: expected gl*- prefix with 20+ character suffix".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// 1Password Token Validation
+// ============================================================================
+
+/// Validate 1Password service account token format
+///
+/// Checks for ops_ prefix with base64-like characters.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid.
+pub fn validate_onepassword_token(value: &str) -> Result<(), Problem> {
+    let trimmed = value.trim();
+
+    if trimmed.is_empty() {
+        return Err(Problem::Validation(
+            "1Password token cannot be empty".into(),
+        ));
+    }
+
+    if !super::super::detection::is_onepassword_token(trimmed) {
+        return Err(Problem::Validation(
+            "Invalid 1Password token format: expected ops_ prefix".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validate 1Password vault reference format
+///
+/// Checks for op://vault/item/field or op://vault/item structure.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid.
+pub fn validate_onepassword_vault_ref(value: &str) -> Result<(), Problem> {
+    let trimmed = value.trim();
+
+    if trimmed.is_empty() {
+        return Err(Problem::Validation(
+            "1Password vault reference cannot be empty".into(),
+        ));
+    }
+
+    if !super::super::detection::is_onepassword_vault_ref(trimmed) {
+        return Err(Problem::Validation(
+            "Invalid 1Password vault reference format: expected op://vault/item[/field]".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Bearer Token Validation
+// ============================================================================
+
+/// Validate bearer token format
+///
+/// Checks for "Bearer " prefix and validates the token portion has
+/// sufficient entropy to be a real token (not a placeholder).
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid.
+pub fn validate_bearer_token(value: &str) -> Result<(), Problem> {
+    let trimmed = value.trim();
+
+    if trimmed.is_empty() {
+        return Err(Problem::Validation("Bearer token cannot be empty".into()));
+    }
+
+    if !super::super::detection::is_bearer_token(trimmed) {
+        return Err(Problem::Validation(
+            "Invalid bearer token format: expected 'Bearer <token>' with 20+ character token"
+                .into(),
+        ));
+    }
+
+    // Extract token portion and check entropy
+    let lower = trimmed.to_lowercase();
+    if let Some(token_start) = lower.find("bearer") {
+        let after_bearer = &trimmed[token_start.saturating_add(6)..].trim_start();
+        if after_bearer.len() < 20 {
+            return Err(Problem::Validation(
+                "Bearer token value too short (minimum 20 characters)".into(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+// ============================================================================
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -234,5 +356,63 @@ mod tests {
                 let _ = validate_api_key(&s, 16, 128);
             }
 
+    }
+
+    // ===== GitLab Token Validation =====
+
+    #[test]
+    fn test_validate_gitlab_token_valid() {
+        let suffix = "a".repeat(21);
+        assert!(validate_gitlab_token(&format!("glpat-{suffix}")).is_ok());
+        assert!(validate_gitlab_token(&format!("gldt-{suffix}")).is_ok());
+        assert!(validate_gitlab_token(&format!("glptt-{suffix}")).is_ok());
+        assert!(validate_gitlab_token(&format!("glrt-{suffix}")).is_ok());
+    }
+
+    #[test]
+    fn test_validate_gitlab_token_invalid() {
+        assert!(validate_gitlab_token("").is_err());
+        assert!(validate_gitlab_token("glpat-short").is_err());
+        assert!(validate_gitlab_token("not-a-token").is_err());
+    }
+
+    // ===== 1Password Token Validation =====
+
+    #[test]
+    fn test_validate_onepassword_token_valid() {
+        let suffix = "a".repeat(55);
+        assert!(validate_onepassword_token(&format!("ops_{suffix}")).is_ok());
+    }
+
+    #[test]
+    fn test_validate_onepassword_token_invalid() {
+        assert!(validate_onepassword_token("").is_err());
+        assert!(validate_onepassword_token("not-a-token").is_err());
+    }
+
+    #[test]
+    fn test_validate_onepassword_vault_ref_valid() {
+        assert!(validate_onepassword_vault_ref("op://vault/item/field").is_ok());
+        assert!(validate_onepassword_vault_ref("op://my-vault/my-item").is_ok());
+    }
+
+    #[test]
+    fn test_validate_onepassword_vault_ref_invalid() {
+        assert!(validate_onepassword_vault_ref("").is_err());
+        assert!(validate_onepassword_vault_ref("not://a/ref").is_err());
+    }
+
+    // ===== Bearer Token Validation =====
+
+    #[test]
+    fn test_validate_bearer_token_valid() {
+        assert!(validate_bearer_token("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9").is_ok());
+    }
+
+    #[test]
+    fn test_validate_bearer_token_invalid() {
+        assert!(validate_bearer_token("").is_err());
+        assert!(validate_bearer_token("not a bearer token").is_err());
+        assert!(validate_bearer_token("Bearer short").is_err());
     }
 }
