@@ -67,6 +67,8 @@ mod biometric;
 mod confidence;
 mod correlation;
 mod credentials;
+#[cfg(feature = "crypto-validation")]
+mod crypto;
 mod database;
 mod entropy;
 mod environment;
@@ -86,6 +88,8 @@ pub use biometric::BiometricBuilder;
 pub use confidence::ConfidenceBuilder;
 pub use correlation::CorrelationBuilder;
 pub use credentials::CredentialsBuilder;
+#[cfg(feature = "crypto-validation")]
+pub use crypto::CryptoBuilder;
 pub use database::DatabaseBuilder;
 pub use entropy::EntropyBuilder;
 pub use environment::EnvironmentBuilder;
@@ -249,6 +253,13 @@ impl IdentifierBuilder {
     #[must_use]
     pub fn metrics(&self) -> MetricsBuilder {
         MetricsBuilder::new()
+    }
+
+    /// Get crypto identifier builder (keys, certificates, signatures)
+    #[cfg(feature = "crypto-validation")]
+    #[must_use]
+    pub fn crypto(&self) -> CryptoBuilder {
+        CryptoBuilder::new()
     }
 
     /// Get entropy identifier builder (high-entropy string detection)

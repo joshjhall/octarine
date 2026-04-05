@@ -134,6 +134,12 @@ impl PersonalBuilder {
         self.inner.is_birthdate(value)
     }
 
+    /// Check if value is a username
+    #[must_use]
+    pub fn is_username(&self, value: &str) -> bool {
+        self.inner.is_username(value)
+    }
+
     /// Check if value is PII
     pub fn is_pii(&self, value: &str) -> bool {
         let result = self.inner.is_pii(value);

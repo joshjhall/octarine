@@ -66,6 +66,12 @@ impl PersonalIdentifierBuilder {
         detection::is_birthdate(value)
     }
 
+    /// Check if value is a username
+    #[must_use]
+    pub fn is_username(&self, value: &str) -> bool {
+        detection::is_username(value)
+    }
+
     /// Find phone number region from phone number
     #[must_use]
     pub fn find_phone_region(&self, phone: &str) -> Option<PhoneRegion> {
