@@ -95,6 +95,12 @@ impl MedicalBuilder {
         self.inner.is_medical_code(value)
     }
 
+    /// Check if value is a DEA number (format + checksum)
+    #[must_use]
+    pub fn is_dea_number(&self, value: &str) -> bool {
+        self.inner.is_dea_number(value)
+    }
+
     /// Check if text contains any medical identifier
     #[must_use]
     pub fn is_medical_identifier_present(&self, text: &str) -> bool {
@@ -133,6 +139,12 @@ impl MedicalBuilder {
     #[must_use]
     pub fn find_medical_codes_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         self.inner.find_medical_codes_in_text(text)
+    }
+
+    /// Find all DEA numbers in text
+    #[must_use]
+    pub fn find_dea_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        self.inner.find_dea_numbers_in_text(text)
     }
 
     /// Find all medical identifiers in text

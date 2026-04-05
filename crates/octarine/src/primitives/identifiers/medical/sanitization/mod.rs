@@ -44,6 +44,7 @@ pub use individual::{
 
 // Re-export text redaction functions
 pub use text::{
-    redact_all_medical_in_text, redact_insurance_in_text, redact_medical_codes_in_text,
-    redact_mrn_in_text, redact_prescriptions_in_text, redact_provider_ids_in_text,
+    redact_all_medical_in_text, redact_dea_numbers_in_text, redact_insurance_in_text,
+    redact_medical_codes_in_text, redact_mrn_in_text, redact_prescriptions_in_text,
+    redact_provider_ids_in_text,
 };

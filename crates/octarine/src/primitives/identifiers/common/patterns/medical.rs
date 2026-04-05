@@ -86,6 +86,29 @@ pub static ICD10: Lazy<Regex> = Lazy::new(|| {
 pub static CPT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\b(?:CPT)[\s:#-]*\d{5}\b").expect("BUG: Invalid regex pattern"));
 
+/// DEA (Drug Enforcement Administration) number - LABELED
+/// Format: 2 letters + 7 digits (with checksum)
+/// First letter: registrant type (A/B/C/D/E/F/G/H/J/K/L/M/P/R)
+/// Second letter: first letter of registrant's last name (or '9' for NTPS)
+/// Reference: https://www.deadiversion.usdoj.gov/drugreg/reg_apps/onlineforms_new.htm
+pub static DEA_LABELED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)\b(?:DEA|DEA[\s-]*(?:#|number|no))[\s:#-]*([A-Za-z]{2}\d{7})\b")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// DEA number - UNLABELED
+/// Raw format: 2 letters + 7 digits (needs checksum validation to confirm)
+pub static DEA_UNLABELED: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b[A-Za-z]{2}\d{7}\b").expect("BUG: Invalid regex pattern"));
+
+/// DEA number - EXACT (for single-value validation)
+pub static DEA_EXACT: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[A-Za-z]{2}\d{7}$").expect("BUG: Invalid regex pattern"));
+
+pub fn dea_numbers() -> Vec<&'static Regex> {
+    vec![&*DEA_LABELED, &*DEA_UNLABELED]
+}
+
 pub fn mrn() -> Vec<&'static Regex> {
     vec![&*MRN_LABELED]
 }
@@ -116,5 +139,7 @@ pub fn all() -> Vec<&'static Regex> {
         &*NPI,
         &*ICD10,
         &*CPT,
+        &*DEA_LABELED,
+        &*DEA_UNLABELED,
     ]
 }

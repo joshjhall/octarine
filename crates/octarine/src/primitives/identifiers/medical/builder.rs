@@ -101,6 +101,12 @@ impl MedicalIdentifierBuilder {
         detection::is_medical_code(value)
     }
 
+    /// Check if value is a DEA number (format + checksum)
+    #[must_use]
+    pub fn is_dea_number(&self, value: &str) -> bool {
+        detection::is_dea_number(value)
+    }
+
     /// Check if text contains any medical identifier
     #[must_use]
     pub fn is_medical_identifier_present(&self, text: &str) -> bool {
@@ -139,6 +145,12 @@ impl MedicalIdentifierBuilder {
     #[must_use]
     pub fn find_medical_codes_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         detection::find_medical_codes_in_text(text)
+    }
+
+    /// Find all DEA numbers in text
+    #[must_use]
+    pub fn find_dea_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_dea_numbers_in_text(text)
     }
 
     /// Find all medical identifiers in text
@@ -378,6 +390,16 @@ impl MedicalIdentifierBuilder {
         policy: TextRedactionPolicy,
     ) -> Cow<'a, str> {
         sanitization::redact_medical_codes_in_text(text, policy)
+    }
+
+    /// Redact DEA numbers in text using text redaction policy
+    #[must_use]
+    pub fn redact_dea_numbers_in_text<'a>(
+        &self,
+        text: &'a str,
+        policy: TextRedactionPolicy,
+    ) -> Cow<'a, str> {
+        sanitization::redact_dea_numbers_in_text(text, policy)
     }
 
     /// Redact all medical identifiers in text using Complete policy

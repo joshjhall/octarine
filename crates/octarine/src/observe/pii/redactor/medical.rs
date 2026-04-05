@@ -67,6 +67,20 @@ pub(super) fn redact_medical_codes(text: &str, profile: RedactionProfile) -> Str
     }
 }
 
+/// Redact DEA numbers based on profile
+pub(super) fn redact_dea_numbers(text: &str, profile: RedactionProfile) -> String {
+    match profile {
+        RedactionProfile::ProductionStrict | RedactionProfile::ProductionLenient => {
+            let builder = MedicalIdentifierBuilder::new();
+            let policy = policy_from_profile(profile);
+            builder
+                .redact_dea_numbers_in_text(text, policy)
+                .into_owned()
+        }
+        RedactionProfile::Development | RedactionProfile::Testing => text.to_string(),
+    }
+}
+
 /// Redact prescriptions based on profile
 pub(super) fn redact_prescriptions(text: &str, profile: RedactionProfile) -> String {
     match profile {

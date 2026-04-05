@@ -76,6 +76,8 @@ pub enum PiiType {
     IcdCode,
     /// Prescription number
     PrescriptionNumber,
+    /// DEA (Drug Enforcement Administration) number
+    DeaNumber,
 
     // =========================================================================
     // Biometric Domain
@@ -201,6 +203,7 @@ impl PiiType {
             Self::InsuranceNumber => "insurance_number",
             Self::IcdCode => "icd_code",
             Self::PrescriptionNumber => "prescription_number",
+            Self::DeaNumber => "dea_number",
             // Biometric
             Self::FingerprintId => "fingerprint_id",
             Self::FaceId => "face_id",
@@ -262,7 +265,8 @@ impl PiiType {
             | Self::Npi
             | Self::InsuranceNumber
             | Self::IcdCode
-            | Self::PrescriptionNumber => "medical",
+            | Self::PrescriptionNumber
+            | Self::DeaNumber => "medical",
             Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId => {
                 "biometric"
             }
@@ -302,7 +306,7 @@ impl PiiType {
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId |
             // Medical (HIPAA)
-            Self::Mrn | Self::Npi | Self::InsuranceNumber |
+            Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber |
             // Biometric (irreplaceable)
             Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId |
             // Authentication (security breach)
@@ -347,6 +351,7 @@ impl PiiType {
                 | Self::InsuranceNumber
                 | Self::IcdCode
                 | Self::PrescriptionNumber
+                | Self::DeaNumber
                 | Self::Ssn // SSN is also PHI in medical context
                 | Self::Name // Names in medical context
                 | Self::Birthdate // DOB in medical context

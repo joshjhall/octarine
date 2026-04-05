@@ -323,13 +323,45 @@ pub fn redact_medical_codes_in_text(text: &str, policy: TextRedactionPolicy) -> 
 /// assert!(safe.contains("[PRESCRIPTION]"));
 /// assert!(safe.contains("[PROVIDER_ID]"));
 /// ```
+/// Redact all DEA numbers in text using text redaction policy
+///
+/// Scans text for DEA numbers (with checksum validation) and replaces them.
 #[must_use]
+pub fn redact_dea_numbers_in_text(text: &str, policy: TextRedactionPolicy) -> Cow<'_, str> {
+    if matches!(policy, TextRedactionPolicy::Skip) {
+        return Cow::Borrowed(text);
+    }
+
+    use super::super::detection;
+    let matches = detection::find_dea_numbers_in_text(text);
+
+    if matches.is_empty() {
+        return Cow::Borrowed(text);
+    }
+
+    let token = match policy {
+        TextRedactionPolicy::Complete => "[DEA_NUMBER]",
+        TextRedactionPolicy::Partial => "[DEA_NUMBER]",
+        TextRedactionPolicy::Anonymous => "[REDACTED]",
+        TextRedactionPolicy::Skip => return Cow::Borrowed(text),
+    };
+
+    let mut result = text.to_string();
+    // Replace in reverse order to maintain positions
+    for m in matches.iter().rev() {
+        result.replace_range(m.start..m.end, token);
+    }
+
+    Cow::Owned(result)
+}
+
 pub fn redact_all_medical_in_text(text: &str, policy: TextRedactionPolicy) -> String {
     let result = redact_mrn_in_text(text, policy);
     let result = redact_insurance_in_text(&result, policy);
     let result = redact_prescriptions_in_text(&result, policy);
     let result = redact_provider_ids_in_text(&result, policy);
     let result = redact_medical_codes_in_text(&result, policy);
+    let result = redact_dea_numbers_in_text(&result, policy);
 
     result.into_owned()
 }

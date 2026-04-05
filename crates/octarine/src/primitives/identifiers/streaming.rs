@@ -430,7 +430,8 @@ impl StreamingScanner {
                 | IdentifierType::HealthInsurance
                 | IdentifierType::Prescription
                 | IdentifierType::ProviderID
-                | IdentifierType::MedicalCode => {
+                | IdentifierType::MedicalCode
+                | IdentifierType::MedicalLicense => {
                     // Medical module covers all via find_all_in_text
                     let medical = MedicalIdentifierBuilder::new();
                     for m in medical.find_all_in_text(text) {

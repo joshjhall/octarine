@@ -73,6 +73,7 @@ pub enum IdentifierType {
     Prescription,        // RX numbers
     ProviderID,          // NPI (National Provider Identifier)
     MedicalCode,         // ICD-10, CPT codes
+    MedicalLicense,      // DEA numbers, state medical board licenses
 
     // Biometric identifiers (GDPR Article 9, BIPA)
     Fingerprint,       // Fingerprint hashes/identifiers

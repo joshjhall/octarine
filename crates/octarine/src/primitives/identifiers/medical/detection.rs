@@ -188,6 +188,10 @@ pub fn detect_medical_identifier(value: &str) -> Option<IdentifierType> {
     if is_provider_id(value) {
         return Some(IdentifierType::ProviderID);
     }
+    // DEA before MRN — DEA is more specific (requires checksum) and MRN is very broad
+    if is_dea_number(value) {
+        return Some(IdentifierType::MedicalLicense);
+    }
     if is_medical_record_number(value) {
         return Some(IdentifierType::MedicalRecordNumber);
     }
@@ -507,8 +511,158 @@ pub fn find_all_medical_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_prescriptions_in_text(text));
     all_matches.extend(find_provider_ids_in_text(text));
     all_matches.extend(find_medical_codes_in_text(text));
+    all_matches.extend(find_dea_numbers_in_text(text));
 
     deduplicate_matches(all_matches)
+}
+
+// ============================================================================
+// DEA Number Detection
+// ============================================================================
+
+/// Valid DEA registrant type codes (first letter)
+const VALID_DEA_TYPES: &[u8] = b"ABCDEFGHJKLMPR";
+
+/// Validate DEA number checksum
+///
+/// Algorithm: S1 = d1 + d3 + d5; S2 = (d2 + d4 + d6) * 2; d7 == (S1 + S2) % 10
+fn validate_dea_checksum(digits: &[u8; 7]) -> bool {
+    // Fixed-size array access via destructuring — no panic possible
+    let [d1, d2, d3, d4, d5, d6, d7] = *digits;
+    let s1 = u32::from(d1)
+        .saturating_add(u32::from(d3))
+        .saturating_add(u32::from(d5));
+    let s2 = u32::from(d2)
+        .saturating_add(u32::from(d4))
+        .saturating_add(u32::from(d6))
+        .saturating_mul(2);
+    let total = s1.saturating_add(s2);
+    total % 10 == u32::from(d7)
+}
+
+/// Parse and validate a DEA number string, returning the 7 digit values if valid
+fn parse_dea_digits(value: &str) -> Option<[u8; 7]> {
+    let upper = value.to_uppercase();
+    let bytes = upper.as_bytes();
+
+    if bytes.len() != 9 {
+        return None;
+    }
+
+    // First letter must be a valid registrant type
+    let first = *bytes.first()?;
+    if !VALID_DEA_TYPES.contains(&first) {
+        return None;
+    }
+
+    // Second letter must be alphabetic
+    let second = *bytes.get(1)?;
+    if !second.is_ascii_alphabetic() {
+        return None;
+    }
+
+    // Extract 7 digits from positions 2..9
+    let digit_bytes = bytes.get(2..9)?;
+    let mut digits = [0u8; 7];
+    for (i, &b) in digit_bytes.iter().enumerate() {
+        if !b.is_ascii_digit() {
+            return None;
+        }
+        if let Some(slot) = digits.get_mut(i) {
+            *slot = b.saturating_sub(b'0');
+        }
+    }
+
+    Some(digits)
+}
+
+/// Check if a value is a DEA number (format + checksum)
+///
+/// DEA numbers are 9 characters: 2 letters + 7 digits with a checksum.
+/// The first letter indicates registrant type, the second is the first
+/// letter of the registrant's last name.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::medical::detection;
+///
+/// assert!(detection::is_dea_number("AB1234563")); // Valid checksum
+/// assert!(!detection::is_dea_number("AB1234560")); // Invalid checksum
+/// assert!(!detection::is_dea_number("XB1234563")); // Invalid registrant type
+/// ```
+#[must_use]
+pub fn is_dea_number(value: &str) -> bool {
+    if value.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+
+    // Check format first
+    if !patterns::medical::DEA_EXACT.is_match(value) {
+        return false;
+    }
+
+    // Parse and validate checksum
+    match parse_dea_digits(value) {
+        Some(digits) => validate_dea_checksum(&digits),
+        None => false,
+    }
+}
+
+/// Find all DEA number patterns in text
+///
+/// Scans text for DEA numbers with checksum validation.
+/// Labeled patterns ("DEA: AB1234563") get High confidence.
+/// Unlabeled patterns validated by checksum get Medium confidence.
+#[must_use]
+pub fn find_dea_numbers_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    // Labeled pattern (high confidence)
+    for capture in patterns::medical::DEA_LABELED.captures_iter(text) {
+        let full_match = get_full_match(&capture);
+        // Extract just the DEA number from the capture group if present
+        let dea_value = capture.get(1).map_or(full_match.as_str(), |m| m.as_str());
+        if is_dea_number(dea_value) {
+            matches.push(IdentifierMatch::new(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::MedicalLicense,
+                DetectionConfidence::High,
+            ));
+        }
+    }
+
+    // Unlabeled pattern (medium confidence, requires checksum)
+    for capture in patterns::medical::DEA_UNLABELED.captures_iter(text) {
+        let full_match = get_full_match(&capture);
+        let start = full_match.start();
+
+        // Skip if already matched by labeled pattern
+        if matches
+            .iter()
+            .any(|m| m.start <= start && m.end >= full_match.end())
+        {
+            continue;
+        }
+
+        if is_dea_number(full_match.as_str()) {
+            matches.push(IdentifierMatch::new(
+                start,
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::MedicalLicense,
+                DetectionConfidence::Medium,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
 }
 
 /// Check if text contains any medical identifier
@@ -895,5 +1049,78 @@ mod tests {
         assert!(!is_medical_record_number("My phone number is 12345678"));
         assert!(!is_provider_id("The year 1234567890 was eventful"));
         assert!(!is_prescription("Order #123456789 shipped"));
+    }
+
+    // ===== DEA Number Tests =====
+
+    #[test]
+    fn test_is_dea_number_valid() {
+        // AB1234563: S1 = 1+3+5=9, S2 = (2+4+6)*2=24, total=33, check=3 ✓
+        assert!(is_dea_number("AB1234563"));
+        // Case insensitive
+        assert!(is_dea_number("ab1234563"));
+        // Various registrant types
+        assert!(is_dea_number("FB1234563")); // Distributor
+        assert!(is_dea_number("MB1234563")); // Mid-level practitioner
+    }
+
+    #[test]
+    fn test_is_dea_number_invalid_checksum() {
+        // AB1234560: S1=9, S2=24, total=33, check should be 3 not 0
+        assert!(!is_dea_number("AB1234560"));
+        assert!(!is_dea_number("AB1234561"));
+    }
+
+    #[test]
+    fn test_is_dea_number_invalid_type() {
+        // X is not a valid registrant type
+        assert!(!is_dea_number("XB1234563"));
+        // I is not valid
+        assert!(!is_dea_number("IB1234563"));
+        // N is not valid
+        assert!(!is_dea_number("NB1234563"));
+    }
+
+    #[test]
+    fn test_is_dea_number_invalid_format() {
+        assert!(!is_dea_number("A1234563")); // Too short
+        assert!(!is_dea_number("AB12345634")); // Too long
+        assert!(!is_dea_number("1B1234563")); // Starts with digit
+        assert!(!is_dea_number("invalid"));
+        assert!(!is_dea_number(""));
+    }
+
+    #[test]
+    fn test_find_dea_numbers_in_text_labeled() {
+        let text = "Provider DEA: AB1234563 is active";
+        let matches = find_dea_numbers_in_text(text);
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("Should detect DEA number");
+        assert_eq!(first.identifier_type, IdentifierType::MedicalLicense);
+        assert_eq!(first.confidence, DetectionConfidence::High);
+    }
+
+    #[test]
+    fn test_find_dea_numbers_in_text_unlabeled() {
+        let text = "Prescriber AB1234563 approved";
+        let matches = find_dea_numbers_in_text(text);
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("Should detect unlabeled DEA");
+        assert_eq!(first.confidence, DetectionConfidence::Medium);
+    }
+
+    #[test]
+    fn test_find_dea_numbers_rejects_invalid_checksum() {
+        let text = "DEA: AB1234560 is not valid";
+        let matches = find_dea_numbers_in_text(text);
+        assert_eq!(matches.len(), 0, "Should reject invalid DEA checksum");
+    }
+
+    #[test]
+    fn test_detect_medical_identifier_dea() {
+        assert_eq!(
+            detect_medical_identifier("AB1234563"),
+            Some(IdentifierType::MedicalLicense)
+        );
     }
 }

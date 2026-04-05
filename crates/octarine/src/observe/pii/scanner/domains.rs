@@ -91,6 +91,9 @@ pub(super) fn scan_medical(text: &str, pii_types: &mut Vec<PiiType>) {
         if !medical.find_prescriptions_in_text(text).is_empty() {
             pii_types.push(PiiType::PrescriptionNumber);
         }
+        if !medical.find_dea_numbers_in_text(text).is_empty() {
+            pii_types.push(PiiType::DeaNumber);
+        }
     }
 }
 
