@@ -39,6 +39,8 @@
 mod cache;
 mod driver_license;
 mod ein;
+mod national_id;
+mod passport;
 mod ssn;
 mod vin;
 
@@ -53,6 +55,14 @@ pub use ein::{is_test_ein, is_valid_ein_prefix, validate_ein};
 
 // Re-export driver's license functions
 pub use driver_license::{is_test_driver_license, validate_driver_license};
+
+// Re-export passport functions
+pub use passport::{is_test_passport, validate_passport};
+
+// Re-export national ID functions
+pub use national_id::{
+    is_test_national_id, validate_canada_sin, validate_national_id, validate_uk_ni,
+};
 
 // Re-export VIN functions
 pub use vin::{is_test_vin, validate_vin, validate_vin_with_checksum};

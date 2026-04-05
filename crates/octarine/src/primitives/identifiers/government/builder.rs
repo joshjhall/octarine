@@ -334,6 +334,15 @@ impl GovernmentIdentifierBuilder {
         detection::find_passports_in_text(text)
     }
 
+    /// Validate passport number format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the passport number format is invalid
+    pub fn validate_passport(&self, passport: &str) -> Result<(), Problem> {
+        validation::validate_passport(passport)
+    }
+
     /// Redact passport with explicit strategy
     ///
     /// # Examples
@@ -383,6 +392,33 @@ impl GovernmentIdentifierBuilder {
     #[must_use]
     pub fn find_national_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         detection::find_national_ids_in_text(text)
+    }
+
+    /// Validate national ID format (auto-detects UK NI, Canada SIN, or generic)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the national ID format is invalid
+    pub fn validate_national_id(&self, national_id: &str) -> Result<(), Problem> {
+        validation::validate_national_id(national_id)
+    }
+
+    /// Validate UK National Insurance Number
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NI number format is invalid
+    pub fn validate_uk_ni(&self, ni: &str) -> Result<(), Problem> {
+        validation::validate_uk_ni(ni)
+    }
+
+    /// Validate Canadian Social Insurance Number with Luhn checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the SIN format is invalid or checksum fails
+    pub fn validate_canada_sin(&self, sin: &str) -> Result<(), Problem> {
+        validation::validate_canada_sin(sin)
     }
 
     /// Redact national ID with explicit strategy
@@ -657,6 +693,18 @@ impl GovernmentIdentifierBuilder {
     #[must_use]
     pub fn is_test_ssn(&self, ssn: &str) -> bool {
         validation::is_test_ssn(ssn)
+    }
+
+    /// Check if passport number is a known test/sample pattern
+    #[must_use]
+    pub fn is_test_passport(&self, passport: &str) -> bool {
+        validation::is_test_passport(passport)
+    }
+
+    /// Check if national ID is a known test/sample pattern
+    #[must_use]
+    pub fn is_test_national_id(&self, national_id: &str) -> bool {
+        validation::is_test_national_id(national_id)
     }
 
     /// Check if EIN prefix is a valid IRS campus code

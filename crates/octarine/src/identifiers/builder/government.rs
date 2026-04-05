@@ -300,6 +300,21 @@ impl GovernmentBuilder {
         self.inner.find_passports_in_text(text)
     }
 
+    /// Validate passport number format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the passport number format is invalid
+    pub fn validate_passport(&self, passport: &str) -> Result<(), Problem> {
+        let result = self.inner.validate_passport(passport);
+
+        if self.emit_events && result.is_err() {
+            event::warn("Invalid passport number format".to_string());
+        }
+
+        result
+    }
+
     /// Redact a passport number with explicit strategy
     #[must_use]
     pub fn redact_passport_with_strategy(
@@ -335,6 +350,39 @@ impl GovernmentBuilder {
     #[must_use]
     pub fn find_national_ids_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         self.inner.find_national_ids_in_text(text)
+    }
+
+    /// Validate national ID format (auto-detects UK NI, Canada SIN, or generic)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the national ID format is invalid
+    pub fn validate_national_id(&self, national_id: &str) -> Result<(), Problem> {
+        let result = self.inner.validate_national_id(national_id);
+
+        if self.emit_events && result.is_err() {
+            event::warn("Invalid national ID format".to_string());
+        }
+
+        result
+    }
+
+    /// Validate UK National Insurance Number
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NI number format is invalid
+    pub fn validate_uk_ni(&self, ni: &str) -> Result<(), Problem> {
+        self.inner.validate_uk_ni(ni)
+    }
+
+    /// Validate Canadian Social Insurance Number with Luhn checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the SIN format is invalid or checksum fails
+    pub fn validate_canada_sin(&self, sin: &str) -> Result<(), Problem> {
+        self.inner.validate_canada_sin(sin)
     }
 
     /// Redact a national ID with explicit strategy
@@ -516,6 +564,18 @@ impl GovernmentBuilder {
     #[must_use]
     pub fn is_test_ssn(&self, ssn: &str) -> bool {
         self.inner.is_test_ssn(ssn)
+    }
+
+    /// Check if passport number is a known test/sample pattern
+    #[must_use]
+    pub fn is_test_passport(&self, passport: &str) -> bool {
+        self.inner.is_test_passport(passport)
+    }
+
+    /// Check if national ID is a known test/sample pattern
+    #[must_use]
+    pub fn is_test_national_id(&self, national_id: &str) -> bool {
+        self.inner.is_test_national_id(national_id)
     }
 
     /// Check if EIN prefix is valid
