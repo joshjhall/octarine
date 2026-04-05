@@ -32,6 +32,14 @@ mod metric_names {
         MetricName::new("data.identifiers.credentials.detect_ms").expect("valid metric name")
     }
 
+    pub fn redact_ms() -> MetricName {
+        MetricName::new("data.identifiers.credentials.redact_ms").expect("valid metric name")
+    }
+
+    pub fn detected() -> MetricName {
+        MetricName::new("data.identifiers.credentials.detected").expect("valid metric name")
+    }
+
     pub fn secrets_found() -> MetricName {
         MetricName::new("data.identifiers.credentials.secrets_found").expect("valid metric name")
     }
@@ -226,14 +234,22 @@ impl CredentialsBuilder {
     /// Detect all credential matches in text
     #[must_use]
     pub fn detect_credentials(&self, text: &str) -> Vec<CredentialMatch> {
+        let start = Instant::now();
         let matches = self.inner.detect_credentials(text);
 
-        if self.emit_events && !matches.is_empty() {
-            increment_by(metric_names::secrets_found(), matches.len() as u64);
-            observe::warn(
-                "credentials_in_text",
-                format!("Found {} credentials in text", matches.len()),
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
             );
+            if !matches.is_empty() {
+                increment_by(metric_names::detected(), matches.len() as u64);
+                increment_by(metric_names::secrets_found(), matches.len() as u64);
+                observe::warn(
+                    "credentials_in_text",
+                    format!("Found {} credentials in text", matches.len()),
+                );
+            }
         }
 
         matches
@@ -427,12 +443,19 @@ impl CredentialsBuilder {
         text: &'a str,
         policy: CredentialTextPolicy,
     ) -> Cow<'a, str> {
+        let start = Instant::now();
         let result = self
             .inner
             .redact_credentials_in_text_with_policy(text, policy);
 
-        if self.emit_events && result != text {
-            observe::info("credentials_redacted", "Credentials redacted from text");
+        if self.emit_events {
+            record(
+                metric_names::redact_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result != text {
+                observe::info("credentials_redacted", "Credentials redacted from text");
+            }
         }
 
         result

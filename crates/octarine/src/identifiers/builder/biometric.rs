@@ -14,7 +14,9 @@
 //!    from internal primitives.
 
 use std::borrow::Cow;
+use std::time::Instant;
 
+use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::observe::{Problem, event};
 use crate::primitives::identifiers::BiometricIdentifierBuilder;
 
@@ -23,6 +25,32 @@ use super::super::types::{
     FacialIdRedactionStrategy, FingerprintRedactionStrategy, IdentifierMatch, IdentifierType,
     IrisIdRedactionStrategy, VoiceIdRedactionStrategy,
 };
+
+#[allow(clippy::expect_used)]
+mod metric_names {
+    use super::MetricName;
+
+    pub fn detect_ms() -> MetricName {
+        MetricName::new("data.identifiers.biometric.detect_ms").expect("valid metric name")
+    }
+
+    pub fn validate_ms() -> MetricName {
+        MetricName::new("data.identifiers.biometric.validate_ms").expect("valid metric name")
+    }
+
+    pub fn redact_ms() -> MetricName {
+        MetricName::new("data.identifiers.biometric.redact_ms").expect("valid metric name")
+    }
+
+    pub fn detected() -> MetricName {
+        MetricName::new("data.identifiers.biometric.detected").expect("valid metric name")
+    }
+
+    pub fn biometric_data_found() -> MetricName {
+        MetricName::new("data.identifiers.biometric.biometric_data_found")
+            .expect("valid metric name")
+    }
+}
 
 /// Biometric identifier builder with observability (BIPA compliance)
 ///
@@ -85,10 +113,19 @@ impl BiometricBuilder {
     /// Find the type of biometric identifier
     #[must_use]
     pub fn find(&self, value: &str) -> Option<IdentifierType> {
+        let start = Instant::now();
         let result = self.inner.find(value);
 
-        if self.emit_events && result.is_some() {
-            event::debug("Biometric identifier detected".to_string());
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_some() {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::biometric_data_found(), 1);
+                event::debug("Biometric identifier detected".to_string());
+            }
         }
 
         result
@@ -96,10 +133,18 @@ impl BiometricBuilder {
 
     /// Check if value is any biometric identifier
     pub fn is_biometric(&self, value: &str) -> bool {
+        let start = Instant::now();
         let result = self.inner.is_biometric(value);
 
-        if self.emit_events && result {
-            event::debug("Biometric data detected".to_string());
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::biometric_data_found(), 1);
+                event::debug("Biometric data detected".to_string());
+            }
         }
 
         result
@@ -173,10 +218,18 @@ impl BiometricBuilder {
 
     /// Check if text contains any biometric identifier
     pub fn is_biometric_present(&self, text: &str) -> bool {
+        let start = Instant::now();
         let result = self.inner.is_biometric_present(text);
 
-        if self.emit_events && result {
-            event::debug("Biometric data present in text".to_string());
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::biometric_data_found(), 1);
+                event::debug("Biometric data present in text".to_string());
+            }
         }
 
         result
@@ -289,13 +342,21 @@ impl BiometricBuilder {
     /// Detect all biometric identifiers in text
     #[must_use]
     pub fn detect_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
         let results = self.inner.detect_all_in_text(text);
 
-        if self.emit_events && !results.is_empty() {
-            event::debug(format!(
-                "Found {} biometric identifier(s) in text",
-                results.len()
-            ));
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !results.is_empty() {
+                increment_by(metric_names::detected(), results.len() as u64);
+                event::debug(format!(
+                    "Found {} biometric identifier(s) in text",
+                    results.len()
+                ));
+            }
         }
 
         results
@@ -311,10 +372,17 @@ impl BiometricBuilder {
     ///
     /// Returns `Problem` if the fingerprint ID format is invalid
     pub fn validate_fingerprint_id(&self, id: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_fingerprint_id(id);
 
-        if self.emit_events && result.is_err() {
-            event::warn("Invalid fingerprint ID format".to_string());
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid fingerprint ID format".to_string());
+            }
         }
 
         result
@@ -326,10 +394,17 @@ impl BiometricBuilder {
     ///
     /// Returns `Problem` if the facial ID format is invalid
     pub fn validate_facial_id(&self, id: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_facial_id(id);
 
-        if self.emit_events && result.is_err() {
-            event::warn("Invalid facial ID format".to_string());
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid facial ID format".to_string());
+            }
         }
 
         result
@@ -341,10 +416,17 @@ impl BiometricBuilder {
     ///
     /// Returns `Problem` if the iris ID format is invalid
     pub fn validate_iris_id(&self, id: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_iris_id(id);
 
-        if self.emit_events && result.is_err() {
-            event::warn("Invalid iris ID format".to_string());
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid iris ID format".to_string());
+            }
         }
 
         result
@@ -356,10 +438,17 @@ impl BiometricBuilder {
     ///
     /// Returns `Problem` if the voice ID format is invalid
     pub fn validate_voice_id(&self, id: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_voice_id(id);
 
-        if self.emit_events && result.is_err() {
-            event::warn("Invalid voice ID format".to_string());
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid voice ID format".to_string());
+            }
         }
 
         result
@@ -510,7 +599,17 @@ impl BiometricBuilder {
         text: &str,
         policy: BiometricTextPolicy,
     ) -> String {
-        self.inner.redact_all_in_text_with_policy(text, policy)
+        let start = Instant::now();
+        let result = self.inner.redact_all_in_text_with_policy(text, policy);
+
+        if self.emit_events {
+            record(
+                metric_names::redact_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 }
 

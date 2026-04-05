@@ -13,6 +13,9 @@
 //! 2. **API stability**: Wrappers allow the public API to evolve independently
 //!    from internal primitives.
 
+use std::time::Instant;
+
+use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::observe::{Problem, event};
 use crate::primitives::identifiers::{
     DriverLicenseRedactionStrategy, GovernmentIdentifierBuilder, NationalIdRedactionStrategy,
@@ -21,6 +24,32 @@ use crate::primitives::identifiers::{
 };
 
 use super::super::types::IdentifierMatch;
+
+#[allow(clippy::expect_used)]
+mod metric_names {
+    use super::MetricName;
+
+    pub fn detect_ms() -> MetricName {
+        MetricName::new("data.identifiers.government.detect_ms").expect("valid metric name")
+    }
+
+    pub fn validate_ms() -> MetricName {
+        MetricName::new("data.identifiers.government.validate_ms").expect("valid metric name")
+    }
+
+    pub fn redact_ms() -> MetricName {
+        MetricName::new("data.identifiers.government.redact_ms").expect("valid metric name")
+    }
+
+    pub fn detected() -> MetricName {
+        MetricName::new("data.identifiers.government.detected").expect("valid metric name")
+    }
+
+    pub fn government_data_found() -> MetricName {
+        MetricName::new("data.identifiers.government.government_data_found")
+            .expect("valid metric name")
+    }
+}
 
 /// Government identifier builder with observability
 ///
@@ -82,10 +111,19 @@ impl GovernmentBuilder {
 
     /// Check if value is an SSN
     pub fn is_ssn(&self, value: &str) -> bool {
+        let start = Instant::now();
         let result = self.inner.is_ssn(value);
 
-        if self.emit_events && result {
-            event::debug("SSN pattern detected".to_string());
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+                event::debug("SSN pattern detected".to_string());
+            }
         }
 
         result
@@ -94,10 +132,18 @@ impl GovernmentBuilder {
     /// Find all SSNs in text
     #[must_use]
     pub fn find_ssns_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
         let results = self.inner.find_ssns_in_text(text);
 
-        if self.emit_events && !results.is_empty() {
-            event::debug(format!("Found {} SSN(s) in text", results.len()));
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !results.is_empty() {
+                increment_by(metric_names::detected(), results.len() as u64);
+                event::debug(format!("Found {} SSN(s) in text", results.len()));
+            }
         }
 
         results
@@ -109,10 +155,17 @@ impl GovernmentBuilder {
     ///
     /// Returns `Problem` if the SSN format is invalid
     pub fn validate_ssn(&self, ssn: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_ssn(ssn);
 
-        if self.emit_events && result.is_err() {
-            event::warn("Invalid SSN format".to_string());
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid SSN format".to_string());
+            }
         }
 
         result
@@ -492,10 +545,18 @@ impl GovernmentBuilder {
 
     /// Check if text contains any government identifier
     pub fn is_government_present(&self, text: &str) -> bool {
+        let start = Instant::now();
         let result = self.inner.is_government_present(text);
 
-        if self.emit_events && result {
-            event::debug("Government identifier present in text".to_string());
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::government_data_found(), 1);
+                event::debug("Government identifier present in text".to_string());
+            }
         }
 
         result
@@ -504,7 +565,20 @@ impl GovernmentBuilder {
     /// Find all government IDs in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner.find_all_in_text(text)
+        let start = Instant::now();
+        let results = self.inner.find_all_in_text(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !results.is_empty() {
+                increment_by(metric_names::detected(), results.len() as u64);
+            }
+        }
+
+        results
     }
 
     /// Redact all government IDs in text with explicit policy
@@ -519,7 +593,17 @@ impl GovernmentBuilder {
         text: &str,
         policy: super::super::types::GovernmentTextPolicy,
     ) -> String {
-        self.inner.redact_all_in_text_with_policy(text, policy)
+        let start = Instant::now();
+        let result = self.inner.redact_all_in_text_with_policy(text, policy);
+
+        if self.emit_events {
+            record(
+                metric_names::redact_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     // ========================================================================

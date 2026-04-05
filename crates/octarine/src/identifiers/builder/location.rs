@@ -6,8 +6,10 @@
 //! with observe instrumentation for compliance-grade audit trails.
 
 use std::borrow::Cow;
+use std::time::Instant;
 
 use crate::observe::Problem;
+use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::primitives::identifiers::{
     AddressRedactionStrategy, GpsRedactionStrategy, LocationIdentifierBuilder,
     PostalCodeRedactionStrategy,
@@ -17,6 +19,31 @@ use super::super::types::{
     GpsFormat, IdentifierMatch, IdentifierType, LocationTextPolicy, PostalCodeNormalization,
     PostalCodeType,
 };
+
+#[allow(clippy::expect_used)]
+mod metric_names {
+    use super::MetricName;
+
+    pub fn detect_ms() -> MetricName {
+        MetricName::new("data.identifiers.location.detect_ms").expect("valid metric name")
+    }
+
+    pub fn validate_ms() -> MetricName {
+        MetricName::new("data.identifiers.location.validate_ms").expect("valid metric name")
+    }
+
+    pub fn redact_ms() -> MetricName {
+        MetricName::new("data.identifiers.location.redact_ms").expect("valid metric name")
+    }
+
+    pub fn detected() -> MetricName {
+        MetricName::new("data.identifiers.location.detected").expect("valid metric name")
+    }
+
+    pub fn location_data_found() -> MetricName {
+        MetricName::new("data.identifiers.location.location_data_found").expect("valid metric name")
+    }
+}
 
 /// Location identifier builder with observability
 #[derive(Debug, Clone, Copy, Default)]
@@ -58,7 +85,21 @@ impl LocationBuilder {
     /// Detect location identifier type from input string
     #[must_use]
     pub fn detect(&self, value: &str) -> Option<IdentifierType> {
-        self.inner.detect(value)
+        let start = Instant::now();
+        let result = self.inner.detect(value);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_some() {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::location_data_found(), 1);
+            }
+        }
+
+        result
     }
 
     /// Check if value is a location identifier
@@ -106,7 +147,20 @@ impl LocationBuilder {
     /// Find all location identifiers in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner.find_all_in_text(text)
+        let start = Instant::now();
+        let results = self.inner.find_all_in_text(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !results.is_empty() {
+                increment_by(metric_names::detected(), results.len() as u64);
+            }
+        }
+
+        results
     }
 
     // =========================================================================
@@ -131,17 +185,47 @@ impl LocationBuilder {
 
     /// Validate GPS coordinate format (returns Result)
     pub fn validate_gps_coordinate(&self, coordinate: &str) -> Result<GpsFormat, Problem> {
-        self.inner.validate_gps_coordinate(coordinate)
+        let start = Instant::now();
+        let result = self.inner.validate_gps_coordinate(coordinate);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     /// Validate street address format (returns Result)
     pub fn validate_street_address(&self, address: &str) -> Result<(), Problem> {
-        self.inner.validate_street_address(address)
+        let start = Instant::now();
+        let result = self.inner.validate_street_address(address);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     /// Validate postal code format (returns Result)
     pub fn validate_postal_code(&self, postal_code: &str) -> Result<PostalCodeType, Problem> {
-        self.inner.validate_postal_code(postal_code)
+        let start = Instant::now();
+        let result = self.inner.validate_postal_code(postal_code);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     // =========================================================================
@@ -224,7 +308,17 @@ impl LocationBuilder {
         text: &str,
         policy: LocationTextPolicy,
     ) -> String {
-        self.inner.redact_all_in_text_with_strategy(text, policy)
+        let start = Instant::now();
+        let result = self.inner.redact_all_in_text_with_strategy(text, policy);
+
+        if self.emit_events {
+            record(
+                metric_names::redact_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     // =========================================================================

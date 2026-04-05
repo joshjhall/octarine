@@ -6,8 +6,10 @@
 //! with observe instrumentation for compliance-grade audit trails.
 
 use std::borrow::Cow;
+use std::time::Instant;
 
 use crate::observe::Problem;
+use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::primitives::identifiers::{
     Icd10FormatStyle, InsuranceRedactionStrategy, MedicalCodeRedactionStrategy,
     MedicalIdentifierBuilder, MrnRedactionStrategy, NpiFormatStyle, NpiRedactionStrategy,
@@ -15,6 +17,31 @@ use crate::primitives::identifiers::{
 };
 
 use super::super::types::{IdentifierMatch, IdentifierType, MedicalTextPolicy};
+
+#[allow(clippy::expect_used)]
+mod metric_names {
+    use super::MetricName;
+
+    pub fn detect_ms() -> MetricName {
+        MetricName::new("data.identifiers.medical.detect_ms").expect("valid metric name")
+    }
+
+    pub fn validate_ms() -> MetricName {
+        MetricName::new("data.identifiers.medical.validate_ms").expect("valid metric name")
+    }
+
+    pub fn redact_ms() -> MetricName {
+        MetricName::new("data.identifiers.medical.redact_ms").expect("valid metric name")
+    }
+
+    pub fn detected() -> MetricName {
+        MetricName::new("data.identifiers.medical.detected").expect("valid metric name")
+    }
+
+    pub fn medical_data_found() -> MetricName {
+        MetricName::new("data.identifiers.medical.medical_data_found").expect("valid metric name")
+    }
+}
 
 /// Medical identifier builder with observability (HIPAA compliance)
 #[derive(Debug, Clone, Copy, Default)]
@@ -56,7 +83,21 @@ impl MedicalBuilder {
     /// Detect the type of medical identifier
     #[must_use]
     pub fn detect(&self, value: &str) -> Option<IdentifierType> {
-        self.inner.detect(value)
+        let start = Instant::now();
+        let result = self.inner.detect(value);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_some() {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::medical_data_found(), 1);
+            }
+        }
+
+        result
     }
 
     /// Check if value is any medical identifier
@@ -150,7 +191,20 @@ impl MedicalBuilder {
     /// Find all medical identifiers in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
-        self.inner.find_all_in_text(text)
+        let start = Instant::now();
+        let results = self.inner.find_all_in_text(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !results.is_empty() {
+                increment_by(metric_names::detected(), results.len() as u64);
+            }
+        }
+
+        results
     }
 
     // =========================================================================
@@ -163,7 +217,17 @@ impl MedicalBuilder {
     ///
     /// Returns `Problem` if the MRN format is invalid
     pub fn validate_mrn(&self, mrn: &str) -> Result<(), Problem> {
-        self.inner.validate_mrn(mrn)
+        let start = Instant::now();
+        let result = self.inner.validate_mrn(mrn);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     /// Validate insurance number format
@@ -172,7 +236,17 @@ impl MedicalBuilder {
     ///
     /// Returns `Problem` if the insurance number format is invalid
     pub fn validate_insurance(&self, insurance: &str) -> Result<(), Problem> {
-        self.inner.validate_insurance(insurance)
+        let start = Instant::now();
+        let result = self.inner.validate_insurance(insurance);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     /// Validate prescription number format
@@ -315,7 +389,17 @@ impl MedicalBuilder {
     /// Redact all medical identifiers in text with custom policy
     #[must_use]
     pub fn redact_all_in_text_with_policy(&self, text: &str, policy: MedicalTextPolicy) -> String {
-        self.inner.redact_all_in_text_with_policy(text, policy)
+        let start = Instant::now();
+        let result = self.inner.redact_all_in_text_with_policy(text, policy);
+
+        if self.emit_events {
+            record(
+                metric_names::redact_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     // =========================================================================
