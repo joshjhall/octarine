@@ -36,10 +36,12 @@ pub mod password {
     /// Password field pattern (key=value or key: value format)
     /// Captures: (label) (value)
     /// Example: "password=secret123" → ("password=", "secret123")
-    /// Example: "password: secret123" → ("password: ", "secret123")
+    /// Example: "passwort=geheim123" → ("passwort=", "geheim123")
+    ///
+    /// Supports English + Spanish, French, German, Portuguese, Italian, Dutch translations.
     pub static FIELD: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r#"(?i)\b(password|passwd|pwd|pass|secret|credential)\s*[:=]\s*['"]?([^\s'"}\]]+)['"]?"#,
+            r#"(?i)\b(password|passwd|pwd|pass|secret|credential|contrasena|contrasenya|clave|mot_de_passe|motdepasse|passwort|kennwort|senha|wachtwoord|secreto|geheimnis|segredo|segreto|geheim)\s*[:=]\s*['"]?([^\s'"}\]]+)['"]?"#,
         )
         .expect("BUG: Invalid password field regex")
     });
@@ -47,8 +49,10 @@ pub mod password {
     /// JSON password pattern ("password": "value")
     /// Captures: (key) (value)
     /// Example: {"password": "hunter2"} → ("password", "hunter2")
+    ///
+    /// Supports English + Spanish, French, German, Portuguese, Italian, Dutch translations.
     pub static JSON: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r#"["'](password|passwd|pwd|pass|secret|credential)["']\s*:\s*["']([^"']+)["']"#)
+        Regex::new(r#"["'](password|passwd|pwd|pass|secret|credential|contrasena|contrasenya|clave|mot_de_passe|motdepasse|passwort|kennwort|senha|wachtwoord|secreto|geheimnis|segredo|segreto|geheim)["']\s*:\s*["']([^"']+)["']"#)
             .expect("BUG: Invalid JSON password regex")
     });
 
@@ -118,16 +122,20 @@ pub mod passphrase {
     /// Passphrase field pattern
     /// Captures: (label) (value)
     /// Note: Passphrases can contain spaces, so we capture until end of line or closing bracket/quote
+    ///
+    /// Supports English + Spanish, French, German, Portuguese, Dutch translations.
     pub static FIELD: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r#"(?i)\b(passphrase|pass_phrase)\s*[:=]\s*['"]?([^'"}\]]+?)['"]?(?:\s|$|[}\]])"#,
+            r#"(?i)\b(passphrase|pass_phrase|frase_de_paso|phrase_de_passe|kennphrase|frase_secreta|wachtwoordzin)\s*[:=]\s*['"]?([^'"}\]]+?)['"]?(?:\s|$|[}\]])"#,
         )
         .expect("BUG: Invalid passphrase field regex")
     });
 
     /// JSON passphrase pattern
+    ///
+    /// Supports English + Spanish, French, German, Portuguese, Dutch translations.
     pub static JSON: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r#"["'](passphrase|pass_phrase)["']\s*:\s*["']([^"']+)["']"#)
+        Regex::new(r#"["'](passphrase|pass_phrase|frase_de_paso|phrase_de_passe|kennphrase|frase_secreta|wachtwoordzin)["']\s*:\s*["']([^"']+)["']"#)
             .expect("BUG: Invalid JSON passphrase regex")
     });
 
@@ -238,6 +246,71 @@ mod tests {
     #[test]
     fn test_passphrase_json() {
         assert!(passphrase::JSON.is_match(r#""passphrase": "correct horse battery staple""#));
+    }
+
+    // ==================== INTERNATIONAL KEYWORD TESTS ====================
+
+    #[test]
+    fn test_password_field_spanish() {
+        assert!(password::FIELD.is_match("contrasena=secreto123"));
+        assert!(password::FIELD.is_match("contrasenya=valor"));
+        assert!(password::FIELD.is_match("clave=mipassword"));
+        assert!(password::FIELD.is_match("secreto=valor123"));
+    }
+
+    #[test]
+    fn test_password_field_french() {
+        assert!(password::FIELD.is_match("mot_de_passe=secret123"));
+        assert!(password::FIELD.is_match("motdepasse=valeur"));
+    }
+
+    #[test]
+    fn test_password_field_german() {
+        assert!(password::FIELD.is_match("passwort=geheim123"));
+        assert!(password::FIELD.is_match("kennwort=test123"));
+        assert!(password::FIELD.is_match("geheimnis=wert"));
+        assert!(password::FIELD.is_match("geheim=wert123"));
+    }
+
+    #[test]
+    fn test_password_field_portuguese() {
+        assert!(password::FIELD.is_match("senha=segredo123"));
+        assert!(password::FIELD.is_match("segredo=valor"));
+    }
+
+    #[test]
+    fn test_password_field_italian() {
+        assert!(password::FIELD.is_match("segreto=valore123"));
+    }
+
+    #[test]
+    fn test_password_field_dutch() {
+        assert!(password::FIELD.is_match("wachtwoord=geheim123"));
+    }
+
+    #[test]
+    fn test_password_json_international() {
+        assert!(password::JSON.is_match(r#""contrasena": "secreto123""#));
+        assert!(password::JSON.is_match(r#""passwort": "geheim123""#));
+        assert!(password::JSON.is_match(r#""senha": "segredo123""#));
+        assert!(password::JSON.is_match(r#""wachtwoord": "geheim123""#));
+        assert!(password::JSON.is_match(r#""mot_de_passe": "secret123""#));
+        assert!(password::JSON.is_match(r#""clave": "valor123""#));
+    }
+
+    #[test]
+    fn test_passphrase_field_international() {
+        assert!(passphrase::FIELD.is_match("frase_de_paso=palabras secretas aqui"));
+        assert!(passphrase::FIELD.is_match("phrase_de_passe: mes mots secrets"));
+        assert!(passphrase::FIELD.is_match("kennphrase=meine geheimen worte"));
+        assert!(passphrase::FIELD.is_match("frase_secreta=minhas palavras"));
+        assert!(passphrase::FIELD.is_match("wachtwoordzin=mijn geheime woorden"));
+    }
+
+    #[test]
+    fn test_passphrase_json_international() {
+        assert!(passphrase::JSON.is_match(r#""frase_de_paso": "palabras secretas""#));
+        assert!(passphrase::JSON.is_match(r#""kennphrase": "geheime worte""#));
     }
 
     // ==================== FALSE POSITIVE TESTS ====================

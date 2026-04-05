@@ -32,7 +32,7 @@ pub use super::super::types::{CredentialMatch, CredentialType};
 pub fn is_credentials_present(text: &str) -> bool {
     let lower = text.to_lowercase();
 
-    // Quick keyword check first
+    // Quick keyword check first (English + international translations)
     if !lower.contains("password")
         && !lower.contains("passwd")
         && !lower.contains("pwd")
@@ -40,6 +40,17 @@ pub fn is_credentials_present(text: &str) -> bool {
         && !lower.contains("pin")
         && !lower.contains("passphrase")
         && !lower.contains("credential")
+        && !lower.contains("contrasena")
+        && !lower.contains("clave")
+        && !lower.contains("mot_de_passe")
+        && !lower.contains("passwort")
+        && !lower.contains("kennwort")
+        && !lower.contains("senha")
+        && !lower.contains("wachtwoord")
+        && !lower.contains("geheimnis")
+        && !lower.contains("segredo")
+        && !lower.contains("segreto")
+        && !lower.contains("geheim")
     {
         return false;
     }
@@ -63,6 +74,17 @@ pub fn is_passwords_present(text: &str) -> bool {
         && !lower.contains("pass")
         && !lower.contains("secret")
         && !lower.contains("credential")
+        && !lower.contains("contrasena")
+        && !lower.contains("clave")
+        && !lower.contains("mot_de_passe")
+        && !lower.contains("passwort")
+        && !lower.contains("kennwort")
+        && !lower.contains("senha")
+        && !lower.contains("wachtwoord")
+        && !lower.contains("geheimnis")
+        && !lower.contains("segredo")
+        && !lower.contains("segreto")
+        && !lower.contains("geheim")
     {
         return false;
     }
@@ -99,7 +121,14 @@ pub fn is_security_answers_present(text: &str) -> bool {
 #[must_use]
 pub fn is_passphrases_present(text: &str) -> bool {
     let lower = text.to_lowercase();
-    if !lower.contains("passphrase") && !lower.contains("pass_phrase") {
+    if !lower.contains("passphrase")
+        && !lower.contains("pass_phrase")
+        && !lower.contains("frase_de_paso")
+        && !lower.contains("phrase_de_passe")
+        && !lower.contains("kennphrase")
+        && !lower.contains("frase_secreta")
+        && !lower.contains("wachtwoordzin")
+    {
         return false;
     }
 
@@ -548,6 +577,52 @@ mod tests {
         assert!(is_passwords_present(r#""password": "secret""#));
         assert!(!is_passwords_present("no credentials here"));
         assert!(!is_passwords_present("the word password alone"));
+    }
+
+    #[test]
+    fn test_is_passwords_present_international() {
+        // Spanish
+        assert!(is_passwords_present("contrasena=secreto123"));
+        assert!(is_passwords_present("clave=valor"));
+        // French
+        assert!(is_passwords_present("mot_de_passe=secret123"));
+        // German
+        assert!(is_passwords_present("passwort=geheim123"));
+        assert!(is_passwords_present("kennwort=test123"));
+        // Portuguese
+        assert!(is_passwords_present("senha=segredo123"));
+        // Dutch
+        assert!(is_passwords_present("wachtwoord=geheim123"));
+        // Italian
+        assert!(is_passwords_present("segreto=valore123"));
+    }
+
+    #[test]
+    fn test_is_credentials_present_international() {
+        assert!(is_credentials_present("contrasena=secreto"));
+        assert!(is_credentials_present("passwort=geheim"));
+        assert!(is_credentials_present("senha=segredo"));
+        assert!(is_credentials_present("wachtwoord=geheim"));
+        assert!(is_credentials_present("frase_de_paso=palabras secretas"));
+        assert!(!is_credentials_present("just some german text"));
+    }
+
+    #[test]
+    fn test_detect_passwords_international() {
+        let matches = detect_passwords("passwort=geheim123");
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("should detect German password");
+        assert_eq!(first.value, "geheim123");
+
+        let matches = detect_passwords("contrasena=secreto123");
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("should detect Spanish password");
+        assert_eq!(first.value, "secreto123");
+
+        let matches = detect_passwords("senha=segredo123");
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("should detect Portuguese password");
+        assert_eq!(first.value, "segredo123");
     }
 
     #[test]
