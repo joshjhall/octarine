@@ -124,6 +124,12 @@ pub fn redact_api_key(key: &str, strategy: ApiKeyRedactionStrategy) -> String {
                 RedactionTokenCore::GithubToken.into()
             } else if key.starts_with("AIza") {
                 RedactionTokenCore::GcpKey.into()
+            } else if key.starts_with("GOCSPX-") {
+                RedactionTokenCore::GcpOAuthSecret.into()
+            } else if key.starts_with("AAAA") && key.len() >= 144 {
+                RedactionTokenCore::FirebaseFcmKey.into()
+            } else if key.contains("\"service_account\"") {
+                RedactionTokenCore::GcpServiceAccount.into()
             } else if !is_valid {
                 RedactionTokenCore::ApiKey.into()
             } else {

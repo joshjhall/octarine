@@ -19,6 +19,12 @@ pub enum ApiKeyProvider {
     Github,
     /// Google Cloud Platform API keys (AIza...)
     Gcp,
+    /// GCP Service Account credentials (JSON key files)
+    GcpServiceAccount,
+    /// GCP OAuth2 client secrets (GOCSPX-...)
+    GcpOAuth,
+    /// Firebase Cloud Messaging server keys (AAAA...)
+    Firebase,
     /// Azure connection strings and keys
     Azure,
     /// 1Password tokens (ops_ service tokens, op:// vault references)
@@ -76,6 +82,9 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Aws => write!(f, "AWS"),
             Self::Github => write!(f, "GitHub"),
             Self::Gcp => write!(f, "Google Cloud Platform"),
+            Self::GcpServiceAccount => write!(f, "GCP Service Account"),
+            Self::GcpOAuth => write!(f, "GCP OAuth"),
+            Self::Firebase => write!(f, "Firebase"),
             Self::Azure => write!(f, "Azure"),
             Self::OnePassword => write!(f, "1Password"),
             Self::Square => write!(f, "Square"),

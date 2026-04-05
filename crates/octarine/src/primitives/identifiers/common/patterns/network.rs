@@ -253,6 +253,29 @@ pub static API_KEY_AWS_SESSION: Lazy<Regex> =
 pub static API_KEY_GCP: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\bAIza[0-9A-Za-z_-]{35}\b").expect("BUG: Invalid regex pattern"));
 
+/// GCP Service Account JSON detection — matches the "type": "service_account" field
+/// Example: `"type": "service_account"`
+pub static GCP_SERVICE_ACCOUNT_TYPE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#""type"\s*:\s*"service_account""#).expect("BUG: Invalid regex pattern")
+});
+
+/// GCP Service Account email pattern
+/// Example: "my-svc@my-project.iam.gserviceaccount.com"
+pub static GCP_SERVICE_ACCOUNT_EMAIL: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// GCP OAuth2 client secret pattern
+/// Example: "GOCSPX-abcdefghijklmnopqrstuvwxyz"
+pub static GCP_OAUTH_CLIENT_SECRET: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bGOCSPX-[a-zA-Z0-9_-]{28}\b").expect("BUG: Invalid regex pattern"));
+
+/// Firebase Cloud Messaging server key pattern
+/// Example: "AAAAxxxxxx..." (140+ chars after AAAA prefix)
+pub static FIREBASE_FCM_SERVER_KEY: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bAAAA[a-zA-Z0-9_-]{140,}\b").expect("BUG: Invalid regex pattern"));
+
 /// GitHub Personal Access Token patterns
 /// Formats: ghp_ (personal), gho_ (OAuth), ghu_ (user-to-server), ghs_ (server-to-server), ghr_ (refresh)
 /// Also matches fine-grained PATs: github_pat_{22}_{59}
@@ -548,6 +571,10 @@ pub fn api_keys() -> Vec<&'static Regex> {
         &*API_KEY_AWS_ACCESS,
         &*API_KEY_AWS_SECRET,
         &*API_KEY_GCP,
+        &*GCP_SERVICE_ACCOUNT_TYPE,
+        &*GCP_SERVICE_ACCOUNT_EMAIL,
+        &*GCP_OAUTH_CLIENT_SECRET,
+        &*FIREBASE_FCM_SERVER_KEY,
         &*API_KEY_GITHUB,
         &*API_KEY_GITLAB,
         &*API_KEY_AZURE,

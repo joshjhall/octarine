@@ -152,6 +152,12 @@ pub(crate) enum RedactionTokenCore {
     GithubToken,
     /// GCP key
     GcpKey,
+    /// GCP Service Account credential
+    GcpServiceAccount,
+    /// GCP OAuth2 client secret
+    GcpOAuthSecret,
+    /// Firebase Cloud Messaging server key
+    FirebaseFcmKey,
     /// 1Password service account token
     OnePasswordToken,
     /// 1Password vault reference (op://vault/item/field)
@@ -269,6 +275,9 @@ impl RedactionTokenCore {
             Self::AwsKey => "[AWS_KEY]",
             Self::GithubToken => "[GITHUB_TOKEN]",
             Self::GcpKey => "[GCP_KEY]",
+            Self::GcpServiceAccount => "[GCP_SERVICE_ACCOUNT]",
+            Self::GcpOAuthSecret => "[GCP_OAUTH_SECRET]",
+            Self::FirebaseFcmKey => "[FIREBASE_FCM_KEY]",
             Self::OnePasswordToken => "[1PASSWORD_TOKEN]",
             Self::OnePasswordVaultRef => "[1PASSWORD_VAULT_REF]",
             Self::BearerToken => "[BEARER_TOKEN]",
@@ -361,7 +370,10 @@ impl RedactionTokenCore {
             Self::StripeKey => "STRIPE_KEY",
             Self::AwsKey => "AWS_KEY",
             Self::GithubToken => "GITHUB_TOKEN",
-            Self::GcpKey => "GCP_KEY",
+            Self::GcpKey
+            | Self::GcpServiceAccount
+            | Self::GcpOAuthSecret
+            | Self::FirebaseFcmKey => "GCP_KEY",
             Self::OnePasswordToken => "1PASSWORD_TOKEN",
             Self::OnePasswordVaultRef => "1PASSWORD_VAULT_REF",
             Self::BearerToken => "BEARER_TOKEN",
@@ -436,6 +448,9 @@ impl RedactionTokenCore {
             | Self::AwsKey
             | Self::GithubToken
             | Self::GcpKey
+            | Self::GcpServiceAccount
+            | Self::GcpOAuthSecret
+            | Self::FirebaseFcmKey
             | Self::OnePasswordToken
             | Self::OnePasswordVaultRef
             | Self::BearerToken

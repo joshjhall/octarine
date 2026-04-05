@@ -47,12 +47,13 @@ pub use api_keys::{
     detect_api_key_provider, is_api_key, is_artifactory_token, is_aws_access_key,
     is_aws_secret_key, is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key,
     is_cloudflare_ca_key, is_databricks_token, is_discord_token, is_discord_webhook,
-    is_docker_hub_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_mailchimp_key,
-    is_mailgun_key, is_npm_token, is_nuget_key, is_onepassword_token, is_onepassword_vault_ref,
-    is_openai_key, is_paypal_token, is_pypi_token, is_resend_key, is_sendgrid_key,
-    is_shopify_token, is_slack_token, is_slack_webhook, is_square_token, is_stripe_key,
-    is_telegram_bot_token, is_test_api_key, is_twilio_account_sid, is_twilio_api_key_sid,
-    is_url_with_credentials, is_vault_token,
+    is_docker_hub_token, is_firebase_fcm_key, is_gcp_api_key, is_gcp_oauth_client_secret,
+    is_gcp_service_account, is_gcp_service_account_email, is_github_token, is_gitlab_token,
+    is_mailchimp_key, is_mailgun_key, is_npm_token, is_nuget_key, is_onepassword_token,
+    is_onepassword_vault_ref, is_openai_key, is_paypal_token, is_pypi_token, is_resend_key,
+    is_sendgrid_key, is_shopify_token, is_slack_token, is_slack_webhook, is_square_token,
+    is_stripe_key, is_telegram_bot_token, is_test_api_key, is_twilio_account_sid,
+    is_twilio_api_key_sid, is_url_with_credentials, is_vault_token,
 };
 
 // Re-export SSH functions
