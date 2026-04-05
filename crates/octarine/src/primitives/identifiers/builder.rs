@@ -263,14 +263,14 @@ mod tests {
         let builder = IdentifierBuilder::new();
         let government = builder.government();
 
-        assert!(government.is_ssn("900-00-0001"));
+        assert!(government.is_ssn("517-29-8346"));
     }
 
     #[test]
     fn test_government_ssn_validation() {
         let builder = IdentifierBuilder::new();
         // Valid SSN format (not a test pattern)
-        assert!(builder.government().validate_ssn("234-56-7890").is_ok());
+        assert!(builder.government().validate_ssn("517-29-8346").is_ok());
         // Test pattern should be rejected
         assert!(builder.government().validate_ssn("123-45-6789").is_err());
     }
@@ -282,14 +282,14 @@ mod tests {
         assert_eq!(
             builder
                 .government()
-                .redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token),
+                .redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token),
             "[SSN]"
         );
         assert_eq!(
             builder
                 .government()
-                .redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::LastFour),
-            "***-**-0001"
+                .redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::LastFour),
+            "***-**-8346"
         );
     }
 

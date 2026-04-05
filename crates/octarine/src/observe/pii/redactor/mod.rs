@@ -74,7 +74,7 @@ pub fn redact_pii(text: &str) -> String {
 /// ```rust
 /// use octarine::observe::pii::{redact_pii_with_profile, RedactionProfile};
 ///
-/// let text = "SSN: 123-45-6789";
+/// let text = "SSN: 517-29-8346";
 ///
 /// // Strict (production) - Complete redaction with token strategy
 /// let strict = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
@@ -82,7 +82,7 @@ pub fn redact_pii(text: &str) -> String {
 ///
 /// // Lenient (staging) - Partial redaction (last digits)
 /// let lenient = redact_pii_with_profile(text, RedactionProfile::ProductionLenient);
-/// assert_eq!(lenient, "SSN: ***-**-6789");
+/// assert_eq!(lenient, "SSN: ***-**-8346");
 /// ```
 pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String {
     // Scan for PII first
@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn test_mixed_content_with_urls() {
-        let text = "Contact user@example.com or visit https://example.com?email=test@test.com&ssn=123-45-6789";
+        let text = "Contact user@example.com or visit https://example.com?email=test@test.com&ssn=517-29-8346";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
         // Should redact emails in both plain text and URL parameters
         assert!(result.contains("[EMAIL]"));
@@ -411,7 +411,7 @@ mod tests {
         let test_cases = vec![
             "user@example.com at start",
             "at end user@example.com",
-            "900-00-0001",
+            "517-29-8346",
         ];
 
         for input in test_cases {

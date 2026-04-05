@@ -72,7 +72,7 @@ pub use health::{
 /// ```
 /// use octarine::observe::pii::scan_for_pii;
 ///
-/// let text = "Contact: user@example.com, SSN: 123-45-6789";
+/// let text = "Contact: user@example.com, SSN: 517-29-8346";
 /// let pii_types = scan_for_pii(text);
 ///
 /// assert!(pii_types.iter().any(|p| p.name() == "email"));
@@ -156,7 +156,7 @@ pub fn scan_for_pii_with_config(text: &str, config: &PiiScannerConfig) -> Vec<Pi
 /// use octarine::observe::pii::scan_for_pii;
 ///
 /// // Use scan_for_pii and check if any results (equivalent to is_pii_present)
-/// assert!(!scan_for_pii("SSN: 123-45-6789").is_empty());
+/// assert!(!scan_for_pii("SSN: 517-29-8346").is_empty());
 /// assert!(scan_for_pii("Clean text with no PII").is_empty());
 /// ```
 pub fn is_pii_present(text: &str) -> bool {

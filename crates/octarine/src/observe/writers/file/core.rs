@@ -369,7 +369,7 @@ mod tests {
         // Create an event with PII
         let mut event = Event::new(
             EventType::Info,
-            "User SSN is 123-45-6789 and card is 4242424242424242",
+            "User SSN is 517-29-8346 and card is 4242424242424242",
         );
         event.context = EventContext::default();
 
@@ -390,7 +390,7 @@ mod tests {
             .expect("Failed to read log file");
 
         // PII should be redacted at writer level
-        assert!(!contents.contains("123-45-6789"), "SSN was not redacted");
+        assert!(!contents.contains("517-29-8346"), "SSN was not redacted");
         assert!(
             !contents.contains("4242424242424242"),
             "Credit card was not redacted"
@@ -542,7 +542,7 @@ mod tests {
         // Create event with PII
         let mut event = Event::new(
             EventType::Info,
-            "User SSN is 123-45-6789 and card is 4242424242424242",
+            "User SSN is 517-29-8346 and card is 4242424242424242",
         );
         event.metadata.insert(
             "credit_card".to_string(),
@@ -565,7 +565,7 @@ mod tests {
             .expect("Failed to read log file");
 
         // PII should be redacted
-        assert!(!contents.contains("123-45-6789"), "SSN should be redacted");
+        assert!(!contents.contains("517-29-8346"), "SSN should be redacted");
         assert!(
             !contents.contains("4242424242424242"),
             "Credit card should be redacted"

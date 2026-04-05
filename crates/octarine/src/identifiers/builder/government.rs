@@ -599,19 +599,19 @@ mod tests {
     #[test]
     fn test_ssn_detection() {
         let builder = GovernmentBuilder::silent();
-        assert!(builder.is_ssn("900-00-0001"));
+        assert!(builder.is_ssn("517-29-8346"));
     }
 
     #[test]
     fn test_ssn_redaction_with_strategy() {
         let builder = GovernmentBuilder::silent();
         assert_eq!(
-            builder.redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token),
+            builder.redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token),
             "[SSN]"
         );
         assert_eq!(
-            builder.redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::LastFour),
-            "***-**-0001"
+            builder.redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::LastFour),
+            "***-**-8346"
         );
     }
 }

@@ -188,11 +188,11 @@ mod tests {
 
     #[test]
     fn test_sanitize_for_writing_ssn() {
-        let text = "SSN: 123-45-6789";
+        let text = "SSN: 517-29-8346";
         let result = sanitize_for_writing(text);
 
         // Writer-level redaction should catch SSN
-        assert!(result.contains("[SSN]") || !result.contains("123-45-6789"));
+        assert!(result.contains("[SSN]") || !result.contains("517-29-8346"));
     }
 
     #[test]
@@ -218,11 +218,11 @@ mod tests {
 
     #[test]
     fn test_sanitize_for_writing_multiple_pii() {
-        let text = "Contact user@example.com, SSN: 123-45-6789, Card: 4242424242424242";
+        let text = "Contact user@example.com, SSN: 517-29-8346, Card: 4242424242424242";
         let result = sanitize_for_writing(text);
 
         // Should redact all PII types
-        assert!(!result.contains("123-45-6789"));
+        assert!(!result.contains("517-29-8346"));
         assert!(!result.contains("4242424242424242"));
         // Email might be partially visible in lenient mode, so just check it's not fully exposed
     }

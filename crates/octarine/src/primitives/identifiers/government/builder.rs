@@ -681,14 +681,14 @@ mod tests {
     #[test]
     fn test_ssn_detection() {
         let gov = builder();
-        assert!(gov.is_ssn("900-00-0001"));
+        assert!(gov.is_ssn("517-29-8346"));
         assert!(!gov.is_ssn("invalid"));
     }
 
     #[test]
     fn test_ssn_validation() {
         let gov = builder();
-        assert!(gov.validate_ssn("234-56-7890").is_ok());
+        assert!(gov.validate_ssn("517-29-8346").is_ok());
         assert!(gov.validate_ssn("123-45-6789").is_err()); // Test pattern
         assert!(gov.validate_ssn("000-12-3456").is_err()); // Invalid area
     }
@@ -697,12 +697,12 @@ mod tests {
     fn test_ssn_sanitization() {
         let gov = builder();
         assert_eq!(
-            gov.redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token),
+            gov.redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token),
             "[SSN]"
         );
         assert_eq!(
-            gov.redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::LastFour),
-            "***-**-0001"
+            gov.redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::LastFour),
+            "***-**-8346"
         );
     }
 

@@ -618,7 +618,7 @@ mod tests {
     #[test]
     fn test_scan_types_selective() {
         let scanner = StreamingScanner::new(1000);
-        let text = "Email: user@example.com, SSN: 123-45-6789";
+        let text = "Email: user@example.com, SSN: 517-29-8346";
 
         // Only scan for emails
         let count = scanner.scan_types(text, &[IdentifierType::Email]);
