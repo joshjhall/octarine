@@ -71,6 +71,8 @@ pub enum ApiKeyProvider {
     SendGrid,
     /// OpenAI API keys (sk-*, sk-proj-*, org-*)
     OpenAi,
+    /// Bitbucket Cloud app passwords (ATBB...)
+    Bitbucket,
     /// Generic or unknown provider
     Generic,
 }
@@ -108,6 +110,7 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::Twilio => write!(f, "Twilio"),
             Self::SendGrid => write!(f, "SendGrid"),
             Self::OpenAi => write!(f, "OpenAI"),
+            Self::Bitbucket => write!(f, "Bitbucket"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -304,4 +307,6 @@ pub enum TokenType {
     SendGridToken,
     /// OpenAI API key (sk-*, sk-proj-*, org-*)
     OpenAiKey,
+    /// Bitbucket Cloud App Password (ATBB...)
+    BitbucketToken,
 }

@@ -285,12 +285,20 @@ pub static API_KEY_GITHUB: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
-/// GitLab Personal Access Token patterns
-/// Formats: glpat- (personal access token), gldt- (deploy token)
-/// Example: "glpat-xxxxxxxxxxxxxxxxxxxx"
+/// GitLab token patterns
+/// Formats: glpat- (personal), gldt- (deploy), glptt- (pipeline trigger),
+/// glcbt- (CI job), glrt- (runner), glft- (feed), glsoat- (SCIM), glimt- (incoming mail)
+/// Example: "glpat-xxxxxxxxxxxxxxxxxxxx", "glrt-xxxxxxxxxxxxxxxxxxxx"
 pub static API_KEY_GITLAB: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b(?:glpat|gldt)-[a-zA-Z0-9_-]{20,}\b").expect("BUG: Invalid regex pattern")
+    Regex::new(r"\b(?:glpat|gldt|glptt|glcbt|glrt|glft|glsoat|glimt)-[a-zA-Z0-9_-]{20,}\b")
+        .expect("BUG: Invalid regex pattern")
 });
+
+/// Bitbucket Cloud App Password
+/// Format: ATBB + 32 alphanumeric characters
+/// Example: "ATBBabcdefghijklmnopqrstuvwxyz012345"
+pub static API_KEY_BITBUCKET: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bATBB[a-zA-Z0-9]{32}\b").expect("BUG: Invalid regex pattern"));
 
 /// Azure Storage Account Key pattern (base64, 88 characters)
 /// Example: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=..."

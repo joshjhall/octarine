@@ -45,8 +45,8 @@ pub use jwt::{detect_jwt_algorithm, is_jwt, is_test_jwt};
 // Re-export API key functions
 pub use api_keys::{
     detect_api_key_provider, is_api_key, is_artifactory_token, is_aws_access_key,
-    is_aws_secret_key, is_aws_session_token, is_azure_key, is_bearer_token, is_brevo_key,
-    is_cloudflare_ca_key, is_databricks_token, is_discord_token, is_discord_webhook,
+    is_aws_secret_key, is_aws_session_token, is_azure_key, is_bearer_token, is_bitbucket_token,
+    is_brevo_key, is_cloudflare_ca_key, is_databricks_token, is_discord_token, is_discord_webhook,
     is_docker_hub_token, is_firebase_fcm_key, is_gcp_api_key, is_gcp_oauth_client_secret,
     is_gcp_service_account, is_gcp_service_account_email, is_github_token, is_gitlab_token,
     is_mailchimp_key, is_mailgun_key, is_npm_token, is_nuget_key, is_onepassword_token,
@@ -116,6 +116,9 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_gitlab_token(trimmed) {
         return Some(TokenType::GitLab);
+    }
+    if is_bitbucket_token(trimmed) {
+        return Some(TokenType::BitbucketToken);
     }
     if is_stripe_key(trimmed) {
         return Some(TokenType::StripeKey);

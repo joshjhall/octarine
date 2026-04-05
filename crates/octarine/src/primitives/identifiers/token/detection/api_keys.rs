@@ -213,6 +213,11 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::OpenAi);
     }
 
+    // Bitbucket Cloud App Password (ATBB...)
+    if key.starts_with("ATBB") && key.len() == 36 {
+        return Some(ApiKeyProvider::Bitbucket);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -402,6 +407,18 @@ pub fn is_gitlab_token(value: &str) -> bool {
         return false;
     }
     patterns::network::API_KEY_GITLAB.is_match(trimmed)
+}
+
+/// Check if value is a Bitbucket Cloud App Password
+///
+/// Bitbucket app passwords start with "ATBB" followed by 32 alphanumeric characters.
+#[must_use]
+pub fn is_bitbucket_token(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() > MAX_IDENTIFIER_LENGTH {
+        return false;
+    }
+    patterns::network::API_KEY_BITBUCKET.is_match(trimmed)
 }
 
 /// Check if value is a 1Password Service Account Token
@@ -1065,6 +1082,45 @@ mod tests {
         assert!(is_gitlab_token("gldt-yyyyyyyyyyyyyyyyyyyy"));
         assert!(!is_gitlab_token("glpat-short")); // Too short
         assert!(!is_gitlab_token("ghpat-xxxxxxxxxxxxxxxxxxxx")); // Wrong prefix
+    }
+
+    #[test]
+    fn test_is_gitlab_token_extended_prefixes() {
+        // All tokens need at least 20 chars after the dash
+        let suffix = "abcdefghijklmnopqrstu"; // 21 chars
+
+        // Pipeline trigger token
+        assert!(is_gitlab_token(&format!("glptt-{suffix}")));
+        // CI job token
+        assert!(is_gitlab_token(&format!("glcbt-{suffix}")));
+        // Runner authentication token
+        assert!(is_gitlab_token(&format!("glrt-{suffix}")));
+        // Feed token
+        assert!(is_gitlab_token(&format!("glft-{suffix}")));
+        // SCIM token
+        assert!(is_gitlab_token(&format!("glsoat-{suffix}")));
+        // Incoming mail token
+        assert!(is_gitlab_token(&format!("glimt-{suffix}")));
+    }
+
+    #[test]
+    fn test_is_bitbucket_token() {
+        // Valid: ATBB + exactly 32 alphanumeric chars = 36 total
+        assert!(is_bitbucket_token("ATBBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        // Invalid: wrong prefix
+        assert!(!is_bitbucket_token("ATBCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        // Invalid: too short
+        assert!(!is_bitbucket_token("ATBBshort"));
+        // Invalid: empty
+        assert!(!is_bitbucket_token(""));
+    }
+
+    #[test]
+    fn test_detect_api_key_provider_bitbucket() {
+        assert_eq!(
+            detect_api_key_provider("ATBBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"),
+            Some(ApiKeyProvider::Bitbucket)
+        );
     }
 
     #[test]

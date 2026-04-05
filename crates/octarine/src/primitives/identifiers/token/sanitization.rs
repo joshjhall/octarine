@@ -551,6 +551,12 @@ pub fn mask_github_token(token: &str) -> String {
     mask_api_key(token)
 }
 
+/// Mask Bitbucket Cloud App Password
+#[must_use]
+pub fn mask_bitbucket_token(token: &str) -> String {
+    mask_api_key(token)
+}
+
 /// Mask Stripe key
 #[must_use]
 pub fn mask_stripe_key(key: &str) -> String {

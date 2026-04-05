@@ -191,6 +191,11 @@ impl TokenIdentifierBuilder {
         detection::is_gitlab_token(value)
     }
 
+    /// Check if value is a Bitbucket Cloud App Password
+    pub fn is_bitbucket_token(&self, value: &str) -> bool {
+        detection::is_bitbucket_token(value)
+    }
+
     /// Check if value is a 1Password service account token
     pub fn is_onepassword_token(&self, value: &str) -> bool {
         detection::is_onepassword_token(value)
