@@ -64,6 +64,7 @@
 
 // Domain-specific builders
 mod biometric;
+mod confidence;
 mod correlation;
 mod credentials;
 mod database;
@@ -82,6 +83,7 @@ mod token;
 
 // Re-export all domain builders
 pub use biometric::BiometricBuilder;
+pub use confidence::ConfidenceBuilder;
 pub use correlation::CorrelationBuilder;
 pub use credentials::CredentialsBuilder;
 pub use database::DatabaseBuilder;
@@ -103,6 +105,7 @@ use std::time::Instant;
 use crate::observe;
 use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::primitives::identifiers::StreamingScanner;
+use crate::primitives::identifiers::confidence::ConfidenceBuilder as PrimitiveConfidenceBuilder;
 
 use super::types::{IdentifierMatch, IdentifierType};
 
@@ -254,6 +257,12 @@ impl IdentifierBuilder {
         EntropyBuilder::new()
     }
 
+    /// Get confidence scoring builder (context-aware confidence boosting)
+    #[must_use]
+    pub fn confidence(&self) -> ConfidenceBuilder {
+        ConfidenceBuilder::new()
+    }
+
     /// Get credential pair correlation builder
     #[must_use]
     pub fn correlation(&self) -> CorrelationBuilder {
@@ -319,7 +328,18 @@ impl IdentifierBuilder {
         }
 
         // Drain and convert matches from primitive to local types
-        let matches: Vec<IdentifierMatch> = scanner.drain();
+        let mut matches: Vec<IdentifierMatch> = scanner.drain();
+
+        // Context-aware confidence scoring pass: boost confidence when
+        // contextual keywords are found near each match
+        if !matches.is_empty() {
+            let confidence_scorer = PrimitiveConfidenceBuilder::new();
+            for m in &mut matches {
+                let context_present =
+                    confidence_scorer.is_context_present(text, m.start, m.end, &m.identifier_type);
+                m.confidence = m.confidence.clone().with_context_boost(context_present);
+            }
+        }
 
         if !matches.is_empty() {
             // Check for sensitive types

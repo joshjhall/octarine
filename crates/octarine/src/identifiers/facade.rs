@@ -21,10 +21,10 @@
 //! ```
 
 use super::builder::{
-    BiometricBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder, EntropyBuilder,
-    EnvironmentBuilder, FinancialBuilder, GenericBuilder, GovernmentBuilder, IdentifierBuilder,
-    LocationBuilder, MedicalBuilder, MetricsBuilder, NetworkBuilder, OrganizationalBuilder,
-    PersonalBuilder, TokenBuilder,
+    BiometricBuilder, ConfidenceBuilder, CorrelationBuilder, CredentialsBuilder, DatabaseBuilder,
+    EntropyBuilder, EnvironmentBuilder, FinancialBuilder, GenericBuilder, GovernmentBuilder,
+    IdentifierBuilder, LocationBuilder, MedicalBuilder, MetricsBuilder, NetworkBuilder,
+    OrganizationalBuilder, PersonalBuilder, TokenBuilder,
 };
 use super::types::{IdentifierMatch, IdentifierType};
 
@@ -290,6 +290,17 @@ impl Identifiers {
     #[must_use]
     pub fn entropy(&self) -> EntropyBuilder {
         self.inner.entropy()
+    }
+
+    /// Access context-aware confidence scoring operations
+    ///
+    /// Provides confidence analysis that boosts detection scores based on
+    /// surrounding keyword context (e.g., "SSN:" near a number pattern).
+    ///
+    /// Compliance: HIPAA PHI de-identification, SOC2 CC6.1
+    #[must_use]
+    pub fn confidence(&self) -> ConfidenceBuilder {
+        self.inner.confidence()
     }
 
     /// Access credential pair correlation operations
