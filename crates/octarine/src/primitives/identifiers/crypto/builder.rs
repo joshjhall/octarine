@@ -3,10 +3,13 @@
 //! Builder for detecting and classifying cryptographic artifacts.
 //! This is Layer 1 (primitives) - no observe dependencies.
 
+use crate::primitives::Problem;
+
 use super::detection;
 use super::types::{
     CertificateType, CryptoDetectionResult, KeyFormat, KeyType, SignatureAlgorithm,
 };
+use super::validation;
 
 /// Builder for crypto artifact identification operations
 ///
@@ -101,6 +104,91 @@ impl CryptoIdentifierBuilder {
     #[must_use]
     pub fn is_public_key(&self, data: &str) -> bool {
         detection::is_public_key(data)
+    }
+
+    // ========================================================================
+    // Validation (validate_* functions returning Result)
+    // ========================================================================
+
+    /// Validate PEM format structure (header/footer pair, base64 body)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the PEM structure is invalid
+    pub fn validate_pem_format(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_pem_format(data)
+    }
+
+    /// Validate DER format structure (SEQUENCE tag, length encoding, no truncation)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the DER structure is invalid
+    pub fn validate_der_format(&self, data: &[u8]) -> Result<(), Problem> {
+        validation::validate_der_format(data)
+    }
+
+    /// Validate SSH public key format (key type, base64 section)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the SSH key format is invalid
+    pub fn validate_ssh_key_format(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_ssh_key_format(data)
+    }
+
+    /// Validate OpenSSH private key format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the OpenSSH private key format is invalid
+    pub fn validate_openssh_private_key_format(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_openssh_private_key_format(data)
+    }
+
+    /// Validate RSA key format (PEM or SSH)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the key is not a valid RSA key format
+    pub fn validate_rsa_key(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_rsa_key(data)
+    }
+
+    /// Validate EC key format (PEM or SSH)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the key is not a valid EC key format
+    pub fn validate_ec_key(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_ec_key(data)
+    }
+
+    /// Validate X.509 certificate format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the certificate format is invalid
+    pub fn validate_x509_certificate(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_x509_certificate(data)
+    }
+
+    /// Validate private key format (any PEM private key label)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the data is not a valid private key format
+    pub fn validate_private_key(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_private_key(data)
+    }
+
+    /// Validate public key format (PEM or SSH)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the data is not a valid public key format
+    pub fn validate_public_key(&self, data: &str) -> Result<(), Problem> {
+        validation::validate_public_key(data)
     }
 
     // ========================================================================

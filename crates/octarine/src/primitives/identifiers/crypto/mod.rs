@@ -67,6 +67,7 @@ mod builder;
 mod detection;
 mod patterns;
 mod types;
+mod validation;
 
 // Re-export builder (primary API)
 pub use builder::CryptoIdentifierBuilder;
