@@ -10,6 +10,49 @@ use super::cache::EMAIL_CACHE;
 /// Maximum input length for ReDoS protection
 const MAX_INPUT_LENGTH: usize = 10_000;
 
+/// Common programming file extensions that look like TLDs (2+ chars, alpha-only)
+const CODE_FILE_EXTENSIONS: &[&str] = &[
+    "py", "js", "ts", "rs", "go", "rb", "cs", "sh", "pl", "pm", "ex", "kt", "md", "el", "hs", "ml",
+    "cc", "hh",
+];
+
+// ============================================================================
+// False Positive Filters
+// ============================================================================
+
+/// Check if an email match in text is a code context false positive
+///
+/// Rejects matches where the TLD is a programming file extension or the match
+/// is preceded by code-context indicators like `import`, `from`, or `require`.
+fn is_code_context_false_positive(text: &str, match_start: usize, matched: &str) -> bool {
+    // Check if TLD is a known code file extension
+    if let Some(dot_pos) = matched.rfind('.') {
+        let tld = matched.get(dot_pos.saturating_add(1)..);
+        if let Some(tld) = tld {
+            let tld_lower = tld.to_lowercase();
+            if CODE_FILE_EXTENSIONS.contains(&tld_lower.as_str()) {
+                return true;
+            }
+        }
+    }
+
+    // Check preceding text for code context indicators
+    let prefix_len = 20.min(match_start);
+    if let Some(prefix) = text.get(match_start.saturating_sub(prefix_len)..match_start) {
+        let prefix_trimmed = prefix.trim_end();
+        if prefix_trimmed.ends_with("import")
+            || prefix_trimmed.ends_with("from")
+            || prefix_trimmed.ends_with("require(")
+            || prefix_trimmed.ends_with("require('")
+            || prefix_trimmed.ends_with("require(\"")
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
 // ============================================================================
 // Public API
 // ============================================================================
@@ -118,10 +161,17 @@ pub fn detect_emails_in_text(text: &str) -> Vec<IdentifierMatch> {
     for pattern in patterns::email::all() {
         for capture in pattern.captures_iter(text) {
             let full_match = capture.get(0).expect("BUG: capture group 0 always exists");
+            let matched_text = full_match.as_str();
+
+            // Filter out code context false positives
+            if is_code_context_false_positive(text, full_match.start(), matched_text) {
+                continue;
+            }
+
             matches.push(IdentifierMatch::high_confidence(
                 full_match.start(),
                 full_match.end(),
-                full_match.as_str().to_string(),
+                matched_text.to_string(),
                 IdentifierType::Email,
             ));
         }
@@ -182,6 +232,125 @@ mod tests {
         let text = "No emails here just text";
         let matches = detect_emails_in_text(text);
         assert_eq!(matches.len(), 0);
+    }
+
+    // ── RFC compliance and format tests ────────────────────────────────
+
+    #[test]
+    fn test_subaddressing_support() {
+        assert!(is_email("user+tag@gmail.com"));
+        assert!(is_email("user+newsletter@example.com"));
+        assert!(is_email("first.last+work@company.org"));
+    }
+
+    #[test]
+    fn test_long_and_new_tlds() {
+        assert!(is_email("user@example.museum"));
+        assert!(is_email("user@example.photography"));
+        assert!(is_email("user@example.international"));
+        assert!(is_email("user@example.app"));
+        assert!(is_email("user@example.dev"));
+        assert!(is_email("user@example.io"));
+        assert!(is_email("user@example.cloud"));
+    }
+
+    #[test]
+    fn test_ip_literal_email() {
+        assert!(is_email("user@[192.168.1.1]"));
+        assert!(is_email("admin@[10.0.0.1]"));
+        // Note: regex validates format (1-3 digits per octet) but not value range
+        // IP value validation is delegated to the validation layer
+        assert!(!is_email("user@[]")); // Empty brackets
+        assert!(!is_email("user@[not.an.ip]")); // Non-digits
+    }
+
+    #[test]
+    fn test_detect_ip_literal_in_text() {
+        let text = "Send to admin@[10.0.0.1] for internal mail";
+        let matches = detect_emails_in_text(text);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("first").matched_text,
+            "admin@[10.0.0.1]"
+        );
+    }
+
+    // ── Code context false positive tests ──────────────────────────────
+
+    #[test]
+    fn test_code_annotations_not_matched() {
+        // Java annotations — these don't match the email regex at all (no domain.tld)
+        let text = "@Override public void method() {}";
+        let matches = detect_emails_in_text(text);
+        assert!(matches.is_empty());
+
+        let text = "@Entity @Table(name = \"users\")";
+        let matches = detect_emails_in_text(text);
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn test_package_scopes_not_matched() {
+        // Package scopes don't match (no domain.tld)
+        let text = "import @angular/core from 'npm'";
+        let matches = detect_emails_in_text(text);
+        assert!(matches.is_empty());
+
+        let text = "@types/node is a package";
+        let matches = detect_emails_in_text(text);
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn test_file_extension_false_positives() {
+        // Code file references that look like emails
+        let text = "See config@settings.py for details";
+        let matches = detect_emails_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "config@settings.py should be filtered as code context: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+
+        let text = "Check handler@routes.js for the endpoint";
+        let matches = detect_emails_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "handler@routes.js should be filtered: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+
+        let text = "See main@lib.rs for entry point";
+        let matches = detect_emails_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "main@lib.rs should be filtered: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_import_context_filtering() {
+        let text = "from admin@utils.co import something";
+        let matches = detect_emails_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "import context should be filtered: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_real_emails_not_filtered() {
+        // Real emails should still be detected
+        let text = "Contact john@company.com or jane+work@example.org";
+        let matches = detect_emails_in_text(text);
+        assert_eq!(
+            matches.len(),
+            2,
+            "real emails should still match: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
     }
 
     #[test]

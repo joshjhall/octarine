@@ -147,8 +147,8 @@ mod tests {
         assert!(validate_email("user+tag@example.com").is_ok());
         assert!(validate_email("user.name@example.com").is_ok());
 
-        // IP address domain (not supported)
-        assert!(validate_email("user@[192.168.1.1]").is_err());
+        // IP address domain (RFC 5321 IP literal)
+        assert!(validate_email("user@[192.168.1.1]").is_ok());
 
         // Valid emails that might look dangerous but aren't
         assert!(validate_email("onload@example.com").is_ok()); // Valid - "onload" is just text

@@ -22,12 +22,19 @@ pub mod email {
     /// Exact email pattern (for validation)
     /// Example: "user@example.com"
     pub static EXACT: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+        Regex::new(r"^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\[\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\])$")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// IP literal email pattern (for text scanning)
+    /// Example: "user@[192.168.1.1]"
+    pub static IP_LITERAL: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"[A-Za-z0-9._%+-]+@\[\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\]")
             .expect("BUG: Invalid regex pattern")
     });
 
     pub fn all() -> Vec<&'static Regex> {
-        vec![&*STANDARD]
+        vec![&*STANDARD, &*IP_LITERAL]
     }
 }
 pub mod phone {
