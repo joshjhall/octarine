@@ -320,6 +320,124 @@ pub struct ObserveService<S> {
     config: ObserveConfig,
 }
 
+/// Shared metadata for a single request lifecycle, passed to helper functions
+/// to avoid repeating parameters.
+struct RequestContext {
+    method: String,
+    path: String,
+    correlation_id: String,
+    tenant_id: Option<String>,
+    request_size: Option<u64>,
+    compliance_enabled: bool,
+}
+
+/// Buffer an HTTP body, optionally log it with PII redaction, and reconstruct it.
+///
+/// Used for both request and response body logging to deduplicate the
+/// nearly-identical buffering logic.
+async fn buffer_and_log_body(
+    ctx: &RequestContext,
+    body: Body,
+    direction: &str,
+    max_size: usize,
+) -> Body {
+    match body.collect().await {
+        Ok(collected) => {
+            let bytes = collected.to_bytes();
+            let truncated = bytes.len() > max_size;
+            let body_slice = bytes.get(..max_size).unwrap_or(&bytes);
+            let body_str = String::from_utf8_lossy(body_slice);
+
+            let (safe_body, was_redacted) = if pii::is_pii_present(&body_str) {
+                (pii::redact_pii(&body_str), true)
+            } else {
+                (body_str.to_string(), false)
+            };
+
+            ObserveBuilder::new()
+                .message(format!("HTTP {direction} body"))
+                .with_metadata("method", ctx.method.as_str())
+                .with_metadata("path", ctx.path.as_str())
+                .with_metadata("correlation_id", ctx.correlation_id.as_str())
+                .with_metadata("body", safe_body.as_str())
+                .with_metadata("redacted", was_redacted)
+                .with_metadata("truncated", truncated)
+                .with_metadata("size", bytes.len())
+                .debug();
+
+            Body::from(bytes)
+        }
+        Err(e) => {
+            ObserveBuilder::new()
+                .message(format!("Failed to collect {direction} body"))
+                .with_metadata("method", ctx.method.as_str())
+                .with_metadata("path", ctx.path.as_str())
+                .with_metadata("correlation_id", ctx.correlation_id.as_str())
+                .with_metadata("error", e.to_string())
+                .warn();
+
+            Body::empty()
+        }
+    }
+}
+
+/// Emit the HTTP completion event and optional rate-limit security event.
+fn emit_completion_event(
+    ctx: &RequestContext,
+    status: StatusCode,
+    latency_ms: f64,
+    response_size: Option<u64>,
+    response_headers: Option<&str>,
+) {
+    let mut event = ObserveBuilder::new()
+        .message("HTTP request completed")
+        .with_metadata("method", ctx.method.as_str())
+        .with_metadata("path", ctx.path.as_str())
+        .with_metadata("status", status.as_u16())
+        .with_metadata("latency_ms", latency_ms)
+        .with_metadata("correlation_id", ctx.correlation_id.as_str());
+
+    if let Some(ref tenant) = ctx.tenant_id {
+        event = event.with_metadata("tenant_id", tenant.as_str());
+    }
+
+    if let Some(size) = ctx.request_size {
+        event = event.with_metadata("request_size", size);
+    }
+
+    if let Some(size) = response_size {
+        event = event.with_metadata("response_size", size);
+    }
+
+    if let Some(headers) = response_headers {
+        event = event.with_metadata("headers", headers);
+    }
+
+    if ctx.compliance_enabled {
+        event = event.soc2_control(Soc2Control::CC7_2);
+    }
+
+    emit_by_status(status, event);
+
+    // Special handling for rate limit responses (security event)
+    if status == StatusCode::TOO_MANY_REQUESTS {
+        let mut rate_limit_event = ObserveBuilder::new()
+            .message("Rate limit exceeded")
+            .with_metadata("path", ctx.path.as_str())
+            .with_metadata("correlation_id", ctx.correlation_id.as_str());
+
+        if let Some(ref tenant) = ctx.tenant_id {
+            rate_limit_event = rate_limit_event.with_metadata("tenant_id", tenant.as_str());
+        }
+
+        if ctx.compliance_enabled {
+            rate_limit_event = rate_limit_event.soc2_control(Soc2Control::CC6_1);
+        }
+
+        rate_limit_event.warn();
+    }
+}
+
 impl<S> Service<Request<Body>> for ObserveService<S>
 where
     S: Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
@@ -334,7 +452,6 @@ where
     }
 
     fn call(&mut self, request: Request<Body>) -> Self::Future {
-        let method = request.method().clone();
         let path = request.uri().path().to_string();
 
         // Check if this path should be excluded
@@ -345,28 +462,27 @@ where
 
         let config = self.config.clone();
         let start = Instant::now();
-        let method_str = method.to_string();
 
-        // Normalize path for logging/metrics
-        let normalized_path = config.normalize_path(&path);
-
-        // Get context information
-        let correlation_id = get_correlation_id();
-        let tenant_id = get_tenant_id();
-
-        // Extract request info
-        let request_headers = if config.log_headers {
-            Some(format_headers(request.headers()))
-        } else {
-            None
+        let ctx = RequestContext {
+            method: request.method().to_string(),
+            path: config.normalize_path(&path),
+            correlation_id: get_correlation_id().to_string(),
+            tenant_id: get_tenant_id(),
+            request_size: if config.log_request_size {
+                request
+                    .headers()
+                    .get(axum::http::header::CONTENT_LENGTH)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok())
+            } else {
+                None
+            },
+            compliance_enabled: config.compliance_enabled,
         };
 
-        let request_size = if config.log_request_size {
-            request
-                .headers()
-                .get(axum::http::header::CONTENT_LENGTH)
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse::<u64>().ok())
+        // Extract request headers for logging
+        let request_headers = if config.log_headers {
+            Some(format_headers(request.headers()))
         } else {
             None
         };
@@ -374,84 +490,39 @@ where
         // Emit structured request start event
         let mut event = ObserveBuilder::new()
             .message("HTTP request received")
-            .with_metadata("method", method_str.as_str())
-            .with_metadata("path", normalized_path.as_str())
-            .with_metadata("correlation_id", correlation_id.to_string());
+            .with_metadata("method", ctx.method.as_str())
+            .with_metadata("path", ctx.path.as_str())
+            .with_metadata("correlation_id", ctx.correlation_id.as_str());
 
-        if let Some(ref tenant) = tenant_id {
+        if let Some(ref tenant) = ctx.tenant_id {
             event = event.with_metadata("tenant_id", tenant.as_str());
         }
-
         if let Some(ref headers) = request_headers {
             event = event.with_metadata("headers", headers.as_str());
         }
-
-        if let Some(size) = request_size {
+        if let Some(size) = ctx.request_size {
             event = event.with_metadata("request_size", size);
         }
-
         event.debug();
 
         let mut inner = self.inner.clone();
         let log_request_body = config.log_request_body;
         let log_response_body = config.log_response_body;
         let max_body_size = config.max_body_log_size;
-        let compliance_enabled = config.compliance_enabled;
 
         Box::pin(async move {
             // Optionally buffer and log request body
             let request = if log_request_body {
                 let (parts, body) = request.into_parts();
-                match body.collect().await {
-                    Ok(collected) => {
-                        let bytes = collected.to_bytes();
-                        let truncated = bytes.len() > max_body_size;
-                        let body_slice = bytes.get(..max_body_size).unwrap_or(&bytes);
-                        let body_str = String::from_utf8_lossy(body_slice);
-
-                        // PII redaction
-                        let (safe_body, was_redacted) = if pii::is_pii_present(&body_str) {
-                            (pii::redact_pii(&body_str), true)
-                        } else {
-                            (body_str.to_string(), false)
-                        };
-
-                        ObserveBuilder::new()
-                            .message("HTTP request body")
-                            .with_metadata("method", method_str.as_str())
-                            .with_metadata("path", normalized_path.as_str())
-                            .with_metadata("correlation_id", correlation_id.to_string())
-                            .with_metadata("body", safe_body.as_str())
-                            .with_metadata("redacted", was_redacted)
-                            .with_metadata("truncated", truncated)
-                            .with_metadata("size", bytes.len())
-                            .debug();
-
-                        // Reconstruct request with buffered body
-                        Request::from_parts(parts, Body::from(bytes))
-                    }
-                    Err(e) => {
-                        // Log body collection failure
-                        ObserveBuilder::new()
-                            .message("Failed to collect request body")
-                            .with_metadata("method", method_str.as_str())
-                            .with_metadata("path", normalized_path.as_str())
-                            .with_metadata("correlation_id", correlation_id.to_string())
-                            .with_metadata("error", e.to_string())
-                            .warn();
-
-                        // Reconstruct with empty body to allow request to continue
-                        Request::from_parts(parts, Body::empty())
-                    }
-                }
+                let new_body = buffer_and_log_body(&ctx, body, "request", max_body_size).await;
+                Request::from_parts(parts, new_body)
             } else {
                 request
             };
 
             let response = inner.call(request).await?;
 
-            let latency = start.elapsed();
-            let latency_ms = latency.as_secs_f64() * 1000.0;
+            let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
             let status = response.status();
 
             // Record latency histogram
@@ -465,7 +536,6 @@ where
             } else {
                 None
             };
-
             let response_size = if config.log_response_size {
                 response
                     .headers()
@@ -479,103 +549,19 @@ where
             // Optionally buffer and log response body
             let response = if log_response_body {
                 let (parts, body) = response.into_parts();
-                match body.collect().await {
-                    Ok(collected) => {
-                        let bytes = collected.to_bytes();
-                        let truncated = bytes.len() > max_body_size;
-                        let body_slice = bytes.get(..max_body_size).unwrap_or(&bytes);
-                        let body_str = String::from_utf8_lossy(body_slice);
-
-                        // PII redaction
-                        let (safe_body, was_redacted) = if pii::is_pii_present(&body_str) {
-                            (pii::redact_pii(&body_str), true)
-                        } else {
-                            (body_str.to_string(), false)
-                        };
-
-                        ObserveBuilder::new()
-                            .message("HTTP response body")
-                            .with_metadata("method", method_str.as_str())
-                            .with_metadata("path", normalized_path.as_str())
-                            .with_metadata("correlation_id", correlation_id.to_string())
-                            .with_metadata("body", safe_body.as_str())
-                            .with_metadata("redacted", was_redacted)
-                            .with_metadata("truncated", truncated)
-                            .with_metadata("size", bytes.len())
-                            .debug();
-
-                        // Reconstruct response with buffered body
-                        Response::from_parts(parts, Body::from(bytes))
-                    }
-                    Err(e) => {
-                        // Log body collection failure
-                        ObserveBuilder::new()
-                            .message("Failed to collect response body")
-                            .with_metadata("method", method_str.as_str())
-                            .with_metadata("path", normalized_path.as_str())
-                            .with_metadata("correlation_id", correlation_id.to_string())
-                            .with_metadata("error", e.to_string())
-                            .warn();
-
-                        // Reconstruct with empty body to allow response to continue
-                        Response::from_parts(parts, Body::empty())
-                    }
-                }
+                let new_body = buffer_and_log_body(&ctx, body, "response", max_body_size).await;
+                Response::from_parts(parts, new_body)
             } else {
                 response
             };
 
-            // Build completion event
-            let mut event = ObserveBuilder::new()
-                .message("HTTP request completed")
-                .with_metadata("method", method_str.as_str())
-                .with_metadata("path", normalized_path.as_str())
-                .with_metadata("status", status.as_u16())
-                .with_metadata("latency_ms", latency_ms)
-                .with_metadata("correlation_id", correlation_id.to_string());
-
-            if let Some(ref tenant) = tenant_id {
-                event = event.with_metadata("tenant_id", tenant.as_str());
-            }
-
-            if let Some(size) = request_size {
-                event = event.with_metadata("request_size", size);
-            }
-
-            if let Some(size) = response_size {
-                event = event.with_metadata("response_size", size);
-            }
-
-            if let Some(ref headers) = response_headers {
-                event = event.with_metadata("headers", headers.as_str());
-            }
-
-            // Add compliance tags if enabled
-            if compliance_enabled {
-                event = event.soc2_control(Soc2Control::CC7_2);
-            }
-
-            // Emit at appropriate level based on status
-            // (debug for 2xx/3xx, info for 4xx, warn for 5xx)
-            emit_by_status(status, event);
-
-            // Special handling for rate limit responses (security event)
-            if status == StatusCode::TOO_MANY_REQUESTS {
-                let mut rate_limit_event = ObserveBuilder::new()
-                    .message("Rate limit exceeded")
-                    .with_metadata("path", normalized_path.as_str())
-                    .with_metadata("correlation_id", correlation_id.to_string());
-
-                if let Some(ref tenant) = tenant_id {
-                    rate_limit_event = rate_limit_event.with_metadata("tenant_id", tenant.as_str());
-                }
-
-                if compliance_enabled {
-                    rate_limit_event = rate_limit_event.soc2_control(Soc2Control::CC6_1);
-                }
-
-                rate_limit_event.warn();
-            }
+            emit_completion_event(
+                &ctx,
+                status,
+                latency_ms,
+                response_size,
+                response_headers.as_deref(),
+            );
 
             Ok(response)
         })
