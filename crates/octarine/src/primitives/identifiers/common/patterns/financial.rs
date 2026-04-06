@@ -179,3 +179,40 @@ pub mod bank_account {
         vec![&*IBAN, &*US_ROUTING_ACCOUNT, &*LABELED]
     }
 }
+
+/// Cryptocurrency wallet address patterns
+pub mod crypto {
+    use super::*;
+
+    /// Bitcoin P2PKH (Legacy) address: starts with '1', Base58Check
+    /// Example: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+    pub static BITCOIN_P2PKH: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b1[a-km-zA-HJ-NP-Z1-9]{25,34}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Bitcoin P2SH (Script Hash) address: starts with '3', Base58Check
+    /// Example: "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
+    pub static BITCOIN_P2SH: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b3[a-km-zA-HJ-NP-Z1-9]{25,34}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Bitcoin Bech32 (SegWit/Taproot) address: starts with 'bc1', lowercase
+    /// Example: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+    pub static BITCOIN_BECH32: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\bbc1[ac-hj-np-z02-9]{8,87}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Ethereum address: 0x followed by 40 hex characters
+    /// Example: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"
+    pub static ETHEREUM: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b0x[a-fA-F0-9]{40}\b").expect("BUG: Invalid regex pattern"));
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![
+            &*BITCOIN_P2PKH,
+            &*BITCOIN_P2SH,
+            &*BITCOIN_BECH32,
+            &*ETHEREUM,
+        ]
+    }
+}

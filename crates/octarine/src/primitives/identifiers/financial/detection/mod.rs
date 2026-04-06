@@ -22,6 +22,7 @@ mod bank_account;
 mod cache;
 mod common;
 mod credit_card;
+mod crypto;
 mod routing;
 
 // Re-export cache utilities
@@ -41,6 +42,11 @@ pub use bank_account::{detect_bank_accounts_in_text, is_bank_account};
 
 // Re-export payment token functions (in bank_account module for now)
 pub use bank_account::detect_payment_tokens_in_text;
+
+// Re-export crypto functions
+pub use crypto::{
+    detect_crypto_addresses_in_text, is_bitcoin_address, is_crypto_address, is_ethereum_address,
+};
 
 // Re-export common/aggregate functions
 pub use common::{
