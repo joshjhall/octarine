@@ -11,6 +11,135 @@ use super::cache::PHONE_CACHE;
 const MAX_INPUT_LENGTH: usize = 10_000;
 
 // ============================================================================
+// False Positive Filters
+// ============================================================================
+
+/// Check if a digit string is likely a false positive phone match
+///
+/// Rejects sequential numbers, repeated digits, date-like patterns, and
+/// SSN-like patterns that are commonly misidentified as phone numbers.
+fn is_likely_false_positive(digits: &str) -> bool {
+    let len = digits.len();
+    if len < 7 {
+        return false;
+    }
+
+    // All same digit (e.g., 1111111111)
+    if let Some(first) = digits.chars().next()
+        && digits.chars().all(|c| c == first)
+    {
+        return true;
+    }
+
+    // Entire number is ascending/descending sequential (e.g., 1234567890, 9876543210)
+    if is_fully_sequential(digits) {
+        return true;
+    }
+
+    // Date-like: 8 digits matching MMDDYYYY or YYYYMMDD
+    if len == 8 && is_date_like(digits) {
+        return true;
+    }
+
+    // SSN-like: exactly 9 digits matching XXX-XX-XXXX pattern ranges
+    if len == 9 && is_ssn_like(digits) {
+        return true;
+    }
+
+    false
+}
+
+/// Check if the entire digit string is a sequential run (ascending or descending)
+/// with wrapping allowed (e.g., "1234567890" wraps 9->0, "9876543210" wraps 1->0)
+///
+/// Only flags fully sequential numbers to avoid false-flagging legitimate phones
+/// that happen to contain short sequential subsequences like "+15551234567".
+fn is_fully_sequential(digits: &str) -> bool {
+    if digits.len() < 7 {
+        return false;
+    }
+
+    let bytes = digits.as_bytes();
+
+    let all_ascending = bytes
+        .windows(2)
+        .all(|pair| match (pair.first(), pair.get(1)) {
+            (Some(&a), Some(&b)) => {
+                // Allow normal ascending or wrapping 9->0
+                b == a.saturating_add(1) || (a == b'9' && b == b'0')
+            }
+            _ => false,
+        });
+
+    if all_ascending {
+        return true;
+    }
+
+    bytes
+        .windows(2)
+        .all(|pair| match (pair.first(), pair.get(1)) {
+            (Some(&a), Some(&b)) => {
+                // Allow normal descending or wrapping 0->9
+                a == b.saturating_add(1) || (a == b'0' && b == b'9')
+            }
+            _ => false,
+        })
+}
+
+/// Check if 8-digit string looks like a date (MMDDYYYY or YYYYMMDD)
+fn is_date_like(digits: &str) -> bool {
+    if digits.len() != 8 {
+        return false;
+    }
+
+    // Try MMDDYYYY
+    if let (Some(mm), Some(dd), Some(yyyy)) = (
+        digits.get(0..2).and_then(|s| s.parse::<u32>().ok()),
+        digits.get(2..4).and_then(|s| s.parse::<u32>().ok()),
+        digits.get(4..8).and_then(|s| s.parse::<u32>().ok()),
+    ) && (1..=12).contains(&mm)
+        && (1..=31).contains(&dd)
+        && (1900..=2100).contains(&yyyy)
+    {
+        return true;
+    }
+
+    // Try YYYYMMDD
+    if let (Some(yyyy), Some(mm), Some(dd)) = (
+        digits.get(0..4).and_then(|s| s.parse::<u32>().ok()),
+        digits.get(4..6).and_then(|s| s.parse::<u32>().ok()),
+        digits.get(6..8).and_then(|s| s.parse::<u32>().ok()),
+    ) && (1900..=2100).contains(&yyyy)
+        && (1..=12).contains(&mm)
+        && (1..=31).contains(&dd)
+    {
+        return true;
+    }
+
+    false
+}
+
+/// Check if 9-digit string looks like a US SSN (area 001-899, group 01-99, serial 0001-9999)
+fn is_ssn_like(digits: &str) -> bool {
+    if digits.len() != 9 {
+        return false;
+    }
+
+    matches!(
+        (
+            digits.get(0..3).and_then(|s| s.parse::<u32>().ok()),
+            digits.get(3..5).and_then(|s| s.parse::<u32>().ok()),
+            digits.get(5..9).and_then(|s| s.parse::<u32>().ok()),
+        ),
+        (Some(area), Some(group), Some(serial))
+            if (1..=899).contains(&area)
+                && area != 666
+                && (1..=99).contains(&group)
+                && (1..=9999).contains(&serial)
+    )
+}
+
+// ============================================================================
 // Public API
 // ============================================================================
 
@@ -212,10 +341,21 @@ pub fn detect_phones_in_text(text: &str) -> Vec<IdentifierMatch> {
     for pattern in patterns::phone::all() {
         for capture in pattern.captures_iter(text) {
             let full_match = capture.get(0).expect("BUG: capture group 0 always exists");
+            let matched_text = full_match.as_str();
+
+            // Extract digits and filter false positives
+            let digits: String = matched_text
+                .chars()
+                .filter(|c| c.is_ascii_digit())
+                .collect();
+            if digits.len() < 7 || is_likely_false_positive(&digits) {
+                continue;
+            }
+
             matches.push(IdentifierMatch::high_confidence(
                 full_match.start(),
                 full_match.end(),
-                full_match.as_str().to_string(),
+                matched_text.to_string(),
                 IdentifierType::PhoneNumber,
             ));
         }
@@ -272,6 +412,127 @@ mod tests {
         let text = "Call +1-555-123-4567 or (555) 234-5678";
         let matches = detect_phones_in_text(text);
         assert_eq!(matches.len(), 2);
+    }
+
+    // ── International format tests ─────────────────────────────────────
+
+    #[test]
+    fn test_is_phone_international_formats() {
+        // UK
+        assert!(is_phone_number("+447911123456"));
+        assert!(is_phone_number("+442071234567"));
+
+        // Germany
+        assert!(is_phone_number("+493012345678"));
+        assert!(is_phone_number("+4917012345678"));
+
+        // France
+        assert!(is_phone_number("+33123456789"));
+
+        // Australia
+        assert!(is_phone_number("+61412345678"));
+
+        // India
+        assert!(is_phone_number("+919876543210"));
+
+        // Japan
+        assert!(is_phone_number("+81312345678"));
+
+        // Brazil
+        assert!(is_phone_number("+5511987654321"));
+
+        // China
+        assert!(is_phone_number("+8613812345678"));
+    }
+
+    #[test]
+    fn test_detect_international_phones_in_text() {
+        let text = "UK: +44 7911 123456, DE: +49 30 12345678, FR: +33 1 23 45 67 89";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.len() >= 3,
+            "expected at least 3 matches, got {}",
+            matches.len()
+        );
+
+        // Verify UK number was found
+        assert!(
+            matches.iter().any(|m| m.matched_text.contains("44")),
+            "UK number not found in matches: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_detect_e164_in_text() {
+        let text = "Contact +5511987654321 for Brazil or +8613812345678 for China";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.len() >= 2,
+            "expected at least 2 E.164 matches, got {}",
+            matches.len()
+        );
+    }
+
+    // ── False positive filter tests ────────────────────────────────────
+
+    #[test]
+    fn test_text_false_positive_sequential() {
+        // Sequential numbers in text should not be detected as phones
+        let text = "Order 1234567890 confirmed. Ref: 9876543210";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "sequential numbers should not match as phones: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_text_false_positive_repeated() {
+        let text = "Code: 1111111111 or 5555555555";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "repeated digits should not match as phones: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_text_false_positive_date_like() {
+        // MMDDYYYY and YYYYMMDD formats should not be detected as phones
+        let text = "Date: 01152023 or 20230115";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "date-like numbers should not match as phones: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_text_false_positive_ssn_like() {
+        // 9-digit SSN-like numbers should not be detected as phones
+        let text = "SSN: 219099999";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "SSN-like numbers should not match as phones: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_legitimate_phones_in_text() {
+        // These should still be detected in text
+        let text = "Call +14155552671 or +442071234567 or +919876543210";
+        let matches = detect_phones_in_text(text);
+        assert!(
+            matches.len() >= 3,
+            "legitimate phones should be detected, got {}",
+            matches.len()
+        );
     }
 
     #[test]
