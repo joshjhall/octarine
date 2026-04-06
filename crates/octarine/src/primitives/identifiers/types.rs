@@ -229,6 +229,14 @@ pub enum CreditCardType {
     Jcb,
     /// Diners Club - starts with 300-305, 36, or 38, 14 digits
     DinersClub,
+    /// UnionPay - starts with 62 or 81, 16-19 digits
+    UnionPay,
+    /// Maestro - starts with 5018/5020/5038/5893/6304/6759/6761-6763, 12-19 digits
+    Maestro,
+    /// Verve (Nigerian) - starts with 506099-506198 or 650002-650027, 16-19 digits
+    Verve,
+    /// RuPay (India) - starts with 60/65/81/82/508, 16 digits
+    RuPay,
     /// Unknown or unsupported card type
     Unknown,
 }
@@ -242,6 +250,10 @@ impl std::fmt::Display for CreditCardType {
             Self::Discover => write!(f, "Discover"),
             Self::Jcb => write!(f, "JCB"),
             Self::DinersClub => write!(f, "Diners Club"),
+            Self::UnionPay => write!(f, "UnionPay"),
+            Self::Maestro => write!(f, "Maestro"),
+            Self::Verve => write!(f, "Verve"),
+            Self::RuPay => write!(f, "RuPay"),
             Self::Unknown => write!(f, "Unknown"),
         }
     }

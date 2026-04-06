@@ -80,6 +80,36 @@ static CARD_BIN_RANGES: Lazy<Vec<(CreditCardType, Vec<BinRange>)>> = Lazy::new(|
             ],
         ),
         (CreditCardType::Jcb, vec![BinRange::Range(3528, 3589)]),
+        // Verve must come before UnionPay/Discover (6-digit BINs are more specific)
+        (
+            CreditCardType::Verve,
+            vec![
+                BinRange::Range(506099, 506198),
+                BinRange::Range(650002, 650027),
+            ],
+        ),
+        (CreditCardType::UnionPay, vec![BinRange::Exact(62)]),
+        (
+            CreditCardType::Maestro,
+            vec![
+                BinRange::Exact(5018),
+                BinRange::Exact(5020),
+                BinRange::Exact(5038),
+                BinRange::Exact(5893),
+                BinRange::Exact(6304),
+                BinRange::Exact(6759),
+                BinRange::Range(6761, 6763),
+            ],
+        ),
+        // RuPay last — overlaps with Discover (60/65) and UnionPay (81/82)
+        (
+            CreditCardType::RuPay,
+            vec![
+                BinRange::Exact(60),
+                BinRange::Exact(82),
+                BinRange::Exact(508),
+            ],
+        ),
     ]
 });
 
@@ -327,6 +357,7 @@ pub fn detect_credit_cards_in_text(text: &str) -> Vec<IdentifierMatch> {
                 if digits_only.len() >= 13
                     && digits_only.len() <= 19
                     && is_luhn_checksum_valid(&digits_only)
+                    && !is_isbn13_pattern(&digits_only)
                 {
                     matches.push(IdentifierMatch::high_confidence(
                         full_match.start(),
@@ -371,8 +402,8 @@ fn validate_bin(card_number: &str) -> Option<CreditCardType> {
     // Check different prefix lengths
     for (brand, ranges) in CARD_BIN_RANGES.iter() {
         for range in ranges {
-            // Try different prefix lengths (1-4 digits)
-            for len in 1..=4 {
+            // Try different prefix lengths (1-6 digits for Verve 6-digit BINs)
+            for len in 1..=6 {
                 if card_number.len() >= len
                     && let Ok(prefix) = card_number[..len].parse::<u32>()
                     && range.matches(prefix, len)
@@ -397,6 +428,10 @@ fn is_length_valid_for_brand(card_number: &str, brand: CreditCardType) -> bool {
         CreditCardType::Discover => len == 16,
         CreditCardType::DinersClub => len == 14,
         CreditCardType::Jcb => len == 16,
+        CreditCardType::UnionPay => (16..=19).contains(&len),
+        CreditCardType::Maestro => (12..=19).contains(&len),
+        CreditCardType::Verve => (16..=19).contains(&len),
+        CreditCardType::RuPay => len == 16,
         CreditCardType::Unknown => true, // Unknown brand, can't validate
     }
 }
@@ -404,6 +439,11 @@ fn is_length_valid_for_brand(card_number: &str, brand: CreditCardType) -> bool {
 /// Check if the card number is a known test card
 fn is_test_card(card_number: &str) -> bool {
     TEST_CARDS.contains_key(card_number)
+}
+
+/// Check if a digit string looks like an ISBN-13 (starts with 978 or 979, 13 digits)
+fn is_isbn13_pattern(digits: &str) -> bool {
+    digits.len() == 13 && (digits.starts_with("978") || digits.starts_with("979"))
 }
 
 /// Check if suspicious patterns are present (sequential, repeated digits)
@@ -565,6 +605,105 @@ mod tests {
     fn test_empty_input() {
         assert!(!is_credit_card(""));
         assert_eq!(detect_credit_cards_in_text("").len(), 0);
+    }
+
+    // ── New card brand tests ────────────────────────────────────────
+
+    #[test]
+    fn test_detect_unionpay_brand() {
+        assert_eq!(
+            detect_card_brand("6200000000000005"),
+            Some(CreditCardType::UnionPay)
+        );
+    }
+
+    #[test]
+    fn test_detect_maestro_brand() {
+        assert_eq!(
+            detect_card_brand("5018000000000009"),
+            Some(CreditCardType::Maestro)
+        );
+        assert_eq!(
+            detect_card_brand("6304000000000000"),
+            Some(CreditCardType::Maestro)
+        );
+    }
+
+    #[test]
+    fn test_detect_verve_brand() {
+        assert_eq!(
+            detect_card_brand("5060990000000008"),
+            Some(CreditCardType::Verve)
+        );
+    }
+
+    #[test]
+    fn test_detect_rupay_brand() {
+        assert_eq!(
+            detect_card_brand("6000000000000007"),
+            Some(CreditCardType::RuPay)
+        );
+        assert_eq!(
+            detect_card_brand("5080000000000002"),
+            Some(CreditCardType::RuPay)
+        );
+    }
+
+    #[test]
+    fn test_new_brands_valid_length() {
+        // UnionPay: 16-19 digits
+        assert!(is_length_valid_for_brand(
+            "6200000000000005",
+            CreditCardType::UnionPay
+        ));
+        // Maestro: 12-19 digits
+        assert!(is_length_valid_for_brand(
+            "5018000000000009",
+            CreditCardType::Maestro
+        ));
+        // Verve: 16-19 digits
+        assert!(is_length_valid_for_brand(
+            "5060990000000008",
+            CreditCardType::Verve
+        ));
+        // RuPay: 16 digits
+        assert!(is_length_valid_for_brand(
+            "6000000000000007",
+            CreditCardType::RuPay
+        ));
+    }
+
+    // ── ISBN-13 false positive filter tests ────────────────────────────
+
+    #[test]
+    fn test_isbn13_not_detected_as_credit_card() {
+        // ISBN-13 with valid Luhn (978 prefix)
+        let text = "Book ISBN: 9780306406156";
+        let matches = detect_credit_cards_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "ISBN-13 should not be detected as credit card: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_isbn13_979_not_detected() {
+        let text = "ISBN: 9790000000007";
+        let matches = detect_credit_cards_in_text(text);
+        assert!(
+            matches.is_empty(),
+            "ISBN-13 (979) should not be detected as credit card: {:?}",
+            matches.iter().map(|m| &m.matched_text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_real_cards_still_detected() {
+        // Visa card should still be detected
+        let text = "Pay with 4242 4242 4242 4242";
+        let matches = detect_credit_cards_in_text(text);
+        assert!(!matches.is_empty(), "real credit cards should still match");
     }
 
     #[test]

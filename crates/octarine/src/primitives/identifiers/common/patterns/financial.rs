@@ -64,7 +64,7 @@ pub mod credit_card {
 
     /// Payment context keywords for confidence scoring
     pub static CONTEXT_KEYWORDS: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"(?i)card|credit|debit|payment|visa|mastercard|amex|discover|jcb|diners")
+        Regex::new(r"(?i)card|credit|debit|payment|visa|mastercard|amex|discover|jcb|diners|unionpay|maestro|verve|rupay")
             .expect("BUG: Invalid regex pattern")
     });
 
