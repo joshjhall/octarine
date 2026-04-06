@@ -86,6 +86,7 @@ pub fn detect_all_financial_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(super::bank_account::detect_payment_tokens_in_text(text));
     all_matches.extend(detect_bank_accounts_in_text(text));
     all_matches.extend(super::crypto::detect_crypto_addresses_in_text(text));
+    all_matches.extend(super::iban::detect_ibans_in_text(text));
 
     deduplicate_matches(all_matches)
 }

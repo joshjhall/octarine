@@ -37,6 +37,7 @@ pub enum IdentifierType {
     RoutingNumber,
     PaymentToken,  // Stripe, PayPal tokens
     CryptoAddress, // Bitcoin, Ethereum wallet addresses
+    Iban,          // International Bank Account Number
 
     // Token/Key identifiers
     GitHubToken,

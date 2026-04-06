@@ -155,11 +155,14 @@ pub mod routing_number {
 pub mod bank_account {
     use super::*;
 
-    /// IBAN format
-    /// Example: "GB82 WEST 1234 5698 7654 32"
+    /// IBAN format: 2 letters + 2 check digits + 11-30 alphanumeric BBAN
+    /// Handles with/without spaces. Length 15-34 chars (varies by country).
+    /// Example: "GB82 WEST 1234 5698 7654 32", "DE89370400440532013000"
     pub static IBAN: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"\b[A-Z]{2}\d{2}\s?[A-Z0-9]{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{0,2}\b")
-            .expect("BUG: Invalid regex pattern")
+        Regex::new(
+            r"\b[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}(?:[\s]?[A-Z0-9]{4}){1,7}(?:[\s]?[A-Z0-9]{1,4})?\b",
+        )
+        .expect("BUG: Invalid regex pattern")
     });
 
     /// US routing + account (generic pattern)

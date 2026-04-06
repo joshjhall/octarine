@@ -325,7 +325,8 @@ impl StreamingScanner {
                 IdentifierType::BankAccount
                 | IdentifierType::RoutingNumber
                 | IdentifierType::PaymentToken
-                | IdentifierType::CryptoAddress => {
+                | IdentifierType::CryptoAddress
+                | IdentifierType::Iban => {
                     // Financial module covers all via detect_all_in_text
                     let financial = FinancialIdentifierBuilder::new();
                     for m in financial.detect_all_in_text(text) {
