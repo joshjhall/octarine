@@ -350,7 +350,7 @@ pub struct ShutdownStats {
 /// let handle = coordinator.add_hook("cleanup", || async { Ok(()) }).await;
 ///
 /// // Later, remove the hook if needed
-/// coordinator.remove_hook(handle).await;
+/// coordinator.deregister_hook(handle).await;
 /// # });
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -182,7 +182,7 @@ pub fn is_pii_present_with_config(text: &str, config: &PiiScannerConfig) -> bool
 /// Check if text contains IP addresses
 ///
 /// Simple pattern matching for IPv4 addresses.
-fn contains_ip_address(text: &str) -> bool {
+fn is_ip_address_present(text: &str) -> bool {
     patterns::ip_address::IPV4.is_match(text)
 }
 
@@ -302,10 +302,10 @@ mod tests {
 
     #[test]
     fn test_ip_address_detection() {
-        assert!(contains_ip_address("192.168.1.1"));
-        assert!(contains_ip_address("Server at 10.0.0.1"));
-        assert!(contains_ip_address("8.8.8.8"));
-        assert!(!contains_ip_address("999.999.999.999")); // Invalid IP
-        assert!(!contains_ip_address("No IP here"));
+        assert!(is_ip_address_present("192.168.1.1"));
+        assert!(is_ip_address_present("Server at 10.0.0.1"));
+        assert!(is_ip_address_present("8.8.8.8"));
+        assert!(!is_ip_address_present("999.999.999.999")); // Invalid IP
+        assert!(!is_ip_address_present("No IP here"));
     }
 }

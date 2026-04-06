@@ -5,7 +5,7 @@
 use crate::primitives::types::{Problem, Result};
 
 use super::super::types::XmlPolicy;
-use super::detection::{detect_xml_threats, has_dtd_declaration, is_xxe_present};
+use super::detection::{detect_xml_threats, is_dtd_declaration_present, is_xxe_present};
 
 /// Validate that XML input is safe according to the given policy
 ///
@@ -20,7 +20,7 @@ pub(crate) fn validate_xml_safe(input: &str, policy: &XmlPolicy) -> Result<()> {
     }
 
     // Check for DTD
-    if !policy.allow_dtd && has_dtd_declaration(input) {
+    if !policy.allow_dtd && is_dtd_declaration_present(input) {
         return Err(Problem::Validation(
             "XML contains DOCTYPE declaration (DTD not allowed by policy)".into(),
         ));

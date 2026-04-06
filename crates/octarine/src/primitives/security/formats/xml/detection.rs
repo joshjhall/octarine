@@ -50,38 +50,40 @@ lazy_static! {
 /// This is a conservative check that may produce false positives.
 #[must_use]
 pub(crate) fn is_xxe_present(input: &str) -> bool {
-    has_external_entity(input) || has_parameter_entity(input) || has_protocol_in_entity(input)
+    is_external_entity_present(input)
+        || is_parameter_entity_present(input)
+        || is_protocol_in_entity_present(input)
 }
 
 /// Check if input contains a DOCTYPE declaration
 #[must_use]
-pub(crate) fn has_dtd_declaration(input: &str) -> bool {
+pub(crate) fn is_dtd_declaration_present(input: &str) -> bool {
     DOCTYPE_PATTERN.is_match(input)
 }
 
 /// Check if input contains external entity declarations
 #[must_use]
-pub(crate) fn has_external_entity(input: &str) -> bool {
+pub(crate) fn is_external_entity_present(input: &str) -> bool {
     EXTERNAL_ENTITY_PATTERN.is_match(input)
 }
 
 /// Check if input contains parameter entity declarations
 #[must_use]
-pub(crate) fn has_parameter_entity(input: &str) -> bool {
+pub(crate) fn is_parameter_entity_present(input: &str) -> bool {
     PARAMETER_ENTITY_PATTERN.is_match(input)
 }
 
 /// Check if input contains protocol handlers in potential entity values
-fn has_protocol_in_entity(input: &str) -> bool {
+fn is_protocol_in_entity_present(input: &str) -> bool {
     // Only flag protocols if they appear near ENTITY or DOCTYPE
-    if has_dtd_declaration(input) && PROTOCOL_PATTERN.is_match(input) {
+    if is_dtd_declaration_present(input) && PROTOCOL_PATTERN.is_match(input) {
         return true;
     }
     false
 }
 
 /// Check if input shows signs of entity expansion attack
-fn has_entity_expansion(input: &str) -> bool {
+fn is_entity_expansion_present(input: &str) -> bool {
     // Look for entities that reference other entities
     ENTITY_EXPANSION_PATTERN.is_match(input)
 }
@@ -91,19 +93,19 @@ fn has_entity_expansion(input: &str) -> bool {
 pub(crate) fn detect_xml_threats(input: &str) -> Vec<FormatThreat> {
     let mut threats = Vec::new();
 
-    if has_external_entity(input) {
+    if is_external_entity_present(input) {
         threats.push(FormatThreat::XxeExternalEntity);
     }
 
-    if has_parameter_entity(input) {
+    if is_parameter_entity_present(input) {
         threats.push(FormatThreat::XxeParameterEntity);
     }
 
-    if has_entity_expansion(input) {
+    if is_entity_expansion_present(input) {
         threats.push(FormatThreat::XxeBillionLaughs);
     }
 
-    if has_dtd_declaration(input) && threats.is_empty() {
+    if is_dtd_declaration_present(input) && threats.is_empty() {
         // Only flag DTD if no other threats detected
         // (DTD alone is lower severity)
         threats.push(FormatThreat::DtdPresent);
@@ -122,38 +124,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_has_dtd_declaration() {
-        assert!(has_dtd_declaration("<!DOCTYPE foo>"));
-        assert!(has_dtd_declaration("<!DOCTYPE html PUBLIC"));
-        assert!(has_dtd_declaration("<!doctype html>"));
-        assert!(!has_dtd_declaration("<root/>"));
+    fn test_is_dtd_declaration_present() {
+        assert!(is_dtd_declaration_present("<!DOCTYPE foo>"));
+        assert!(is_dtd_declaration_present("<!DOCTYPE html PUBLIC"));
+        assert!(is_dtd_declaration_present("<!doctype html>"));
+        assert!(!is_dtd_declaration_present("<root/>"));
     }
 
     #[test]
-    fn test_has_external_entity() {
+    fn test_is_external_entity_present() {
         // SYSTEM entity
         let xxe_system = r#"<!ENTITY xxe SYSTEM "file:///etc/passwd">"#;
-        assert!(has_external_entity(xxe_system));
+        assert!(is_external_entity_present(xxe_system));
 
         // PUBLIC entity
         let xxe_public = r#"<!ENTITY xxe PUBLIC "foo" "http://evil.com/xxe">"#;
-        assert!(has_external_entity(xxe_public));
+        assert!(is_external_entity_present(xxe_public));
 
         // Internal entity (not external)
         let internal = r#"<!ENTITY internal "some value">"#;
-        assert!(!has_external_entity(internal));
+        assert!(!is_external_entity_present(internal));
 
         // No entity
-        assert!(!has_external_entity("<root/>"));
+        assert!(!is_external_entity_present("<root/>"));
     }
 
     #[test]
-    fn test_has_parameter_entity() {
+    fn test_is_parameter_entity_present() {
         let param_entity = r#"<!ENTITY % param "value">"#;
-        assert!(has_parameter_entity(param_entity));
+        assert!(is_parameter_entity_present(param_entity));
 
         let normal_entity = r#"<!ENTITY normal "value">"#;
-        assert!(!has_parameter_entity(normal_entity));
+        assert!(!is_parameter_entity_present(normal_entity));
     }
 
     #[test]

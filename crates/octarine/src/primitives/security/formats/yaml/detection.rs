@@ -67,12 +67,12 @@ const UNSAFE_TAGS: &[&str] = &[
 /// Check if input contains any unsafe YAML patterns
 #[must_use]
 pub(crate) fn is_yaml_unsafe(input: &str) -> bool {
-    has_unsafe_tag(input) || has_anchor_bomb(input)
+    is_unsafe_tag_present(input) || is_anchor_bomb_present(input)
 }
 
 /// Check if input contains unsafe YAML tags
 #[must_use]
-pub(crate) fn has_unsafe_tag(input: &str) -> bool {
+pub(crate) fn is_unsafe_tag_present(input: &str) -> bool {
     // Check against known unsafe patterns
     PYTHON_TAG_PATTERN.is_match(input)
         || RUBY_TAG_PATTERN.is_match(input)
@@ -86,7 +86,7 @@ pub(crate) fn has_unsafe_tag(input: &str) -> bool {
 /// An anchor bomb uses YAML's alias feature to create
 /// exponential expansion, similar to XML's billion laughs.
 #[must_use]
-pub(crate) fn has_anchor_bomb(input: &str) -> bool {
+pub(crate) fn is_anchor_bomb_present(input: &str) -> bool {
     // Count anchors and aliases
     let anchor_count = ANCHOR_PATTERN.find_iter(input).count();
     let alias_count = ALIAS_PATTERN.find_iter(input).count();
@@ -116,7 +116,7 @@ fn count_aliases(input: &str) -> usize {
 pub(crate) fn detect_yaml_threats(input: &str, policy: &YamlPolicy) -> Vec<FormatThreat> {
     let mut threats = Vec::new();
 
-    if has_unsafe_tag(input) {
+    if is_unsafe_tag_present(input) {
         threats.push(FormatThreat::YamlUnsafeTag);
     }
 
@@ -127,7 +127,7 @@ pub(crate) fn detect_yaml_threats(input: &str, policy: &YamlPolicy) -> Vec<Forma
     }
 
     // Also check for bomb patterns regardless of policy
-    if has_anchor_bomb(input) && !threats.contains(&FormatThreat::YamlAnchorBomb) {
+    if is_anchor_bomb_present(input) && !threats.contains(&FormatThreat::YamlAnchorBomb) {
         threats.push(FormatThreat::YamlAnchorBomb);
     }
 
@@ -144,29 +144,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_has_unsafe_tag_python() {
-        assert!(has_unsafe_tag("!!python/object"));
-        assert!(has_unsafe_tag("!!python/object/apply:os.system"));
-        assert!(has_unsafe_tag("!!python/exec 'import os'"));
-        assert!(has_unsafe_tag("!!python/module:os"));
+    fn test_is_unsafe_tag_present_python() {
+        assert!(is_unsafe_tag_present("!!python/object"));
+        assert!(is_unsafe_tag_present("!!python/object/apply:os.system"));
+        assert!(is_unsafe_tag_present("!!python/exec 'import os'"));
+        assert!(is_unsafe_tag_present("!!python/module:os"));
     }
 
     #[test]
-    fn test_has_unsafe_tag_ruby() {
-        assert!(has_unsafe_tag("!!ruby/object:Gem::Requirement"));
-        assert!(has_unsafe_tag("!!ruby/hash"));
-        assert!(has_unsafe_tag("!!ruby/struct"));
+    fn test_is_unsafe_tag_present_ruby() {
+        assert!(is_unsafe_tag_present("!!ruby/object:Gem::Requirement"));
+        assert!(is_unsafe_tag_present("!!ruby/hash"));
+        assert!(is_unsafe_tag_present("!!ruby/struct"));
     }
 
     #[test]
-    fn test_has_unsafe_tag_clean() {
-        assert!(!has_unsafe_tag("key: value"));
-        assert!(!has_unsafe_tag("- item1\n- item2"));
-        assert!(!has_unsafe_tag("number: 123"));
+    fn test_is_unsafe_tag_present_clean() {
+        assert!(!is_unsafe_tag_present("key: value"));
+        assert!(!is_unsafe_tag_present("- item1\n- item2"));
+        assert!(!is_unsafe_tag_present("number: 123"));
     }
 
     #[test]
-    fn test_has_anchor_bomb() {
+    fn test_is_anchor_bomb_present() {
         // Suspicious pattern: many aliases for few anchors
         let bomb = r"
 x: &a
@@ -182,11 +182,11 @@ x: &a
 - *a
 - *a
 ";
-        assert!(has_anchor_bomb(bomb));
+        assert!(is_anchor_bomb_present(bomb));
     }
 
     #[test]
-    fn test_has_anchor_bomb_clean() {
+    fn test_is_anchor_bomb_present_clean() {
         // Normal anchor/alias usage
         let normal = r"
 defaults: &defaults
@@ -197,7 +197,7 @@ production:
   <<: *defaults
   debug: false
 ";
-        assert!(!has_anchor_bomb(normal));
+        assert!(!is_anchor_bomb_present(normal));
     }
 
     #[test]

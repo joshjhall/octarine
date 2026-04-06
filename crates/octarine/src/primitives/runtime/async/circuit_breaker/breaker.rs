@@ -87,7 +87,7 @@ impl CircuitBreaker {
     ///
     /// Returns true if requests should be allowed, false if they should be rejected.
     pub fn can_proceed(&self) -> bool {
-        self.check_state();
+        self.transition_state_if_needed();
 
         match self.state() {
             CircuitState::Closed => true,
@@ -121,7 +121,7 @@ impl CircuitBreaker {
         F: Future<Output = Result<T>>,
     {
         // Check state and potentially transition
-        self.check_state();
+        self.transition_state_if_needed();
 
         // Check if we can proceed
         if !self.can_proceed() {
@@ -229,9 +229,9 @@ impl CircuitBreaker {
     }
 
     /// Check and update state based on current conditions
-    pub(crate) fn check_state(&self) {
+    pub(crate) fn transition_state_if_needed(&self) {
         // Reset window if needed
-        self.check_window();
+        self.reset_window_if_expired();
 
         match self.state() {
             CircuitState::Open => {
@@ -256,7 +256,7 @@ impl CircuitBreaker {
     }
 
     /// Check if window should be reset
-    fn check_window(&self) {
+    fn reset_window_if_expired(&self) {
         let mut window_start = self.window_start.write();
         if window_start.elapsed() >= self.config.window_duration {
             *window_start = Instant::now();
@@ -414,7 +414,7 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(20)).await;
 
         // Check state should transition to half-open
-        cb.check_state();
+        cb.transition_state_if_needed();
         assert_eq!(cb.state(), CircuitState::HalfOpen);
     }
 

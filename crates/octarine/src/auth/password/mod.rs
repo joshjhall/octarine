@@ -34,7 +34,7 @@ pub use prim::{PasswordPolicy, PasswordPolicyBuilder, PasswordPolicyViolation, P
 
 // Re-export HIBP types (auth-hibp feature)
 #[cfg(feature = "auth-hibp")]
-pub use hibp::{HibpClient, HibpConfig, HibpConfigBuilder, check_breach};
+pub use hibp::{HibpClient, HibpConfig, HibpConfigBuilder, detect_password_breach};
 
 // ============================================================================
 // Public API

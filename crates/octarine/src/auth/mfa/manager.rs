@@ -145,7 +145,12 @@ impl MfaManager {
     /// # Errors
     ///
     /// Returns an error if verification fails due to system error.
-    pub fn verify_code(
+    /// Validate a TOTP code
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if validation fails due to system error.
+    pub fn validate_code(
         &self,
         code: &str,
         secret: &TotpSecret,
@@ -168,21 +173,15 @@ impl MfaManager {
         Ok(is_valid)
     }
 
-    /// Verify a recovery code
+    /// Validate a recovery code
     ///
     /// If valid, the code is consumed and cannot be used again.
-    ///
-    /// # Arguments
-    ///
-    /// * `code` - The recovery code from the user
-    /// * `recovery_codes` - The user's recovery codes (mutable)
-    /// * `user_id` - The user's identifier (for logging)
     ///
     /// # Audit Events
     ///
     /// - `auth.mfa.recovery_used` (WARN) on success (warning because recovery should be rare)
     /// - `auth.mfa.recovery_failed` (WARN) on failure
-    pub fn verify_recovery_code(
+    pub fn validate_recovery_code(
         &self,
         code: &str,
         recovery_codes: &mut RecoveryCodes,
@@ -207,30 +206,6 @@ impl MfaManager {
         }
 
         is_valid
-    }
-
-    /// Alias for `verify_code` following naming conventions.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if verification fails due to system error.
-    pub fn validate_code(
-        &self,
-        code: &str,
-        secret: &TotpSecret,
-        user_id: &str,
-    ) -> Result<bool, Problem> {
-        self.verify_code(code, secret, user_id)
-    }
-
-    /// Alias for `verify_recovery_code` following naming conventions.
-    pub fn validate_recovery_code(
-        &self,
-        code: &str,
-        recovery_codes: &mut RecoveryCodes,
-        user_id: &str,
-    ) -> bool {
-        self.verify_recovery_code(code, recovery_codes, user_id)
     }
 
     /// Generate a TOTP code (for testing or display)
@@ -340,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_code() {
+    fn test_validate_code() {
         let manager = MfaManager::new();
         let enrollment = manager
             .start_enrollment("user@example.com")
@@ -350,7 +325,7 @@ mod tests {
         let code = manager
             .generate_code(&enrollment.secret)
             .expect("should generate");
-        let result = manager.verify_code(code.as_str(), &enrollment.secret, "user123");
+        let result = manager.validate_code(code.as_str(), &enrollment.secret, "user123");
         assert!(result.expect("should verify"));
     }
 
@@ -361,12 +336,12 @@ mod tests {
             .start_enrollment("user@example.com")
             .expect("should enroll");
 
-        let result = manager.verify_code("000000", &enrollment.secret, "user123");
+        let result = manager.validate_code("000000", &enrollment.secret, "user123");
         assert!(!result.expect("should verify"));
     }
 
     #[test]
-    fn test_verify_recovery_code() {
+    fn test_validate_recovery_code() {
         let manager = MfaManager::new();
         let enrollment = manager
             .start_enrollment("user@example.com")
@@ -381,11 +356,11 @@ mod tests {
             .to_string();
 
         // First use should succeed
-        assert!(manager.verify_recovery_code(&first_code, &mut recovery_codes, "user123"));
+        assert!(manager.validate_recovery_code(&first_code, &mut recovery_codes, "user123"));
         assert_eq!(recovery_codes.unused_count(), 9);
 
         // Second use should fail
-        assert!(!manager.verify_recovery_code(&first_code, &mut recovery_codes, "user123"));
+        assert!(!manager.validate_recovery_code(&first_code, &mut recovery_codes, "user123"));
     }
 
     #[test]

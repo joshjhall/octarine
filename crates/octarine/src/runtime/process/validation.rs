@@ -110,10 +110,10 @@ impl ValidatedArg {
         let value = value.into();
 
         // Always check for injection patterns first
-        Self::check_injection(&value)?;
+        Self::validate_injection(&value)?;
 
         // Then check policy-specific rules
-        Self::check_policy(&value, policy)?;
+        Self::validate_policy(&value, policy)?;
 
         Ok(Self { value, policy })
     }
@@ -141,7 +141,7 @@ impl ValidatedArg {
     /// Uses detection from primitives/security/commands for core injection patterns.
     /// Note: Globs and redirections are NOT checked here - they're context-dependent
     /// and handled by policy-specific checks instead.
-    fn check_injection(value: &str) -> Result<(), ProcessError> {
+    fn validate_injection(value: &str) -> Result<(), ProcessError> {
         // Check for command chaining - these are always dangerous
         if detection::is_any_chain_present(value) {
             return Err(ProcessError::injection(
@@ -186,7 +186,7 @@ impl ValidatedArg {
         // - Strict policy blocks them
         // - URL/Path policies allow some
         // - Permissive policy allows them
-        // Policy-specific checks handle these in check_policy()
+        // Policy-specific checks handle these in validate_policy()
 
         Ok(())
     }
@@ -205,18 +205,18 @@ impl ValidatedArg {
     }
 
     /// Check policy-specific validation rules
-    fn check_policy(value: &str, policy: ArgumentPolicy) -> Result<(), ProcessError> {
+    fn validate_policy(value: &str, policy: ArgumentPolicy) -> Result<(), ProcessError> {
         match policy {
-            ArgumentPolicy::Strict => Self::check_strict(value),
-            ArgumentPolicy::Url => Self::check_url(value),
-            ArgumentPolicy::Path => Self::check_path(value),
-            ArgumentPolicy::Identifier => Self::check_identifier(value),
+            ArgumentPolicy::Strict => Self::validate_strict(value),
+            ArgumentPolicy::Url => Self::validate_url(value),
+            ArgumentPolicy::Path => Self::validate_path(value),
+            ArgumentPolicy::Identifier => Self::validate_identifier(value),
             ArgumentPolicy::Permissive => Ok(()), // Only injection checks
         }
     }
 
     /// Strict policy: reject most special characters
-    fn check_strict(value: &str) -> Result<(), ProcessError> {
+    fn validate_strict(value: &str) -> Result<(), ProcessError> {
         // Check for redirection (not always injection, but dangerous in strict mode)
         if value.contains('>') || value.contains('<') {
             return Err(ProcessError::validation(
@@ -269,7 +269,7 @@ impl ValidatedArg {
     }
 
     /// URL policy: allow URL-safe characters
-    fn check_url(value: &str) -> Result<(), ProcessError> {
+    fn validate_url(value: &str) -> Result<(), ProcessError> {
         // URLs should start with a scheme or be relative
         // We don't enforce this strictly, but check for dangerous patterns
 
@@ -301,7 +301,7 @@ impl ValidatedArg {
     }
 
     /// Path policy: allow path characters
-    fn check_path(value: &str) -> Result<(), ProcessError> {
+    fn validate_path(value: &str) -> Result<(), ProcessError> {
         // Path traversal is allowed here (the caller decides if it's safe)
         // We only block injection and dangerous patterns
 
@@ -333,7 +333,7 @@ impl ValidatedArg {
     }
 
     /// Identifier policy: alphanumeric and limited punctuation
-    fn check_identifier(value: &str) -> Result<(), ProcessError> {
+    fn validate_identifier(value: &str) -> Result<(), ProcessError> {
         if value.is_empty() {
             return Err(ProcessError::validation(
                 value,

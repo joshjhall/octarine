@@ -130,7 +130,7 @@ pub use lockout::{
 
 // Re-export HIBP types at auth level (requires auth-hibp feature)
 #[cfg(feature = "auth-hibp")]
-pub use password::{HibpClient, HibpConfig, HibpConfigBuilder, check_breach};
+pub use password::{HibpClient, HibpConfig, HibpConfigBuilder, detect_password_breach};
 
 // Re-export reset types at auth level for convenience
 pub use reset::{

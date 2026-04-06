@@ -41,13 +41,13 @@ impl FormatSecurityBuilder {
     /// Check if XML input contains a DOCTYPE declaration
     #[must_use]
     pub fn is_dtd_present(&self, input: &str) -> bool {
-        xml::has_dtd_declaration(input)
+        xml::is_dtd_declaration_present(input)
     }
 
     /// Check if XML input contains external entity declarations
     #[must_use]
     pub fn is_external_entity_present(&self, input: &str) -> bool {
-        xml::has_external_entity(input)
+        xml::is_external_entity_present(input)
     }
 
     /// Detect all XML threats in input
@@ -101,13 +101,13 @@ impl FormatSecurityBuilder {
     /// Check if YAML input contains unsafe tags
     #[must_use]
     pub fn is_unsafe_yaml_tag_present(&self, input: &str) -> bool {
-        yaml::has_unsafe_tag(input)
+        yaml::is_unsafe_tag_present(input)
     }
 
     /// Check if YAML input shows anchor bomb patterns
     #[must_use]
     pub fn is_yaml_anchor_bomb_present(&self, input: &str) -> bool {
-        yaml::has_anchor_bomb(input)
+        yaml::is_anchor_bomb_present(input)
     }
 
     /// Detect all YAML threats according to policy

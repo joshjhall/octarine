@@ -130,7 +130,7 @@ impl ShutdownCoordinator {
     /// ).await;
     ///
     /// // Later, remove the hook if needed
-    /// coordinator.remove_hook(handle).await;
+    /// coordinator.deregister_hook(handle).await;
     /// # });
     /// ```
     pub async fn add_hook_with_config<F, Fut>(&self, config: HookConfig, hook: F) -> HookHandle
@@ -193,15 +193,15 @@ impl ShutdownCoordinator {
     /// let handle = coordinator.add_hook("cleanup", || async { Ok(()) }).await;
     ///
     /// // Remove the hook
-    /// let removed = coordinator.remove_hook(handle).await;
+    /// let removed = coordinator.deregister_hook(handle).await;
     /// assert!(removed);
     ///
     /// // Trying to remove again returns false
-    /// let removed_again = coordinator.remove_hook(handle).await;
+    /// let removed_again = coordinator.deregister_hook(handle).await;
     /// assert!(!removed_again);
     /// # });
     /// ```
-    pub async fn remove_hook(&self, handle: HookHandle) -> bool {
+    pub async fn deregister_hook(&self, handle: HookHandle) -> bool {
         let mut hooks_guard = self.hooks.lock().await;
         let initial_len = hooks_guard.len();
 
@@ -694,7 +694,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_remove_hook() {
+    async fn test_deregister_hook() {
         let coordinator = ShutdownCoordinator::new();
 
         let handle1 = coordinator.add_hook("hook1", || async { Ok(()) }).await;
@@ -703,12 +703,12 @@ mod tests {
         assert_eq!(coordinator.hook_count().await, 2);
 
         // Remove first hook
-        let removed = coordinator.remove_hook(handle1).await;
+        let removed = coordinator.deregister_hook(handle1).await;
         assert!(removed);
         assert_eq!(coordinator.hook_count().await, 1);
 
         // Try to remove again - should return false
-        let removed_again = coordinator.remove_hook(handle1).await;
+        let removed_again = coordinator.deregister_hook(handle1).await;
         assert!(!removed_again);
         assert_eq!(coordinator.hook_count().await, 1);
 
@@ -718,7 +718,7 @@ mod tests {
         assert_eq!(stats.hooks_succeeded, 1);
 
         // Remove the remaining hook after it ran (no-op but should work)
-        let removed = coordinator.remove_hook(handle2).await;
+        let removed = coordinator.deregister_hook(handle2).await;
         // Note: The hook was moved out during run_hooks, so this might be false
         // depending on implementation. Let's just verify it doesn't panic.
         let _ = removed;
@@ -743,7 +743,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_remove_hook_before_shutdown() {
+    async fn test_deregister_hook_before_shutdown() {
         let executed = Arc::new(AtomicUsize::new(0));
         let exec1 = Arc::clone(&executed);
         let exec2 = Arc::clone(&executed);
@@ -771,7 +771,7 @@ mod tests {
             .await;
 
         // Remove the first hook before shutdown
-        coordinator.remove_hook(handle1).await;
+        coordinator.deregister_hook(handle1).await;
 
         // Run shutdown
         let stats = coordinator.run_hooks().await;

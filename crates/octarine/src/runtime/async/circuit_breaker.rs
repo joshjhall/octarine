@@ -282,7 +282,7 @@ impl CircuitBreaker {
         }
 
         // Log state transitions
-        self.check_state_transition();
+        self.transition_state_if_needed();
 
         let start = Instant::now();
 
@@ -299,7 +299,7 @@ impl CircuitBreaker {
                 );
 
                 // Check for recovery
-                self.check_state_transition();
+                self.transition_state_if_needed();
 
                 Ok(value)
             }
@@ -317,7 +317,7 @@ impl CircuitBreaker {
                 );
 
                 // Check for trip
-                self.check_state_transition();
+                self.transition_state_if_needed();
 
                 Err(e)
             }
@@ -325,7 +325,7 @@ impl CircuitBreaker {
     }
 
     /// Check and log state transitions
-    fn check_state_transition(&self) {
+    fn transition_state_if_needed(&self) {
         let current = match self.state() {
             CircuitState::Closed => 0,
             CircuitState::Open => 1,

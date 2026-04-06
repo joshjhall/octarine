@@ -5,7 +5,7 @@
 use crate::primitives::types::Problem;
 
 use super::detection::{
-    check_signature_algorithm, detect_hash_threats, is_deprecated_signature_algorithm,
+    detect_hash_threats, detect_signature_algorithm_threat, is_deprecated_signature_algorithm,
     is_weak_key_type,
 };
 use super::types::CryptoPolicy;
@@ -168,7 +168,7 @@ pub fn validate_signature_algorithm(
     algo: &SignatureAlgorithm,
     policy: &CryptoPolicy,
 ) -> Result<(), Problem> {
-    if let Some(threat) = check_signature_algorithm(algo, policy) {
+    if let Some(threat) = detect_signature_algorithm_threat(algo, policy) {
         return Err(Problem::validation(threat.description()));
     }
     Ok(())

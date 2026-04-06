@@ -68,13 +68,13 @@ fn test_code_verification() {
         .generate_code(&enrollment.secret)
         .expect("generate code");
     let valid = manager
-        .verify_code(code.as_str(), &enrollment.secret, "user1")
+        .validate_code(code.as_str(), &enrollment.secret, "user1")
         .expect("verify valid code");
     assert!(valid, "Valid code should verify");
 
     // Invalid code should fail
     let invalid = manager
-        .verify_code("000000", &enrollment.secret, "user1")
+        .validate_code("000000", &enrollment.secret, "user1")
         .expect("verify invalid code");
     assert!(!invalid, "Invalid code should not verify");
 }
@@ -98,11 +98,11 @@ fn test_recovery_code_single_use() {
         .to_string();
 
     // First use succeeds
-    let used = manager.verify_recovery_code(&first_code, &mut codes, "user1");
+    let used = manager.validate_recovery_code(&first_code, &mut codes, "user1");
     assert!(used, "First use of recovery code should succeed");
 
     // Second use fails
-    let reused = manager.verify_recovery_code(&first_code, &mut codes, "user1");
+    let reused = manager.validate_recovery_code(&first_code, &mut codes, "user1");
     assert!(!reused, "Recovery code should not be reusable");
 }
 

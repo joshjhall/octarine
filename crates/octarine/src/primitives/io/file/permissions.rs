@@ -190,7 +190,7 @@ impl FileMode {
     }
 
     /// Check if this mode has special bits (setuid, setgid, or sticky)
-    pub const fn has_special_bits(self) -> bool {
+    pub const fn is_special_bits_set(self) -> bool {
         (self.0 & 0o7000) != 0
     }
 
@@ -419,7 +419,7 @@ pub fn ensure_directory_mode(path: impl AsRef<Path>, mode: FileMode) -> Result<(
 /// Returns `true` if the file's mode matches the expected mode.
 /// On non-Unix platforms, always returns `true`.
 #[cfg(unix)]
-pub fn check_mode(path: impl AsRef<Path>, expected: FileMode) -> Result<bool, Problem> {
+pub fn validate_mode(path: impl AsRef<Path>, expected: FileMode) -> Result<bool, Problem> {
     use std::os::unix::fs::PermissionsExt;
 
     let path = path.as_ref();
@@ -437,7 +437,7 @@ pub fn check_mode(path: impl AsRef<Path>, expected: FileMode) -> Result<bool, Pr
 
 /// Check if a path has the expected permissions (always true on non-Unix)
 #[cfg(not(unix))]
-pub fn check_mode(_path: impl AsRef<Path>, _expected: FileMode) -> Result<bool, Problem> {
+pub fn validate_mode(_path: impl AsRef<Path>, _expected: FileMode) -> Result<bool, Problem> {
     Ok(true)
 }
 
@@ -519,22 +519,22 @@ mod tests {
         assert!(setuid.is_setuid());
         assert!(!setuid.is_setgid());
         assert!(!setuid.is_sticky());
-        assert!(setuid.has_special_bits());
+        assert!(setuid.is_special_bits_set());
 
         let setgid = FileMode::new_with_special(0o2755);
         assert!(!setgid.is_setuid());
         assert!(setgid.is_setgid());
         assert!(!setgid.is_sticky());
-        assert!(setgid.has_special_bits());
+        assert!(setgid.is_special_bits_set());
 
         let sticky = FileMode::new_with_special(0o1755);
         assert!(!sticky.is_setuid());
         assert!(!sticky.is_setgid());
         assert!(sticky.is_sticky());
-        assert!(sticky.has_special_bits());
+        assert!(sticky.is_special_bits_set());
 
         // Normal mode has no special bits
-        assert!(!FileMode::PUBLIC_EXEC.has_special_bits());
+        assert!(!FileMode::PUBLIC_EXEC.is_special_bits_set());
     }
 
     #[test]
@@ -571,7 +571,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_set_and_check_mode() {
+    fn test_set_and_validate_mode() {
         use tempfile::tempdir;
 
         let dir = tempdir().expect("create temp dir");
@@ -584,8 +584,8 @@ mod tests {
         set_mode(&path, FileMode::PRIVATE).expect("set mode");
 
         // Check mode
-        assert!(check_mode(&path, FileMode::PRIVATE).expect("check mode"));
-        assert!(!check_mode(&path, FileMode::PUBLIC_READ).expect("check mode"));
+        assert!(validate_mode(&path, FileMode::PRIVATE).expect("check mode"));
+        assert!(!validate_mode(&path, FileMode::PUBLIC_READ).expect("check mode"));
     }
 
     #[cfg(unix)]

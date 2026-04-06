@@ -17,7 +17,7 @@
 //! use octarine::auth::password::HibpClient;
 //!
 //! let client = HibpClient::new();
-//! match client.check_password("password123").await {
+//! match client.detect_breach("password123").await {
 //!     Ok(Some(count)) => println!("Password found {} times in breaches!", count),
 //!     Ok(None) => println!("Password not found in known breaches"),
 //!     Err(e) => println!("Failed to check: {}", e),
@@ -233,7 +233,7 @@ impl HibpClient {
     ///
     /// - `auth.password.breach_check` (DEBUG) - Check performed
     /// - `auth.password.breach_detected` (WARN) - Password found in breaches
-    pub async fn check_password(&self, password: &str) -> Result<Option<u64>, Problem> {
+    pub async fn detect_breach(&self, password: &str) -> Result<Option<u64>, Problem> {
         // Hash the password with SHA-1
         let hash = self.hash_password(password);
         let (prefix, suffix) = self.split_hash(&hash);
@@ -244,7 +244,7 @@ impl HibpClient {
         );
 
         // Check cache first
-        if let Some(count) = self.check_cache(&prefix, &suffix) {
+        if let Some(count) = self.lookup_cache(&prefix, &suffix) {
             if count > 0 {
                 observe::warn(
                     "auth.password.breach_detected",
@@ -281,7 +281,7 @@ impl HibpClient {
     /// # Returns
     ///
     /// A vector of results in the same order as the input passwords.
-    pub async fn check_passwords(&self, passwords: &[&str]) -> Vec<Result<Option<u64>, Problem>> {
+    pub async fn detect_breaches(&self, passwords: &[&str]) -> Vec<Result<Option<u64>, Problem>> {
         let mut results = Vec::with_capacity(passwords.len());
 
         // Group by prefix for efficiency
@@ -384,7 +384,7 @@ impl HibpClient {
     }
 
     /// Check cache for a prefix and return count if found
-    fn check_cache(&self, prefix: &str, suffix: &str) -> Option<u64> {
+    fn lookup_cache(&self, prefix: &str, suffix: &str) -> Option<u64> {
         let cache = match self.cache.read() {
             Ok(guard) => guard,
             Err(poisoned) => {
@@ -535,17 +535,17 @@ impl HibpClient {
 /// # Example
 ///
 /// ```ignore
-/// use octarine::auth::password::check_breach;
+/// use octarine::auth::password::detect_password_breach;
 ///
-/// match check_breach("password123").await {
+/// match detect_password_breach("password123").await {
 ///     Ok(Some(count)) => println!("Found {} times!", count),
 ///     Ok(None) => println!("Not found in breaches"),
 ///     Err(e) => println!("Check failed: {}", e),
 /// }
 /// ```
-pub async fn check_breach(password: &str) -> Result<Option<u64>, Problem> {
+pub async fn detect_password_breach(password: &str) -> Result<Option<u64>, Problem> {
     let client = HibpClient::new()?;
-    client.check_password(password).await
+    client.detect_breach(password).await
 }
 
 // ============================================================================
@@ -638,15 +638,15 @@ mod tests {
         assert_eq!(client.cache_size(), 1);
 
         // Check cache hit
-        let count = client.check_cache("12345", "ABCDEF");
+        let count = client.lookup_cache("12345", "ABCDEF");
         assert_eq!(count, Some(100));
 
         // Check cache miss (wrong suffix)
-        let count = client.check_cache("12345", "NOTFOUND");
+        let count = client.lookup_cache("12345", "NOTFOUND");
         assert_eq!(count, Some(0));
 
         // Check cache miss (wrong prefix)
-        let count = client.check_cache("99999", "ABCDEF");
+        let count = client.lookup_cache("99999", "ABCDEF");
         assert!(count.is_none());
 
         // Clear cache
@@ -667,13 +667,13 @@ mod tests {
         client.update_cache("12345".to_string(), suffixes);
 
         // Should be in cache immediately
-        assert_eq!(client.check_cache("12345", "ABCDEF"), Some(100));
+        assert_eq!(client.lookup_cache("12345", "ABCDEF"), Some(100));
 
         // Wait for expiration
         std::thread::sleep(Duration::from_millis(20));
 
         // Should be expired
-        assert!(client.check_cache("12345", "ABCDEF").is_none());
+        assert!(client.lookup_cache("12345", "ABCDEF").is_none());
     }
 
     // Integration test - only run manually
@@ -683,7 +683,7 @@ mod tests {
         let client = HibpClient::new().expect("client should be created");
 
         // "password" is definitely in the breach database
-        let result = client.check_password("password").await;
+        let result = client.detect_breach("password").await;
 
         match result {
             Ok(Some(count)) => {
@@ -702,7 +702,7 @@ mod tests {
 
         // Very unlikely to be in breaches
         let unique_password = format!("OctarineTest{}!@#$%^&*", uuid::Uuid::new_v4());
-        let result = client.check_password(&unique_password).await;
+        let result = client.detect_breach(&unique_password).await;
 
         match result {
             Ok(None) => println!("Unique password not found in breaches (expected)"),

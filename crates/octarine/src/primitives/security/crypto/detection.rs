@@ -22,12 +22,12 @@ pub fn detect_key_threats(key: &ParsedPublicKey, policy: &CryptoPolicy) -> Vec<C
     let mut threats = Vec::new();
 
     // Check key size
-    if let Some(threat) = check_key_size(&key.key_type, policy) {
+    if let Some(threat) = detect_key_size_threat(&key.key_type, policy) {
         threats.push(threat);
     }
 
     // Check for deprecated key algorithms
-    if let Some(threat) = check_deprecated_key_algorithm(&key.key_type) {
+    if let Some(threat) = detect_deprecated_key_algorithm(&key.key_type) {
         threats.push(threat);
     }
 
@@ -51,12 +51,12 @@ pub fn detect_ssh_key_threats(
     let mut threats = Vec::new();
 
     // Check key size based on algorithm
-    if let Some(threat) = check_key_size(&key.key_type, policy) {
+    if let Some(threat) = detect_key_size_threat(&key.key_type, policy) {
         threats.push(threat);
     }
 
     // Check for deprecated algorithms
-    if let Some(threat) = check_deprecated_key_algorithm(&key.key_type) {
+    if let Some(threat) = detect_deprecated_key_algorithm(&key.key_type) {
         threats.push(threat);
     }
 
@@ -123,12 +123,12 @@ pub fn detect_cert_threats(cert: &ParsedCertificate, policy: &CryptoPolicy) -> V
     }
 
     // Check signature algorithm
-    if let Some(threat) = check_signature_algorithm(&cert.signature_algorithm, policy) {
+    if let Some(threat) = detect_signature_algorithm_threat(&cert.signature_algorithm, policy) {
         threats.push(threat);
     }
 
     // Check public key
-    if let Some(threat) = check_key_size(&cert.public_key_type, policy) {
+    if let Some(threat) = detect_key_size_threat(&cert.public_key_type, policy) {
         threats.push(threat);
     }
 
@@ -140,7 +140,7 @@ pub fn detect_cert_threats(cert: &ParsedCertificate, policy: &CryptoPolicy) -> V
 // ============================================================================
 
 /// Check if a signature algorithm is weak or deprecated
-pub fn check_signature_algorithm(
+pub fn detect_signature_algorithm_threat(
     algo: &SignatureAlgorithm,
     policy: &CryptoPolicy,
 ) -> Option<CryptoThreat> {
@@ -193,7 +193,7 @@ pub fn detect_hash_threats(algorithm: &str, policy: &CryptoPolicy) -> Option<Cry
 
 /// Check if a key type represents a weak key
 pub fn is_weak_key_type(key_type: &KeyType, policy: &CryptoPolicy) -> bool {
-    check_key_size(key_type, policy).is_some()
+    detect_key_size_threat(key_type, policy).is_some()
 }
 
 /// Check if a signature algorithm is deprecated
@@ -263,7 +263,7 @@ pub fn audit_ssh_key(key: &ParsedSshPublicKey, policy: &CryptoPolicy) -> CryptoA
 // ============================================================================
 
 /// Check key size against policy
-fn check_key_size(key_type: &KeyType, policy: &CryptoPolicy) -> Option<CryptoThreat> {
+fn detect_key_size_threat(key_type: &KeyType, policy: &CryptoPolicy) -> Option<CryptoThreat> {
     match key_type {
         KeyType::Rsa2048 if policy.min_rsa_bits > 2048 => Some(CryptoThreat::WeakRsaKeySize {
             bits: 2048,
@@ -304,7 +304,7 @@ fn check_key_size(key_type: &KeyType, policy: &CryptoPolicy) -> Option<CryptoThr
 }
 
 /// Check for deprecated key algorithms
-fn check_deprecated_key_algorithm(key_type: &KeyType) -> Option<CryptoThreat> {
+fn detect_deprecated_key_algorithm(key_type: &KeyType) -> Option<CryptoThreat> {
     match key_type {
         KeyType::SshDsa => Some(CryptoThreat::DeprecatedKeyAlgorithm {
             algorithm: "DSA".to_string(),

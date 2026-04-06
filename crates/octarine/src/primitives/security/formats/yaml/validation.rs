@@ -5,7 +5,7 @@
 use crate::primitives::types::{Problem, Result};
 
 use super::super::types::YamlPolicy;
-use super::detection::{has_anchor_bomb, has_unsafe_tag};
+use super::detection::{is_anchor_bomb_present, is_unsafe_tag_present};
 
 /// Validate that YAML input is safe according to the given policy
 ///
@@ -13,14 +13,14 @@ use super::detection::{has_anchor_bomb, has_unsafe_tag};
 /// or an error describing the threat.
 pub(crate) fn validate_yaml_safe(input: &str, policy: &YamlPolicy) -> Result<()> {
     // Check for unsafe tags
-    if has_unsafe_tag(input) {
+    if is_unsafe_tag_present(input) {
         return Err(Problem::Validation(
             "YAML contains unsafe tag (potential code execution)".into(),
         ));
     }
 
     // Check for anchor bomb patterns
-    if has_anchor_bomb(input) {
+    if is_anchor_bomb_present(input) {
         return Err(Problem::Validation(
             "YAML contains anchor/alias bomb pattern (DoS risk)".into(),
         ));

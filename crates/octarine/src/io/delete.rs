@@ -346,7 +346,7 @@ impl SecureDelete {
             self.overwrite_with_pattern(file_size, pattern)?;
 
             if self.verify {
-                self.verify_overwrite(file_size, pattern)?;
+                self.validate_overwrite(file_size, pattern)?;
             }
         }
 
@@ -416,7 +416,11 @@ impl SecureDelete {
     }
 
     /// Verify that the overwrite was successful
-    fn verify_overwrite(&self, file_size: u64, pattern: &OverwritePattern) -> Result<(), Problem> {
+    fn validate_overwrite(
+        &self,
+        file_size: u64,
+        pattern: &OverwritePattern,
+    ) -> Result<(), Problem> {
         let mut file = File::open(&self.path)
             .map_err(|e| Problem::io(format!("Failed to open file for verification: {}", e)))?;
 

@@ -101,7 +101,7 @@ impl ObserveLayer {
     }
 
     /// Remove correlation ID for a span
-    fn remove_span_correlation(&self, span_id: u64) {
+    fn drop_span_correlation(&self, span_id: u64) {
         self.span_correlations.write().remove(&span_id);
     }
 }
@@ -151,7 +151,7 @@ where
     }
 
     fn on_close(&self, id: Id, _ctx: Context<'_, S>) {
-        self.remove_span_correlation(id.into_u64());
+        self.drop_span_correlation(id.into_u64());
     }
 
     fn on_record(&self, _span: &Id, _values: &Record<'_>, _ctx: Context<'_, S>) {
@@ -403,7 +403,7 @@ mod tests {
         assert_eq!(layer.get_span_correlation(span_id), Some(correlation_id));
 
         // Remove
-        layer.remove_span_correlation(span_id);
+        layer.drop_span_correlation(span_id);
         assert!(layer.get_span_correlation(span_id).is_none());
     }
 }

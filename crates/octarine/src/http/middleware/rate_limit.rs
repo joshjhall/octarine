@@ -370,7 +370,7 @@ impl<S> RateLimitService<S> {
     }
 
     /// Check if the request should be rate limited.
-    fn check_rate_limit<B>(&self, request: &Request<B>) -> Result<(), Duration> {
+    fn validate_rate_limit<B>(&self, request: &Request<B>) -> Result<(), Duration> {
         match &self.state {
             LimiterState::Global(limiter) => limiter.check().map_err(|e| {
                 e.wait_time_from(governor::clock::Clock::now(&DefaultClock::default()))
@@ -416,7 +416,7 @@ where
         }
 
         // Check rate limit
-        match self.check_rate_limit(&request) {
+        match self.validate_rate_limit(&request) {
             Ok(()) => {
                 // Request allowed
                 let mut inner = self.inner.clone();
