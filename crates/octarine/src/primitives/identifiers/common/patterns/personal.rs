@@ -322,6 +322,40 @@ pub mod birthdate {
         .expect("BUG: Invalid regex pattern")
     });
 
+    /// Day-Month-Year with abbreviated month name
+    /// Example: "15-Jan-1990", "15 Jan 1990", "1 Feb 2000"
+    pub static DAY_MONTH_ABBREV: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?x)
+            \b(0?[1-9]|[12]\d|3[01])[-.\s]
+            (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-.\s]?
+            (19|20)\d{2}\b
+            ",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Year-first with slashes: YYYY/MM/DD
+    /// Example: "1990/01/15", "2000/12/31"
+    pub static YEAR_FIRST_SLASH: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b(19|20)\d{2}/(0[1-9]|1[0-2])/(0[1-9]|[12]\d|3[01])\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Two-digit year (US-style): MM/DD/YY or MM-DD-YY
+    /// Example: "01/15/90", "12-31-00"
+    pub static TWO_DIGIT_YEAR: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b(0[1-9]|1[0-2])[/\-](0[1-9]|[12]\d|3[01])[/\-]\d{2}\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// ISO format with time portion (date part extracted)
+    /// Example: "1990-01-15T10:30:00", "2023-06-15T08:00:00Z"
+    pub static ISO_WITH_TIME: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T\d{2}:\d{2}")
+            .expect("BUG: Invalid regex pattern")
+    });
+
     /// Labeled birthdate
     /// Example: "DOB: 1990-05-15", "Born: May 15, 1990"
     pub static LABELED: Lazy<Regex> = Lazy::new(|| {
@@ -335,9 +369,13 @@ pub mod birthdate {
         vec![
             &*LABELED,
             &*MONTH_NAME,
+            &*DAY_MONTH_ABBREV,
+            &*ISO_WITH_TIME,
             &*ISO_FORMAT,
+            &*YEAR_FIRST_SLASH,
             &*US_FORMAT,
             &*EU_FORMAT,
+            &*TWO_DIGIT_YEAR,
         ]
     }
 }
