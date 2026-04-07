@@ -68,9 +68,12 @@ crates/octarine/src/
 │   │   ├── network/# URL/hostname formatting
 │   │   └── text/   # Text normalization, encoding
 │   ├── security/   # THREATS: Danger detection
-│   │   ├── paths/  # Traversal, injection detection
+│   │   ├── commands/# Command injection detection
+│   │   ├── crypto/ # Cryptographic threat detection
+│   │   ├── formats/# Format-based attacks
 │   │   ├── network/# SSRF, encoding attacks
-│   │   └── text/   # Log injection, control chars
+│   │   ├── paths/  # Traversal, injection detection
+│   │   └── queries/# Query injection detection
 │   ├── identifiers/# CLASSIFICATION: "What is it? Is it PII?"
 │   │   ├── network/# IP, MAC, URL, UUID detection
 │   │   ├── personal/# SSN, email, phone, names
@@ -80,13 +83,16 @@ crates/octarine/src/
 │   ├── runtime/    # Async utilities
 │   └── types/      # Common types (Problem, Result)
 ├── observe/        # Layer 2: Observability (pub)
-│   ├── event/      # Event generation
+│   ├── audit/      # Audit trail generation
+│   ├── builder/    # Observe builder patterns
+│   ├── compliance/ # SOC2, HIPAA, GDPR, PCI-DSS
 │   ├── context/    # Automatic context capture
-│   ├── problem/    # Error handling with audit trails
-│   ├── pii/        # PII detection and redaction
+│   ├── event/      # Event generation
 │   ├── metrics/    # Metrics collection
-│   ├── writers/    # Output destinations
-│   └── compliance/ # SOC2, HIPAA, GDPR, PCI-DSS
+│   ├── pii/        # PII detection and redaction
+│   ├── problem/    # Error handling with audit trails
+│   ├── tracing/    # Distributed tracing
+│   └── writers/    # Output destinations
 ├── data/           # Layer 3: Data operations with observe (pub)
 │   ├── paths/      # Path operations with observability
 │   ├── network/    # Network operations with observability
@@ -266,10 +272,11 @@ octarine = { path = "../octarine", features = ["testing"] }
 
 The `testing/` module provides:
 
+- `api/` - API testing utilities
+- `assertions/` - Security predicates
+- `cli/` - CLI testing utilities
 - `fixtures/` - Filesystem, temp directories
 - `generators/` - Attack patterns (proptest strategies)
-- `cli/` - CLI testing utilities
-- `assertions/` - Security predicates
 
 ### Running Tests
 
