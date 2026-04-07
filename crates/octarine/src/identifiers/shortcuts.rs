@@ -28,8 +28,8 @@ use crate::primitives::identifiers::{
 };
 
 use super::types::{
-    CredentialMatch, DetectionConfidence, FinancialTextPolicy, IdentifierMatch, IdentifierType,
-    LocationTextPolicy, UuidVersion,
+    CredentialMatch, DetectionConfidence, FinancialTextPolicy, GpsFormat, IdentifierMatch,
+    IdentifierType, LocationTextPolicy, PostalCodeType, UuidVersion,
 };
 use super::{
     BiometricBuilder, CredentialsBuilder, FinancialBuilder, GovernmentBuilder, IdentifierBuilder,
@@ -412,6 +412,34 @@ pub fn redact_organizational(text: &str) -> String {
 // ============================================================
 // LOCATION SHORTCUTS
 // ============================================================
+
+/// Check if value is a GPS coordinate
+#[must_use]
+pub fn is_gps_coordinate(value: &str) -> bool {
+    LocationBuilder::new().is_gps_coordinate(value)
+}
+
+/// Validate a GPS coordinate and detect its format
+pub fn validate_gps_coordinate(coordinate: &str) -> Result<GpsFormat, Problem> {
+    LocationBuilder::new().validate_gps_coordinate(coordinate)
+}
+
+/// Check if value is a street address
+#[must_use]
+pub fn is_street_address(value: &str) -> bool {
+    LocationBuilder::new().is_street_address(value)
+}
+
+/// Check if value is a postal code
+#[must_use]
+pub fn is_postal_code(value: &str) -> bool {
+    LocationBuilder::new().is_postal_code(value)
+}
+
+/// Validate a postal code and detect its type
+pub fn validate_postal_code(postal_code: &str) -> Result<PostalCodeType, Problem> {
+    LocationBuilder::new().validate_postal_code(postal_code)
+}
 
 /// Find all location identifiers in text
 #[must_use]
@@ -850,6 +878,36 @@ mod tests {
     fn test_hostname_shortcut() {
         assert!(is_hostname("server01.example.com"));
         assert!(!is_hostname("!!!"));
+    }
+
+    #[test]
+    fn test_gps_coordinate_shortcut() {
+        assert!(is_gps_coordinate("40.7128, -74.0060"));
+        assert!(!is_gps_coordinate("not-a-coordinate"));
+    }
+
+    #[test]
+    fn test_validate_gps_coordinate_shortcut() {
+        assert!(validate_gps_coordinate("40.7128, -74.0060").is_ok());
+        assert!(validate_gps_coordinate("not-a-coordinate").is_err());
+    }
+
+    #[test]
+    fn test_street_address_shortcut() {
+        assert!(is_street_address("123 Main Street"));
+        assert!(!is_street_address("hello"));
+    }
+
+    #[test]
+    fn test_postal_code_shortcut() {
+        assert!(is_postal_code("90210"));
+        assert!(!is_postal_code("abc"));
+    }
+
+    #[test]
+    fn test_validate_postal_code_shortcut() {
+        assert!(validate_postal_code("90210").is_ok());
+        assert!(validate_postal_code("abc").is_err());
     }
 
     #[test]
