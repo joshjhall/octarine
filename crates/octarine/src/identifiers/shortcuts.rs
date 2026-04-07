@@ -270,6 +270,44 @@ pub fn is_aws_session_token(value: &str) -> bool {
 }
 
 // ============================================================
+// SSH KEY SHORTCUTS
+// ============================================================
+
+/// Check if value is an SSH public key
+#[must_use]
+pub fn is_ssh_public_key(value: &str) -> bool {
+    TokenBuilder::new().is_ssh_public_key(value)
+}
+
+/// Check if value is an SSH private key
+#[must_use]
+pub fn is_ssh_private_key(value: &str) -> bool {
+    TokenBuilder::new().is_ssh_private_key(value)
+}
+
+/// Check if value is an SSH fingerprint (MD5 or SHA256 format)
+#[must_use]
+pub fn is_ssh_fingerprint(value: &str) -> bool {
+    TokenBuilder::new().is_ssh_fingerprint(value)
+}
+
+// ============================================================
+// GITLAB / BEARER TOKEN SHORTCUTS
+// ============================================================
+
+/// Check if value is a GitLab token
+#[must_use]
+pub fn is_gitlab_token(value: &str) -> bool {
+    TokenBuilder::new().is_gitlab_token(value)
+}
+
+/// Check if value is a Bearer token
+#[must_use]
+pub fn is_bearer_token(value: &str) -> bool {
+    TokenBuilder::new().is_bearer_token(value)
+}
+
+// ============================================================
 // MEDICAL SHORTCUTS (HIPAA)
 // ============================================================
 
@@ -746,6 +784,52 @@ mod tests {
         assert!(is_email("user@example.com"));
         assert!(!is_email("not-an-email"));
         assert!(validate_email("user@example.com").is_ok());
+    }
+
+    #[test]
+    fn test_ssh_public_key_shortcut() {
+        assert!(is_ssh_public_key(
+            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8... user@host"
+        ));
+        assert!(is_ssh_public_key(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMq..."
+        ));
+        assert!(!is_ssh_public_key("not-an-ssh-key"));
+    }
+
+    #[test]
+    fn test_ssh_private_key_shortcut() {
+        // Build PEM headers at runtime to avoid gitleaks false positives
+        let rsa_header = ["-----BEGIN", " RSA PRIVATE", " KEY-----"].concat();
+        let openssh_header = ["-----BEGIN", " OPENSSH PRIVATE", " KEY-----"].concat();
+        assert!(is_ssh_private_key(&rsa_header));
+        assert!(is_ssh_private_key(&openssh_header));
+        assert!(!is_ssh_private_key("ssh-rsa AAAAB3..."));
+    }
+
+    #[test]
+    fn test_ssh_fingerprint_shortcut() {
+        assert!(is_ssh_fingerprint(
+            "SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8"
+        ));
+        assert!(is_ssh_fingerprint(
+            "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48"
+        ));
+        assert!(!is_ssh_fingerprint("not-a-fingerprint"));
+    }
+
+    #[test]
+    fn test_gitlab_token_shortcut() {
+        assert!(is_gitlab_token("glpat-xxxxxxxxxxxxxxxxxxxx"));
+        assert!(!is_gitlab_token("not-a-token"));
+    }
+
+    #[test]
+    fn test_bearer_token_shortcut() {
+        assert!(is_bearer_token(
+            "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0IjoiZGF0YSJ9.signature"
+        ));
+        assert!(!is_bearer_token("not-a-bearer-token"));
     }
 
     #[test]
