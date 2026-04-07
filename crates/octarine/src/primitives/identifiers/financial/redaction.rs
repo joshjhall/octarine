@@ -185,8 +185,8 @@ pub enum PaymentTokenRedactionStrategy {
 ///
 /// Each policy maps to sensible defaults for each identifier type:
 /// - **Partial**: ShowLast4 for cards/accounts, Token for routing/tokens
-/// - **Complete**: Type-specific tokens ([CREDIT_CARD], [BANK_ACCOUNT], etc.)
-/// - **Anonymous**: Generic [REDACTED] for all types
+/// - **Complete**: Type-specific tokens (`[CREDIT_CARD]`, `[BANK_ACCOUNT]`, etc.)
+/// - **Anonymous**: Generic `[REDACTED]` for all types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TextRedactionPolicy {
     /// Skip redaction (⚠️ Use only in development/testing)
@@ -204,16 +204,16 @@ pub enum TextRedactionPolicy {
     /// Complete redaction - type-specific tokens
     ///
     /// Maps to:
-    /// - Credit cards → Token ([CREDIT_CARD])
-    /// - Bank accounts → Token ([BANK_ACCOUNT])
-    /// - Routing numbers → Token ([ROUTING])
-    /// - Payment tokens → Token ([PAYMENT_TOKEN])
+    /// - Credit cards → Token (`[CREDIT_CARD]`)
+    /// - Bank accounts → Token (`[BANK_ACCOUNT]`)
+    /// - Routing numbers → Token (`[ROUTING]`)
+    /// - Payment tokens → Token (`[PAYMENT_TOKEN]`)
     #[default]
     Complete,
 
     /// Anonymous redaction - generic token for all types
     ///
-    /// Maps to: [REDACTED] for everything
+    /// Maps to: `[REDACTED]` for everything
     Anonymous,
 }
 

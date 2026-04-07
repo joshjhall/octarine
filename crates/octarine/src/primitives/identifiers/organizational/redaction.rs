@@ -91,12 +91,12 @@ pub enum BadgeRedactionStrategy {
 /// - `Partial` maps to sensible defaults per identifier:
 ///   - Employee ID: `ShowPrefix` (EMP-****)
 ///   - Student ID: `ShowYear` (2024-****)
-///   - Badge: `Token` ([BADGE])
+///   - Badge: `Token` (`[BADGE]`)
 ///
 /// - `Complete` maps to token variants:
-///   - [EMPLOYEE_ID], [STUDENT_ID], [BADGE]
+///   - `[EMPLOYEE_ID]`, `[STUDENT_ID]`, `[BADGE]`
 ///
-/// - `Anonymous` maps to generic [REDACTED] for all types
+/// - `Anonymous` maps to generic `[REDACTED]` for all types
 ///
 /// - `None` passes through unchanged
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

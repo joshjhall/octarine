@@ -149,10 +149,10 @@ pub enum TextRedactionPolicy {
     Skip,
     /// Partial redaction with sensible defaults (show some information)
     Partial,
-    /// Complete redaction with type-specific tokens (<MEDICAL_RECORD>, etc.)
+    /// Complete redaction with type-specific tokens (`<MEDICAL_RECORD>`, etc.)
     #[default]
     Complete,
-    /// Anonymous redaction with generic [REDACTED] for all types
+    /// Anonymous redaction with generic `[REDACTED]` for all types
     Anonymous,
 }
 

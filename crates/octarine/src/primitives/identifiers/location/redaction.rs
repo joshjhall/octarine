@@ -272,8 +272,8 @@ impl CountryRedactionStrategy {
 ///
 /// - **None**: All strategies set to None (dev/qa only)
 /// - **Partial**: Regional context preserved (city/state level)
-/// - **Complete**: Type-specific tokens ([GPS], [ADDRESS], etc.)
-/// - **Anonymous**: Generic [REDACTED] for all types
+/// - **Complete**: Type-specific tokens (`[GPS]`, `[ADDRESS]`, etc.)
+/// - **Anonymous**: Generic `[REDACTED]` for all types
 ///
 /// # Examples
 ///
@@ -310,12 +310,12 @@ pub enum TextRedactionPolicy {
 
     /// Complete redaction - type-specific tokens (recommended default)
     ///
-    /// Uses type tokens ([GPS], [ADDRESS], [POSTAL_CODE], [COUNTRY]).
+    /// Uses type tokens (`[GPS]`, `[ADDRESS]`, `[POSTAL_CODE]`, `[COUNTRY]`).
     /// GDPR/CCPA/COPPA/HIPAA compliant.
     #[default]
     Complete,
 
-    /// Anonymous redaction - generic [REDACTED] for all types
+    /// Anonymous redaction - generic `[REDACTED]` for all types
     ///
     /// Use when redaction type itself should not be revealed.
     Anonymous,

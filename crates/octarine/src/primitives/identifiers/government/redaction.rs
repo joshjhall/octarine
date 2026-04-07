@@ -71,7 +71,7 @@ pub enum TextRedactionPolicy {
     Skip,
     /// Partial redaction (show last 4 for SSN, show WMI for VIN, etc.)
     Partial,
-    /// Complete redaction (use type tokens like [SSN], [VEHICLE_ID])
+    /// Complete redaction (use type tokens like `[SSN]`, `[VEHICLE_ID]`)
     #[default]
     Complete,
     /// Anonymous redaction (generic `[REDACTED]` for all types)
