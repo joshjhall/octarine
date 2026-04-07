@@ -29,7 +29,7 @@ use crate::primitives::identifiers::{
 
 use super::types::{
     CredentialMatch, DetectionConfidence, FinancialTextPolicy, IdentifierMatch, IdentifierType,
-    LocationTextPolicy,
+    LocationTextPolicy, UuidVersion,
 };
 use super::{
     BiometricBuilder, CredentialsBuilder, FinancialBuilder, GovernmentBuilder, IdentifierBuilder,
@@ -211,6 +211,23 @@ pub fn redact_ip(ip: &str) -> String {
 }
 
 // ============================================================
+// MAC ADDRESS SHORTCUTS
+// ============================================================
+
+/// Check if value is a MAC address
+#[must_use]
+pub fn is_mac_address(value: &str) -> bool {
+    NetworkBuilder::new().is_mac_address(value)
+}
+
+/// Validate a MAC address format
+///
+/// Validates format and rejects special addresses (broadcast, null).
+pub fn validate_mac_address(mac: &str) -> Result<(), Problem> {
+    NetworkBuilder::new().validate_mac_address(mac)
+}
+
+// ============================================================
 // URL SHORTCUTS
 // ============================================================
 
@@ -224,6 +241,22 @@ pub fn is_url(value: &str) -> bool {
 #[must_use]
 pub fn find_urls(text: &str) -> Vec<IdentifierMatch> {
     NetworkBuilder::new().find_urls_in_text(text)
+}
+
+// ============================================================
+// DOMAIN / HOSTNAME SHORTCUTS
+// ============================================================
+
+/// Check if value is a domain name
+#[must_use]
+pub fn is_domain(value: &str) -> bool {
+    NetworkBuilder::new().is_domain(value)
+}
+
+/// Check if value is a hostname
+#[must_use]
+pub fn is_hostname(value: &str) -> bool {
+    NetworkBuilder::new().is_hostname(value)
 }
 
 // ============================================================
@@ -241,6 +274,13 @@ pub fn is_uuid(value: &str) -> bool {
 /// For bool check, use `validate_uuid_v4(..).is_ok()`.
 pub fn validate_uuid_v4(uuid: &str) -> Result<(), Problem> {
     NetworkBuilder::new().validate_uuid_v4(uuid).map(|_| ())
+}
+
+/// Validate a UUID (any version)
+///
+/// Returns the detected UUID version on success.
+pub fn validate_uuid(uuid: &str) -> Result<UuidVersion, Problem> {
+    NetworkBuilder::new().validate_uuid(uuid)
 }
 
 // ============================================================
@@ -784,6 +824,38 @@ mod tests {
         assert!(is_email("user@example.com"));
         assert!(!is_email("not-an-email"));
         assert!(validate_email("user@example.com").is_ok());
+    }
+
+    #[test]
+    fn test_mac_address_shortcut() {
+        assert!(is_mac_address("00:1A:2B:3C:4D:5E"));
+        assert!(is_mac_address("00-1A-2B-3C-4D-5E"));
+        assert!(!is_mac_address("not-a-mac"));
+    }
+
+    #[test]
+    fn test_validate_mac_address_shortcut() {
+        assert!(validate_mac_address("00:1A:2B:3C:4D:5E").is_ok());
+        assert!(validate_mac_address("not-a-mac").is_err());
+    }
+
+    #[test]
+    fn test_domain_shortcut() {
+        assert!(is_domain("example.com"));
+        assert!(is_domain("sub.example.co.uk"));
+        assert!(!is_domain("not a domain"));
+    }
+
+    #[test]
+    fn test_hostname_shortcut() {
+        assert!(is_hostname("server01.example.com"));
+        assert!(!is_hostname("!!!"));
+    }
+
+    #[test]
+    fn test_validate_uuid_shortcut() {
+        assert!(validate_uuid("550e8400-e29b-41d4-a716-446655440000").is_ok());
+        assert!(validate_uuid("not-a-uuid").is_err());
     }
 
     #[test]
