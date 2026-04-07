@@ -35,31 +35,31 @@ pub enum ApiKeyProvider {
     PayPal,
     /// Shopify API tokens (shpat_, shpca_, shppa_, shpss_)
     Shopify,
-    /// Mailchimp API keys ([hex]{32}-us[N])
+    /// Mailchimp API keys (`[hex]{32}-us[N]`)
     Mailchimp,
-    /// Mailgun API keys (key-[alnum]{32})
+    /// Mailgun API keys (`key-[alnum]{32}`)
     Mailgun,
-    /// Resend API keys (re_[alnum]{32+})
+    /// Resend API keys (`re_[alnum]{32+}`)
     Resend,
-    /// Brevo/Sendinblue API keys (xkeysib-[hex]{64}-[alnum]{16})
+    /// Brevo/Sendinblue API keys (`xkeysib-[hex]{64}-[alnum]{16}`)
     Brevo,
-    /// Databricks access tokens (dapi[hex]{32})
+    /// Databricks access tokens (`dapi[hex]{32}`)
     Databricks,
     /// HashiCorp Vault tokens (hvs., s., b.)
     HashicorpVault,
     /// Cloudflare tokens (v1.0-... origin CA key)
     Cloudflare,
-    /// NPM access tokens (npm_[alnum]{36})
+    /// NPM access tokens (`npm_[alnum]{36}`)
     Npm,
-    /// PyPI API tokens (pypi-AgEIcHlwaS5vcmc[base64]{50+})
+    /// PyPI API tokens (`pypi-AgEIcHlwaS5vcmc[base64]{50+}`)
     PyPi,
-    /// NuGet API keys (oy2[a-z0-9]{43})
+    /// NuGet API keys (`oy2[a-z0-9]{43}`)
     NuGet,
-    /// JFrog Artifactory API keys (AKC[alnum]{10+})
+    /// JFrog Artifactory API keys (`AKC[alnum]{10+}`)
     Artifactory,
-    /// Docker Hub Personal Access Tokens (dckr_pat_[alnum]{27+})
+    /// Docker Hub Personal Access Tokens (`dckr_pat_[alnum]{27+}`)
     DockerHub,
-    /// Telegram bot tokens ([0-9]{8,10}:[a-zA-Z0-9_-]{35})
+    /// Telegram bot tokens (`[0-9]{8,10}:[a-zA-Z0-9_-]{35}`)
     Telegram,
     /// Discord bot tokens and webhook URLs
     Discord,

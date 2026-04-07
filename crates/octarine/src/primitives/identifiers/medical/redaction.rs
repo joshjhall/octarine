@@ -133,14 +133,14 @@ pub enum MedicalCodeRedactionStrategy {
 /// - `Partial` maps to sensible defaults per identifier:
 ///   - MRN: `ShowPrefix` (MRN-12****)
 ///   - Insurance: `ShowLast4` (******1234)
-///   - Prescription: `Token` (<PRESCRIPTION>)
-///   - NPI: `ShowFirst4` (1234-***-***)
-///   - Medical Code: `ShowCategory` ([ICD10-E11.*])
+///   - Prescription: `Token` (`<PRESCRIPTION>`)
+///   - NPI: `ShowFirst4` (1234-\*\*\*-\*\*\*)
+///   - Medical Code: `ShowCategory` (`[ICD10-E11.*]`)
 ///
 /// - `Complete` maps to token variants:
-///   - <MEDICAL_RECORD>, <INSURANCE_INFO>, <PRESCRIPTION>, <PROVIDER_ID>, <MEDICAL_CODE>
+///   - `<MEDICAL_RECORD>`, `<INSURANCE_INFO>`, `<PRESCRIPTION>`, `<PROVIDER_ID>`, `<MEDICAL_CODE>`
 ///
-/// - `Anonymous` maps to generic [REDACTED] for all types
+/// - `Anonymous` maps to generic `[REDACTED]` for all types
 ///
 /// - `None` passes through unchanged
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

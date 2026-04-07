@@ -105,10 +105,10 @@ pub enum TextRedactionPolicy {
     Skip,
     /// Partial redaction with sensible defaults (show some information)
     Partial,
-    /// Complete redaction with type-specific tokens ([EMPLOYEE_ID], [STUDENT_ID], etc.)
+    /// Complete redaction with type-specific tokens (`[EMPLOYEE_ID]`, `[STUDENT_ID]`, etc.)
     #[default]
     Complete,
-    /// Anonymous redaction with generic [REDACTED] for all types
+    /// Anonymous redaction with generic `[REDACTED]` for all types
     Anonymous,
 }
 
