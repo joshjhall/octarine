@@ -304,9 +304,9 @@ impl PiiType {
             // Financial
             Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken |
             // Government (identity theft risk)
-            Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId |
+            Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
             // Medical (HIPAA)
-            Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber |
+            Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
             Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId |
             // Authentication (security breach)
@@ -366,6 +366,9 @@ impl PiiType {
         matches!(
             self,
             Self::Password
+                | Self::Pin
+                | Self::SecurityAnswer
+                | Self::Passphrase
                 | Self::ApiKey
                 | Self::Jwt
                 | Self::SessionId
@@ -456,8 +459,12 @@ mod tests {
         // Government
         assert!(PiiType::Ssn.is_high_risk());
         assert!(PiiType::Passport.is_high_risk());
+        // Government (added)
+        assert!(PiiType::Vin.is_high_risk());
         // Medical
         assert!(PiiType::Mrn.is_high_risk());
+        assert!(PiiType::IcdCode.is_high_risk());
+        assert!(PiiType::PrescriptionNumber.is_high_risk());
         // Biometric
         assert!(PiiType::FingerprintId.is_high_risk());
         // Token/secrets
@@ -508,6 +515,9 @@ mod tests {
     #[test]
     fn test_is_secret() {
         assert!(PiiType::Password.is_secret());
+        assert!(PiiType::Pin.is_secret());
+        assert!(PiiType::SecurityAnswer.is_secret());
+        assert!(PiiType::Passphrase.is_secret());
         assert!(PiiType::ApiKey.is_secret());
         assert!(PiiType::Jwt.is_secret());
         assert!(PiiType::SessionId.is_secret());
