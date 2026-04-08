@@ -397,6 +397,29 @@ pub mod finland_hetu {
     }
 }
 
+/// Italy Codice Fiscale (fiscal code) patterns
+pub mod italy_fiscal_code {
+    use super::*;
+
+    /// Codice Fiscale format: 6 letters + 2 digits + 1 letter + 2 digits + 1 letter + 3 digits + 1 letter
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Codice Fiscale with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:codice[\s-]?fiscale|C\.?F\.?|fiscal[\s-]?code)[\s:#-]*([A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z])\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 /// Poland PESEL (personal identity number) patterns
 pub mod poland_pesel {
     use super::*;

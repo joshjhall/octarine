@@ -648,6 +648,46 @@ impl GovernmentIdentifierBuilder {
     }
 
     // ========================================================================
+    // Italy Codice Fiscale Operations
+    // ========================================================================
+
+    /// Check if value matches Italy Codice Fiscale format
+    #[must_use]
+    pub fn is_italy_fiscal_code(&self, value: &str) -> bool {
+        detection::is_italy_fiscal_code(value)
+    }
+
+    /// Find all Italy Codice Fiscale patterns in text
+    #[must_use]
+    pub fn find_italy_fiscal_codes_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_italy_fiscal_codes_in_text(text)
+    }
+
+    /// Validate Italy Codice Fiscale format (without check character)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the Codice Fiscale format is invalid
+    pub fn validate_italy_fiscal_code(&self, cf: &str) -> Result<(), Problem> {
+        validation::validate_italy_fiscal_code(cf)
+    }
+
+    /// Validate Italy Codice Fiscale with check character
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the Codice Fiscale format is invalid or check character fails
+    pub fn validate_italy_fiscal_code_with_checksum(&self, cf: &str) -> Result<(), Problem> {
+        validation::validate_italy_fiscal_code_with_checksum(cf)
+    }
+
+    /// Check if an Italy Codice Fiscale is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_italy_fiscal_code(&self, cf: &str) -> bool {
+        validation::is_test_italy_fiscal_code(cf)
+    }
+
+    // ========================================================================
     // Poland PESEL Operations
     // ========================================================================
 

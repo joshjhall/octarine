@@ -42,6 +42,7 @@ mod driver_license;
 mod ein;
 mod finland;
 mod india;
+mod italy;
 mod korea_rrn;
 mod national_id;
 mod passport;
@@ -85,6 +86,11 @@ pub use finland::{
 // Re-export Poland functions
 pub use poland::{
     is_test_poland_pesel, validate_poland_pesel, validate_poland_pesel_with_checksum,
+};
+
+// Re-export Italy functions
+pub use italy::{
+    is_test_italy_fiscal_code, validate_italy_fiscal_code, validate_italy_fiscal_code_with_checksum,
 };
 
 // Re-export India functions
