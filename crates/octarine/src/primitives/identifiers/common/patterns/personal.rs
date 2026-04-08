@@ -274,6 +274,47 @@ pub mod korea_rrn {
     }
 }
 
+/// Australian Tax File Number patterns
+pub mod australia_tfn {
+    use super::*;
+
+    /// TFN with spaces: NNN NNN NNN (9 digits)
+    pub static WITH_SPACES: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{3}\s\d{3}\s\d{3}\b").expect("BUG: Invalid regex pattern"));
+
+    /// TFN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b(?:TFN|tax[\s-]?file[\s-]?number)[\s:#-]*(\d{3}\s?\d{3}\s?\d{3})\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_SPACES]
+    }
+}
+
+/// Australian Business Number patterns
+pub mod australia_abn {
+    use super::*;
+
+    /// ABN with spaces: NN NNN NNN NNN (11 digits)
+    pub static WITH_SPACES: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{2}\s\d{3}\s\d{3}\s\d{3}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// ABN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:ABN|australian[\s-]?business[\s-]?number)[\s:#-]*(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_SPACES]
+    }
+}
+
 pub mod personal_name {
     use super::*;
 

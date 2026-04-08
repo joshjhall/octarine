@@ -36,6 +36,7 @@
 //! | ITIN | Input Validation | Best Practice | N/A |
 //! | EIN | Input Validation | Best Practice | N/A |
 
+mod australia;
 mod cache;
 mod driver_license;
 mod ein;
@@ -63,6 +64,13 @@ pub use passport::{is_test_passport, validate_passport};
 // Re-export national ID functions
 pub use national_id::{
     is_test_national_id, validate_canada_sin, validate_national_id, validate_uk_ni,
+};
+
+// Re-export Australia functions
+pub use australia::{
+    is_test_australia_abn, is_test_australia_tfn, validate_australia_abn,
+    validate_australia_abn_with_checksum, validate_australia_tfn,
+    validate_australia_tfn_with_checksum,
 };
 
 // Re-export Korea RRN functions

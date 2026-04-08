@@ -251,6 +251,76 @@ pub fn is_korea_rrn(value: &str) -> bool {
     patterns::korea_rrn::WITH_DASH.is_match(value)
 }
 
+/// Check if a value matches Australian TFN format (8-9 digits)
+#[must_use]
+pub fn is_australia_tfn(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::australia_tfn::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Check if a value matches Australian ABN format (11 digits)
+#[must_use]
+pub fn is_australia_abn(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::australia_abn::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Australian TFN patterns in text
+#[must_use]
+pub fn find_australia_tfns_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::australia_tfn::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::AustraliaTfn,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Find all Australian ABN patterns in text
+#[must_use]
+pub fn find_australia_abns_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::australia_abn::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::AustraliaAbn,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Detect which type of government identifier a value is
 ///
 /// Returns the specific identifier type if detected, or None if not a government ID.
@@ -278,6 +348,10 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::Passport)
     } else if is_korea_rrn(value) {
         Some(IdentifierType::KoreaRrn)
+    } else if is_australia_tfn(value) {
+        Some(IdentifierType::AustraliaTfn)
+    } else if is_australia_abn(value) {
+        Some(IdentifierType::AustraliaAbn)
     } else if is_national_id(value) {
         Some(IdentifierType::NationalId)
     } else if is_vehicle_id(value) {
@@ -672,6 +746,8 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_driver_licenses_in_text(text));
     all_matches.extend(find_passports_in_text(text));
     all_matches.extend(find_korea_rrns_in_text(text));
+    all_matches.extend(find_australia_tfns_in_text(text));
+    all_matches.extend(find_australia_abns_in_text(text));
     all_matches.extend(find_national_ids_in_text(text));
     all_matches.extend(find_vehicle_ids_in_text(text));
 

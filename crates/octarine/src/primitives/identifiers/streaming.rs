@@ -398,6 +398,20 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::AustraliaTfn => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_australia_tfns_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::AustraliaAbn => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_australia_abns_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::VehicleId => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_vehicle_ids_in_text(text) {
