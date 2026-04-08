@@ -39,6 +39,7 @@
 mod cache;
 mod driver_license;
 mod ein;
+mod korea_rrn;
 mod national_id;
 mod passport;
 mod ssn;
@@ -63,6 +64,9 @@ pub use passport::{is_test_passport, validate_passport};
 pub use national_id::{
     is_test_national_id, validate_canada_sin, validate_national_id, validate_uk_ni,
 };
+
+// Re-export Korea RRN functions
+pub use korea_rrn::{is_test_korea_rrn, validate_korea_rrn, validate_korea_rrn_with_checksum};
 
 // Re-export VIN functions
 pub use vin::{is_test_vin, validate_vin, validate_vin_with_checksum};

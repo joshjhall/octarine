@@ -252,6 +252,28 @@ pub mod national_id {
         vec![&*UK_NI, &*CANADA_SIN, &*GENERIC]
     }
 }
+/// South Korea Resident Registration Number patterns
+pub mod korea_rrn {
+    use super::*;
+
+    /// Korea RRN with dash: YYMMDD-GNNNNNN (13 digits total)
+    /// Gender digit 1-8 follows the dash
+    pub static WITH_DASH: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{6}-[1-8]\d{6}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Korea RRN with explicit label (with or without dash)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:RRN|주민등록번호|resident[\s-]?registration)[\s:#-]*(\d{6}-?[1-8]\d{6})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_DASH]
+    }
+}
+
 pub mod personal_name {
     use super::*;
 

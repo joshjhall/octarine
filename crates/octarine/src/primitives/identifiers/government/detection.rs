@@ -239,6 +239,18 @@ pub fn is_vehicle_id(value: &str) -> bool {
         .any(|p| p.is_match(value))
 }
 
+/// Check if a value matches South Korea RRN format
+///
+/// Validates the YYMMDD-GNNNNNN format where G is a gender/century digit (1-8).
+/// Does NOT validate the checksum — use `validate_korea_rrn_with_checksum` for that.
+#[must_use]
+pub fn is_korea_rrn(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::korea_rrn::WITH_DASH.is_match(value)
+}
+
 /// Detect which type of government identifier a value is
 ///
 /// Returns the specific identifier type if detected, or None if not a government ID.
@@ -264,6 +276,8 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::DriverLicense)
     } else if is_passport(value) {
         Some(IdentifierType::Passport)
+    } else if is_korea_rrn(value) {
+        Some(IdentifierType::KoreaRrn)
     } else if is_national_id(value) {
         Some(IdentifierType::NationalId)
     } else if is_vehicle_id(value) {
@@ -526,6 +540,36 @@ fn is_likely_passport_context(text: &str, potential_passport: &str) -> bool {
         .any(|&keyword| context.contains(keyword))
 }
 
+/// Find all South Korea RRN patterns in text
+///
+/// Detects Korean Resident Registration Numbers in YYMMDD-GNNNNNN format.
+///
+/// # Returns
+///
+/// Vector of matches with position, text, and confidence level.
+#[must_use]
+pub fn find_korea_rrns_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::korea_rrn::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::KoreaRrn,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Find all national ID patterns in text
 ///
 /// Detects international national identification numbers:
@@ -627,6 +671,7 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_tax_ids_in_text(text));
     all_matches.extend(find_driver_licenses_in_text(text));
     all_matches.extend(find_passports_in_text(text));
+    all_matches.extend(find_korea_rrns_in_text(text));
     all_matches.extend(find_national_ids_in_text(text));
     all_matches.extend(find_vehicle_ids_in_text(text));
 

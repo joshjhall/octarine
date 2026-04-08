@@ -115,7 +115,10 @@ pub use sanitization::SsnRedactionStrategy;
 pub use validation::{clear_government_caches, ssn_cache_stats, vin_cache_stats};
 
 // Export test pattern detection functions (observe module testing)
-pub use validation::{is_test_driver_license, is_test_ein, is_test_vin};
+pub use validation::{is_test_driver_license, is_test_ein, is_test_korea_rrn, is_test_vin};
+
+// Export Korea RRN validation functions
+pub use validation::{validate_korea_rrn, validate_korea_rrn_with_checksum};
 
 // Export strategy types for explicit redaction control
 pub use sanitization::{

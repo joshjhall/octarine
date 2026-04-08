@@ -57,6 +57,7 @@ pub enum IdentifierType {
     Passport,
     TaxId, // EIN, TIN, ITIN
     NationalId,
+    KoreaRrn, // South Korea Resident Registration Number
 
     // Organizational identifiers
     EmployeeId,
