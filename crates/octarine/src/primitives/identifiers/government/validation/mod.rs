@@ -40,6 +40,7 @@ mod australia;
 mod cache;
 mod driver_license;
 mod ein;
+mod finland;
 mod india;
 mod korea_rrn;
 mod national_id;
@@ -73,6 +74,11 @@ pub use australia::{
     is_test_australia_abn, is_test_australia_tfn, validate_australia_abn,
     validate_australia_abn_with_checksum, validate_australia_tfn,
     validate_australia_tfn_with_checksum,
+};
+
+// Re-export Finland functions
+pub use finland::{
+    is_test_finland_hetu, validate_finland_hetu, validate_finland_hetu_with_checksum,
 };
 
 // Re-export India functions

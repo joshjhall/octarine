@@ -608,6 +608,46 @@ impl GovernmentIdentifierBuilder {
     }
 
     // ========================================================================
+    // Finland HETU Operations
+    // ========================================================================
+
+    /// Check if value matches Finland HETU format
+    #[must_use]
+    pub fn is_finland_hetu(&self, value: &str) -> bool {
+        detection::is_finland_hetu(value)
+    }
+
+    /// Find all Finland HETUs in text
+    #[must_use]
+    pub fn find_finland_hetus_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_finland_hetus_in_text(text)
+    }
+
+    /// Validate Finland HETU format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the HETU format is invalid
+    pub fn validate_finland_hetu(&self, hetu: &str) -> Result<(), Problem> {
+        validation::validate_finland_hetu(hetu)
+    }
+
+    /// Validate Finland HETU with mod-31 checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the HETU format is invalid or checksum fails
+    pub fn validate_finland_hetu_with_checksum(&self, hetu: &str) -> Result<(), Problem> {
+        validation::validate_finland_hetu_with_checksum(hetu)
+    }
+
+    /// Check if a Finland HETU is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_finland_hetu(&self, hetu: &str) -> bool {
+        validation::is_test_finland_hetu(hetu)
+    }
+
+    // ========================================================================
     // Singapore NRIC/FIN Operations
     // ========================================================================
 

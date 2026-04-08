@@ -375,6 +375,28 @@ pub mod singapore_nric {
     }
 }
 
+/// Finland HETU (personal identity code) patterns
+pub mod finland_hetu {
+    use super::*;
+
+    /// HETU format: DDMMYY[+-A]NNNC (6 digits + century + 3 digits + check)
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{6}[-+A]\d{3}[0-9A-Y]\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// HETU with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:HETU|henkilotunnus|personal[\s-]?identity[\s-]?code)[\s:#-]*(\d{6}[-+A]\d{3}[0-9A-Y])\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 pub mod personal_name {
     use super::*;
 

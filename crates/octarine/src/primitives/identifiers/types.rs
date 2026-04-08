@@ -63,6 +63,7 @@ pub enum IdentifierType {
     IndiaAadhaar,  // Indian Aadhaar number (Verhoeff checksum)
     IndiaPan,      // Indian Permanent Account Number
     SingaporeNric, // Singapore NRIC/FIN
+    FinlandHetu,   // Finnish personal identity code
 
     // Organizational identifiers
     EmployeeId,

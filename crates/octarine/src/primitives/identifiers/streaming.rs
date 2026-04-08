@@ -426,6 +426,13 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::FinlandHetu => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_finland_hetus_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::SingaporeNric => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_singapore_nrics_in_text(text) {
