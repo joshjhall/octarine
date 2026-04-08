@@ -38,8 +38,8 @@ pub use financial::{bank_account, credit_card, payment_token, routing_number};
 pub use network::{email, phone, username};
 pub use personal::{
     australia_abn, australia_tfn, birthdate, driver_license, employee_id, finland_hetu,
-    india_aadhaar, india_pan, korea_rrn, national_id, passport, personal_name, singapore_nric, ssn,
-    student_id, tax_id,
+    india_aadhaar, india_pan, korea_rrn, national_id, passport, personal_name, poland_pesel,
+    singapore_nric, ssn, student_id, tax_id,
 };
 
 // medical, biometric, location, and vehicle modules are already accessible via pub mod declarations

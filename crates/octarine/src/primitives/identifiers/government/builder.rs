@@ -648,6 +648,46 @@ impl GovernmentIdentifierBuilder {
     }
 
     // ========================================================================
+    // Poland PESEL Operations
+    // ========================================================================
+
+    /// Check if value matches Poland PESEL format
+    #[must_use]
+    pub fn is_poland_pesel(&self, value: &str) -> bool {
+        detection::is_poland_pesel(value)
+    }
+
+    /// Find all Poland PESELs in text
+    #[must_use]
+    pub fn find_poland_pesels_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_poland_pesels_in_text(text)
+    }
+
+    /// Validate Poland PESEL format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the PESEL format is invalid
+    pub fn validate_poland_pesel(&self, pesel: &str) -> Result<(), Problem> {
+        validation::validate_poland_pesel(pesel)
+    }
+
+    /// Validate Poland PESEL with weighted checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the PESEL format is invalid or checksum fails
+    pub fn validate_poland_pesel_with_checksum(&self, pesel: &str) -> Result<(), Problem> {
+        validation::validate_poland_pesel_with_checksum(pesel)
+    }
+
+    /// Check if a Poland PESEL is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_poland_pesel(&self, pesel: &str) -> bool {
+        validation::is_test_poland_pesel(pesel)
+    }
+
+    // ========================================================================
     // Singapore NRIC/FIN Operations
     // ========================================================================
 

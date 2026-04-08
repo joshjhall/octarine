@@ -45,6 +45,7 @@ mod india;
 mod korea_rrn;
 mod national_id;
 mod passport;
+mod poland;
 mod singapore;
 mod ssn;
 mod vin;
@@ -79,6 +80,11 @@ pub use australia::{
 // Re-export Finland functions
 pub use finland::{
     is_test_finland_hetu, validate_finland_hetu, validate_finland_hetu_with_checksum,
+};
+
+// Re-export Poland functions
+pub use poland::{
+    is_test_poland_pesel, validate_poland_pesel, validate_poland_pesel_with_checksum,
 };
 
 // Re-export India functions

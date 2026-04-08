@@ -64,6 +64,7 @@ pub enum IdentifierType {
     IndiaPan,      // Indian Permanent Account Number
     SingaporeNric, // Singapore NRIC/FIN
     FinlandHetu,   // Finnish personal identity code
+    PolandPesel,   // Polish personal identity number (PESEL)
 
     // Organizational identifiers
     EmployeeId,

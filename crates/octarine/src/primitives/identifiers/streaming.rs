@@ -433,6 +433,13 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::PolandPesel => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_poland_pesels_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::SingaporeNric => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_singapore_nrics_in_text(text) {

@@ -397,6 +397,27 @@ pub mod finland_hetu {
     }
 }
 
+/// Poland PESEL (personal identity number) patterns
+pub mod poland_pesel {
+    use super::*;
+
+    /// PESEL format: 11 consecutive digits (YYMMDDNNNCC)
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{11}\b").expect("BUG: Invalid regex pattern"));
+
+    /// PESEL with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:PESEL|numer[\s-]?PESEL|personal[\s-]?id(?:entity)?[\s-]?(?:number|code))[\s:#-]*(\d{11})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 pub mod personal_name {
     use super::*;
 
