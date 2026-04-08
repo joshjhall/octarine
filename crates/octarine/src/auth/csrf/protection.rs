@@ -264,7 +264,10 @@ mod tests {
 
     #[test]
     fn test_cookie_header_no_secure() {
-        let config = CsrfConfig::builder().secure(false).build();
+        let config = CsrfConfig::builder()
+            .secure(false)
+            .build()
+            .expect("valid config");
         let csrf = CsrfProtection::with_config(config);
         let token = csrf.generate_token();
 
@@ -279,7 +282,8 @@ mod tests {
             .cookie_name("my_csrf")
             .header_name("X-My-CSRF")
             .form_field_name("csrf_field")
-            .build();
+            .build()
+            .expect("valid config");
         let csrf = CsrfProtection::with_config(config);
 
         assert_eq!(csrf.cookie_name(), "my_csrf");

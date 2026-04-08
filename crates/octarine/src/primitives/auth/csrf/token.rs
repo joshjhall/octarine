@@ -136,11 +136,28 @@ impl CsrfConfigBuilder {
         self
     }
 
+    /// Minimum token length in bytes (128 bits)
+    const MIN_TOKEN_LENGTH: usize = 16;
+
     /// Build the configuration
-    #[must_use]
-    pub fn build(self) -> CsrfConfig {
-        CsrfConfig {
-            token_length: self.token_length.unwrap_or(32),
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem::Validation` if `token_length` is less than 16 bytes
+    /// (128 bits), the cryptographic minimum for CSRF tokens.
+    pub fn build(self) -> Result<CsrfConfig, Problem> {
+        let token_length = self.token_length.unwrap_or(32);
+
+        if token_length < Self::MIN_TOKEN_LENGTH {
+            return Err(Problem::Validation(format!(
+                "CSRF token length must be at least {} bytes, got {}",
+                Self::MIN_TOKEN_LENGTH,
+                token_length
+            )));
+        }
+
+        Ok(CsrfConfig {
+            token_length,
             cookie_name: self.cookie_name.unwrap_or_else(|| "__csrf".to_string()),
             header_name: self
                 .header_name
@@ -149,7 +166,7 @@ impl CsrfConfigBuilder {
             same_site: self.same_site.unwrap_or_default(),
             secure: self.secure.unwrap_or(true),
             token_lifetime: self.token_lifetime.unwrap_or(Duration::from_secs(3600)),
-        }
+        })
     }
 }
 
@@ -392,7 +409,8 @@ mod tests {
             .same_site(SameSite::Lax)
             .secure(false)
             .token_lifetime(Duration::from_secs(7200))
-            .build();
+            .build()
+            .expect("valid config");
 
         assert_eq!(config.token_length, 64);
         assert_eq!(config.cookie_name, "my_csrf");
@@ -447,7 +465,8 @@ mod tests {
     fn test_token_expiration() {
         let config = CsrfConfig::builder()
             .token_lifetime(Duration::from_millis(10))
-            .build();
+            .build()
+            .expect("valid config");
         let token = generate_csrf_token(&config);
 
         // Should be valid initially
@@ -489,11 +508,30 @@ mod tests {
     fn test_token_remaining_validity() {
         let config = CsrfConfig::builder()
             .token_lifetime(Duration::from_secs(60))
-            .build();
+            .build()
+            .expect("valid config");
         let token = generate_csrf_token(&config);
 
         let remaining = token.remaining_validity();
         assert!(remaining.is_some());
         assert!(remaining.expect("should have remaining time") <= Duration::from_secs(60));
+    }
+
+    #[test]
+    fn test_build_rejects_zero_length() {
+        let result = CsrfConfig::builder().token_length(0).build();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_build_rejects_short_length() {
+        let result = CsrfConfig::builder().token_length(15).build();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_build_accepts_minimum_length() {
+        let result = CsrfConfig::builder().token_length(16).build();
+        assert!(result.is_ok());
     }
 }
