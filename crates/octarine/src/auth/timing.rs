@@ -276,4 +276,22 @@ mod tests {
         // Allow 20% margin for OS scheduler jitter
         assert!(elapsed >= Duration::from_millis(40));
     }
+
+    #[test]
+    fn test_constant_time_response_sync_slow_warning() {
+        // Configure a very short max_duration so the operation exceeds it
+        let config = ConstantTimeConfig::builder()
+            .min_duration(Duration::from_millis(1))
+            .max_duration(Duration::from_millis(5))
+            .build();
+
+        // Operation that takes longer than max_duration triggers the warn path
+        let result = constant_time_response_sync(&config, || {
+            std::thread::sleep(Duration::from_millis(20));
+            99
+        });
+
+        // The warn path should not prevent the result from being returned
+        assert_eq!(result, 99);
+    }
 }

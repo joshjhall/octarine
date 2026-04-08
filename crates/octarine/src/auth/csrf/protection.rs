@@ -286,4 +286,21 @@ mod tests {
         assert_eq!(csrf.header_name(), "X-My-CSRF");
         assert_eq!(csrf.form_field_name(), "csrf_field");
     }
+
+    #[test]
+    fn test_validate_double_submit_empty_strings() {
+        let csrf = CsrfProtection::new();
+
+        // Two empty strings should match (constant-time compare of equal values)
+        let result = csrf.validate_double_submit("", "");
+        assert!(result.is_ok());
+
+        // Empty vs non-empty should fail
+        let result = csrf.validate_double_submit("", "some_token");
+        assert!(result.is_err());
+
+        // Non-empty vs empty should fail
+        let result = csrf.validate_double_submit("some_token", "");
+        assert!(result.is_err());
+    }
 }

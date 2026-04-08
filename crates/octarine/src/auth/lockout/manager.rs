@@ -359,4 +359,35 @@ mod tests {
             Some("192.168.1.1".to_string())
         );
     }
+
+    #[test]
+    fn test_calculate_lockout_duration() {
+        let store = Arc::new(MemoryLockoutStore::new());
+        let config = LockoutConfig::builder()
+            .base_lockout_duration(std::time::Duration::from_secs(60))
+            .max_lockout_duration(std::time::Duration::from_secs(3600))
+            .backoff_multiplier(2.0)
+            .build();
+        let manager = LockoutManager::new(store, config);
+
+        // Zero failures should return base duration
+        let d0 = manager.calculate_lockout_duration(0);
+        assert_eq!(d0, std::time::Duration::from_secs(60));
+
+        // 1 failure: base * 2^0 = 60s
+        let d1 = manager.calculate_lockout_duration(1);
+        assert_eq!(d1, std::time::Duration::from_secs(60));
+
+        // 2 failures: base * 2^1 = 120s
+        let d2 = manager.calculate_lockout_duration(2);
+        assert_eq!(d2, std::time::Duration::from_secs(120));
+
+        // 3 failures: base * 2^2 = 240s
+        let d3 = manager.calculate_lockout_duration(3);
+        assert_eq!(d3, std::time::Duration::from_secs(240));
+
+        // High failure count should be capped at max_lockout_duration
+        let d_high = manager.calculate_lockout_duration(100);
+        assert!(d_high <= std::time::Duration::from_secs(3600));
+    }
 }

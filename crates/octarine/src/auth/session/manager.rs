@@ -271,22 +271,16 @@ impl<S: SessionStore> SessionManager<S> {
             None
         };
 
-        let bound_ip = if self.config.bind_ip {
-            if self.config.bind_network_only {
-                // Network-only binding handled in SessionBinding
-                ip
-            } else {
-                ip
-            }
+        // Network-only binding intentionally omits the IP address from the
+        // binding so that sessions are not tied to a specific IP (useful when
+        // clients roam across addresses within the same network).
+        let bound_ip = if self.config.bind_ip && !self.config.bind_network_only {
+            ip
         } else {
             None
         };
 
-        if self.config.bind_network_only && self.config.bind_ip {
-            SessionBinding::from_context(ua, None)
-        } else {
-            SessionBinding::from_context(ua, bound_ip)
-        }
+        SessionBinding::from_context(ua, bound_ip)
     }
 }
 
@@ -408,6 +402,51 @@ mod tests {
         // Old session should be gone
         let result = manager.validate_session(&old_id, None, None);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_session_idle_expired() {
+        let store = Arc::new(MemorySessionStore::new());
+        let config = SessionConfig::builder()
+            .idle_timeout(chrono::Duration::seconds(1))
+            .build();
+        let manager = SessionManager::new(Arc::clone(&store), config);
+
+        let session = manager
+            .create_session("user1")
+            .expect("create should succeed");
+        let session_id = session.id.clone();
+
+        // Manually expire the session by setting last_accessed_at to the past
+        let mut stale = store
+            .get(&session_id)
+            .expect("get")
+            .expect("session exists");
+        stale.last_accessed_at = chrono::Utc::now() - chrono::Duration::seconds(60);
+        store.update(&stale).expect("update");
+
+        let result = manager.validate_session(&session_id, None, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_create_session_bind_network_only() {
+        let store = Arc::new(MemorySessionStore::new());
+        let config = SessionConfig::builder()
+            .bind_user_agent(true)
+            .bind_ip(true)
+            .bind_network_only(true)
+            .build();
+        let manager = SessionManager::new(Arc::clone(&store), config);
+
+        let session = manager
+            .create_session_with_binding("user1", Some("Mozilla/5.0"), Some("192.168.1.100"))
+            .expect("create should succeed");
+
+        // With bind_network_only, the IP should NOT be bound
+        // so validating with a different IP should succeed
+        let result = manager.validate_session(&session.id, Some("Mozilla/5.0"), Some("10.0.0.1"));
+        assert!(result.is_ok());
     }
 
     #[test]
