@@ -537,6 +537,77 @@ impl GovernmentIdentifierBuilder {
     }
 
     // ========================================================================
+    // India Aadhaar Operations
+    // ========================================================================
+
+    /// Check if value matches India Aadhaar format
+    #[must_use]
+    pub fn is_india_aadhaar(&self, value: &str) -> bool {
+        detection::is_india_aadhaar(value)
+    }
+
+    /// Find all India Aadhaar numbers in text
+    #[must_use]
+    pub fn find_india_aadhaars_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_india_aadhaars_in_text(text)
+    }
+
+    /// Validate India Aadhaar format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the Aadhaar format is invalid
+    pub fn validate_india_aadhaar(&self, aadhaar: &str) -> Result<(), Problem> {
+        validation::validate_india_aadhaar(aadhaar)
+    }
+
+    /// Validate India Aadhaar with Verhoeff checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the Aadhaar format is invalid or checksum fails
+    pub fn validate_india_aadhaar_with_checksum(&self, aadhaar: &str) -> Result<(), Problem> {
+        validation::validate_india_aadhaar_with_checksum(aadhaar)
+    }
+
+    /// Check if an India Aadhaar is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_india_aadhaar(&self, aadhaar: &str) -> bool {
+        validation::is_test_india_aadhaar(aadhaar)
+    }
+
+    // ========================================================================
+    // India PAN Operations
+    // ========================================================================
+
+    /// Check if value matches India PAN format
+    #[must_use]
+    pub fn is_india_pan(&self, value: &str) -> bool {
+        detection::is_india_pan(value)
+    }
+
+    /// Find all India PAN numbers in text
+    #[must_use]
+    pub fn find_india_pans_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_india_pans_in_text(text)
+    }
+
+    /// Validate India PAN format and holder type
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the PAN format or holder type is invalid
+    pub fn validate_india_pan(&self, pan: &str) -> Result<(), Problem> {
+        validation::validate_india_pan(pan)
+    }
+
+    /// Check if an India PAN is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_india_pan(&self, pan: &str) -> bool {
+        validation::is_test_india_pan(pan)
+    }
+
+    // ========================================================================
     // Korea RRN Operations
     // ========================================================================
 

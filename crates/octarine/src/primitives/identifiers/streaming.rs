@@ -412,6 +412,20 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::IndiaAadhaar => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_india_aadhaars_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::IndiaPan => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_india_pans_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::VehicleId => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_vehicle_ids_in_text(text) {

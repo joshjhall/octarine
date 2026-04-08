@@ -40,6 +40,7 @@ mod australia;
 mod cache;
 mod driver_license;
 mod ein;
+mod india;
 mod korea_rrn;
 mod national_id;
 mod passport;
@@ -71,6 +72,12 @@ pub use australia::{
     is_test_australia_abn, is_test_australia_tfn, validate_australia_abn,
     validate_australia_abn_with_checksum, validate_australia_tfn,
     validate_australia_tfn_with_checksum,
+};
+
+// Re-export India functions
+pub use india::{
+    is_test_india_aadhaar, is_test_india_pan, validate_india_aadhaar,
+    validate_india_aadhaar_with_checksum, validate_india_pan,
 };
 
 // Re-export Korea RRN functions

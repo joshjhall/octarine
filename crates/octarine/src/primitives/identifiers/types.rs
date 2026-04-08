@@ -60,6 +60,8 @@ pub enum IdentifierType {
     KoreaRrn,     // South Korea Resident Registration Number
     AustraliaTfn, // Australian Tax File Number
     AustraliaAbn, // Australian Business Number
+    IndiaAadhaar, // Indian Aadhaar number (Verhoeff checksum)
+    IndiaPan,     // Indian Permanent Account Number
 
     // Organizational identifiers
     EmployeeId,

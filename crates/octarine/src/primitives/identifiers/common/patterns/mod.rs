@@ -37,8 +37,8 @@ pub mod vehicle_id;
 pub use financial::{bank_account, credit_card, payment_token, routing_number};
 pub use network::{email, phone, username};
 pub use personal::{
-    australia_abn, australia_tfn, birthdate, driver_license, employee_id, korea_rrn, national_id,
-    passport, personal_name, ssn, student_id, tax_id,
+    australia_abn, australia_tfn, birthdate, driver_license, employee_id, india_aadhaar, india_pan,
+    korea_rrn, national_id, passport, personal_name, ssn, student_id, tax_id,
 };
 
 // medical, biometric, location, and vehicle modules are already accessible via pub mod declarations

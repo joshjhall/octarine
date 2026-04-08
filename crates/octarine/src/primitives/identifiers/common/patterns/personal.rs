@@ -315,6 +315,47 @@ pub mod australia_abn {
     }
 }
 
+/// India Aadhaar number patterns (12 digits, starts with 2-9)
+pub mod india_aadhaar {
+    use super::*;
+
+    /// Aadhaar with spaces: NNNN NNNN NNNN (starts with 2-9)
+    pub static WITH_SPACES: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b[2-9]\d{3}\s\d{4}\s\d{4}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Aadhaar with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b(?:aadhaar|aadhar|UIDAI)[\s:#-]*([2-9]\d{3}\s?\d{4}\s?\d{4})\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_SPACES]
+    }
+}
+
+/// India PAN (Permanent Account Number) patterns
+pub mod india_pan {
+    use super::*;
+
+    /// PAN format: AAAAA9999A (5 letters + 4 digits + 1 letter)
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b[A-Z]{5}\d{4}[A-Z]\b").expect("BUG: Invalid regex pattern"));
+
+    /// PAN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:PAN|permanent[\s-]?account[\s-]?number)[\s:#-]*([A-Z]{5}\d{4}[A-Z])\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 pub mod personal_name {
     use super::*;
 
