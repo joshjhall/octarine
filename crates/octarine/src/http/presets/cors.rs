@@ -75,7 +75,7 @@ fn parse_headers(headers: &[&str]) -> Vec<HeaderName> {
 ///
 /// **WARNING**: Do not use in production. This allows:
 /// - Any origin
-/// - Credentials
+/// - No credentials (incompatible with wildcard origin)
 /// - All standard methods
 /// - All standard headers
 ///
@@ -91,6 +91,7 @@ fn parse_headers(headers: &[&str]) -> Vec<HeaderName> {
 pub fn development() -> CorsLayer {
     CorsLayer::new()
         .allow_origin(AllowOrigin::any())
+        .allow_credentials(false)
         .allow_methods(AllowMethods::list(STANDARD_METHODS.iter().cloned()))
         .allow_headers(AllowHeaders::list(parse_headers(STANDARD_HEADERS)))
         .expose_headers(ExposeHeaders::list(parse_headers(EXPOSED_HEADERS)))
