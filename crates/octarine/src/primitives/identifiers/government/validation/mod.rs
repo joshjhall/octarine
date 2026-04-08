@@ -44,6 +44,7 @@ mod india;
 mod korea_rrn;
 mod national_id;
 mod passport;
+mod singapore;
 mod ssn;
 mod vin;
 
@@ -78,6 +79,11 @@ pub use australia::{
 pub use india::{
     is_test_india_aadhaar, is_test_india_pan, validate_india_aadhaar,
     validate_india_aadhaar_with_checksum, validate_india_pan,
+};
+
+// Re-export Singapore functions
+pub use singapore::{
+    is_test_singapore_nric, validate_singapore_nric, validate_singapore_nric_with_checksum,
 };
 
 // Re-export Korea RRN functions

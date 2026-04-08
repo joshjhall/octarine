@@ -356,6 +356,25 @@ pub mod india_pan {
     }
 }
 
+/// Singapore NRIC/FIN patterns
+pub mod singapore_nric {
+    use super::*;
+
+    /// NRIC/FIN format: [STFGM] + 7 digits + check letter
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b[STFGM]\d{7}[A-Z]\b").expect("BUG: Invalid regex pattern"));
+
+    /// NRIC/FIN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b(?:NRIC|FIN|identity[\s-]?card)[\s:#-]*([STFGM]\d{7}[A-Z])\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 pub mod personal_name {
     use super::*;
 

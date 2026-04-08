@@ -57,11 +57,12 @@ pub enum IdentifierType {
     Passport,
     TaxId, // EIN, TIN, ITIN
     NationalId,
-    KoreaRrn,     // South Korea Resident Registration Number
-    AustraliaTfn, // Australian Tax File Number
-    AustraliaAbn, // Australian Business Number
-    IndiaAadhaar, // Indian Aadhaar number (Verhoeff checksum)
-    IndiaPan,     // Indian Permanent Account Number
+    KoreaRrn,      // South Korea Resident Registration Number
+    AustraliaTfn,  // Australian Tax File Number
+    AustraliaAbn,  // Australian Business Number
+    IndiaAadhaar,  // Indian Aadhaar number (Verhoeff checksum)
+    IndiaPan,      // Indian Permanent Account Number
+    SingaporeNric, // Singapore NRIC/FIN
 
     // Organizational identifiers
     EmployeeId,

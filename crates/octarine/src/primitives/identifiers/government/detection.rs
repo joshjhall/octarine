@@ -389,6 +389,41 @@ pub fn find_india_pans_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Check if a value matches Singapore NRIC/FIN format
+#[must_use]
+pub fn is_singapore_nric(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::singapore_nric::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Singapore NRIC/FIN patterns in text
+#[must_use]
+pub fn find_singapore_nrics_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::singapore_nric::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::SingaporeNric,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Detect which type of government identifier a value is
 ///
 /// Returns the specific identifier type if detected, or None if not a government ID.
@@ -424,6 +459,8 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::IndiaAadhaar)
     } else if is_india_pan(value) {
         Some(IdentifierType::IndiaPan)
+    } else if is_singapore_nric(value) {
+        Some(IdentifierType::SingaporeNric)
     } else if is_national_id(value) {
         Some(IdentifierType::NationalId)
     } else if is_vehicle_id(value) {
@@ -822,6 +859,7 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_australia_abns_in_text(text));
     all_matches.extend(find_india_aadhaars_in_text(text));
     all_matches.extend(find_india_pans_in_text(text));
+    all_matches.extend(find_singapore_nrics_in_text(text));
     all_matches.extend(find_national_ids_in_text(text));
     all_matches.extend(find_vehicle_ids_in_text(text));
 
