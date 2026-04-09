@@ -7,6 +7,7 @@ use super::{
     MAX_LABEL_KEY_LENGTH, MAX_LABEL_VALUE_LENGTH, MAX_LABELS_PER_METRIC, MAX_METRIC_NAME_LENGTH,
 };
 use super::{detection, sanitization, validation};
+use crate::primitives::identifiers::metrics::detection::MetricViolation;
 use crate::primitives::types::Problem;
 
 /// Builder for metrics validation, detection, and sanitization
@@ -112,6 +113,30 @@ impl MetricsBuilder {
     #[must_use]
     pub fn is_label_count_ok(&self, count: usize) -> bool {
         detection::is_valid_label_count_with_config(count, self.max_labels)
+    }
+
+    // ========================================================================
+    // Detect Methods (structured violations)
+    // ========================================================================
+
+    /// Detect all violations in a metric name
+    ///
+    /// Returns a Vec of all violations found. Empty Vec means the name is valid.
+    #[must_use]
+    pub fn detect_name_violations(&self, name: &str) -> Vec<MetricViolation> {
+        detection::detect_name_violations_with_config(name, self.max_name_length)
+    }
+
+    /// Detect all violations in a label key
+    #[must_use]
+    pub fn detect_label_key_violations(&self, key: &str) -> Vec<MetricViolation> {
+        detection::detect_label_key_violations_with_config(key, self.max_label_key_length)
+    }
+
+    /// Detect all violations in a label value
+    #[must_use]
+    pub fn detect_label_value_violations(&self, value: &str) -> Vec<MetricViolation> {
+        detection::detect_label_value_violations_with_config(value, self.max_label_value_length)
     }
 
     // ========================================================================
