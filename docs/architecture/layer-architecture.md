@@ -342,13 +342,31 @@ When adding new functionality to primitives:
 
 ```toml
 [features]
-default = ["console", "full"]
-full = ["observe", "security"]
+default = ["console", "full", "derive"]
+full = ["observe", "security", "cli"]
 observe = []
 security = []
+console = ["dep:console"]
+cli = ["dep:clap", "dep:indicatif", "console"]
+derive = ["dep:octarine-derive"]
+
+# Optional capabilities
+database = ["dep:graphql-parser"]
+formats = ["dep:quick-xml", "dep:serde_yaml"]
+postgres = ["database", "dep:sqlx", "sqlx?/postgres"]
+sqlite = ["database", "dep:sqlx", "sqlx?/sqlite"]
+otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp"]
+http = ["dep:axum", "dep:tower", "dep:tower-http", "dep:tower_governor", "dep:http", "dep:http-body-util"]
+auth = ["http", "dep:jsonwebtoken", "dep:zxcvbn"]
+auth-hibp = ["auth", "dep:sha1"]
+auth-totp = ["auth", "dep:totp-rs"]
+auth-full = ["auth-hibp", "auth-totp"]
+crypto-validation = ["dep:pem", "dep:x509-parser", "dep:ssh-key", "dep:pkcs8"]
+shell = []
 
 # Test utilities - only in dev-dependencies
-testing = []
+testing = ["dep:proptest", "dep:rstest", "dep:assert_fs", "dep:predicates",
+           "dep:wiremock", "dep:assert_cmd", "dep:rexpect", "dep:shell-escape"]
 ```
 
 Consumers use testing like this:
