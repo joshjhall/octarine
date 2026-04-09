@@ -45,10 +45,11 @@ mod uuid;
 
 // Re-export all public functions and types for unified API
 
-// API keys and JWT
+// API keys and JWT (delegated to token detection, re-exported here for unified network API)
 pub use api_keys::{
-    find_api_keys_in_text, is_api_key, is_aws_access_key, is_aws_secret_key, is_azure_key,
-    is_gcp_api_key, is_github_token, is_jwt, is_stripe_key,
+    find_api_keys_in_text, is_api_key, is_aws_access_key, is_aws_secret_key, is_aws_session_token,
+    is_azure_key, is_bearer_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_jwt,
+    is_onepassword_token, is_onepassword_vault_ref, is_stripe_key, is_url_with_credentials,
 };
 
 // Common/aggregate functions

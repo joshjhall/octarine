@@ -193,3 +193,10 @@ pub use sanitization::{
 
 // Export test pattern detection functions (observe module testing)
 pub use detection::{is_test_api_key, is_test_jwt, is_test_session_id, is_test_ssh_key};
+
+// Export detection functions for cross-domain re-export (network module delegates here)
+pub use detection::{
+    is_api_key, is_aws_access_key, is_aws_secret_key, is_aws_session_token, is_azure_key,
+    is_bearer_token, is_gcp_api_key, is_github_token, is_gitlab_token, is_jwt,
+    is_onepassword_token, is_onepassword_vault_ref, is_stripe_key, is_url_with_credentials,
+};
