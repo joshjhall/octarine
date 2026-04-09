@@ -16,7 +16,7 @@ ______________________________________________________________________
 ## Event API (Simple, Auto-Context)
 
 **Location**: `observe::event`
-**Import**: `use crate::observe::event::{debug, info, warn, error};`
+**Import**: `use octarine::observe::event::{debug, info, warn, error};`
 **Signature**: Single argument - just the message
 
 ### Event API: When to Use
@@ -29,7 +29,7 @@ ______________________________________________________________________
 ### Event API: Examples
 
 ```rust
-use crate::observe::event::{debug, info, warn, error};
+use octarine::observe::event::{debug, info, warn, error};
 
 // Simple status updates
 debug("Starting retry operation");
@@ -66,7 +66,7 @@ ______________________________________________________________________
 ## Shortcuts API (Contextual, Operation-Aware)
 
 **Location**: `observe` (root)
-**Import**: `use crate::observe;`
+**Import**: `use octarine::observe;`
 **Signature**: Two arguments - operation name + message
 
 ### Shortcuts API: When to Use
@@ -82,7 +82,7 @@ ______________________________________________________________________
 #### Logging with Operation Context
 
 ```rust
-use crate::observe;
+use octarine::observe;
 
 // Explicit operation context
 observe::debug("user_authentication", "Validating credentials");
@@ -93,7 +93,7 @@ observe::warn("rate_limiter", format!("User {} approaching limit", user_id));
 #### Error Handling (Returns Problem)
 
 ```rust
-use crate::observe;
+use octarine::observe;
 
 // Returns observe::Problem for error propagation
 fn validate_input(data: &str) -> observe::Result<String> {
@@ -158,8 +158,8 @@ ______________________________________________________________________
 
 ```rust
 // src/runtime/retry.rs
-use crate::observe::{self as observe, Result};
-use crate::observe::event::{debug, info, warn};  // ← Event API (1-arg)
+use octarine::observe::{self as observe, Result};
+use octarine::observe::event::{debug, info, warn};  // ← Event API (1-arg)
 
 impl Retry {
     pub async fn execute<F, Fut, T>(&self, mut f: F) -> Result<T> {
@@ -188,7 +188,7 @@ impl Retry {
 
 ```rust
 // src/application/payment.rs
-use crate::observe::{self as observe, Result};
+use octarine::observe::{self as observe, Result};
 
 pub fn process_payment(user_id: &str, amount: f64) -> Result<PaymentId> {
     // Use shortcuts API for business operations
@@ -216,7 +216,7 @@ pub fn process_payment(user_id: &str, amount: f64) -> Result<PaymentId> {
 
 ```rust
 // src/security/authentication.rs
-use crate::observe::{self as observe, Result};
+use octarine::observe::{self as observe, Result};
 
 pub fn authenticate(username: &str, password: &str) -> Result<Session> {
     // Security operations use shortcuts API for audit logging
@@ -246,7 +246,7 @@ ______________________________________________________________________
 ### Event API (1-arg, auto-context)
 
 ```rust
-use crate::observe::event::{debug, info, warn, error};
+use octarine::observe::event::{debug, info, warn, error};
 
 debug("message");           // Debug level
 info("message");            // Info level
@@ -259,7 +259,7 @@ success("message");         // Success event
 ### Shortcuts API (2-arg, explicit context)
 
 ```rust
-use crate::observe;
+use octarine::observe;
 
 // Logging
 observe::debug("operation", "message");
@@ -336,7 +336,7 @@ pub fn my_function() -> Result<(), MyError> {
 **After**:
 
 ```rust
-use crate::observe::{self as observe, Result};
+use octarine::observe::{self as observe, Result};
 
 pub fn my_function() -> Result<()> {
     Err(observe::fail("my_function", "Connection failed"))
@@ -355,7 +355,7 @@ eprintln!("ERROR: Failed to process: {}", error);
 **After**:
 
 ```rust
-use crate::observe::event::{info, error};
+use octarine::observe::event::{info, error};
 
 info(format!("Processing item {}", id));
 error(format!("Failed to process: {}", error));
@@ -392,10 +392,8 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- **Problem Types**: See `docs/observe/problem-types.md`
-- **Event Builder**: See `docs/observe/event-builder.md`
-- **Context Capture**: See `docs/observe/context-capture.md`
-- **Security Integration**: See `docs/security/observability-integration.md`
+- **Compliance Controls**: See `docs/observe/compliance.md`
+- **Integration Guide**: See `docs/observe/integration.md`
 
 ______________________________________________________________________
 
