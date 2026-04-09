@@ -118,9 +118,9 @@
 //! Set identity and correlation context at request boundaries. Context flows
 //! automatically into all events created within that scope.
 //!
-//! > **Note**: Context propagation functions live in [`runtime::r#async`](crate::runtime::r#async),
-//! > not in the observe module. The observe module *consumes* context; the runtime
-//! > module *manages* it.
+//! > **Note**: Context propagation functions live in `runtime::r#async`
+//! > (see [`octarine::runtime`](crate::runtime)), not in the observe module.
+//! > The observe module *consumes* context; the runtime module *manages* it.
 //!
 //! ### Sync Code (Thread-Local)
 //!
