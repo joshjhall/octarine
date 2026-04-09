@@ -648,6 +648,86 @@ impl GovernmentIdentifierBuilder {
     }
 
     // ========================================================================
+    // Spain NIF Operations
+    // ========================================================================
+
+    /// Check if value matches Spain NIF format
+    #[must_use]
+    pub fn is_spain_nif(&self, value: &str) -> bool {
+        detection::is_spain_nif(value)
+    }
+
+    /// Find all Spain NIFs in text
+    #[must_use]
+    pub fn find_spain_nifs_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_spain_nifs_in_text(text)
+    }
+
+    /// Validate Spain NIF format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NIF format is invalid
+    pub fn validate_spain_nif(&self, nif: &str) -> Result<(), Problem> {
+        validation::validate_spain_nif(nif)
+    }
+
+    /// Validate Spain NIF with mod-23 checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NIF format is invalid or checksum fails
+    pub fn validate_spain_nif_with_checksum(&self, nif: &str) -> Result<(), Problem> {
+        validation::validate_spain_nif_with_checksum(nif)
+    }
+
+    /// Check if a Spain NIF is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_spain_nif(&self, nif: &str) -> bool {
+        validation::is_test_spain_nif(nif)
+    }
+
+    // ========================================================================
+    // Spain NIE Operations
+    // ========================================================================
+
+    /// Check if value matches Spain NIE format
+    #[must_use]
+    pub fn is_spain_nie(&self, value: &str) -> bool {
+        detection::is_spain_nie(value)
+    }
+
+    /// Find all Spain NIEs in text
+    #[must_use]
+    pub fn find_spain_nies_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_spain_nies_in_text(text)
+    }
+
+    /// Validate Spain NIE format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NIE format is invalid
+    pub fn validate_spain_nie(&self, nie: &str) -> Result<(), Problem> {
+        validation::validate_spain_nie(nie)
+    }
+
+    /// Validate Spain NIE with mod-23 checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NIE format is invalid or checksum fails
+    pub fn validate_spain_nie_with_checksum(&self, nie: &str) -> Result<(), Problem> {
+        validation::validate_spain_nie_with_checksum(nie)
+    }
+
+    /// Check if a Spain NIE is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_spain_nie(&self, nie: &str) -> bool {
+        validation::is_test_spain_nie(nie)
+    }
+
+    // ========================================================================
     // Italy Codice Fiscale Operations
     // ========================================================================
 

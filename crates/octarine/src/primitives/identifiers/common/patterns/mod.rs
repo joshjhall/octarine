@@ -39,7 +39,7 @@ pub use network::{email, phone, username};
 pub use personal::{
     australia_abn, australia_tfn, birthdate, driver_license, employee_id, finland_hetu,
     india_aadhaar, india_pan, italy_fiscal_code, korea_rrn, national_id, passport, personal_name,
-    poland_pesel, singapore_nric, ssn, student_id, tax_id,
+    poland_pesel, singapore_nric, spain_nie, spain_nif, ssn, student_id, tax_id,
 };
 
 // medical, biometric, location, and vehicle modules are already accessible via pub mod declarations

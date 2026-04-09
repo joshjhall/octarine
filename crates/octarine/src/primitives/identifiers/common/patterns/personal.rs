@@ -397,6 +397,44 @@ pub mod finland_hetu {
     }
 }
 
+/// Spain NIF (Numero de Identificacion Fiscal) patterns
+pub mod spain_nif {
+    use super::*;
+
+    /// NIF format: 8 digits + 1 check letter
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b\d{8}[A-Z]\b").expect("BUG: Invalid regex pattern"));
+
+    /// NIF with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b(?:NIF|DNI|documento[\s-]?nacional)[\s:#-]*(\d{8}[A-Z])\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
+/// Spain NIE (Numero de Identidad de Extranjero) patterns
+pub mod spain_nie {
+    use super::*;
+
+    /// NIE format: X/Y/Z + 7 digits + 1 check letter
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b[XYZ]\d{7}[A-Z]\b").expect("BUG: Invalid regex pattern"));
+
+    /// NIE with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b(?:NIE|numero[\s-]?de[\s-]?identidad[\s-]?de[\s-]?extranjero)[\s:#-]*([XYZ]\d{7}[A-Z])\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 /// Italy Codice Fiscale (fiscal code) patterns
 pub mod italy_fiscal_code {
     use super::*;

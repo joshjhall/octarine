@@ -66,6 +66,8 @@ pub enum IdentifierType {
     FinlandHetu,     // Finnish personal identity code
     PolandPesel,     // Polish personal identity number (PESEL)
     ItalyFiscalCode, // Italian Codice Fiscale
+    SpainNif,        // Spanish NIF (Numero de Identificacion Fiscal)
+    SpainNie,        // Spanish NIE (Numero de Identidad de Extranjero)
 
     // Organizational identifiers
     EmployeeId,

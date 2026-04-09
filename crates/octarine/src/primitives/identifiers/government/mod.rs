@@ -118,7 +118,8 @@ pub use validation::{clear_government_caches, ssn_cache_stats, vin_cache_stats};
 pub use validation::{
     is_test_australia_abn, is_test_australia_tfn, is_test_driver_license, is_test_ein,
     is_test_finland_hetu, is_test_india_aadhaar, is_test_india_pan, is_test_italy_fiscal_code,
-    is_test_korea_rrn, is_test_poland_pesel, is_test_singapore_nric, is_test_vin,
+    is_test_korea_rrn, is_test_poland_pesel, is_test_singapore_nric, is_test_spain_nie,
+    is_test_spain_nif, is_test_vin,
 };
 
 // Export Australia validation functions
@@ -140,6 +141,12 @@ pub use validation::{validate_poland_pesel, validate_poland_pesel_with_checksum}
 
 // Export Italy validation functions
 pub use validation::{validate_italy_fiscal_code, validate_italy_fiscal_code_with_checksum};
+
+// Export Spain validation functions
+pub use validation::{
+    validate_spain_nie, validate_spain_nie_with_checksum, validate_spain_nif,
+    validate_spain_nif_with_checksum,
+};
 
 // Export Singapore validation functions
 pub use validation::{validate_singapore_nric, validate_singapore_nric_with_checksum};

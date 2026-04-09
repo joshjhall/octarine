@@ -454,6 +454,20 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::SpainNif => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_spain_nifs_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::SpainNie => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_spain_nies_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::VehicleId => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_vehicle_ids_in_text(text) {

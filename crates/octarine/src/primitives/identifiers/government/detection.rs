@@ -459,6 +459,72 @@ pub fn find_finland_hetus_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Check if a value matches Spain NIF format
+#[must_use]
+pub fn is_spain_nif(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::spain_nif::all().iter().any(|p| p.is_match(value))
+}
+
+/// Find all Spain NIF patterns in text
+#[must_use]
+pub fn find_spain_nifs_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::spain_nif::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::SpainNif,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches Spain NIE format
+#[must_use]
+pub fn is_spain_nie(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::spain_nie::all().iter().any(|p| p.is_match(value))
+}
+
+/// Find all Spain NIE patterns in text
+#[must_use]
+pub fn find_spain_nies_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::spain_nie::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::SpainNie,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Check if a value matches Italy Codice Fiscale format
 #[must_use]
 pub fn is_italy_fiscal_code(value: &str) -> bool {
@@ -572,6 +638,10 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::PolandPesel)
     } else if is_italy_fiscal_code(value) {
         Some(IdentifierType::ItalyFiscalCode)
+    } else if is_spain_nif(value) {
+        Some(IdentifierType::SpainNif)
+    } else if is_spain_nie(value) {
+        Some(IdentifierType::SpainNie)
     } else if is_national_id(value) {
         Some(IdentifierType::NationalId)
     } else if is_vehicle_id(value) {
@@ -974,6 +1044,8 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_finland_hetus_in_text(text));
     all_matches.extend(find_poland_pesels_in_text(text));
     all_matches.extend(find_italy_fiscal_codes_in_text(text));
+    all_matches.extend(find_spain_nifs_in_text(text));
+    all_matches.extend(find_spain_nies_in_text(text));
     all_matches.extend(find_national_ids_in_text(text));
     all_matches.extend(find_vehicle_ids_in_text(text));
 

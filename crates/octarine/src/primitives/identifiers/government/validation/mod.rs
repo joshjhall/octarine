@@ -48,6 +48,7 @@ mod national_id;
 mod passport;
 mod poland;
 mod singapore;
+mod spain;
 mod ssn;
 mod vin;
 
@@ -91,6 +92,12 @@ pub use poland::{
 // Re-export Italy functions
 pub use italy::{
     is_test_italy_fiscal_code, validate_italy_fiscal_code, validate_italy_fiscal_code_with_checksum,
+};
+
+// Re-export Spain functions
+pub use spain::{
+    is_test_spain_nie, is_test_spain_nif, validate_spain_nie, validate_spain_nie_with_checksum,
+    validate_spain_nif, validate_spain_nif_with_checksum,
 };
 
 // Re-export India functions
