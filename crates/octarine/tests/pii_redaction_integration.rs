@@ -156,12 +156,12 @@ fn test_scan_finds_no_pii_in_clean_message() {
 
 #[test]
 fn test_redaction_preserves_message_structure() {
-    // Use "ref" instead of "ID" to avoid postal code detection on 5-digit numbers
-    let text = "User registered: test@example.com with ref ABC123";
+    // Note: "ref" value must not match license plate pattern (2-3 uppercase + 3-4 digits)
+    let text = "User registered: test@example.com with ref order-99";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     // Email redacted but structure preserved
-    assert_eq!(redacted, "User registered: [EMAIL] with ref ABC123");
+    assert_eq!(redacted, "User registered: [EMAIL] with ref order-99");
 }
 
 #[test]

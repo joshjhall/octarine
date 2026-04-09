@@ -3,6 +3,7 @@
 //! Pure detection functions for usernames.
 
 use super::super::super::common::patterns;
+use super::super::super::types::{DetectionConfidence, IdentifierMatch, IdentifierType};
 
 // ============================================================================
 // Public API
@@ -62,6 +63,69 @@ pub fn is_username(value: &str) -> bool {
     true
 }
 
+/// Detect usernames in free text
+///
+/// Tokenizes text on whitespace and punctuation boundaries, then checks each
+/// token with `is_username()`. To reduce false positives in free text, tokens
+/// must also contain at least one separator character (`_`, `-`, or `.`) — this
+/// distinguishes username-like patterns (`john_doe`, `admin-panel`) from
+/// ordinary words.
+///
+/// # Note
+///
+/// Username detection is heuristic-based. Best used for PII type detection
+/// (does text contain a username?) rather than precise extraction.
+#[must_use]
+pub fn detect_usernames_in_text(text: &str) -> Vec<IdentifierMatch> {
+    // Limit input length for safety
+    if text.len() > 10_000 {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+    let mut start = 0;
+
+    for (i, ch) in text.char_indices() {
+        if ch.is_whitespace() || ch == ',' || ch == ';' || ch == '(' || ch == ')' {
+            if start < i {
+                let token = &text[start..i];
+                if is_username(token) && looks_like_username_in_text(token) {
+                    matches.push(IdentifierMatch::new(
+                        start,
+                        i,
+                        token.to_string(),
+                        IdentifierType::Username,
+                        DetectionConfidence::Low,
+                    ));
+                }
+            }
+            start = i.saturating_add(ch.len_utf8());
+        }
+    }
+
+    // Check the last token
+    if start < text.len() {
+        let token = &text[start..];
+        if is_username(token) && looks_like_username_in_text(token) {
+            matches.push(IdentifierMatch::new(
+                start,
+                text.len(),
+                token.to_string(),
+                IdentifierType::Username,
+                DetectionConfidence::Low,
+            ));
+        }
+    }
+
+    matches
+}
+
+/// Extra heuristic for text scanning: require at least one separator character
+/// to distinguish usernames from ordinary words in free text.
+fn looks_like_username_in_text(token: &str) -> bool {
+    token.contains('_') || token.contains('-') || token.contains('.')
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -108,6 +172,35 @@ mod tests {
 
         // Above maximum (33 chars)
         assert!(!is_username("a23456789012345678901234567890123"));
+    }
+
+    #[test]
+    fn test_detect_usernames_in_text() {
+        let matches = detect_usernames_in_text("User john_doe logged in from admin-panel");
+        // john_doe and admin-panel should match username pattern
+        assert!(!matches.is_empty());
+        assert!(matches.iter().any(|m| m.matched_text == "john_doe"));
+    }
+
+    #[test]
+    fn test_detect_usernames_in_text_no_matches() {
+        // Plain words without separators should not match
+        let matches = detect_usernames_in_text("no usernames here at all");
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn test_detect_usernames_ignores_plain_words() {
+        // Alphanumeric tokens without separators should not match
+        let matches = detect_usernames_in_text("User registered with ref ABC123");
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn test_detect_usernames_skips_emails() {
+        let matches = detect_usernames_in_text("Contact user@example.com for help");
+        // "user@example.com" should not match (contains @)
+        assert!(matches.iter().all(|m| !m.matched_text.contains('@')));
     }
 
     #[test]

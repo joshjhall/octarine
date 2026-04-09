@@ -152,12 +152,13 @@ fn test_redacts_multiple_pii() {
 
 #[test]
 fn test_preserves_message_structure() {
-    let text = "User registered: test@example.com with ref ABC123";
+    // Note: "ref" value must not match license plate pattern (2-3 uppercase + 3-4 digits)
+    let text = "User registered: test@example.com with ref order-99";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     // Structure preserved, only email redacted
     assert!(redacted.contains("User registered:"));
-    assert!(redacted.contains("with ref ABC123"));
+    assert!(redacted.contains("with ref order-99"));
     assert!(redacted.contains("[EMAIL]"));
 }
 

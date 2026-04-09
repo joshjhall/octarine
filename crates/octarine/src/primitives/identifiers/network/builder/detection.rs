@@ -230,6 +230,12 @@ impl NetworkIdentifierBuilder {
         detection::find_mac_addresses_in_text(text)
     }
 
+    /// Find all domain names in text
+    #[must_use]
+    pub fn find_domains_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_domains_in_text(text)
+    }
+
     /// Find all URLs in text
     #[must_use]
     pub fn find_urls_in_text(&self, text: &str) -> Vec<IdentifierMatch> {

@@ -4,7 +4,12 @@
 
 use super::super::super::common::patterns;
 
-use super::common::{MAX_IDENTIFIER_LENGTH, exceeds_safe_length};
+use super::super::super::types::{DetectionConfidence, IdentifierMatch, IdentifierType};
+
+use super::common::{
+    MAX_IDENTIFIER_LENGTH, MAX_INPUT_LENGTH, deduplicate_matches, exceeds_safe_length,
+    get_full_match,
+};
 
 // ============================================================================
 // Single-Value Detection
@@ -44,6 +49,31 @@ pub fn is_port(value: &str) -> bool {
         return false;
     }
     patterns::network::PORT.is_match(trimmed)
+}
+
+// ============================================================================
+// Text Scanning
+// ============================================================================
+
+/// Find all domain names in text
+#[must_use]
+pub fn find_domains_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+    for capture in patterns::network::DOMAIN.captures_iter(text) {
+        let full_match = get_full_match(&capture);
+        matches.push(IdentifierMatch::new(
+            full_match.start(),
+            full_match.end(),
+            full_match.as_str().to_string(),
+            IdentifierType::Domain,
+            DetectionConfidence::Medium,
+        ));
+    }
+    deduplicate_matches(matches)
 }
 
 // ============================================================================
@@ -178,6 +208,23 @@ mod tests {
         assert!(!is_domain("https://example.com"));
         // Invalid
         assert!(!is_domain("not a domain"));
+    }
+
+    #[test]
+    fn test_find_domains_in_text() {
+        let matches = find_domains_in_text("Visit example.com and api.github.com for more");
+        assert!(matches.len() >= 2);
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::Domain)
+        );
+    }
+
+    #[test]
+    fn test_find_domains_in_text_empty() {
+        let matches = find_domains_in_text("No domains here just plain text");
+        assert!(matches.is_empty());
     }
 
     #[test]

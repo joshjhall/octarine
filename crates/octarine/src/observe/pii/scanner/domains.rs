@@ -30,6 +30,9 @@ pub(super) fn scan_personal(text: &str, pii_types: &mut Vec<PiiType>) {
         if !personal.detect_birthdates_in_text(text).is_empty() {
             pii_types.push(PiiType::Birthdate);
         }
+        if !personal.detect_usernames_in_text(text).is_empty() {
+            pii_types.push(PiiType::Username);
+        }
     }
 }
 
@@ -68,6 +71,9 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     }
     if !government.find_national_ids_in_text(text).is_empty() {
         pii_types.push(PiiType::NationalId);
+    }
+    if !government.find_vehicle_ids_in_text(text).is_empty() {
+        pii_types.push(PiiType::Vin);
     }
 }
 
@@ -166,6 +172,9 @@ pub(super) fn scan_network(text: &str, pii_types: &mut Vec<PiiType>) {
         }
         if !network.find_urls_in_text(text).is_empty() {
             pii_types.push(PiiType::Url);
+        }
+        if !network.find_domains_in_text(text).is_empty() {
+            pii_types.push(PiiType::Domain);
         }
     }
 }
@@ -300,6 +309,7 @@ pub(super) fn is_pii_present_with_config_impl(text: &str, config: &PiiScannerCon
             || !government.find_passports_in_text(text).is_empty()
             || !government.find_tax_ids_in_text(text).is_empty()
             || !government.find_national_ids_in_text(text).is_empty()
+            || !government.find_vehicle_ids_in_text(text).is_empty()
         {
             return true;
         }

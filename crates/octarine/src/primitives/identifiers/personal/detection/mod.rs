@@ -48,7 +48,7 @@ pub use name::{detect_names_in_text, is_name};
 pub use birthdate::{detect_birthdates_in_text, is_birthdate};
 
 // Re-export username functions
-pub use username::is_username;
+pub use username::{detect_usernames_in_text, is_username};
 
 // Re-export common/aggregate functions
 pub use common::{

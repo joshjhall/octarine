@@ -72,6 +72,12 @@ impl PersonalIdentifierBuilder {
         detection::is_username(value)
     }
 
+    /// Detect all usernames in text
+    #[must_use]
+    pub fn detect_usernames_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_usernames_in_text(text)
+    }
+
     /// Find phone number region from phone number
     #[must_use]
     pub fn find_phone_region(&self, phone: &str) -> Option<PhoneRegion> {
