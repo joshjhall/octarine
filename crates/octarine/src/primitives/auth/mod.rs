@@ -27,4 +27,4 @@ pub mod remember;
 pub mod reset;
 
 #[cfg(feature = "auth-totp")]
-pub mod totp;
+pub mod mfa;

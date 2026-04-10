@@ -3,7 +3,7 @@
 //! Provides MFA operations with audit logging.
 
 use crate::observe;
-use crate::primitives::auth::totp::{
+use crate::primitives::auth::mfa::{
     RecoveryCodes, TotpCode, TotpConfig, TotpSecret, generate_recovery_codes, generate_totp_code,
     generate_totp_secret, get_otpauth_uri, validate_totp_code,
 };
