@@ -41,7 +41,3 @@ mod yaml;
 pub use json::SecureJsonReader;
 pub use xml::SecureXmlReader;
 pub use yaml::SecureYamlReader;
-
-// Re-export types from other modules for convenience
-pub use crate::data::formats::FormatType;
-pub use crate::security::formats::{JsonPolicy, XmlPolicy, YamlPolicy};

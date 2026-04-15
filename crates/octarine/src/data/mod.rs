@@ -70,13 +70,11 @@
 
 mod facade;
 
+#[cfg(feature = "formats")]
+pub mod formats;
 pub mod network;
 pub mod paths;
 pub mod text;
-pub mod tokens;
-
-#[cfg(feature = "formats")]
-pub mod formats;
 
 // Re-export the Data facade at module level
 pub use facade::Data;
@@ -85,5 +83,5 @@ pub use facade::Data;
 // - data::network::UrlNormalizationBuilder, data::network::NormalizeUrlPathOptions
 // - data::text::TextBuilder, data::text::TextConfig
 // - data::paths::PathBuilder
-// - data::tokens::RedactionToken
+// - identifiers::RedactionToken
 // - security::queries::QueryBuilder (requires "database" feature)
