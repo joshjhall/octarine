@@ -1,7 +1,7 @@
 # Octarine Identifier Implementation Templates
 
-Companion to `SKILL.md`. Load when implementing any identifier checklist step.
-Contains file-by-file templates with function signatures.
+Companion to `SKILL.md`. Load when implementing a new type (Steps 1-11) or
+creating a new domain.
 
 ## New Type in Existing Domain
 
@@ -58,13 +58,13 @@ pub static {TYPE}_PATTERN: Lazy<Regex> = Lazy::new(|| {
 File: `crates/octarine/src/primitives/identifiers/{domain}/validation/{type}.rs`
 
 ```rust
-use crate::observe::Problem;
+use crate::primitives::Problem;
 use super::super::detection;
 
 /// Validate that value is a valid {type}
 pub fn validate_{type}(value: &str) -> Result<(), Problem> {
     if !detection::is_{type}(value) {  // MUST call detection first
-        return Err(Problem::validation("{type}", "Invalid {type} format"));
+        return Err(Problem::Validation("Invalid {type} format".into()));
     }
     // Additional validation rules...
     Ok(())
@@ -76,7 +76,7 @@ pub fn validate_{type}(value: &str) -> Result<(), Problem> {
 File: `crates/octarine/src/primitives/identifiers/{domain}/sanitization/{type}.rs`
 
 ```rust
-use crate::observe::Problem;
+use crate::primitives::Problem;
 
 pub fn sanitize_{type}(value: &str) -> Result<String, Problem> {
     // Sanitization logic
@@ -282,5 +282,5 @@ grep -r "use.*validation\|use.*sanitization" \
   crates/octarine/src/primitives/identifiers/*/detection/
 
 # Run tests
-cargo test -p octarine -- {type}
+just test-filter {type}
 ```

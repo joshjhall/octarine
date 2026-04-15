@@ -18,8 +18,7 @@ code goes, diagnosing a visibility issue, or reviewing naming.
 | **L2** | `observe/` | `pub` | `primitives/` | Any L3 module, `testing/` |
 | **L3** | `identifiers/`, `data/`, `runtime/`, `crypto/`, `security/` | `pub` | `primitives/` + `observe/` | `testing/` (except `#[cfg(test)]`) |
 
-**Zero tolerance**: Primitives must NEVER call `observe::info/warn/debug/fail`,
-`increment_by()`, or `record()`. These are L3 concerns.
+Primitives must NEVER call `observe::info/warn/debug/fail`, `increment_by()`, or `record()`.
 
 ## Visibility Chain
 
@@ -63,10 +62,7 @@ primitives/{domain}/builder/core.rs  pub(crate) struct XBuilder  # Orchestration
 | **L2** (observe) | ALWAYS | `/// ``` ` (runnable) | Public API, must verify examples compile and run |
 | **L3** (public API) | ALWAYS | `/// ``` ` (runnable) | Public API, must verify examples compile and run |
 
-Primitives functions are `pub(crate)` — rustdoc cannot run their examples
-because they're not reachable from the crate root. Writing runnable doc tests
-on primitives causes compilation failures. Either skip the code fence entirely
-or use `ignore`/`no_run`.
+Primitives are `pub(crate)` so rustdoc cannot run their examples — use `ignore`/`no_run` or omit.
 
 ## Common Mistakes
 
@@ -105,17 +101,18 @@ pub fn is_email(value: &str) -> bool {
 }
 ```
 
+## Verification
+- `just arch-check` — verify layer boundary compliance
+- `just clippy` — catch visibility modifier errors
+
 ## When to Use
 
-- Adding a new module or file to the octarine crate
-- Writing `use crate::` import statements
-- Creating or modifying builder structs
-- Adding shortcut functions
-- Writing `pub`/`pub(crate)`/`pub(super)` declarations
-- Creating `mod.rs` with re-exports
+- Adding modules, files, or `use crate::` imports to the octarine crate
+- Creating or modifying builder structs, shortcuts, or re-exports
+- Writing `pub`/`pub(crate)`/`pub(super)` visibility declarations
 
 ## When NOT to Use
 
-- Working on test files (testing/ has different rules)
+- Working exclusively in the `testing/` module (it has its own visibility rules as L1b)
 - Working on code outside `crates/octarine/src/`
 - Pure documentation changes

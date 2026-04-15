@@ -51,11 +51,15 @@ from `.claude/skills/` to prevent the most common implementation errors:
 - **`octarine-test-resilience`** — WHEN writing tests involving timing,
   async, sleep, or performance benchmarks. Prevents flaky CI failures from
   hard timing assertions and fixed sleeps.
+- **`octarine-platform-compat`** — WHEN writing `cfg()` attributes,
+  platform-specific code, file permissions, signal handling, or path
+  operations targeting Windows, macOS, Linux, or ARM64.
 
-Six project-specific audit agents are available in `.claude/agents/` for
+Seven project-specific audit agents are available in `.claude/agents/` for
 codebase audits: `audit-octarine-layers`, `audit-octarine-visibility`,
 `audit-octarine-identifiers`, `audit-octarine-pii-sync`,
-`audit-octarine-observe`, `audit-octarine-tests`.
+`audit-octarine-observe`, `audit-octarine-tests`,
+`audit-octarine-platforms`.
 
 ## Module Structure
 

@@ -1,121 +1,93 @@
 ---
-description: Timing-resilient test patterns for octarine. Use when writing tests involving async, timing, sleep, performance benchmarks, or tests that have failed flakily in CI.
+description: Timing-resilient test patterns for octarine. Use when writing tests involving async, timing, Instant, Duration, sleep, performance benchmarks, or tests that have failed flakily in CI.
 ---
 
 # Octarine Test Resilience
 
-Tests with timing dependencies are the #1 source of CI flakiness. This skill
-prevents writing tests that pass locally but fail under CI coverage
-instrumentation (which inflates timing 10-100x).
+CI coverage instrumentation inflates timing 10-100x. These rules prevent
+flaky test failures.
 
-## Rules
+## Resilience Rules
 
-### 1. Never Assert on Absolute Timing
+### Rule 1: Never Assert on Absolute Timing
+
+CI timing is unreliable. Use `#[ignore]` for any test asserting elapsed time:
 
 ```rust
-// WRONG: Hard timing assertion
-let start = Instant::now();
-do_work();
-assert!(start.elapsed() < Duration::from_millis(100));
+// WRONG: Will fail under CI coverage
+assert!(elapsed < Duration::from_millis(100));
 
-// CORRECT: Use #[ignore] for perf tests with documented thresholds
-#[test]
-#[ignore = "perf test - run manually: cargo test test_perf_ -- --ignored"]
-fn test_perf_operation_speed() {
-    let start = Instant::now();
-    for _ in 0..1000 { do_work(); }
-    let avg_us = start.elapsed().as_micros() / 1000;
-    assert!(avg_us < 50, "Average: {} us (threshold: 50 us)", avg_us);
-}
+// CORRECT: Mark as perf test
+#[ignore = "perf test - run manually with: cargo test -p octarine test_perf_ -- --ignored"]
+fn test_perf_operation_speed() { ... }
 ```
 
-### 2. Use Polling Instead of Fixed Sleep
+**Exception**: Tests comparing RELATIVE timing (A faster than B) are OK
+without `#[ignore]`.
+
+### Rule 2: Use Polling With Timeout, Not Fixed Sleep
 
 ```rust
-// WRONG: Fixed sleep hoping work completes
-do_async_work();
-std::thread::sleep(Duration::from_millis(100));
-assert!(work_is_done());
+// WRONG: Fixed sleep, fails if system is slow
+thread::sleep(Duration::from_millis(200));
+assert!(result.is_ready());
 
 // CORRECT: Poll with timeout
 let deadline = Instant::now() + Duration::from_secs(5);
 loop {
-    if work_is_done() { break; }
-    if Instant::now() > deadline {
-        panic!("Work did not complete within 5s");
-    }
-    std::thread::sleep(Duration::from_millis(10));
+    if result.is_ready() { break; }
+    if Instant::now() > deadline { panic!("Timed out waiting for result"); }
+    thread::sleep(Duration::from_millis(10));
 }
 ```
 
-### 3. Use Conditional Assertions for State-Dependent Checks
+Note: `panic!()` is allowed in test modules with `#![allow(clippy::panic)]`.
 
-```rust
-// WRONG: Assumes specific system state
-assert!(!dispatcher_is_degraded());
+### Rule 3: Conditional Assertions for State-Dependent Checks
 
-// CORRECT: Assert only when preconditions hold
-let health = dispatcher_health_score();
-if health > 0.95 {
-    assert!(!dispatcher_is_degraded(),
-        "Healthy dispatcher should not be degraded at score {}", health);
-}
+Assert only when preconditions hold — skip timing-dependent assertions when
+system state is unknown (e.g., check `health_score > 0.95` before asserting
+dispatch behavior).
+
+### Rule 4: Small Sleeps Need Justification
+
+Sleeps <=50ms are acceptable with a comment explaining why. Sleeps >50ms
+must use polling (Rule 2).
+
+### Rule 5: Performance Tests Use `#[ignore]`
+
+ALL `test_perf_*` functions MUST have `#[ignore]`. Run them manually:
+
+```bash
+just test-perf
 ```
 
-### 4. Small Sleeps Need Justification
+Performance thresholds are documented in `docs/architecture/testing-patterns.md`
+— reference that file for current per-operation values.
 
-If you must sleep in a test, keep it minimal and comment why:
+### Rule 6: Compare Deltas, Not Absolutes
 
-```rust
-// Give event queue time to process (nearly instant, but async)
-std::thread::sleep(Duration::from_millis(10));
-```
-
-Never sleep more than 50ms without a polling alternative.
-
-### 5. Performance Tests Use `#[ignore]`
-
-ALL `test_perf_*` tests MUST be `#[ignore]` with a standard message:
+In concurrent tests, measure change rather than absolute state:
 
 ```rust
-#[test]
-#[ignore = "perf test - run manually: cargo test -p octarine test_perf_ -- --ignored"]
-fn test_perf_my_operation() { ... }
-```
+// WRONG: Other tests may have incremented the counter
+assert_eq!(get_count("metric"), 1);
 
-**Thresholds from docs** (bare metal, no coverage):
-
-| Operation | Threshold |
-|-----------|-----------|
-| Entropy calculation (short) | <50 us |
-| Key strength analysis | <150 us |
-| JWT validation | <500 us |
-| API key validation | <150 us |
-| Credit card Luhn check | <100 us |
-
-### 6. Async Tests: Use Flush, Not Sleep
-
-Use `flush_dispatcher().await` instead of `sleep()` for async event processing.
-
-### 7. Concurrent Tests: Compare Deltas, Not Absolutes
-
-```rust
-// WRONG: assert_eq!(get_count("x"), 1);  // Other tests may have incremented
-// CORRECT:
-let before = get_count("x");
-increment("x");
-assert_eq!(get_count("x"), before + 1);
+// CORRECT: Measure the delta
+let before = get_count("metric");
+do_operation();
+assert_eq!(get_count("metric"), before + 1);
 ```
 
 ## When to Use
 
-- Writing any test with `Instant::now()`, `sleep()`, or `Duration`
-- Writing async tests with event dispatch or message passing
+- Writing tests with `Instant::now()`, `sleep()`, `Duration`
+- Writing async tests with event dispatch
 - Writing performance benchmarks
-- Fixing a test that fails intermittently in CI
+- Fixing intermittent CI failures
 
 ## When NOT to Use
 
-- Pure unit tests with no timing or async
-- Integration tests that hit real services (those have their own patterns)
-- `#[ignore]` tests for external dependencies (Docker, APIs)
+- Unit tests with no timing or async concerns
+- Integration tests hitting real services (see `docs/architecture/testing-patterns.md`)
+- Production code timing (different concern)
