@@ -45,7 +45,7 @@ pub use bank_account::{detect_bank_accounts_in_text, is_bank_account};
 pub use bank_account::detect_payment_tokens_in_text;
 
 // Re-export IBAN functions
-pub use iban::{detect_iban_country, detect_ibans_in_text, is_iban, validate_iban_checksum};
+pub use iban::{detect_iban_country, detect_ibans_in_text, is_iban, is_iban_checksum_valid};
 
 // Re-export crypto functions
 pub use crypto::{

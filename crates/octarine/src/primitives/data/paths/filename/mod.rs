@@ -99,11 +99,11 @@
 //! let name = sanitize_with_context("upload.txt", SanitizationContext::UploadFile)?;
 //! ```
 
-pub mod builder;
-pub mod construction;
-pub mod detection;
-pub mod sanitization;
-pub mod validation;
+pub(crate) mod builder;
+pub(crate) mod construction;
+pub(crate) mod detection;
+pub(crate) mod sanitization;
+pub(crate) mod validation;
 
 // Re-export builder for convenience
 pub use builder::FilenameBuilder;

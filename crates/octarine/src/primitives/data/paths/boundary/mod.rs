@@ -70,10 +70,10 @@
 //! let joined = boundary.join_strict("", "file.txt");
 //! ```
 
-pub mod builder;
-pub mod construction;
-pub mod sanitization;
-pub mod validation;
+pub(crate) mod builder;
+pub(crate) mod construction;
+pub(crate) mod sanitization;
+pub(crate) mod validation;
 
 // Re-export builder for convenience
 pub use builder::BoundaryBuilder;

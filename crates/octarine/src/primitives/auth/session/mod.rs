@@ -3,7 +3,7 @@
 //! Provides pure session operations without observe instrumentation.
 
 mod binding;
-pub mod config;
+pub(crate) mod config;
 mod id;
 
 pub use binding::SessionBinding;

@@ -94,8 +94,8 @@
 //! - Cache builder instances for repeated operations
 //! - Default to `LocationPrecision::Full` unless business justification exists
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside location/
 mod cache;

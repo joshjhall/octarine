@@ -26,4 +26,10 @@ pub use financial::{CreditCardType, FinancialTextPolicy};
 pub use location::{GpsFormat, LocationTextPolicy, PostalCodeNormalization, PostalCodeType};
 pub use network::{ApiKeyProvider, UuidVersion};
 pub use personal::{CredentialMatch, CredentialType, PhoneRegion};
-pub use policies::{GovernmentTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy};
+pub use policies::{
+    CredentialTextPolicy, GovernmentTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy,
+    PersonalTextPolicy,
+};
+
+// Re-export metrics types
+pub use crate::primitives::identifiers::MetricViolation;

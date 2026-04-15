@@ -82,10 +82,10 @@
 //! let clean = security.sanitize("../etc/passwd");
 //! ```
 
-pub mod builder;
-pub mod detection;
-pub mod sanitization;
-pub mod validation;
+pub(crate) mod builder;
+pub(crate) mod detection;
+pub(crate) mod sanitization;
+pub(crate) mod validation;
 
 // Re-export builder for convenience
 pub use builder::SecurityBuilder;

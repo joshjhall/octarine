@@ -73,7 +73,7 @@
 //! | Hidden | - | .gitignore, .bashrc, etc. |
 //! | Temporary | tmp, temp | backup~, #autosave# |
 
-pub mod builder;
+pub(crate) mod builder;
 mod detection;
 
 // Re-export builder for convenient access

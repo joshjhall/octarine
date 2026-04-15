@@ -5,7 +5,7 @@
 //! API keys, and generated passwords in text.
 
 mod builder;
-pub mod charsets;
+pub(crate) mod charsets;
 mod core;
 mod detection;
 mod types;

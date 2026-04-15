@@ -4,7 +4,7 @@
 //! Uses the `totp-rs` crate for the core algorithm.
 
 mod config;
-pub mod generator;
+pub(crate) mod generator;
 mod recovery;
 
 pub use config::{TotpAlgorithm, TotpConfig, TotpConfigBuilder};

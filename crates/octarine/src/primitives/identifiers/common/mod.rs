@@ -13,10 +13,10 @@
 //! 2. **No Dependencies**: Only external crates (regex, etc.)
 //! 3. **Reusable**: Used by all domain modules
 
-pub mod luhn;
-pub mod masking;
-pub mod patterns;
-pub mod utils;
+pub(crate) mod luhn;
+pub(crate) mod masking;
+pub(crate) mod patterns;
+pub(crate) mod utils;
 
 // Re-export commonly used utilities for sibling modules
 pub use luhn::{

@@ -58,9 +58,9 @@
 // Public API for file type validation - will be used by io/ layer
 #![allow(dead_code)]
 
-pub mod convenience;
-pub mod detectors;
-pub mod types;
+pub(crate) mod convenience;
+pub(crate) mod detectors;
+pub(crate) mod types;
 
 // Re-export types
 pub use types::{MagicFileType, MagicResult};

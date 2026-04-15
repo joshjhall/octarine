@@ -48,11 +48,11 @@
 //! }
 //! ```
 
-pub mod characters;
-pub mod encoding;
-pub mod injection;
-pub mod platform;
-pub mod traversal;
+pub(crate) mod characters;
+pub(crate) mod encoding;
+pub(crate) mod injection;
+pub(crate) mod platform;
+pub(crate) mod traversal;
 
 // Re-export commonly used functions for convenience
 // Note: Some items may be unused currently but are exported for future domain modules

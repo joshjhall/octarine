@@ -97,9 +97,9 @@
 //!     // Command injection PRESERVED for validation layer
 //! ```
 
-pub mod builder;
-pub mod conversion;
-pub mod detection;
+pub(crate) mod builder;
+pub(crate) mod conversion;
+pub(crate) mod detection;
 
 // Re-export builder for convenient access
 pub use builder::FormatBuilder;

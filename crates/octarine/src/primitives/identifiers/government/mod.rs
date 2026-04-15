@@ -94,9 +94,9 @@
 //! - Clear caches periodically in memory-constrained environments
 //! - Use `Cow<str>` returns when possible to avoid allocations on clean text
 
-pub mod builder;
-pub mod licenses;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod licenses;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside government/
 mod conversion;

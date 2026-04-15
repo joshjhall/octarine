@@ -42,9 +42,9 @@
 //! assert_eq!(cleaned, "path/other/file");
 //! ```
 
-pub mod components;
-pub mod join;
-pub mod resolve;
+pub(crate) mod components;
+pub(crate) mod join;
+pub(crate) mod resolve;
 
 // Re-export commonly used functions for convenience
 // Note: Some items may be unused currently but are exported for future domain modules

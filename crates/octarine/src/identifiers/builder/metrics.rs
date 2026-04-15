@@ -4,7 +4,7 @@
 //! with observe instrumentation for compliance-grade audit trails.
 
 use crate::observe::Problem;
-use crate::primitives::identifiers::MetricsBuilder as PrimitiveMetricsBuilder;
+use crate::primitives::identifiers::{MetricViolation, MetricsBuilder as PrimitiveMetricsBuilder};
 
 /// Metrics identifier builder with observability
 #[derive(Debug, Clone)]
@@ -99,6 +99,30 @@ impl MetricsBuilder {
     #[must_use]
     pub fn is_label_count_ok(&self, count: usize) -> bool {
         self.inner.is_label_count_ok(count)
+    }
+
+    // ========================================================================
+    // Detect Methods (structured violations)
+    // ========================================================================
+
+    /// Detect all violations in a metric name
+    ///
+    /// Returns a Vec of all violations found. Empty Vec means the name is valid.
+    #[must_use]
+    pub fn detect_name_violations(&self, name: &str) -> Vec<MetricViolation> {
+        self.inner.detect_name_violations(name)
+    }
+
+    /// Detect all violations in a label key
+    #[must_use]
+    pub fn detect_label_key_violations(&self, key: &str) -> Vec<MetricViolation> {
+        self.inner.detect_label_key_violations(key)
+    }
+
+    /// Detect all violations in a label value
+    #[must_use]
+    pub fn detect_label_value_violations(&self, value: &str) -> Vec<MetricViolation> {
+        self.inner.detect_label_value_violations(value)
     }
 
     // ========================================================================

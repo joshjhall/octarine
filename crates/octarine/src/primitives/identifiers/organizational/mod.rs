@@ -117,8 +117,8 @@
 //! - Cache builder instances for repeated operations
 //! - Student ID scanning uses context checking - may have false negatives for safety
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside organizational/
 mod detection;

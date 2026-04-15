@@ -140,10 +140,10 @@
 //! - **For performance**: Use `Cow<str>` returns to avoid allocations when text is clean
 //! - **For security**: Always redact API keys and JWTs in logs (never use `None` policy)
 
-pub mod batch;
-pub mod builder;
-pub mod ip_types;
-pub mod redaction;
+pub(crate) mod batch;
+pub(crate) mod builder;
+pub(crate) mod ip_types;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside network/
 // (streaming.rs doesn't use network module)

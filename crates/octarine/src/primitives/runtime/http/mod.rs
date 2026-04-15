@@ -18,7 +18,7 @@
 // Public API primitives - not all items used internally yet
 #![allow(dead_code)]
 
-pub mod client;
+pub(crate) mod client;
 mod config;
 mod response;
 mod retry;

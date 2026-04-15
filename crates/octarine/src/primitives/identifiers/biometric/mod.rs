@@ -47,8 +47,8 @@
 //! let safe = builder.redact_all_in_text("fingerprint: abc123...");
 //! ```
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside biometric/
 mod detection;

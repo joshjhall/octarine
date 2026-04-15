@@ -21,17 +21,17 @@
 //! - **Performance**: Use lazy_static for one-time compilation
 //! - **Extensibility**: Easy to add new patterns per identifier type
 
-pub mod biometric;
-pub mod credentials;
-pub mod financial;
-pub mod location;
-pub mod medical;
-pub mod network;
-pub mod organizational;
-pub mod personal;
+pub(crate) mod biometric;
+pub(crate) mod credentials;
+pub(crate) mod financial;
+pub(crate) mod location;
+pub(crate) mod medical;
+pub(crate) mod network;
+pub(crate) mod organizational;
+pub(crate) mod personal;
 
 #[path = "vehicle.rs"]
-pub mod vehicle_id;
+pub(crate) mod vehicle_id;
 
 // Re-export all pattern modules for backward compatibility
 pub use financial::{bank_account, credit_card, payment_token, routing_number};

@@ -18,7 +18,7 @@
 pub(super) mod analysis;
 pub(super) mod detection;
 pub(super) mod patterns;
-pub mod schema; // Keep pub - GraphqlSchema is a data type exposed to consumers
+pub(crate) mod schema; // GraphqlSchema re-exported via Layer 3 security/ module
 pub(super) mod validation;
 
 // Internal re-exports for use by the builder

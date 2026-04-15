@@ -38,8 +38,7 @@
 mod detection;
 mod validation;
 
-// Public builder module
-pub mod builder;
+pub(crate) mod builder;
 
 // Re-export builder for convenience
 pub use builder::GenericBuilder;

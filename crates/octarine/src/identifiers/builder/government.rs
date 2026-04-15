@@ -715,6 +715,462 @@ impl GovernmentBuilder {
     pub fn clear_caches(&self) {
         self.inner.clear_caches();
     }
+
+    // ========================================================================
+    // Australia: TFN and ABN
+    // ========================================================================
+
+    /// Check if value matches an Australian Tax File Number pattern
+    #[must_use]
+    pub fn is_australia_tfn(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_australia_tfn(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Australian TFN format
+    pub fn validate_australia_tfn(&self, tfn: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_australia_tfn(tfn);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Australia TFN format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Australian TFN with weighted checksum verification
+    pub fn validate_australia_tfn_with_checksum(&self, tfn: &str) -> Result<(), Problem> {
+        self.inner.validate_australia_tfn_with_checksum(tfn)
+    }
+
+    /// Check if value matches an Australian Business Number pattern
+    #[must_use]
+    pub fn is_australia_abn(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_australia_abn(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Australian ABN format
+    pub fn validate_australia_abn(&self, abn: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_australia_abn(abn);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Australia ABN format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Australian ABN with weighted checksum verification
+    pub fn validate_australia_abn_with_checksum(&self, abn: &str) -> Result<(), Problem> {
+        self.inner.validate_australia_abn_with_checksum(abn)
+    }
+
+    // ========================================================================
+    // India: Aadhaar and PAN
+    // ========================================================================
+
+    /// Check if value matches an Indian Aadhaar number pattern
+    #[must_use]
+    pub fn is_india_aadhaar(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_india_aadhaar(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Indian Aadhaar number format
+    pub fn validate_india_aadhaar(&self, aadhaar: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_india_aadhaar(aadhaar);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid India Aadhaar format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Indian Aadhaar with Verhoeff checksum verification
+    pub fn validate_india_aadhaar_with_checksum(&self, aadhaar: &str) -> Result<(), Problem> {
+        self.inner.validate_india_aadhaar_with_checksum(aadhaar)
+    }
+
+    /// Check if value matches an Indian PAN number pattern
+    #[must_use]
+    pub fn is_india_pan(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_india_pan(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Indian PAN format
+    pub fn validate_india_pan(&self, pan: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_india_pan(pan);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid India PAN format".to_string());
+            }
+        }
+        result
+    }
+
+    // ========================================================================
+    // Finland: HETU
+    // ========================================================================
+
+    /// Check if value matches a Finnish HETU pattern
+    #[must_use]
+    pub fn is_finland_hetu(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_finland_hetu(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Finnish HETU format
+    pub fn validate_finland_hetu(&self, hetu: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_finland_hetu(hetu);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Finland HETU format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Finnish HETU with mod-31 checksum verification
+    pub fn validate_finland_hetu_with_checksum(&self, hetu: &str) -> Result<(), Problem> {
+        self.inner.validate_finland_hetu_with_checksum(hetu)
+    }
+
+    // ========================================================================
+    // Spain: NIF and NIE
+    // ========================================================================
+
+    /// Check if value matches a Spanish NIF pattern
+    #[must_use]
+    pub fn is_spain_nif(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_spain_nif(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Spanish NIF format
+    pub fn validate_spain_nif(&self, nif: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_spain_nif(nif);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Spain NIF format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Spanish NIF with mod-23 checksum verification
+    pub fn validate_spain_nif_with_checksum(&self, nif: &str) -> Result<(), Problem> {
+        self.inner.validate_spain_nif_with_checksum(nif)
+    }
+
+    /// Check if value matches a Spanish NIE pattern
+    #[must_use]
+    pub fn is_spain_nie(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_spain_nie(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Spanish NIE format
+    pub fn validate_spain_nie(&self, nie: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_spain_nie(nie);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Spain NIE format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Spanish NIE with mod-23 checksum verification
+    pub fn validate_spain_nie_with_checksum(&self, nie: &str) -> Result<(), Problem> {
+        self.inner.validate_spain_nie_with_checksum(nie)
+    }
+
+    // ========================================================================
+    // Italy: Codice Fiscale
+    // ========================================================================
+
+    /// Check if value matches an Italian Codice Fiscale pattern
+    #[must_use]
+    pub fn is_italy_fiscal_code(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_italy_fiscal_code(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Italian Codice Fiscale format
+    pub fn validate_italy_fiscal_code(&self, cf: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_italy_fiscal_code(cf);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Italy Codice Fiscale format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Italian Codice Fiscale with check character verification
+    pub fn validate_italy_fiscal_code_with_checksum(&self, cf: &str) -> Result<(), Problem> {
+        self.inner.validate_italy_fiscal_code_with_checksum(cf)
+    }
+
+    // ========================================================================
+    // Poland: PESEL
+    // ========================================================================
+
+    /// Check if value matches a Polish PESEL pattern
+    #[must_use]
+    pub fn is_poland_pesel(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_poland_pesel(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Polish PESEL format
+    pub fn validate_poland_pesel(&self, pesel: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_poland_pesel(pesel);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Poland PESEL format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Polish PESEL with weighted checksum verification
+    pub fn validate_poland_pesel_with_checksum(&self, pesel: &str) -> Result<(), Problem> {
+        self.inner.validate_poland_pesel_with_checksum(pesel)
+    }
+
+    // ========================================================================
+    // Singapore: NRIC/FIN
+    // ========================================================================
+
+    /// Check if value matches a Singapore NRIC/FIN pattern
+    #[must_use]
+    pub fn is_singapore_nric(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_singapore_nric(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Singapore NRIC/FIN format
+    pub fn validate_singapore_nric(&self, nric: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_singapore_nric(nric);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Singapore NRIC format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate Singapore NRIC/FIN with check letter verification
+    pub fn validate_singapore_nric_with_checksum(&self, nric: &str) -> Result<(), Problem> {
+        self.inner.validate_singapore_nric_with_checksum(nric)
+    }
+
+    // ========================================================================
+    // South Korea: RRN
+    // ========================================================================
+
+    /// Check if value matches a South Korean RRN pattern
+    #[must_use]
+    pub fn is_korea_rrn(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_korea_rrn(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate South Korean RRN format
+    pub fn validate_korea_rrn(&self, rrn: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_korea_rrn(rrn);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn("Invalid Korea RRN format".to_string());
+            }
+        }
+        result
+    }
+
+    /// Validate South Korean RRN with weighted checksum verification
+    pub fn validate_korea_rrn_with_checksum(&self, rrn: &str) -> Result<(), Problem> {
+        self.inner.validate_korea_rrn_with_checksum(rrn)
+    }
 }
 
 #[cfg(test)]

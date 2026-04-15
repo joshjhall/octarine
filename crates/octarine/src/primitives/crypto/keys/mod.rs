@@ -37,7 +37,7 @@
 #![allow(dead_code)]
 
 mod kdf;
-pub mod password;
+pub(crate) mod password;
 mod random;
 
 // Re-export KDF functions

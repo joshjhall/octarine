@@ -69,7 +69,7 @@ pub(crate) mod entropy;
 pub(crate) mod network;
 
 // Correlation module - credential pair detection via proximity
-pub mod correlation;
+pub(crate) mod correlation;
 
 // Identifier validation modules (for observe module to use)
 pub(crate) mod database;
@@ -122,6 +122,7 @@ pub(crate) use generic::GenericBuilder;
 pub(crate) use government::GovernmentIdentifierBuilder;
 pub(crate) use location::LocationIdentifierBuilder;
 pub(crate) use medical::MedicalIdentifierBuilder;
+pub use metrics::MetricViolation;
 pub(crate) use metrics::MetricsBuilder;
 pub(crate) use network::NetworkIdentifierBuilder;
 pub(crate) use organizational::OrganizationalIdentifierBuilder;
@@ -146,11 +147,11 @@ pub use biometric::builder::{
     BiometricTemplateRedactionStrategy, DnaRedactionStrategy, FacialIdRedactionStrategy,
     FingerprintRedactionStrategy, IrisIdRedactionStrategy, VoiceIdRedactionStrategy,
 };
-pub(crate) use credentials::redaction::TextRedactionPolicy as CredentialTextPolicy;
+pub use credentials::redaction::TextRedactionPolicy as CredentialTextPolicy;
 pub use government::TextRedactionPolicy as GovernmentTextPolicy;
 pub use location::redaction::TextRedactionPolicy as LocationTextPolicy;
 pub use medical::redaction::TextRedactionPolicy as MedicalTextPolicy;
-pub(crate) use personal::TextRedactionPolicy as PersonalTextPolicy;
+pub use personal::TextRedactionPolicy as PersonalTextPolicy;
 
 // Re-export domain-specific redaction strategies for observe/pii config
 pub(crate) use financial::{

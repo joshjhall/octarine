@@ -18,13 +18,13 @@
 //! This is Layer 1 (primitives) - pure functions with no observe dependencies.
 //! Layer 3 (`src/auth/`) wraps these with observe instrumentation.
 
-pub mod lockout;
-pub mod password;
-pub mod session;
+pub(crate) mod lockout;
+pub(crate) mod password;
+pub(crate) mod session;
 
-pub mod csrf;
-pub mod remember;
-pub mod reset;
+pub(crate) mod csrf;
+pub(crate) mod remember;
+pub(crate) mod reset;
 
 #[cfg(feature = "auth-totp")]
-pub mod mfa;
+pub(crate) mod mfa;

@@ -278,6 +278,30 @@ impl ConfigBuilder {
         Ok(self)
     }
 
+    /// Add a config file with a best-effort security check (non-Unix).
+    ///
+    /// On Windows, Unix-style file modes are not available. This method checks
+    /// that the file is not marked read-only (which would indicate a different
+    /// access model) but cannot enforce owner-only access. Callers on Windows
+    /// should secure config files via directory-level ACLs.
+    #[cfg(not(unix))]
+    pub fn with_secure_file(mut self, path: impl AsRef<Path>) -> Result<Self, ConfigError> {
+        let path = path.as_ref();
+        if !path.exists() {
+            return Err(ConfigError::file_error(path, "file not found"));
+        }
+
+        observe::debug(
+            "runtime.config",
+            format!(
+                "Adding config file (no Unix permission check available): {}",
+                path.display()
+            ),
+        );
+        self.files.push(path.to_path_buf());
+        Ok(self)
+    }
+
     /// Build and deserialize configuration to a typed struct
     ///
     /// Merges configuration from multiple sources with this priority:

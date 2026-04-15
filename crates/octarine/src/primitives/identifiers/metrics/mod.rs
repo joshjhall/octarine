@@ -42,11 +42,11 @@ mod detection;
 mod sanitization;
 mod validation;
 
-// Public builder module
-pub mod builder;
+pub(crate) mod builder;
 
-// Re-export builder for convenience
+// Re-export builder and types for convenience
 pub use builder::MetricsBuilder;
+pub use detection::MetricViolation;
 
 /// Default maximum length for metric names (prevents DoS)
 pub const MAX_METRIC_NAME_LENGTH: usize = 200;

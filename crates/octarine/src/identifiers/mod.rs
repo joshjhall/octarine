@@ -125,12 +125,13 @@ pub use builder::{
 // Re-export types for public API
 pub use types::{
     ApiKeyProvider, BiometricTemplateRedactionStrategy, BiometricTextPolicy, CacheStats,
-    CorrelationConfig, CorrelationMatch, CredentialMatch, CredentialPairType, CredentialType,
-    CreditCardType, DetectionConfidence, DetectionResult, DnaRedactionStrategy,
+    CorrelationConfig, CorrelationMatch, CredentialMatch, CredentialPairType, CredentialTextPolicy,
+    CredentialType, CreditCardType, DetectionConfidence, DetectionResult, DnaRedactionStrategy,
     FacialIdRedactionStrategy, FinancialTextPolicy, FingerprintRedactionStrategy,
     GovernmentTextPolicy, GpsFormat, IdentifierMatch, IdentifierType, IrisIdRedactionStrategy,
-    LocationTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy, PhoneRegion,
-    PostalCodeNormalization, PostalCodeType, UuidVersion, VoiceIdRedactionStrategy,
+    LocationTextPolicy, MedicalTextPolicy, MetricViolation, OrganizationalTextPolicy,
+    PersonalTextPolicy, PhoneRegion, PostalCodeNormalization, PostalCodeType, UuidVersion,
+    VoiceIdRedactionStrategy,
 };
 
 // Re-export RedactionToken (public API for redaction tokens)

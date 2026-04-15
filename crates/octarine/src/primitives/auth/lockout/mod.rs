@@ -3,7 +3,7 @@
 //! Provides brute-force protection with exponential backoff.
 //! Implements OWASP ASVS V2.2 controls.
 
-pub mod config;
+pub(crate) mod config;
 mod status;
 
 pub use config::{LockoutConfig, LockoutConfigBuilder, LockoutIdentifier};

@@ -155,8 +155,8 @@
 //! - **For security**: Never use `None` redaction strategy in production logs
 //! - **For compliance**: Document which redaction strategy meets your regulatory requirements
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside token/
 mod conversion;

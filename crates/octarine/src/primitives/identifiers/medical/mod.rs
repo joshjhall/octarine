@@ -45,8 +45,8 @@
 //! let safe = builder.redact_all_in_text("NPI: 1234567890");
 //! ```
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside medical/
 mod conversion;

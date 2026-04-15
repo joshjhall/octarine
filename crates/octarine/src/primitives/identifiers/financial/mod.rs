@@ -70,8 +70,8 @@
 //! - Use `Cow<str>` returns when possible to avoid allocations on clean text
 //! - Cache builder instances for repeated operations
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside financial/
 mod conversion;

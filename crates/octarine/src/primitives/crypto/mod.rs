@@ -102,7 +102,7 @@ mod builder;
 mod error;
 
 // Public prelude for convenient imports
-pub mod prelude;
+pub(crate) mod prelude;
 
 // ============================================================================
 // Primary Export: CryptoBuilder

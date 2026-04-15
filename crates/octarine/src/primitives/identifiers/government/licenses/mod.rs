@@ -33,7 +33,7 @@
 //! 2. Add to the appropriate regional module (e.g., `north_america.rs`)
 //! 3. Register in `VALIDATORS` static
 
-pub mod north_america;
+pub(crate) mod north_america;
 
 use once_cell::sync::Lazy;
 use std::collections::HashMap;

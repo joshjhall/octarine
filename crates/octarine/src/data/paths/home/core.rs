@@ -33,7 +33,8 @@ pub(in crate::data::paths) fn expand_home(path: &str) -> Result<String, Problem>
                 "Path traversal not allowed after home expansion",
             ));
         }
-        Ok(format!("{}/{}", home, rest))
+        let joined = PathBuf::from(&home).join(rest);
+        Ok(joined.to_string_lossy().to_string())
     } else if path.starts_with("~") {
         // ~username syntax - not supported, return error
         Err(Problem::validation(
@@ -58,12 +59,18 @@ pub(in crate::data::paths) fn collapse_home(path: &str) -> String {
         return "~".to_string();
     }
 
-    // Check if path starts with home directory
-    let home_with_sep = format!("{}/", home);
+    // Check if path starts with home directory + separator
+    let home_with_sep = format!("{}{}", home, std::path::MAIN_SEPARATOR);
     if let Some(rest) = path.strip_prefix(&home_with_sep) {
         format!("~/{}", rest)
     } else {
-        path.to_string()
+        // Also check with forward slash for paths normalized to Unix style
+        let home_with_fwd = format!("{}/", home);
+        if let Some(rest) = path.strip_prefix(&home_with_fwd) {
+            format!("~/{}", rest)
+        } else {
+            path.to_string()
+        }
     }
 }
 

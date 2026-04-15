@@ -342,7 +342,7 @@ impl TaskContextBuilder {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use octarine::runtime::r#async::TaskContextBuilder;
     /// use uuid::Uuid;
     ///

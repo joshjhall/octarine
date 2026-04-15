@@ -172,6 +172,7 @@ impl CommandOutput {
 }
 
 #[cfg(test)]
+#[cfg(unix)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
 

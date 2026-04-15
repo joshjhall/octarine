@@ -92,11 +92,11 @@
 //! # let user_input = "safe";
 //! ```
 
-pub mod builder;
-pub mod detection;
-pub mod sanitization;
-pub mod types;
-pub mod validation;
+pub(crate) mod builder;
+pub(crate) mod detection;
+pub(crate) mod sanitization;
+pub(crate) mod types;
+pub(crate) mod validation;
 
 // Re-export builder as primary API
 pub use builder::CommandSecurityBuilder;

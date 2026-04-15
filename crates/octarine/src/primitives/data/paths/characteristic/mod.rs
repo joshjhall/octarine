@@ -46,8 +46,8 @@
 //! - **Depth**: `path_depth()`, `total_depth()`
 //! - **Special Paths**: `starts_with_current_dir()`, `starts_with_parent_dir()`, `starts_with_home_dir()`
 
-pub mod builder;
-pub mod detection;
+pub(crate) mod builder;
+pub(crate) mod detection;
 
 // Re-export builder
 pub use builder::CharacteristicBuilder;

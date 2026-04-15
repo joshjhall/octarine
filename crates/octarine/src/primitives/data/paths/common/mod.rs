@@ -29,9 +29,9 @@
 //! - **CWE-175**: Improper Handling of Mixed Encoding
 //! - **CWE-707**: Improper Neutralization
 
-pub mod construction;
-pub mod normalization;
-pub mod patterns;
+pub(crate) mod construction;
+pub(crate) mod normalization;
+pub(crate) mod patterns;
 
 // Re-export commonly used items from patterns
 pub use patterns::{

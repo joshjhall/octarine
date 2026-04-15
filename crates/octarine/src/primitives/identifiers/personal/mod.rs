@@ -96,8 +96,8 @@
 //! - Cache builder instances for repeated operations
 //! - Monitor cache hit rates with stats functions for performance tuning
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside personal/
 mod conversion;

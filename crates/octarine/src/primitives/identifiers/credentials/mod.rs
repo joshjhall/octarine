@@ -119,8 +119,8 @@
 //! - Use `Cow<str>` returns to avoid allocation when no matches found
 //! - For large documents (>1MB), process in chunks to limit memory
 
-pub mod builder;
-pub mod redaction;
+pub(crate) mod builder;
+pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside credentials/
 mod detection;

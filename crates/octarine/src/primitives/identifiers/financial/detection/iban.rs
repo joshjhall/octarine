@@ -71,7 +71,7 @@ pub fn is_iban(value: &str) -> bool {
         return false;
     }
 
-    validate_iban_checksum(&normalized)
+    is_iban_checksum_valid(&normalized)
 }
 
 /// Validate IBAN MOD-97 checksum (ISO 7064)
@@ -81,7 +81,7 @@ pub fn is_iban(value: &str) -> bool {
 /// 2. Replace letters: A=10, B=11, ..., Z=35
 /// 3. Compute number MOD 97 — must equal 1
 #[must_use]
-pub fn validate_iban_checksum(iban: &str) -> bool {
+pub fn is_iban_checksum_valid(iban: &str) -> bool {
     let normalized = normalize_iban(iban);
     if normalized.len() < 5 {
         return false;
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_mod97_checksum_directly() {
-        assert!(validate_iban_checksum("DE89370400440532013000"));
-        assert!(!validate_iban_checksum("DE00370400440532013000"));
+        assert!(is_iban_checksum_valid("DE89370400440532013000"));
+        assert!(!is_iban_checksum_valid("DE00370400440532013000"));
     }
 }
