@@ -151,9 +151,6 @@ pub(super) async fn get_file(
     if file_guard.is_none() {
         let path = writer.current_log_path();
         let path_clone = path.clone();
-        let path_for_perms = path.clone();
-        let file_mode = writer.file_mode;
-
         let file = with_retry(writer, || {
             let p = path_clone.clone();
             async move {
@@ -177,6 +174,8 @@ pub(super) async fn get_file(
         // This is done after open to handle both create and existing file cases
         #[cfg(unix)]
         {
+            let path_for_perms = path.clone();
+            let file_mode = writer.file_mode;
             crate::primitives::runtime::r#async::spawn_blocking(move || {
                 set_mode(&path_for_perms, file_mode)
             })
