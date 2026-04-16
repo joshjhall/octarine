@@ -1,8 +1,8 @@
 //! Hybrid public key for post-quantum encryption.
 
 use ml_kem::{
-    EncodedSizeUser, MlKem1024Params,
-    kem::{EncapsulationKey, KeyExport},
+    MlKem1024,
+    kem::{EncapsulationKey, KeyExport, TryKeyInit},
 };
 use x25519_dalek::PublicKey as X25519PublicKey;
 
@@ -15,7 +15,7 @@ use super::{CryptoError, ML_KEM_ENCAP_KEY_SIZE, X25519_PUBLIC_KEY_SIZE};
 #[derive(Clone)]
 pub struct HybridPublicKey {
     /// ML-KEM 1024 encapsulation key
-    pub(super) ml_kem_ek: EncapsulationKey<MlKem1024Params>,
+    pub(super) ml_kem_ek: EncapsulationKey<MlKem1024>,
     /// X25519 public key
     pub(super) x25519_pk: X25519PublicKey,
 }
@@ -66,11 +66,9 @@ impl HybridPublicKey {
         let ml_kem_ek_arr: [u8; ML_KEM_ENCAP_KEY_SIZE] = ml_kem_bytes
             .try_into()
             .map_err(|_| CryptoError::invalid_key("Invalid ML-KEM key bytes"))?;
-        let ml_kem_ek =
-            EncapsulationKey::<MlKem1024Params>::from_encoded_bytes(&ml_kem_ek_arr.into())
-                .map_err(|e| {
-                    CryptoError::invalid_key(format!("Invalid ML-KEM encapsulation key: {e:?}"))
-                })?;
+        let ml_kem_ek = EncapsulationKey::<MlKem1024>::new(&ml_kem_ek_arr.into()).map_err(|e| {
+            CryptoError::invalid_key(format!("Invalid ML-KEM encapsulation key: {e:?}"))
+        })?;
 
         let x25519_arr: [u8; X25519_PUBLIC_KEY_SIZE] = x25519_bytes
             .try_into()

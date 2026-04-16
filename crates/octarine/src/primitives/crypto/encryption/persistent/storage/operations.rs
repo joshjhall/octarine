@@ -7,9 +7,7 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
 };
 use chacha20poly1305::{ChaCha20Poly1305, Nonce as ChachaNonce};
-use getrandom::SysRng;
 use ml_kem::kem::Encapsulate;
-use rand_core::TryRngCore;
 use zeroize::Zeroize;
 
 use super::super::encryption::PersistentEncryption;
@@ -34,12 +32,11 @@ impl SecureStorage {
     /// Returns `CryptoError` if encryption fails.
     pub fn encrypt(&self, data: &[u8]) -> Result<PersistentEncryption, CryptoError> {
         // Step 1: ML-KEM encapsulation using system RNG
-        let mut rng = SysRng.unwrap_err();
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
         let (kem_ciphertext, shared_secret) = self
             .ml_kem_keys
             .encapsulation_key
-            .encapsulate_with_rng(&mut rng)
-            .map_err(|e| CryptoError::encryption(format!("ML-KEM encapsulation failed: {e:?}")))?;
+            .encapsulate_with_rng(&mut rng);
 
         // Step 2: Derive symmetric keys from shared secret
         let (mut chacha_key, mut aes_key) = derive_symmetric_keys(&shared_secret);

@@ -44,10 +44,8 @@ uuid = { workspace = true }
 # Cryptography and encoding
 base64 = "0.22"
 sha2 = "0.10"
-# Note: sha3 0.10.x is broken (yanked keccak 0.1.5 dep). Pin to RC matching ml-kem's rand_core.
-# keccak 0.2.0 broke API vs 0.2.0-rc.2; pin until sha3 releases a compatible stable version.
-sha3 = "=0.11.0-rc.3"
-keccak = "=0.2.0-rc.2"
+sha3 = "0.11"
+keccak = "0.2"
 hex = "0.4"
 secrecy = "0.10"
 zeroize = { version = "1.8", features = ["derive"] }
@@ -98,11 +96,9 @@ octarine-derive = { workspace = true, optional = true }
 flate2 = "1.0"
 
 # Post-quantum cryptography
-# Note: ml-kem pre-releases require specific rand_core RC versions
-# Pin rand_core to rc-5 which has TryRngCore (renamed to TryRng in rc-6)
-ml-kem = { version = "=0.3.0-pre.4", features = ["zeroize"] }
-rand_core = { version = "=0.10.0-rc-5" }
-getrandom = { version = "0.4.0-rc.0", features = ["sys_rng"] }
+ml-kem = { version = "0.3.0-rc", features = ["zeroize"] }
+rand_core = "0.10"
+getrandom = { version = "0.4", features = ["sys_rng"] }
 
 # Classical elliptic curve cryptography
 x25519-dalek = { version = "2.0", features = ["static_secrets", "getrandom", "zeroize"] }

@@ -1,11 +1,9 @@
 //! Hybrid keypair for post-quantum encryption.
 
-use getrandom::SysRng;
 use ml_kem::{
-    EncodedSizeUser, KemCore, MlKem1024, MlKem1024Params,
-    kem::{DecapsulationKey, EncapsulationKey, Generate, KeyExport},
+    MlKem1024,
+    kem::{DecapsulationKey, EncapsulationKey, Generate, KeyExport, KeyInit},
 };
-use rand_core::TryRngCore;
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
 use super::CryptoError;
@@ -17,9 +15,9 @@ use super::public_key::HybridPublicKey;
 /// The private keys are zeroized on drop.
 pub struct HybridKeyPair {
     /// ML-KEM 1024 decapsulation key (private)
-    pub(super) ml_kem_dk: DecapsulationKey<MlKem1024Params>,
+    pub(super) ml_kem_dk: DecapsulationKey<MlKem1024>,
     /// ML-KEM 1024 encapsulation key (public)
-    pub(super) ml_kem_ek: EncapsulationKey<MlKem1024Params>,
+    pub(super) ml_kem_ek: EncapsulationKey<MlKem1024>,
     /// X25519 static secret (private)
     pub(super) x25519_sk: StaticSecret,
     /// X25519 public key
@@ -36,8 +34,9 @@ impl HybridKeyPair {
     /// Returns `CryptoError::KeyGeneration` if key generation fails.
     pub fn generate() -> Result<Self, CryptoError> {
         // Generate ML-KEM 1024 keypair using system RNG
-        let mut rng = SysRng.unwrap_err();
-        let (ml_kem_dk, ml_kem_ek) = MlKem1024::generate(&mut rng);
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+        let ml_kem_dk = DecapsulationKey::<MlKem1024>::generate_from_rng(&mut rng);
+        let ml_kem_ek = ml_kem_dk.encapsulation_key().clone();
 
         // Generate X25519 keypair (uses getrandom internally)
         let x25519_sk = StaticSecret::random();
@@ -72,40 +71,34 @@ impl HybridKeyPair {
     ///
     /// # Arguments
     ///
-    /// * `ml_kem_dk_bytes` - ML-KEM decapsulation key bytes
+    /// * `ml_kem_seed_bytes` - 64-byte ML-KEM seed (from `ml_kem_secret_bytes()`)
     /// * `x25519_sk_bytes` - X25519 secret key bytes
     ///
     /// # Errors
     ///
     /// Returns `CryptoError::InvalidKey` if key bytes are malformed.
     pub fn from_bytes(
-        ml_kem_dk_bytes: &[u8],
+        ml_kem_seed_bytes: &[u8],
         x25519_sk_bytes: &[u8; 32],
     ) -> Result<Self, CryptoError> {
         // Restore X25519 keypair
         let x25519_sk = StaticSecret::from(*x25519_sk_bytes);
         let x25519_pk = X25519PublicKey::from(&x25519_sk);
 
-        // Restore ML-KEM keypair - need to regenerate encapsulation key from decapsulation key
-        // ML-KEM decapsulation key is 3168 bytes for ML-KEM 1024
-        const ML_KEM_DK_SIZE: usize = 3168;
-        if ml_kem_dk_bytes.len() != ML_KEM_DK_SIZE {
+        // Restore ML-KEM keypair from 64-byte seed
+        const ML_KEM_SEED_SIZE: usize = 64;
+        if ml_kem_seed_bytes.len() != ML_KEM_SEED_SIZE {
             return Err(CryptoError::invalid_key(format!(
-                "Invalid ML-KEM decapsulation key length: expected {}, got {}",
-                ML_KEM_DK_SIZE,
-                ml_kem_dk_bytes.len()
+                "Invalid ML-KEM seed length: expected {}, got {}",
+                ML_KEM_SEED_SIZE,
+                ml_kem_seed_bytes.len()
             )));
         }
 
-        // Convert bytes to fixed-size array for ML-KEM
-        let ml_kem_dk_arr: [u8; 3168] = ml_kem_dk_bytes
+        let seed_arr: [u8; 64] = ml_kem_seed_bytes
             .try_into()
-            .map_err(|_| CryptoError::invalid_key("Invalid ML-KEM decapsulation key bytes"))?;
-        let ml_kem_dk =
-            DecapsulationKey::<MlKem1024Params>::from_encoded_bytes(&ml_kem_dk_arr.into())
-                .map_err(|e| {
-                    CryptoError::invalid_key(format!("Invalid ML-KEM decapsulation key: {e:?}"))
-                })?;
+            .map_err(|_| CryptoError::invalid_key("Invalid ML-KEM seed bytes"))?;
+        let ml_kem_dk = DecapsulationKey::<MlKem1024>::new(&seed_arr.into());
         let ml_kem_ek = ml_kem_dk.encapsulation_key().clone();
 
         Ok(Self {
@@ -116,13 +109,16 @@ impl HybridKeyPair {
         })
     }
 
-    /// Export the ML-KEM decapsulation key bytes (for key backup/restore).
+    /// Export the ML-KEM seed bytes (for key backup/restore).
+    ///
+    /// Returns the 64-byte seed from which the decapsulation key can be
+    /// deterministically regenerated.
     ///
     /// # Security Warning
     ///
     /// This exposes private key material. Handle with extreme care.
     pub fn ml_kem_secret_bytes(&self) -> Vec<u8> {
-        self.ml_kem_dk.to_encoded_bytes().to_vec()
+        self.ml_kem_dk.to_bytes().to_vec()
     }
 }
 

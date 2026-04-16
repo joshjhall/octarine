@@ -103,10 +103,10 @@ impl HybridBuilder {
     /// Handle key material with extreme care.
     pub fn keypair_from_bytes(
         &self,
-        ml_kem_dk_bytes: &[u8],
+        ml_kem_seed_bytes: &[u8],
         x25519_sk_bytes: &[u8; 32],
     ) -> Result<HybridKeyPair, CryptoError> {
-        HybridKeyPair::from_bytes(ml_kem_dk_bytes, x25519_sk_bytes)
+        HybridKeyPair::from_bytes(ml_kem_seed_bytes, x25519_sk_bytes)
     }
 
     /// Restore encrypted message from serialized bytes

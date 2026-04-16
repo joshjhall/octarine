@@ -4,12 +4,10 @@
 //! - Global ML-KEM 1024 keypair (generated once per process)
 //! - Symmetric key derivation from shared secrets
 
-use getrandom::SysRng;
 use ml_kem::{
-    KemCore, MlKem1024, MlKem1024Params,
+    MlKem1024,
     kem::{DecapsulationKey, EncapsulationKey, Generate},
 };
-use rand_core::TryRngCore;
 use sha3::{Digest, Sha3_256};
 use std::sync::{Arc, OnceLock};
 
@@ -21,17 +19,18 @@ static GLOBAL_ML_KEM_KEYS: OnceLock<Arc<MlKemKeyPair>> = OnceLock::new();
 /// ML-KEM 1024 keypair wrapper
 pub(super) struct MlKemKeyPair {
     /// Decapsulation key (private)
-    pub(super) decapsulation_key: DecapsulationKey<MlKem1024Params>,
+    pub(super) decapsulation_key: DecapsulationKey<MlKem1024>,
     /// Encapsulation key (public)
-    pub(super) encapsulation_key: EncapsulationKey<MlKem1024Params>,
+    pub(super) encapsulation_key: EncapsulationKey<MlKem1024>,
 }
 
 impl MlKemKeyPair {
     /// Generate a new ML-KEM 1024 keypair
     fn generate() -> Result<Self, CryptoError> {
         // Generate keypair using system RNG
-        let mut rng = SysRng.unwrap_err();
-        let (dk, ek) = MlKem1024::generate(&mut rng);
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+        let dk = DecapsulationKey::<MlKem1024>::generate_from_rng(&mut rng);
+        let ek = dk.encapsulation_key().clone();
         Ok(Self {
             decapsulation_key: dk,
             encapsulation_key: ek,

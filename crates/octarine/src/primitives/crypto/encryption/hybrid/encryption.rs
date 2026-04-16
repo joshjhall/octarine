@@ -4,12 +4,10 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Nonce,
     aead::{Aead, KeyInit},
 };
-use getrandom::SysRng;
 use ml_kem::{
     MlKem1024,
     kem::{Decapsulate, Encapsulate},
 };
-use rand_core::TryRngCore;
 use sha3::{Digest, Sha3_256};
 use x25519_dalek::{EphemeralSecret, PublicKey as X25519PublicKey};
 use zeroize::Zeroize;
@@ -69,7 +67,7 @@ impl HybridEncryption {
     /// Returns `CryptoError::Encryption` if encryption fails.
     pub fn encrypt_to(data: &[u8], recipient_pk: &HybridPublicKey) -> Result<Self, CryptoError> {
         // Use system RNG for ML-KEM encapsulation
-        let mut rng = SysRng.unwrap_err();
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
 
         // Generate ephemeral X25519 keypair (uses getrandom internally)
         let ephemeral_x25519_sk = EphemeralSecret::random();
@@ -79,10 +77,8 @@ impl HybridEncryption {
         let x25519_shared_secret = ephemeral_x25519_sk.diffie_hellman(&recipient_pk.x25519_pk);
 
         // ML-KEM encapsulation
-        let (kem_ciphertext, kem_shared_secret) = recipient_pk
-            .ml_kem_ek
-            .encapsulate_with_rng(&mut rng)
-            .map_err(|e| CryptoError::encryption(format!("ML-KEM encapsulation failed: {e:?}")))?;
+        let (kem_ciphertext, kem_shared_secret) =
+            recipient_pk.ml_kem_ek.encapsulate_with_rng(&mut rng);
 
         // Combine shared secrets with domain separation
         let combined_secret = Self::combine_secrets(
