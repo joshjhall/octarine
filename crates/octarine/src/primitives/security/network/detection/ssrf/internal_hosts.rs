@@ -206,7 +206,7 @@ pub fn is_private_ipv4_range(ip: &str) -> bool {
         return false;
     }
 
-    let octets: Vec<u8> = parts.iter().filter_map(|p| p.parse().ok()).collect();
+    let octets: Vec<u8> = parts.iter().filter_map(|p| p.parse::<u8>().ok()).collect();
     if octets.len() != 4 {
         return false;
     }
