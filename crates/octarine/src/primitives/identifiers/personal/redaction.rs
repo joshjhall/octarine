@@ -132,9 +132,9 @@ pub enum UsernameRedactionStrategy {
 ///   - Username: `ShowFirstAndLast` (j******e)
 ///
 /// - `Complete` maps to token variants:
-///   - [EMAIL], [PHONE], [NAME], [DATE], [USERNAME]
+///   - `[EMAIL]`, `[PHONE]`, `[NAME]`, `[DATE]`, `[USERNAME]`
 ///
-/// - `Anonymous` maps to generic [REDACTED] for all types
+/// - `Anonymous` maps to generic `[REDACTED]` for all types
 ///
 /// - `None` passes through unchanged
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -143,10 +143,10 @@ pub enum TextRedactionPolicy {
     Skip,
     /// Partial redaction with sensible defaults (show some information)
     Partial,
-    /// Complete redaction with type-specific tokens ([EMAIL], [PHONE], etc.)
+    /// Complete redaction with type-specific tokens (`[EMAIL]`, `[PHONE]`, etc.)
     #[default]
     Complete,
-    /// Anonymous redaction with generic [REDACTED] for all types
+    /// Anonymous redaction with generic `[REDACTED]` for all types
     Anonymous,
 }
 

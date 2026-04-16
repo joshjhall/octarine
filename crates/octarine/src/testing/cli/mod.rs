@@ -36,8 +36,10 @@
 //! }
 //! ```
 
+#[cfg(unix)]
 mod interactive;
 mod runner;
 
+#[cfg(unix)]
 pub use interactive::*;
 pub use runner::*;
