@@ -196,16 +196,22 @@ release VERSION:
         # Insert after the header lines (first 4 lines: title, blank, description, blank)
         HEAD_LINES=$(head -4 CHANGELOG.md)
         TAIL_LINES=$(tail -n +5 CHANGELOG.md)
-        printf '%s\n\n%s\n%s' "$HEAD_LINES" "$ENTRY" "$TAIL_LINES" > CHANGELOG.md
+        printf '%s\n\n%s\n%s\n' "$HEAD_LINES" "$ENTRY" "$TAIL_LINES" > CHANGELOG.md
     else
         printf '# Changelog\n\nAll notable changes to octarine will be documented in this file.\n\n%s\n' "$ENTRY" > CHANGELOG.md
     fi
     echo "  CHANGELOG.md updated"
 
     # Commit and tag
+    # Pre-commit hooks may fix formatting (e.g., trailing newlines). If the first
+    # commit fails because hooks modified files, re-stage and retry once.
     echo "── Committing ──"
     git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
-    git commit -m "release: v$VERSION"
+    if ! git commit -m "release: v$VERSION"; then
+        echo "  Pre-commit hooks modified files, retrying..."
+        git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
+        git commit -m "release: v$VERSION"
+    fi
     git tag -a "v$VERSION" -m "Release v$VERSION"
     echo "  Tagged v$VERSION"
 
