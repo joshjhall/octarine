@@ -31,6 +31,9 @@ fmt-check:
 fmt:
     cargo fmt --all
 
+# Run all formatters and file fixers via pre-commit on every file in the repo
+fmt-all: pre-commit
+
 # ─── Test ────────────────────────────────────────────────────────────────────
 
 # Run all workspace tests
@@ -59,9 +62,12 @@ test-with-fixtures:
 test-filter PATTERN:
     cargo test --workspace -j4 -- {{PATTERN}}
 
-# Run lib unit tests in octarine by module path (e.g., `just test-mod correlation::proximity`)
-test-mod PATTERN:
-    cargo test -p octarine --lib -j4 -- {{PATTERN}}
+# Run lib unit tests in octarine by module path, optionally enabling features.
+# Examples:
+#   just test-mod correlation::proximity
+#   just test-mod observe::writers::database sqlite,postgres
+test-mod PATTERN FEATURES='':
+    cargo test -p octarine --lib -j4 --features "{{FEATURES}}" -- {{PATTERN}}
 
 # ─── Architecture ────────────────────────────────────────────────────────────
 
