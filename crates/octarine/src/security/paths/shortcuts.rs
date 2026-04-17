@@ -160,4 +160,84 @@ mod tests {
         let clean = sanitize_path("../etc/passwd").expect("should sanitize");
         assert!(!clean.contains(".."));
     }
+
+    #[test]
+    fn test_detect_threats() {
+        let threats = detect_threats("../etc/$(whoami)");
+        assert!(!threats.is_empty());
+
+        let safe_threats = detect_threats("safe/path.txt");
+        assert!(safe_threats.is_empty());
+    }
+
+    #[test]
+    fn test_is_path_traversal_present() {
+        assert!(is_path_traversal_present("../etc/passwd"));
+        assert!(!is_path_traversal_present("safe/path.txt"));
+    }
+
+    #[test]
+    fn test_is_encoded_traversal_present() {
+        assert!(is_encoded_traversal_present("%2e%2e/secret"));
+        assert!(!is_encoded_traversal_present("safe/path.txt"));
+    }
+
+    #[test]
+    fn test_is_command_injection_present() {
+        // Detects $(, `, ${ — not `;` (that's a shell metacharacter).
+        assert!(is_command_injection_present("file$(whoami).txt"));
+        assert!(!is_command_injection_present("safe.txt"));
+    }
+
+    #[test]
+    fn test_is_variable_expansion_present() {
+        assert!(is_variable_expansion_present("$HOME/secret"));
+        assert!(!is_variable_expansion_present("safe.txt"));
+    }
+
+    #[test]
+    fn test_is_shell_metacharacters_present() {
+        assert!(is_shell_metacharacters_present("a|b"));
+        assert!(!is_shell_metacharacters_present("safe.txt"));
+    }
+
+    #[test]
+    fn test_is_null_bytes_present() {
+        assert!(is_null_bytes_present("file\0name"));
+        assert!(!is_null_bytes_present("safe.txt"));
+    }
+
+    #[test]
+    fn test_is_injection_present() {
+        assert!(is_injection_present("$(whoami)"));
+        assert!(!is_injection_present("safe.txt"));
+    }
+
+    #[test]
+    fn test_validate_no_traversal() {
+        assert!(validate_no_traversal("safe/path.txt").is_ok());
+        assert!(validate_no_traversal("../etc/passwd").is_err());
+    }
+
+    #[test]
+    fn test_validate_no_injection() {
+        assert!(validate_no_injection("safe.txt").is_ok());
+        assert!(validate_no_injection("$(whoami)").is_err());
+    }
+
+    #[test]
+    fn test_strip_traversal() {
+        let cleaned = strip_traversal("../etc/passwd");
+        assert!(!cleaned.contains(".."));
+        // Safe paths are preserved.
+        assert_eq!(strip_traversal("safe/path.txt"), "safe/path.txt");
+    }
+
+    #[test]
+    fn test_strip_null_bytes() {
+        let cleaned = strip_null_bytes("file\0name");
+        assert!(!cleaned.contains('\0'));
+        // Safe paths are preserved.
+        assert_eq!(strip_null_bytes("safe.txt"), "safe.txt");
+    }
 }

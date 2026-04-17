@@ -255,4 +255,65 @@ mod tests {
         let sql_threats = detect_threats("' OR 1=1 --", QueryType::Sql);
         assert!(!sql_threats.is_empty());
     }
+
+    #[test]
+    fn test_escape_sql_identifier() {
+        // Plain identifier gets wrapped in double quotes.
+        assert_eq!(escape_sql_identifier("users"), "\"users\"");
+        // Embedded double quotes are doubled.
+        assert_eq!(escape_sql_identifier("u\"ser"), "\"u\"\"ser\"");
+    }
+
+    #[test]
+    fn test_escape_nosql_path() {
+        // Leading `$` on a path segment is replaced with `_`.
+        assert_eq!(escape_nosql_path("$set.value"), "_set.value");
+        // Paths without operators pass through.
+        assert_eq!(escape_nosql_path("user.name"), "user.name");
+    }
+
+    #[test]
+    fn test_sanitize_nosql_value() {
+        // Operator `$gt` has the `$` stripped.
+        assert_eq!(sanitize_nosql_value("$gt"), "gt");
+        // Prototype pollution key gets mangled.
+        assert_eq!(sanitize_nosql_value("__proto__"), "_proto_");
+        // Safe values pass through.
+        assert_eq!(sanitize_nosql_value("hello"), "hello");
+    }
+
+    #[test]
+    fn test_strip_nosql_operators() {
+        // Known operator is stripped.
+        assert_eq!(strip_nosql_operators("$gt"), "gt");
+        // Non-operators pass through.
+        assert_eq!(strip_nosql_operators("hello"), "hello");
+        assert_eq!(strip_nosql_operators("$100"), "$100");
+    }
+
+    #[test]
+    fn test_detect_ldap_threats() {
+        let threats = detect_ldap_threats("admin)(");
+        assert!(!threats.is_empty());
+
+        let safe = detect_ldap_threats("admin");
+        assert!(safe.is_empty());
+    }
+
+    #[test]
+    fn test_escape_ldap_dn() {
+        // Commas in DN are escaped with backslash.
+        assert_eq!(escape_ldap_dn("user,name"), "user\\,name");
+        // Plain strings pass through.
+        assert_eq!(escape_ldap_dn("plain"), "plain");
+    }
+
+    #[test]
+    fn test_detect_graphql_threats() {
+        let threats = detect_graphql_threats("{ __schema { types { name } } }");
+        assert!(!threats.is_empty());
+
+        let safe = detect_graphql_threats("{ user { name } }");
+        assert!(safe.is_empty());
+    }
 }
