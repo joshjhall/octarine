@@ -138,21 +138,33 @@ impl SqliteBackend {
         &self.pool
     }
 
-    /// Build the WHERE clause from a query
-    fn build_where_clause(query: &AuditQuery) -> String {
+    /// Build the WHERE clause and bind values from a query
+    ///
+    /// Returns a `(sql, params)` tuple. The SQL uses `?` positional
+    /// placeholders for every caller-supplied value; the caller must chain
+    /// `.bind()` over `params` in the same order before executing. Enum- and
+    /// boolean-constrained conditions are interpolated directly because they
+    /// are not attacker-influenced.
+    fn build_where_clause(query: &AuditQuery) -> (String, Vec<String>) {
         let mut conditions = Vec::new();
+        let mut params: Vec<String> = Vec::new();
 
         if let Some(since) = query.since {
-            conditions.push(format!("timestamp >= '{}'", since.to_rfc3339()));
+            conditions.push("timestamp >= ?".to_string());
+            params.push(since.to_rfc3339());
         }
 
         if let Some(until) = query.until {
-            conditions.push(format!("timestamp < '{}'", until.to_rfc3339()));
+            conditions.push("timestamp < ?".to_string());
+            params.push(until.to_rfc3339());
         }
 
         if let Some(ref types) = query.event_types {
-            let type_list: Vec<String> = types.iter().map(|t| format!("'{t:?}'")).collect();
-            conditions.push(format!("event_type IN ({})", type_list.join(", ")));
+            let placeholders: Vec<&str> = types.iter().map(|_| "?").collect();
+            conditions.push(format!("event_type IN ({})", placeholders.join(", ")));
+            for t in types {
+                params.push(format!("{t:?}"));
+            }
         }
 
         if let Some(min_severity) = query.min_severity {
@@ -176,23 +188,28 @@ impl SqliteBackend {
         }
 
         if let Some(ref tenant) = query.tenant_id {
-            conditions.push(format!("tenant_id = '{tenant}'"));
+            conditions.push("tenant_id = ?".to_string());
+            params.push(tenant.clone());
         }
 
         if let Some(ref user) = query.user_id {
-            conditions.push(format!("user_id = '{user}'"));
+            conditions.push("user_id = ?".to_string());
+            params.push(user.clone());
         }
 
         if let Some(corr) = query.correlation_id {
-            conditions.push(format!("correlation_id = '{corr}'"));
+            conditions.push("correlation_id = ?".to_string());
+            params.push(corr.to_string());
         }
 
         if let Some(ref resource_type) = query.resource_type {
-            conditions.push(format!("resource_type = '{resource_type}'"));
+            conditions.push("resource_type = ?".to_string());
+            params.push(resource_type.clone());
         }
 
         if let Some(ref resource_id) = query.resource_id {
-            conditions.push(format!("resource_id = '{resource_id}'"));
+            conditions.push("resource_id = ?".to_string());
+            params.push(resource_id.clone());
         }
 
         if query.security_relevant_only {
@@ -207,11 +224,13 @@ impl SqliteBackend {
             conditions.push("contains_phi = 1".to_string());
         }
 
-        if conditions.is_empty() {
+        let where_clause = if conditions.is_empty() {
             String::new()
         } else {
             format!("WHERE {}", conditions.join(" AND "))
-        }
+        };
+
+        (where_clause, params)
     }
 
     /// Parse a database row into an Event
@@ -405,7 +424,7 @@ impl DatabaseBackend for SqliteBackend {
     }
 
     async fn query_events(&self, query: &AuditQuery) -> Result<QueryResult, WriterError> {
-        let where_clause = Self::build_where_clause(query);
+        let (where_clause, params) = Self::build_where_clause(query);
 
         let order = if query.ascending { "ASC" } else { "DESC" };
         let limit_clause = query
@@ -421,7 +440,11 @@ impl DatabaseBackend for SqliteBackend {
             "SELECT * FROM audit_events {where_clause} ORDER BY timestamp {order} {limit_clause} {offset_clause}"
         );
 
-        let rows: Vec<SqliteRow> = sqlx::query(&sql)
+        let mut stmt = sqlx::query(&sql);
+        for p in &params {
+            stmt = stmt.bind(p);
+        }
+        let rows: Vec<SqliteRow> = stmt
             .fetch_all(&self.pool)
             .await
             .map_err(|e| WriterError::Other(format!("Failed to query events: {e}")))?;
@@ -431,10 +454,11 @@ impl DatabaseBackend for SqliteBackend {
 
         // Get total count
         let count_sql = format!("SELECT COUNT(*) as count FROM audit_events {where_clause}");
-        let total_count: i32 = sqlx::query_scalar(&count_sql)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+        let mut count_stmt = sqlx::query_scalar(&count_sql);
+        for p in &params {
+            count_stmt = count_stmt.bind(p);
+        }
+        let total_count: i64 = count_stmt.fetch_one(&self.pool).await.unwrap_or(0);
 
         let has_more = query.limit.is_some_and(|l| events.len() >= l);
 
@@ -709,5 +733,152 @@ mod tests {
             SqliteBackend::parse_severity("Unknown"),
             Severity::Info
         ));
+    }
+
+    // ===== SQL Injection Regression Tests =====
+
+    /// Classic SQL injection payload targeting the audit table.
+    const INJECTION_PAYLOAD: &str = "'; DROP TABLE audit_events; --";
+
+    /// Build an event with a fully populated context so filter tests have
+    /// known values to match against.
+    fn event_with_context(
+        tenant: Option<&str>,
+        user: Option<&str>,
+        resource_type: Option<&str>,
+        resource_id: Option<&str>,
+    ) -> Event {
+        let ctx = EventContext {
+            tenant_id: tenant.map(|t| TenantId::new(t).expect("valid tenant id")),
+            user_id: user.map(|u| UserId::new(u).expect("valid user id")),
+            resource_type: resource_type.map(str::to_string),
+            resource_id: resource_id.map(str::to_string),
+            ..EventContext::default()
+        };
+        Event::new(EventType::Info, "Test event").with_context(ctx)
+    }
+
+    /// Assert that the `audit_events` table is intact and contains the
+    /// expected number of rows after a query with a malicious filter.
+    async fn assert_table_intact(backend: &SqliteBackend, expected_rows: usize) {
+        let result = backend
+            .query_events(&AuditQuery::default())
+            .await
+            .expect("baseline query must still succeed — table likely dropped");
+        assert_eq!(
+            result.events.len(),
+            expected_rows,
+            "audit_events table rows missing after injection attempt"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_injection_tenant_id() {
+        let backend = SqliteBackend::in_memory()
+            .await
+            .expect("in_memory should succeed");
+        backend.migrate().await.expect("migration should succeed");
+        backend
+            .store_events(&[test_event(), test_event()])
+            .await
+            .expect("store should succeed");
+
+        let malicious = AuditQuery::builder().tenant_id(INJECTION_PAYLOAD).build();
+        let result = backend
+            .query_events(&malicious)
+            .await
+            .expect("query must treat payload as a literal, not execute it");
+        assert_eq!(result.events.len(), 0);
+        assert_table_intact(&backend, 2).await;
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_injection_user_id() {
+        let backend = SqliteBackend::in_memory()
+            .await
+            .expect("in_memory should succeed");
+        backend.migrate().await.expect("migration should succeed");
+        backend
+            .store_events(&[test_event(), test_event()])
+            .await
+            .expect("store should succeed");
+
+        let malicious = AuditQuery::builder().user_id(INJECTION_PAYLOAD).build();
+        let result = backend
+            .query_events(&malicious)
+            .await
+            .expect("query must treat payload as a literal, not execute it");
+        assert_eq!(result.events.len(), 0);
+        assert_table_intact(&backend, 2).await;
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_injection_resource_type() {
+        let backend = SqliteBackend::in_memory()
+            .await
+            .expect("in_memory should succeed");
+        backend.migrate().await.expect("migration should succeed");
+        backend
+            .store_events(&[test_event(), test_event()])
+            .await
+            .expect("store should succeed");
+
+        let malicious = AuditQuery::builder()
+            .resource_type(INJECTION_PAYLOAD)
+            .build();
+        let result = backend
+            .query_events(&malicious)
+            .await
+            .expect("query must treat payload as a literal, not execute it");
+        assert_eq!(result.events.len(), 0);
+        assert_table_intact(&backend, 2).await;
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_injection_resource_id() {
+        let backend = SqliteBackend::in_memory()
+            .await
+            .expect("in_memory should succeed");
+        backend.migrate().await.expect("migration should succeed");
+        backend
+            .store_events(&[test_event(), test_event()])
+            .await
+            .expect("store should succeed");
+
+        let malicious = AuditQuery::builder().resource_id(INJECTION_PAYLOAD).build();
+        let result = backend
+            .query_events(&malicious)
+            .await
+            .expect("query must treat payload as a literal, not execute it");
+        assert_eq!(result.events.len(), 0);
+        assert_table_intact(&backend, 2).await;
+    }
+
+    /// Positive case: confirm that parameterized binding hasn't regressed the
+    /// happy path — a legitimate tenant filter matches the right row.
+    #[tokio::test]
+    async fn test_sqlite_filter_by_tenant_id_matches() {
+        let backend = SqliteBackend::in_memory()
+            .await
+            .expect("in_memory should succeed");
+        backend.migrate().await.expect("migration should succeed");
+
+        let events = vec![
+            event_with_context(Some("tenant-a"), None, None, None),
+            event_with_context(Some("tenant-b"), None, None, None),
+            event_with_context(Some("tenant-a"), None, None, None),
+        ];
+        backend
+            .store_events(&events)
+            .await
+            .expect("store should succeed");
+
+        let query = AuditQuery::builder().tenant_id("tenant-a").build();
+        let result = backend
+            .query_events(&query)
+            .await
+            .expect("query should succeed");
+        assert_eq!(result.events.len(), 2);
+        assert_eq!(result.total_count, Some(2));
     }
 }
