@@ -16,14 +16,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.2.0" }
+octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.1" }
 ```
 
 Enable only the features you need:
 
 ```toml
 [dependencies]
-octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.2.0", default-features = false, features = ["observe", "security"] }
+octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.1", default-features = false, features = ["observe", "security"] }
 ```
 
 ## Feature Flags
@@ -74,7 +74,7 @@ Three-layer architecture preventing circular dependencies:
 ```text
 Layer 1: primitives/  — Pure functions, no side effects
 Layer 2: observe/     — Observability, uses primitives only
-Layer 3: data/, runtime/, crypto/  — Uses primitives + observe
+Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/  — Uses primitives + observe
 ```
 
 See [`docs/`](docs/) for detailed documentation and [`crates/octarine/examples/`](crates/octarine/examples/) for runnable examples.

@@ -73,14 +73,14 @@ git clone <repository>
 cd octarine
 
 # Build and test
-make build
-make test
+just build
+just test
 
 # Run security checks
-make security
+just deps-audit
 
 # See all commands
-make help
+just --list
 ```
 
 ## Project Links
