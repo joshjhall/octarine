@@ -36,31 +36,31 @@ fmt-all: pre-commit
 
 # ─── Test ────────────────────────────────────────────────────────────────────
 
-# Run all workspace tests
+# Run all workspace tests (all features — matches `just clippy`)
 test:
-    cargo test --workspace -j4
+    cargo test --workspace --all-features -j4
 
 # Run tests with output visible
 test-verbose:
-    cargo test --workspace -j4 -- --nocapture
+    cargo test --workspace --all-features -j4 -- --nocapture
 
 # Run tests for the octarine crate only
 test-octarine:
-    cargo test -p octarine -j4
+    cargo test -p octarine --all-features -j4
 
 # Run performance/timing tests (ignored by default, run before releases)
 test-perf:
-    cargo test -p octarine -j4 test_perf_ -- --ignored
-    cargo test -p octarine -j4 test_adversarial_ -- --ignored
-    cargo test -p octarine -j4 test_batch_processor_time_flush -- --ignored
+    cargo test -p octarine --all-features -j4 test_perf_ -- --ignored
+    cargo test -p octarine --all-features -j4 test_adversarial_ -- --ignored
+    cargo test -p octarine --all-features -j4 test_batch_processor_time_flush -- --ignored
 
-# Run tests with the testing feature enabled
+# Run tests with the testing feature enabled (kept for explicit minimal-feature runs)
 test-with-fixtures:
     cargo test -p octarine -j4 --features testing
 
 # Run a specific test by name pattern
 test-filter PATTERN:
-    cargo test --workspace -j4 -- {{PATTERN}}
+    cargo test --workspace --all-features -j4 -- {{PATTERN}}
 
 # Run lib unit tests in octarine by module path, optionally enabling features.
 # Examples:
