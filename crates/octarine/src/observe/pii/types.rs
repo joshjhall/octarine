@@ -92,6 +92,8 @@ pub enum PiiType {
     IrisId,
     /// DNA profile ID
     DnaId,
+    /// Biometric template (ISO/IEC 19794 FMR/FIR/FTR/IIR formats)
+    BiometricTemplate,
 
     // =========================================================================
     // Location Domain
@@ -210,6 +212,7 @@ impl PiiType {
             Self::VoiceId => "voice_id",
             Self::IrisId => "iris_id",
             Self::DnaId => "dna_id",
+            Self::BiometricTemplate => "biometric_template",
             // Location
             Self::GpsCoordinates => "gps_coordinates",
             Self::Address => "address",
@@ -267,9 +270,12 @@ impl PiiType {
             | Self::IcdCode
             | Self::PrescriptionNumber
             | Self::DeaNumber => "medical",
-            Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId => {
-                "biometric"
-            }
+            Self::FingerprintId
+            | Self::FaceId
+            | Self::VoiceId
+            | Self::IrisId
+            | Self::DnaId
+            | Self::BiometricTemplate => "biometric",
             Self::GpsCoordinates | Self::Address | Self::PostalCode => "location",
             Self::EmployeeId | Self::StudentId | Self::BadgeNumber => "organizational",
             Self::IpAddress
@@ -308,7 +314,7 @@ impl PiiType {
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
-            Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId |
+            Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId | Self::BiometricTemplate |
             // Authentication (security breach)
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase |
             Self::ApiKey | Self::Jwt | Self::SessionId | Self::OAuthToken | Self::SshKey |
@@ -328,7 +334,7 @@ impl PiiType {
             // Location
             Self::IpAddress | Self::GpsCoordinates | Self::Address | Self::PostalCode |
             // Biometric
-            Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId |
+            Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId | Self::BiometricTemplate |
             // Medical
             Self::Mrn | Self::InsuranceNumber
         )
@@ -358,6 +364,7 @@ impl PiiType {
                 | Self::Address // Address in medical context
                 | Self::Phone // Phone in medical context
                 | Self::Email // Email in medical context
+                | Self::BiometricTemplate // Biometric identifiers are PHI under HIPAA
         )
     }
 
@@ -566,6 +573,17 @@ mod tests {
         assert!(!PiiType::PaymentToken.is_gdpr_protected());
         assert!(PiiType::PaymentToken.is_pci_protected());
         assert!(PiiType::PaymentToken.is_secret());
+    }
+
+    #[test]
+    fn test_biometric_template_classifications() {
+        assert_eq!(PiiType::BiometricTemplate.name(), "biometric_template");
+        assert_eq!(PiiType::BiometricTemplate.domain(), "biometric");
+        assert!(PiiType::BiometricTemplate.is_high_risk());
+        assert!(PiiType::BiometricTemplate.is_gdpr_protected());
+        assert!(PiiType::BiometricTemplate.is_hipaa_protected());
+        assert!(!PiiType::BiometricTemplate.is_pci_protected());
+        assert!(!PiiType::BiometricTemplate.is_secret());
     }
 
     #[test]
