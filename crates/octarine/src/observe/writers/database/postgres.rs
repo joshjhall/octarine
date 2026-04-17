@@ -195,7 +195,6 @@ impl PostgresBackend {
         if let Some(ref resource_id) = query.resource_id {
             conditions.push(format!("resource_id = ${param_idx}"));
             params.push(resource_id.clone());
-            let _ = param_idx; // Explicitly mark as intentionally unused after last use
         }
 
         if query.security_relevant_only {
@@ -395,7 +394,7 @@ impl DatabaseBackend for PostgresBackend {
     }
 
     async fn query_events(&self, query: &AuditQuery) -> Result<QueryResult, WriterError> {
-        let (where_clause, _params) = Self::build_where_clause(query);
+        let (where_clause, params) = Self::build_where_clause(query);
 
         let order = if query.ascending { "ASC" } else { "DESC" };
         let limit_clause = query
@@ -407,17 +406,15 @@ impl DatabaseBackend for PostgresBackend {
             .map(|o| format!("OFFSET {o}"))
             .unwrap_or_default();
 
-        // Build the full query
-        // Note: We're using string interpolation for the dynamic parts since sqlx
-        // doesn't support dynamic WHERE clauses easily. The values are sanitized
-        // through the query builder.
         let sql = format!(
             "SELECT * FROM audit_events {where_clause} ORDER BY timestamp {order} {limit_clause} {offset_clause}"
         );
 
-        // For simplicity, we'll execute without dynamic binding for now
-        // In production, you'd want to use sqlx's query builder or raw bindings
-        let rows: Vec<PgRow> = sqlx::query(&sql)
+        let mut stmt = sqlx::query(&sql);
+        for p in &params {
+            stmt = stmt.bind(p);
+        }
+        let rows: Vec<PgRow> = stmt
             .fetch_all(&self.pool)
             .await
             .map_err(|e| WriterError::Other(format!("Failed to query events: {e}")))?;
@@ -427,10 +424,11 @@ impl DatabaseBackend for PostgresBackend {
 
         // Get total count
         let count_sql = format!("SELECT COUNT(*) as count FROM audit_events {where_clause}");
-        let total_count: i64 = sqlx::query_scalar(&count_sql)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+        let mut count_stmt = sqlx::query_scalar(&count_sql);
+        for p in &params {
+            count_stmt = count_stmt.bind(p);
+        }
+        let total_count: i64 = count_stmt.fetch_one(&self.pool).await.unwrap_or(0);
 
         let has_more = query.limit.is_some_and(|l| events.len() >= l);
 
