@@ -334,7 +334,7 @@ let observe = ObserveBuilder::new()
 
 ## Related Documentation
 
-- [Event System Architecture](../architecture/event-system.md)
+- [Observability Integration](../observe/integration.md)
 - [Problem Type](../api/error-architecture.md)
 - [Security Patterns](../security/patterns/)
-- [Compliance Guide](../reference/compliance.md)
+- [Compliance Guide](../observe/compliance.md)

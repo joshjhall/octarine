@@ -285,6 +285,5 @@ impl ContinuousValidator {
 ## Related Documentation
 
 - [Input Architecture](./input-architecture.md)
-- [Validation Patterns](./validation.md)
-- [Security Checklist](../checklist.md)
-- [OWASP Guidelines](../owasp/)
+- [Detection vs Validation vs Sanitization](./detection-validation-sanitization.md)
+- [Security Guidelines](../security-guidelines.md)

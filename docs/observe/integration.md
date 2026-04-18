@@ -519,5 +519,5 @@ async fn test_database_roundtrip() {
 
 - [Compliance Guide](compliance.md) - SOC2/HIPAA/GDPR mapping
 - [API Guide](api-guide.md) - Detailed API reference
-- [Writers Module](../../src/observe/writers/mod.rs) - Writer implementations
-- [PII Module](../../src/observe/pii/mod.rs) - PII detection API
+- [Writers Module](../../crates/octarine/src/observe/writers/mod.rs) - Writer implementations
+- [PII Module](../../crates/octarine/src/observe/pii/mod.rs) - PII detection API

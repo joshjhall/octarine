@@ -398,5 +398,5 @@ async fn generate_compliance_report(
 
 - [API Guide](api-guide.md) - Detailed API usage
 - [Integration Guide](integration.md) - SIEM and monitoring integration
-- [PII Module](../../src/observe/pii/mod.rs) - Scanner API reference
-- [Writers Module](../../src/observe/writers/mod.rs) - Output destinations
+- [PII Module](../../crates/octarine/src/observe/pii/mod.rs) - Scanner API reference
+- [Writers Module](../../crates/octarine/src/observe/writers/mod.rs) - Output destinations

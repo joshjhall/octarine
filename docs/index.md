@@ -41,29 +41,10 @@ Security patterns, OWASP compliance, and threat models
 
 ### 🚀 [Operations](./operations/)
 
-CI/CD, versioning, deployment, and monitoring
+Audit logging and operational observability
 
-- CI/CD pipeline
-- Semantic versioning
-- Deployment guide
-- Monitoring setup
-
-### 🤝 [Contributing](./contributing/)
-
-Contribution guidelines, code style, and review process
-
-- How to contribute
-- Code style guide
-- Documentation standards
-- Review process
-
-### 📖 [Reference](./reference/)
-
-Quick references, commands, and troubleshooting
-
-- Common commands
-- Troubleshooting guide
-- Glossary of terms
+- Audit logging
+- Compliance trails
 
 ## Quick Start
 
@@ -122,10 +103,7 @@ Start with the section index, then drill down to specific topics as needed.
 
 ## Contributing to Docs
 
-See [`contributing/documentation.md`](./contributing/documentation.md) for guidelines on:
-
-- Writing style
-- File organization
-- Cross-referencing
-- Code examples
+See [`../CLAUDE.md`](../CLAUDE.md) for contributor and AI-assistant workflow,
+and [`./architecture/testing-patterns.md`](./architecture/testing-patterns.md)
+for testing conventions.
 - Review process

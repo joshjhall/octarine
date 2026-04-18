@@ -126,6 +126,13 @@ backlog:
 - Additional integration examples
 - Documentation refinements and API reference polish
 
+See the companion guides for contribution details:
+
+- [Module Patterns](./module-patterns.md) — code organization rules
+- [Testing Patterns](./testing-patterns.md) — testing requirements
+- [Layer Architecture](./layer-architecture.md) — three-layer rules
+- [`../../CLAUDE.md`](../../CLAUDE.md) — AI-assistant and contributor workflow
+
 ## Related Documentation
 
 - [Layer Architecture](./layer-architecture.md) — Authoritative layer

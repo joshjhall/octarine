@@ -4,15 +4,16 @@ Reusable security patterns and implementations for common security challenges.
 
 ## Quick Links
 
-- **Input Validation**: [`validation.md`](./validation.md) - Validation strategies
-- **Sanitization**: [`sanitization.md`](./sanitization.md) - Making input safe
-- **Rate Limiting**: [`rate-limiting.md`](./rate-limiting.md) - DoS prevention
+- **Detection vs Validation vs Sanitization**: [`detection-validation-sanitization.md`](./detection-validation-sanitization.md) — Layer separation philosophy
+- **Input Architecture**: [`input-architecture.md`](./input-architecture.md) — Input validation architecture
+- **Zero-Trust**: [`zero-trust.md`](./zero-trust.md) — Zero-trust enforcement
+- **Overview**: [`overview.md`](./overview.md) — Patterns overview
 
 ## Pattern Categories
 
 ### Input Security
 
-#### [Detection vs Validation vs Sanitization Philosophy](./detection-validation-sanitization.md) ⭐ NEW
+#### [Detection vs Validation vs Sanitization Philosophy](./detection-validation-sanitization.md) ⭐
 
 - Module purpose and philosophy
 - When to use each layer
@@ -20,73 +21,41 @@ Reusable security patterns and implementations for common security challenges.
 - Common mistakes to avoid
 - Decision trees and examples
 
-#### [Validation Patterns](./validation.md)
+#### [Input Architecture](./input-architecture.md)
 
 - Multi-layer validation
-- Size and complexity limits
 - Structure vs pattern validation
 - Context-aware validation
 
-#### [Sanitization Patterns](./sanitization.md)
+#### [Zero-Trust](./zero-trust.md)
 
-- Strict vs lenient modes
-- Context-specific sanitization
-- Normalization before sanitization
-- Safe defaults and fallbacks
+- Validate every boundary
+- Fail secure
+- Audit every security-relevant event
 
-#### [Conversion Patterns](./conversion.md)
+### Overview
 
-- Safe type conversion
-- Format transformation
-- Encoding/decoding strategies
+#### [Patterns Overview](./overview.md)
 
-### Access Control
-
-#### [Rate Limiting](./rate-limiting.md)
-
-- Token bucket implementation
-- Per-user/per-IP limiting
-- Adaptive rate limiting
-- Cost-based throttling
-
-#### [Authentication](./authentication.md)
-
-- Password hashing (Argon2)
-- Session management
-- Token generation
-- Multi-factor patterns
-
-### Data Protection
-
-#### [Cryptography](./cryptography.md)
-
-- High-level API usage
-- Key management
-- Secure random generation
-- Encryption at rest
-
-#### [Redaction](./redaction.md)
-
-- PII/PHI detection
-- Contextual redaction
-- Logging safely
-- Error message sanitization
+- Catalog of patterns with trade-offs
+- Cross-references to implementation modules
+- Pre-deployment checklist
 
 ## Implementation Examples
 
 Each pattern includes:
 
-1. **Problem** - What security issue it addresses
-1. **Solution** - How to implement it
-1. **Code Example** - Rust implementation
-1. **Testing** - How to verify it works
-1. **Common Mistakes** - What to avoid
+1. **Problem** — what security issue it addresses
+1. **Solution** — how to implement it
+1. **Code Example** — Rust implementation
+1. **Testing** — how to verify it works
+1. **Common Mistakes** — what to avoid
 
 ## Related Sections
 
-- [OWASP Guides](../owasp/) - Specific vulnerability prevention
-- [API Security](../../api/security.md) - Secure API design
-- [Source Code](../../../src/security/) - Actual implementations
+- [Security Guidelines](../security-guidelines.md) — Project-wide principles
+- [Data Module Architecture](../data-module-architecture.md) — Security/data module design
+- [Source Code](../../../crates/octarine/src/security/) — Actual implementations
 
 ## Quick Reference
 

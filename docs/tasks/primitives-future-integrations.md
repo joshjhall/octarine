@@ -77,6 +77,6 @@ When ready to implement:
 
 ## Related Files
 
-- `src/primitives/common/buffer.rs` - RingBuffer implementation
-- `src/primitives/common/cache.rs` - LruCache implementation
-- `PRIMITIVES-REFACTOR.md` - Overall migration plan
+- `crates/octarine/src/primitives/collections/buffer/ring.rs` - RingBuffer implementation
+- `crates/octarine/src/primitives/collections/cache/lru.rs` - LruCache implementation
+- `docs/architecture/refactor-plan.md` - Overall migration plan
