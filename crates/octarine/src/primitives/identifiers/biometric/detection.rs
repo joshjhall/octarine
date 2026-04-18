@@ -244,9 +244,9 @@ pub fn is_test_biometric_id(id: &str) -> bool {
     false
 }
 
-/// Find the type of biometric identifier
+/// Detect the type of biometric identifier
 #[must_use]
-pub fn find_biometric_identifier(value: &str) -> Option<IdentifierType> {
+pub fn detect_biometric_identifier(value: &str) -> Option<IdentifierType> {
     if is_fingerprint(value) {
         Some(IdentifierType::Fingerprint)
     } else if is_facial_recognition(value) {
@@ -521,18 +521,18 @@ mod tests {
     }
 
     #[test]
-    fn test_find_biometric_identifier() {
+    fn test_detect_biometric_identifier() {
         assert_eq!(
-            find_biometric_identifier(
+            detect_biometric_identifier(
                 "fingerprint: a1b2c3d4e5f6789012345678901234567890123456789012345678901234"
             ),
             Some(IdentifierType::Fingerprint)
         );
         assert_eq!(
-            find_biometric_identifier("ATCGATCGATCGATCGATCG"),
+            detect_biometric_identifier("ATCGATCGATCGATCGATCG"),
             Some(IdentifierType::DNASequence)
         );
-        assert_eq!(find_biometric_identifier("not biometric"), None);
+        assert_eq!(detect_biometric_identifier("not biometric"), None);
     }
 
     // ===== Text Scanning Tests =====
@@ -882,7 +882,7 @@ mod tests {
         // Test detection priority when value could match multiple types
         let fingerprint =
             "fingerprint: a1b2c3d4e5f6789012345678901234567890123456789012345678901234";
-        let detected = find_biometric_identifier(fingerprint);
+        let detected = detect_biometric_identifier(fingerprint);
         assert_eq!(detected, Some(IdentifierType::Fingerprint));
     }
 }
