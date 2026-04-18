@@ -9,7 +9,7 @@ This section covers the system design, patterns, and architectural decisions for
 - **System Design**: [`system-design.md`](./system-design.md) - Overall library architecture
 - **Testing Patterns**: [`testing-patterns.md`](./testing-patterns.md) - Shared test infrastructure
 - **Data Module Architecture**: [`../security/data-module-architecture.md`](../security/data-module-architecture.md) - Security/data module design
-- **Async + Observability Integration**: [`async-observability-integration.md`](./async-observability-integration.md) - Comprehensive async runtime instrumentation
+- **Async + Observability Integration**: [`../runtime/observability-integration.md`](../runtime/observability-integration.md) - Comprehensive async runtime instrumentation
 - **Refactor Plan**: [`refactor-plan.md`](./refactor-plan.md) - Current status and roadmap
 
 ## In This Section

@@ -169,5 +169,6 @@ fn test_validates_input() {
 ## See Also
 
 - [`../../crates/octarine/src/observe/problem/`](../../crates/octarine/src/observe/problem/) - Problem type implementation
-- [`security-patterns.md`](./security-patterns.md) - Security-specific error handling
-- [`testing-strategy.md`](./testing-strategy.md) - Testing error conditions
+- [`./error-architecture.md`](./error-architecture.md) - Problem type design and audit trail
+- [`../security/patterns/overview.md`](../security/patterns/overview.md) - Security-specific error handling
+- [`../architecture/testing-patterns.md`](../architecture/testing-patterns.md) - Testing conventions

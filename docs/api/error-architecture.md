@@ -284,4 +284,4 @@ impl From<Problem> for HttpResponse {
 
 - [Error Handling Patterns](./error-handling.md)
 - [Event System](../operations/audit-logging.md)
-- [Observability Guide](../operations/monitoring.md)
+- [Observability Guide](../observe/integration.md)

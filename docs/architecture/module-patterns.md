@@ -323,5 +323,5 @@ pub fn operation(input: &str) -> Output {
 ## Related Documentation
 
 - [System Design](./system-design.md) - Overall architecture
-- [API Design Principles](../api/design-principles.md) - API guidelines
+- [API Naming Conventions](../api/naming-conventions.md) - API naming and prefix rules
 - [Refactor Plan](./refactor-plan.md) - Current refactoring status

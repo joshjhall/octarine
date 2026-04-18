@@ -5,37 +5,24 @@ Comprehensive security implementation guides, patterns, and checklists for octar
 ## Quick Links
 
 - **Data Module Architecture**: [`data-module-architecture.md`](./data-module-architecture.md) - Comprehensive data security operations
-- **Security Checklist**: [`checklist.md`](./checklist.md) - Pre-deployment verification
-- **OWASP Compliance**: [`owasp/`](./owasp/) - OWASP Top 10 implementation
+- **Security Guidelines**: [`security-guidelines.md`](./security-guidelines.md) - Project-wide security principles
 - **Common Patterns**: [`patterns/`](./patterns/) - Reusable security patterns
 
 ## In This Section
-
-### [OWASP Implementation](./owasp/)
-
-Detailed guides for preventing each of the OWASP Top 10 vulnerabilities:
-
-- Injection prevention
-- Authentication & session management
-- XSS prevention
-- And more...
 
 ### [Security Patterns](./patterns/)
 
 Reusable patterns for common security needs:
 
-- Input validation strategies
-- Sanitization approaches
-- Rate limiting implementation
-- Cryptography guidelines
+- [Detection vs validation vs sanitization](./patterns/detection-validation-sanitization.md)
+- [Input architecture](./patterns/input-architecture.md)
+- [Zero-trust enforcement](./patterns/zero-trust.md)
+- [Overview of all patterns](./patterns/overview.md)
 
-### [Threat Model](./threat-model.md)
+### [Security Guidelines](./security-guidelines.md)
 
-Analysis of potential threats, attack vectors, and mitigation strategies specific to octarine's use cases.
-
-### [Security Checklist](./checklist.md)
-
-Comprehensive checklist to verify before any deployment or release.
+Project-wide security principles and vulnerability reporting policy
+(see also [`../../SECURITY.md`](../../SECURITY.md)).
 
 ## Core Principles
 
@@ -54,7 +41,7 @@ Comprehensive checklist to verify before any deployment or release.
 
 - [API Design](../api/) - Secure API patterns
 - [Development](../development/) - Security testing practices
-- [Operations](../operations/) - Security in CI/CD
+- [Operations](../operations/) - Audit logging
 
 ## External Resources
 

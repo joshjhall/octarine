@@ -412,7 +412,7 @@ Added **84 metrics calls** across 5 runtime modules, achieving 100% observabilit
 
 ### Documentation
 
-Created comprehensive metrics catalog: **[`async-runtime-metrics.md`](../observe/async-runtime-metrics.md)**
+Created comprehensive metrics catalog: **[`metrics-reference.md`](./metrics-reference.md)**
 
 - 64 unique metric names documented
 - Usage patterns and alerting guidelines
@@ -457,4 +457,4 @@ ______________________________________________________________________
 **Runtime Status**: 100% instrumented ✅
 **Security Modules Status**: 100% instrumented ✅
 **Total Project Metrics**: 171 metrics calls (87 security + 84 runtime)
-**Reference Documentation**: [`async-runtime-metrics.md`](../observe/async-runtime-metrics.md)
+**Reference Documentation**: [`metrics-reference.md`](./metrics-reference.md)

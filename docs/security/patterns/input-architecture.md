@@ -211,7 +211,6 @@ The module meets requirements for:
 
 ## Related Documentation
 
-- [Validation Patterns](./validation.md)
-- [Sanitization Patterns](./sanitization.md)
-- [OWASP Implementation](../owasp/)
-- [Security Checklist](../checklist.md)
+- [Detection vs Validation vs Sanitization](./detection-validation-sanitization.md)
+- [Security Guidelines](../security-guidelines.md)
+- [Security Patterns Overview](./overview.md)
