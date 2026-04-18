@@ -154,6 +154,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::VoiceId => redact_voice_prints(&result, profile),
             PiiType::IrisId => redact_iris_scans(&result, profile),
             PiiType::DnaId => redact_dna_sequences(&result, profile),
+            PiiType::BiometricTemplate => redact_biometric_templates(&result, profile),
             // Location
             PiiType::GpsCoordinates => redact_gps_coordinates(&result, profile),
             PiiType::Address => redact_addresses(&result, profile),

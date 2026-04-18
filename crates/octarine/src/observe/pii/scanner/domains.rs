@@ -123,6 +123,12 @@ pub(super) fn scan_biometric(text: &str, pii_types: &mut Vec<PiiType>) {
         if !biometric.detect_dna_sequences_in_text(text).is_empty() {
             pii_types.push(PiiType::DnaId);
         }
+        if !biometric
+            .detect_biometric_templates_in_text(text)
+            .is_empty()
+        {
+            pii_types.push(PiiType::BiometricTemplate);
+        }
     }
 }
 

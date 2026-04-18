@@ -223,4 +223,78 @@ mod tests {
         assert!(validate_port(80).is_ok());
         assert!(validate_port(0).is_err());
     }
+
+    #[test]
+    fn test_is_dangerous_scheme() {
+        assert!(is_dangerous_scheme("file:///etc/passwd"));
+        assert!(!is_dangerous_scheme("https://example.com"));
+    }
+
+    #[test]
+    fn test_is_cloud_metadata_endpoint() {
+        assert!(is_cloud_metadata_endpoint("169.254.169.254"));
+        assert!(!is_cloud_metadata_endpoint("example.com"));
+    }
+
+    #[test]
+    fn test_is_internal_host() {
+        assert!(is_internal_host("localhost"));
+        assert!(is_internal_host("10.0.0.1"));
+        assert!(!is_internal_host("example.com"));
+    }
+
+    #[test]
+    fn test_is_url_shortener() {
+        // Takes a host, not a URL.
+        assert!(is_url_shortener("bit.ly"));
+        assert!(!is_url_shortener("example.com"));
+    }
+
+    #[test]
+    fn test_validate_not_internal() {
+        // Takes a host, not a URL.
+        assert!(validate_not_internal("example.com").is_ok());
+        assert!(validate_not_internal("localhost").is_err());
+    }
+
+    #[test]
+    fn test_validate_safe_scheme() {
+        assert!(validate_safe_scheme("https://example.com").is_ok());
+        assert!(validate_safe_scheme("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn test_validate_not_cloud_metadata() {
+        // Takes a host, not a URL.
+        assert!(validate_not_cloud_metadata("example.com").is_ok());
+        assert!(validate_not_cloud_metadata("169.254.169.254").is_err());
+    }
+
+    #[test]
+    fn test_validate_not_url_shortener() {
+        // Takes a host, not a URL.
+        assert!(validate_not_url_shortener("example.com").is_ok());
+        assert!(validate_not_url_shortener("bit.ly").is_err());
+    }
+
+    #[test]
+    fn test_validate_https_required() {
+        assert!(validate_https_required("https://example.com").is_ok());
+        assert!(validate_https_required("http://example.com").is_err());
+    }
+
+    #[test]
+    fn test_validate_hostname_lenient() {
+        // Strict rejects underscores; lenient allows them.
+        assert!(validate_hostname("my_server.com").is_err());
+        assert!(validate_hostname_lenient("my_server.com").is_ok());
+        assert!(validate_hostname_lenient("-bad.com").is_err());
+    }
+
+    #[test]
+    fn test_parse_port() {
+        assert!(matches!(parse_port("80"), Ok(80)));
+        assert!(parse_port("not-a-number").is_err());
+        assert!(parse_port("0").is_err());
+    }
 }

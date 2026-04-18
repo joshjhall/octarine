@@ -26,7 +26,7 @@
 
 use super::super::common::patterns;
 use super::super::types::{DetectionConfidence, IdentifierMatch, IdentifierType};
-use super::validation::{is_itin_area, is_test_ssn};
+use super::common::{is_itin_area, is_test_ssn};
 
 // ============================================================================
 // Constants

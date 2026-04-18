@@ -327,7 +327,10 @@ impl EventDispatcher {
             {
                 Ok(rt) => rt,
                 Err(_) => {
-                    // Runtime creation failed - fall back to blocking receive
+                    // Runtime unavailable: console-only fallback dispatch.
+                    // Registered writers (file, database, memory, custom) are
+                    // skipped because there is no runtime to host their
+                    // async `Writer::write` implementations.
                     let writer = ProtectedWriter::new();
                     while let Some(event) = rx.blocking_recv() {
                         queue_size_clone.fetch_sub(1, Ordering::Relaxed);
@@ -352,7 +355,7 @@ impl EventDispatcher {
                                 let events = batch.take();
                                 let count = events.len();
                                 for event in events {
-                                    writer.write_sync(&event);
+                                    writer.write_event(&event).await;
                                 }
                                 processed_clone.fetch_add(count as u64, Ordering::Relaxed);
                             }
@@ -363,7 +366,7 @@ impl EventDispatcher {
                                 let events = batch.take();
                                 let count = events.len();
                                 for event in events {
-                                    writer.write_sync(&event);
+                                    writer.write_event(&event).await;
                                 }
                                 processed_clone.fetch_add(count as u64, Ordering::Relaxed);
                             }

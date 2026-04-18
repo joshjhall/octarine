@@ -33,6 +33,7 @@ use super::super::types::IdentifierMatch;
 use crate::primitives::Problem;
 use crate::primitives::collections::CacheStats;
 
+use super::common;
 use super::conversion;
 use super::detection;
 use super::redaction::TextRedactionPolicy;
@@ -95,7 +96,7 @@ impl GovernmentIdentifierBuilder {
     /// Check if SSN area code indicates ITIN
     #[must_use]
     pub fn is_itin_area(&self, ssn: &str) -> bool {
-        validation::is_itin_area(ssn)
+        common::is_itin_area(ssn)
     }
 
     /// Redact SSN with explicit strategy
@@ -1123,7 +1124,7 @@ impl GovernmentIdentifierBuilder {
     /// ```
     #[must_use]
     pub fn is_test_ssn(&self, ssn: &str) -> bool {
-        validation::is_test_ssn(ssn)
+        common::is_test_ssn(ssn)
     }
 
     /// Check if passport number is a known test/sample pattern

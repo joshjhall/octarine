@@ -9,8 +9,7 @@ This section covers the system design, patterns, and architectural decisions for
 - **System Design**: [`system-design.md`](./system-design.md) - Overall library architecture
 - **Testing Patterns**: [`testing-patterns.md`](./testing-patterns.md) - Shared test infrastructure
 - **Async + Observability Integration**: [`async-observability-integration.md`](./async-observability-integration.md) - Comprehensive async runtime instrumentation
-- **Refactor Plan**: [`refactor-plan.md`](./refactor-plan.md) - Current status and roadmap
-- **Full Plan**: [`../../src/refactor-plan.md`](../../src/refactor-plan.md) - Detailed refactor plan
+- **Refactor Status**: [`refactor-plan.md`](./refactor-plan.md) - Completed refactor summary (v0.3.0-beta.1)
 
 ## In This Section
 
@@ -35,14 +34,13 @@ Overall system architecture including:
 - Integration patterns for web and CLI
 - Performance and extensibility considerations
 
-### [Refactor Plan](./refactor-plan.md)
+### [Refactor Status](./refactor-plan.md)
 
-Current refactoring status with:
+Summary of the completed v0.3.0 refactor:
 
-- Module completion tracking
-- Phase-based implementation strategy
-- Links to detailed plan in source tree
-- Contributing guidelines
+- Three-layer architecture rationale
+- Per-module completion status
+- Links to live architecture docs
 
 ## Key Architectural Principles
 
