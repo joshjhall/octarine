@@ -4,7 +4,6 @@ Comprehensive security implementation guides, patterns, and checklists for octar
 
 ## Quick Links
 
-- **Data Module Architecture**: [`data-module-architecture.md`](./data-module-architecture.md) - Comprehensive data security operations
 - **Security Guidelines**: [`security-guidelines.md`](./security-guidelines.md) - Project-wide security principles
 - **Common Patterns**: [`patterns/`](./patterns/) - Reusable security patterns
 

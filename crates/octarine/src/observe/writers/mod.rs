@@ -110,7 +110,7 @@ use crate::observe::pii::{RedactionProfile, redact_pii_with_profile};
 use crate::observe::types::Event;
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 // =============================================================================
 // Writer Trait - Public API for implementing writers
@@ -208,7 +208,7 @@ pub trait Writer: Send + Sync {
 
 /// Named writer for registration
 struct RegisteredWriter {
-    writer: Box<dyn Writer>,
+    writer: Arc<dyn Writer>,
     enabled: bool,
 }
 
@@ -249,6 +249,10 @@ fn ensure_registry() {
 pub fn register_writer(writer: Box<dyn Writer>) {
     ensure_registry();
     let name = writer.name();
+    // Store as Arc so we can clone handles out of the registry and drop the
+    // lock guard before awaiting `Writer::write` in `dispatch_to_writers`.
+    // Holding `std::sync::RwLockReadGuard` across `.await` is unsound.
+    let writer: Arc<dyn Writer> = Arc::from(writer);
     let mut registry = WRITER_REGISTRY.write().unwrap_or_else(|e| e.into_inner());
     if let Some(ref mut map) = *registry {
         map.insert(
@@ -321,26 +325,49 @@ pub fn is_writer_enabled(name: &str) -> bool {
     }
 }
 
-/// Dispatch an event to all enabled registered writers (sync version)
+/// Dispatch an event to all enabled registered writers.
 ///
-/// This is called by the async dispatch background thread.
-/// Writers that fail are logged but don't stop other writers.
-pub(super) fn dispatch_to_writers_sync(event: &Event) {
-    let registry = WRITER_REGISTRY.read().unwrap_or_else(|e| e.into_inner());
-    if let Some(ref map) = *registry {
-        for rw in map.values() {
-            if rw.enabled && rw.writer.should_write(event) {
-                // Use tokio's blocking runtime to call async write
-                // This is safe because we're already in a dedicated dispatch thread
-                let writer = &rw.writer;
-                let event_clone = event.clone();
+/// Called from within the async dispatch loop (`async_dispatch.rs`), which
+/// already runs inside a tokio runtime — so we just await each writer
+/// directly. A prior implementation built a nested `current_thread` runtime
+/// and `block_on`'d inside the dispatcher's own runtime, which panicked
+/// with "Cannot start a runtime from within a runtime" and silently lost
+/// every dispatched event for all non-console writers (see #210).
+///
+/// Writer handles are snapshotted (`Arc` cloned) under the registry lock
+/// and the guard is dropped before awaiting — `std::sync::RwLockReadGuard`
+/// must not be held across `.await`.
+///
+/// Writer failures are reported to stderr (not through the observe logging
+/// macros) to avoid recursing back into this dispatch path.
+pub(super) async fn dispatch_to_writers(event: &Event) {
+    let handles: Vec<Arc<dyn Writer>> = {
+        let registry = WRITER_REGISTRY.read().unwrap_or_else(|e| e.into_inner());
+        match *registry {
+            Some(ref map) => map
+                .values()
+                .filter(|rw| rw.enabled && rw.writer.should_write(event))
+                .map(|rw| Arc::clone(&rw.writer))
+                .collect(),
+            None => Vec::new(),
+        }
+    };
 
-                // Create a minimal runtime for the async call
-                // This is acceptable overhead since writes are batched
-                if let Ok(rt) = tokio::runtime::Builder::new_current_thread().build() {
-                    let _ = rt.block_on(async { writer.write(&event_clone).await });
-                }
-            }
+    for writer in handles {
+        if let Err(err) = writer.write(event).await {
+            // Write directly to stderr rather than routing through the
+            // observe logging shortcuts, which would dispatch another
+            // event back through this function and risk amplification
+            // loops when the cause of the failure is the dispatcher.
+            // Matches the pattern used by `ConsoleWriter::write_sync`.
+            use std::io::Write;
+            let mut stderr = std::io::stderr().lock();
+            let _ = writeln!(
+                stderr,
+                "[octarine::observe] writer '{}' failed: {}",
+                writer.name(),
+                err
+            );
         }
     }
 }

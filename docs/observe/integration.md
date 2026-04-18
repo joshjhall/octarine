@@ -87,7 +87,15 @@ async fn setup_postgres() -> Result<PostgresBackend, WriterError> {
 
 ## Custom Writer Implementation
 
-Implement the `Writer` trait for custom destinations:
+Implement the `Writer` trait for custom destinations.
+
+**Runtime contract.** `Writer::write` is invoked from inside the observe
+dispatcher's tokio runtime (a dedicated background thread). Implementations
+may freely `.await` tokio I/O — HTTP clients, file handles, database
+drivers, async channels — and do not need to spawn their own runtime.
+A failure returned from `write` is logged to stderr and does not block
+dispatch to other registered writers.
+
 
 ```rust
 use octarine::observe::writers::{Writer, WriterError, HealthStatus};

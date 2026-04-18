@@ -8,9 +8,8 @@ This section covers the system design, patterns, and architectural decisions for
 - **Module Patterns**: [`module-patterns.md`](./module-patterns.md) - Three-layer pattern and builder pattern
 - **System Design**: [`system-design.md`](./system-design.md) - Overall library architecture
 - **Testing Patterns**: [`testing-patterns.md`](./testing-patterns.md) - Shared test infrastructure
-- **Data Module Architecture**: [`../security/data-module-architecture.md`](../security/data-module-architecture.md) - Security/data module design
 - **Async + Observability Integration**: [`../runtime/observability-integration.md`](../runtime/observability-integration.md) - Comprehensive async runtime instrumentation
-- **Refactor Plan**: [`refactor-plan.md`](./refactor-plan.md) - Current status and roadmap
+- **Refactor Status**: [`refactor-plan.md`](./refactor-plan.md) - Completed refactor summary (v0.3.0-beta.1)
 
 ## In This Section
 
@@ -35,24 +34,13 @@ Overall system architecture including:
 - Integration patterns for web and CLI
 - Performance and extensibility considerations
 
-### [Data Module Architecture](../security/data-module-architecture.md)
+### [Refactor Status](./refactor-plan.md)
 
-Comprehensive data security operations architecture:
+Summary of the completed v0.3.0 refactor:
 
-- Four pillars: Detection, Validation, Sanitization, Conversion
-- Renamed from `security/input` to `security/data` for broader scope
-- OWASP-compliant implementation patterns
-- Integration with observe module for automatic auditing
-- Migration guide from old input module
-
-### [Refactor Plan](./refactor-plan.md)
-
-Current refactoring status with:
-
-- Module completion tracking
-- Phase-based implementation strategy
-- Links to detailed plan in source tree
-- Contributing guidelines
+- Three-layer architecture rationale
+- Per-module completion status
+- Links to live architecture docs
 
 ## Key Architectural Principles
 
@@ -117,31 +105,42 @@ Current refactoring status with:
 ## Module Organization
 
 ```text
-octarine/
-├── src/
-│   ├── observe/          # Observability module
-│   │   ├── context/      # Context propagation
-│   │   ├── event/        # Event generation
-│   │   ├── problem/      # Error handling
-│   │   └── writers/      # Output destinations
-│   │
-│   └── security/         # Security module
-│       ├── data/         # Data security (detect, validate, sanitize, convert)
-│       │   ├── detection/     # Type and pattern detection
-│       │   ├── validation/    # Constraint checking (9 contexts)
-│       │   ├── sanitization/  # Making data safe
-│       │   └── conversion/    # Format transformation
-│       ├── access_control/
-│       ├── file_security/
-│       ├── process/
-│       ├── secrets/
-│       └── detection/    # Pattern detection (PII, secrets)
+crates/octarine/src/
+├── primitives/        # Layer 1 (pub(crate)): pure functions, no observe deps
+│   ├── data/          # FORMAT concern (paths, network, text, ...)
+│   ├── security/      # THREATS concern (commands, formats, network, paths, queries)
+│   ├── identifiers/   # CLASSIFICATION concern (personal, financial, network, ...)
+│   ├── crypto/        # Crypto primitives
+│   ├── io/            # File-operation primitives
+│   ├── runtime/       # Async utility primitives
+│   └── types/         # Problem, Result, shared types
 │
-└── docs/
-    ├── architecture/     # This section
-    ├── api/             # API documentation
-    ├── security/        # Security patterns
-    └── operations/      # Deployment and ops
+├── observe/           # Layer 2 (pub): observability — depends only on primitives
+│   ├── audit/         # Audit-trail generation
+│   ├── compliance/    # SOC2 / HIPAA / GDPR / PCI-DSS mapping
+│   ├── context/       # Automatic WHO/WHAT/WHEN/WHERE capture
+│   ├── event/         # Event generation
+│   ├── metrics/       # Metrics collection
+│   ├── pii/           # PII detection and redaction
+│   ├── problem/       # Error handling with audit trails
+│   ├── tracing/       # Distributed tracing
+│   └── writers/       # Console, file, SQLite, PostgreSQL
+│
+├── data/              # Layer 3 (pub): primitives + observe instrumentation
+├── security/          # Layer 3 (pub)
+├── identifiers/       # Layer 3 (pub)
+├── runtime/           # Layer 3 (pub)
+├── crypto/            # Layer 3 (pub)
+├── io/                # Layer 3 (pub)
+├── auth/              # Layer 3 (pub)
+├── http/              # Layer 3 (pub)
+└── testing/           # Test infrastructure (feature = "testing")
+
+docs/
+├── architecture/      # This section
+├── api/               # API documentation
+├── security/          # Security patterns
+└── operations/        # Deployment and ops
 ```
 
 ## Related Sections

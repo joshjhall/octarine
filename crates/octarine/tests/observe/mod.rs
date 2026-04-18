@@ -19,5 +19,6 @@ mod metrics_export;
 mod pii_pipeline;
 mod thresholds;
 mod tracing_integration;
+mod writer_dispatch;
 mod writer_file;
 mod writer_memory;

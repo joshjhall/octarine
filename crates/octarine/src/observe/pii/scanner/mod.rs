@@ -253,6 +253,20 @@ mod tests {
     }
 
     #[test]
+    fn test_scan_for_pii_biometric_template_iso_19794() {
+        // ISO/IEC 19794 template with FMR header marker and 54 base64-like chars.
+        // scan_biometric is off by default; enable it explicitly.
+        let text = "fmr: QUJDRFBCQ0RCQ0RCQ0RCQ0RCQ0RCQ0RCQ0RCQ0RCQ0RBQkNERkJDRA";
+        let config = PiiScannerConfig::none().with_biometric(true);
+        let types = scan_for_pii_with_config(text, &config);
+        assert!(
+            types.contains(&PiiType::BiometricTemplate),
+            "Should detect ISO/IEC 19794 FMR template, got {:?}",
+            types
+        );
+    }
+
+    #[test]
     fn test_scan_for_pii_ip_address() {
         let text = "Server: 192.168.1.1";
         let config = PiiScannerConfig::default().with_network(true);
