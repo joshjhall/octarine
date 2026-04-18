@@ -1,2 +1,4 @@
 - [Use just recipes](feedback_just_recipes.md) — reference just recipes in plans/docs, never raw cargo/bash commands
 - [Complete provider integration](feedback_complete_provider_integration.md) — new providers need builder, sanitization, and Layer 3 wrapping, not just detection
+- [Audit severity and dedup](feedback_audit_severity.md) — file all findings incl. low severity, but dedup aggressively against open issues
+- [GitHub status labels](feedback_github_labels.md) — verify all four `status/*` labels exist before `/next-issue-ship` (pr-pending was missing)
