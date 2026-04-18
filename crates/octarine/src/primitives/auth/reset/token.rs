@@ -105,7 +105,10 @@ impl ResetConfigBuilder {
 ///
 /// Reset tokens are secure, time-limited, single-use tokens for password
 /// reset flows. Each token has 256 bits of entropy by default.
-#[derive(Debug, Clone)]
+///
+/// `Debug` is implemented manually to mask the plaintext `token` field —
+/// derived `Debug` would leak the secret via logs, panics, or test output.
+#[derive(Clone)]
 pub struct ResetToken {
     /// The token value (URL-safe base64)
     token: String,
@@ -213,6 +216,23 @@ impl std::fmt::Display for ResetToken {
         } else {
             write!(f, "{}", &self.token)
         }
+    }
+}
+
+impl std::fmt::Debug for ResetToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Mask the plaintext token — same first-8-char scheme as Display.
+        let masked = self
+            .token
+            .get(..8)
+            .map_or_else(|| self.token.clone(), |prefix| format!("{prefix}..."));
+        f.debug_struct("ResetToken")
+            .field("token", &masked)
+            .field("user_id", &self.user_id)
+            .field("created_at", &self.created_at)
+            .field("lifetime", &self.lifetime)
+            .field("used", &self.used)
+            .finish()
     }
 }
 
@@ -571,6 +591,24 @@ mod tests {
 
         assert!(display.contains("..."));
         assert!(!display.contains(token.value()));
+    }
+
+    #[test]
+    fn test_debug_redacts_token() {
+        let config = ResetConfig::default();
+        let token = generate_reset_token("user123", &config);
+        let debug_str = format!("{token:?}");
+
+        // Full plaintext token must not appear anywhere in Debug output.
+        assert!(
+            !debug_str.contains(token.value()),
+            "Debug output leaked plaintext token: {debug_str}"
+        );
+        // Masked form is present.
+        assert!(debug_str.contains("..."));
+        // Non-secret fields still visible for diagnostics.
+        assert!(debug_str.contains("user123"));
+        assert!(debug_str.contains("ResetToken"));
     }
 
     #[test]
