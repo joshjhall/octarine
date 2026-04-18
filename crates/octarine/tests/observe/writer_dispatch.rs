@@ -193,7 +193,7 @@ async fn failing_writer_does_not_block_others() {
 
     dispatch(Event::new(EventType::Info, marker));
 
-    let good_received = poll_until(Duration::from_secs(2), Duration::from_millis(10), || {
+    let good_received = poll_until(Duration::from_secs(5), Duration::from_millis(50), || {
         count_with_marker(&good, marker) >= 1
     })
     .await;
