@@ -56,7 +56,7 @@ mod vin;
 pub use cache::{clear_government_caches, ssn_cache_stats, vin_cache_stats};
 
 // Re-export SSN functions
-pub use ssn::{is_itin_area, is_test_ssn, validate_ssn};
+pub use ssn::validate_ssn;
 
 // Re-export EIN functions
 pub use ein::{is_test_ein, is_valid_ein_prefix, validate_ein};
