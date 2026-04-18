@@ -88,14 +88,14 @@ just --list
 - **Main README**: [`../README.md`](../README.md)
 - **Security Policy**: [`../SECURITY.md`](../SECURITY.md)
 - **Changelog**: [`../CHANGELOG.md`](../CHANGELOG.md)
-- **Refactor Plan**: [`../src/refactor-plan.md`](../src/refactor-plan.md)
+- **Refactor Plan**: [`./architecture/refactor-plan.md`](./architecture/refactor-plan.md)
 
 ## For AI Assistants
 
 When working with this codebase, start with:
 
 1. [`../CLAUDE.md`](../CLAUDE.md) - Project-specific AI instructions
-1. [`../src/refactor-plan.md`](../src/refactor-plan.md) - Current refactor plan
+1. [`./architecture/refactor-plan.md`](./architecture/refactor-plan.md) - Current refactor plan
 1. [`./structure.md`](./structure.md) - Documentation organization
 1. Relevant section index for the task at hand
 

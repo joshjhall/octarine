@@ -11,7 +11,6 @@ This section covers the system design, patterns, and architectural decisions for
 - **Data Module Architecture**: [`../security/data-module-architecture.md`](../security/data-module-architecture.md) - Security/data module design
 - **Async + Observability Integration**: [`async-observability-integration.md`](./async-observability-integration.md) - Comprehensive async runtime instrumentation
 - **Refactor Plan**: [`refactor-plan.md`](./refactor-plan.md) - Current status and roadmap
-- **Full Plan**: [`../../src/refactor-plan.md`](../../src/refactor-plan.md) - Detailed refactor plan
 
 ## In This Section
 

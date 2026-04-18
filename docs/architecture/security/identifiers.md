@@ -879,7 +879,7 @@ ______________________________________________________________________
 
 ### Internal Documentation
 
-- `src/refactor-plan.md`: Module refactoring roadmap
+- `docs/architecture/refactor-plan.md`: Module refactoring roadmap
 - `src/security/data/MODULE_QUALITY_SCORECARD.md`: Quality metrics framework
 - `CLAUDE.md`: Zero-trust security philosophy
 - `docs/security/patterns/detection-validation-sanitization.md`: Layer separation philosophy

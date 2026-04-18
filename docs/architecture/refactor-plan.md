@@ -2,11 +2,7 @@
 
 ## Overview
 
-The octarine library is undergoing a comprehensive refactor to implement consistent patterns, improve security, and enhance observability. The complete plan is maintained in the source tree.
-
-## Current Plan
-
-📄 **[View the Unified Refactor Plan](../../src/refactor-plan.md)**
+The octarine library is undergoing a comprehensive refactor to implement consistent patterns, improve security, and enhance observability. This document is the canonical refactor plan.
 
 ## Key Objectives
 
@@ -97,12 +93,12 @@ Organize all input handling into:
 
 ## Contributing
 
-See the [Unified Refactor Plan](../../src/refactor-plan.md) for:
+See the companion guides for contribution details:
 
-- Detailed implementation guidelines
-- Code organization rules
-- Testing requirements
-- Documentation standards
+- [Module Patterns](./module-patterns.md) — code organization rules
+- [Testing Patterns](./testing-patterns.md) — testing requirements
+- [Layer Architecture](./layer-architecture.md) — three-layer rules
+- [`../../CLAUDE.md`](../../CLAUDE.md) — AI-assistant and contributor workflow
 
 ## Related Documentation
 
