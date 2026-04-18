@@ -4,7 +4,6 @@ Comprehensive security implementation guides, patterns, and checklists for octar
 
 ## Quick Links
 
-- **Data Module Architecture**: [`data-module-architecture.md`](./data-module-architecture.md) - Comprehensive data security operations
 - **Security Checklist**: [`checklist.md`](./checklist.md) - Pre-deployment verification
 - **OWASP Compliance**: [`owasp/`](./owasp/) - OWASP Top 10 implementation
 - **Common Patterns**: [`patterns/`](./patterns/) - Reusable security patterns
