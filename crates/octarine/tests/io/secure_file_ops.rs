@@ -205,6 +205,166 @@ async fn test_async_exists() {
     assert!(!ops.exists(missing).await.expect("not exists"));
 }
 
+/// Async read_file_string returns UTF-8 content.
+#[tokio::test]
+async fn test_async_read_file_string() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_string.txt");
+
+    let ops = SecureFileOps::new();
+    ops.write_file(path.clone(), b"hello async string".to_vec())
+        .await
+        .expect("async write");
+
+    let contents = ops.read_file_string(path).await.expect("async read string");
+    assert_eq!(contents, "hello async string");
+}
+
+/// Async read_file_string rejects non-UTF-8 content.
+#[tokio::test]
+async fn test_async_read_file_string_rejects_invalid_utf8() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("invalid_utf8.bin");
+
+    std::fs::write(&path, [0xFF, 0xFE, 0x00, 0x80]).expect("write invalid UTF-8");
+
+    let ops = SecureFileOps::new();
+    assert!(
+        ops.read_file_string(path).await.is_err(),
+        "Non-UTF-8 should be rejected"
+    );
+}
+
+/// Async read_validated_image accepts PNG.
+#[tokio::test]
+async fn test_async_read_validated_image_accepts_png() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_valid.png");
+
+    std::fs::write(&path, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).expect("write PNG");
+
+    let ops = SecureFileOps::new();
+    let data = ops
+        .read_validated_image(path)
+        .await
+        .expect("async read PNG");
+    assert_eq!(data.len(), 8);
+}
+
+/// Async read_validated_image rejects ELF disguised as image.
+#[tokio::test]
+async fn test_async_read_validated_image_rejects_elf() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_fake.png");
+
+    std::fs::write(&path, [0x7F, 0x45, 0x4C, 0x46, 0x02, 0x01]).expect("write ELF");
+
+    let ops = SecureFileOps::new();
+    assert!(
+        ops.read_validated_image(path).await.is_err(),
+        "ELF should not pass async image validation"
+    );
+}
+
+/// Async read_safe accepts PNG.
+#[tokio::test]
+async fn test_async_read_safe_accepts_image() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_safe.png");
+
+    std::fs::write(&path, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).expect("write PNG");
+
+    let ops = SecureFileOps::new();
+    ops.read_safe(path).await.expect("PNG should be safe");
+}
+
+/// Async read_safe rejects script.
+#[tokio::test]
+async fn test_async_read_safe_rejects_script() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_dangerous.sh");
+
+    std::fs::write(&path, b"#!/bin/bash\necho pwned").expect("write script");
+
+    let ops = SecureFileOps::new();
+    assert!(
+        ops.read_safe(path).await.is_err(),
+        "Script should be rejected as dangerous"
+    );
+}
+
+/// Async write_file_with_options writes with custom options.
+#[tokio::test]
+async fn test_async_write_file_with_options() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_options.txt");
+
+    let ops = SecureFileOps::new();
+    ops.write_file_with_options(
+        path.clone(),
+        b"config data".to_vec(),
+        WriteOptions::for_config(),
+    )
+    .await
+    .expect("async write with options");
+
+    let contents = ops.read_file(path).await.expect("async read");
+    assert_eq!(contents, b"config data");
+}
+
+/// Async write_file_string writes string content.
+#[tokio::test]
+async fn test_async_write_file_string() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_string_write.txt");
+
+    let ops = SecureFileOps::new();
+    ops.write_file_string(path.clone(), "async string content".to_string())
+        .await
+        .expect("async write string");
+
+    let contents = ops.read_file_string(path).await.expect("async read string");
+    assert_eq!(contents, "async string content");
+}
+
+/// Async write_secrets writes with 0600 permissions.
+#[cfg(unix)]
+#[tokio::test]
+async fn test_async_write_secrets() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_secret.pem");
+
+    let ops = SecureFileOps::new();
+    ops.write_secrets(path.clone(), b"async-secret-key".to_vec())
+        .await
+        .expect("async write secrets");
+
+    let contents = ops.read_file(path.clone()).await.expect("async read");
+    assert_eq!(contents, b"async-secret-key");
+
+    let mode = std::fs::metadata(&path)
+        .expect("metadata")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o600, "Secrets should have 0600 permissions");
+}
+
+/// Async detect_type identifies file format.
+#[tokio::test]
+async fn test_async_detect_type() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("async_archive.zip");
+
+    std::fs::write(&path, [0x50, 0x4B, 0x03, 0x04, 0x00, 0x00]).expect("write ZIP");
+
+    let ops = SecureFileOps::new();
+    let result = ops.detect_type(path).await.expect("async detect");
+    assert_eq!(result.file_type, Some(MagicFileType::ZipArchive));
+}
+
 /// file_size returns correct size.
 #[test]
 fn test_file_size() {
@@ -216,6 +376,19 @@ fn test_file_size() {
     let ops = SecureFileOps::new();
     let size = ops.file_size_sync(&path).expect("get size");
     assert_eq!(size, 1024);
+}
+
+/// Async file_size returns correct size.
+#[tokio::test]
+async fn test_async_file_size() {
+    let dir = tempdir().expect("create temp dir");
+    let path = dir.path().join("sized_async.bin");
+
+    std::fs::write(&path, vec![0u8; 2048]).expect("write 2KB file");
+
+    let ops = SecureFileOps::new();
+    let size = ops.file_size(path).await.expect("async file size");
+    assert_eq!(size, 2048);
 }
 
 /// set_mode via SecureFileOps changes permissions.
