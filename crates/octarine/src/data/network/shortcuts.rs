@@ -8,13 +8,7 @@
 
 use std::borrow::Cow;
 
-use crate::primitives::data::network::{
-    NormalizeUrlPathOptions as PrimitiveOptions, PathPattern as PrimitivePathPattern,
-    normalize_path_segments as prim_normalize_segments,
-    normalize_path_segments_with_patterns as prim_normalize_segments_with_patterns,
-    normalize_url_path as prim_normalize, normalize_url_path_with_options as prim_normalize_opts,
-};
-
+use super::builder::UrlNormalizationBuilder;
 use super::types::{NormalizeUrlPathOptions, PathPattern};
 
 /// Normalize a URL path to a canonical form
@@ -48,7 +42,7 @@ use super::types::{NormalizeUrlPathOptions, PathPattern};
 /// ```
 #[must_use]
 pub fn normalize_url_path(path: &str) -> Cow<'_, str> {
-    prim_normalize(path)
+    UrlNormalizationBuilder::new().normalize(path)
 }
 
 /// Normalize a URL path with custom options
@@ -86,13 +80,9 @@ pub fn normalize_url_path_with_options<'a>(
     path: &'a str,
     options: &NormalizeUrlPathOptions,
 ) -> Cow<'a, str> {
-    let prim_opts = PrimitiveOptions {
-        remove_trailing_slash: options.remove_trailing_slash,
-        collapse_slashes: options.collapse_slashes,
-        lowercase: options.lowercase,
-        remove_dot_segments: options.remove_dot_segments,
-    };
-    prim_normalize_opts(path, &prim_opts)
+    UrlNormalizationBuilder::new()
+        .with_options(options.clone())
+        .normalize(path)
 }
 
 /// Normalize path segments by replacing dynamic values with placeholders
@@ -134,7 +124,7 @@ pub fn normalize_url_path_with_options<'a>(
 /// ```
 #[must_use]
 pub fn normalize_path_segments(path: &str) -> Cow<'_, str> {
-    prim_normalize_segments(path)
+    UrlNormalizationBuilder::new().normalize_path_segments(path)
 }
 
 /// Normalize path segments using custom patterns with auto-detection fallback
@@ -177,10 +167,7 @@ pub fn normalize_path_segments_with_patterns<'a>(
     path: &'a str,
     patterns: &[PathPattern],
 ) -> Cow<'a, str> {
-    // Convert wrapper types to primitives
-    let prim_patterns: Vec<PrimitivePathPattern> =
-        patterns.iter().map(|p| p.as_ref().clone()).collect();
-    prim_normalize_segments_with_patterns(path, &prim_patterns)
+    UrlNormalizationBuilder::new().normalize_path_segments_with_patterns(path, patterns)
 }
 
 #[cfg(test)]
