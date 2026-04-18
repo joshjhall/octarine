@@ -1,0 +1,41 @@
+name: Doc Links
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/doc-links.yml'
+      - '.lycheeignore'
+      - 'lychee.toml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/doc-links.yml'
+      - '.lycheeignore'
+      - 'lychee.toml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-links:
+    name: Check internal markdown links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline
+            --no-progress
+            --include-fragments
+            --verbose
+            './**/*.md'
+          fail: true
