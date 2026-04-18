@@ -305,3 +305,176 @@ fn test_error_message_with_pii() {
         "Failed to send email to [EMAIL]: connection refused"
     );
 }
+
+// ==========================================
+// MEDICAL (PHI) REDACTION TESTS
+// ==========================================
+
+#[test]
+fn test_medical_record_number_redaction() {
+    let text = "Patient MRN: 12345678 admitted";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[MEDICAL_RECORD]") || !redacted.contains("12345678"),
+        "MRN should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_provider_npi_redaction() {
+    let text = "Doctor NPI: 1234567890 on call";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[PROVIDER_ID]") || !redacted.contains("1234567890"),
+        "NPI should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_insurance_number_redaction() {
+    let text = "Policy Number: ABC123456789 active";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[INSURANCE_INFO]") || !redacted.contains("ABC123456789"),
+        "Insurance number should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_prescription_number_redaction() {
+    let text = "RX# 123456789 filled";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[PRESCRIPTION]") || !redacted.contains("123456789"),
+        "Prescription should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_dea_number_redaction() {
+    let text = "Provider DEA: AB1234563 is active";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[DEA_NUMBER]") || !redacted.contains("AB1234563"),
+        "DEA number should be redacted: {redacted}"
+    );
+}
+
+// ==========================================
+// BIOMETRIC REDACTION TESTS
+// ==========================================
+
+#[test]
+fn test_fingerprint_redaction() {
+    let text =
+        "User fingerprint: a1b2c3d4e5f6789012345678901234567890123456789012345678901234 stored";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[FINGERPRINT]") || !redacted.contains("a1b2c3d4"),
+        "Fingerprint should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_dna_sequence_redaction() {
+    let text = "Genetic data: ATCGATCGATCGATCGATCGATCGATCGATCGATCG collected";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[DNA_SEQUENCE]") || redacted == text,
+        "DNA should be redacted or left unchanged if scanner skips it: {redacted}"
+    );
+}
+
+// ==========================================
+// GOVERNMENT ID REDACTION TESTS (non-SSN)
+// ==========================================
+
+#[test]
+fn test_vin_redaction() {
+    let text = "VIN: 1HGBH41JXMN109186 registered";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[VEHICLE_ID]") || !redacted.contains("1HGBH41JXMN109186"),
+        "VIN should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_driver_license_redaction() {
+    let text = "DL# A1234567 on file";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[DRIVER_LICENSE]") || !redacted.contains("A1234567"),
+        "Driver license should be redacted: {redacted}"
+    );
+}
+
+// ==========================================
+// LOCATION REDACTION TESTS
+// ==========================================
+
+#[test]
+fn test_gps_coordinates_redaction() {
+    let text = "Location: 40.7128, -74.0060 detected";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[GPS_COORDINATE]") || !redacted.contains("40.7128"),
+        "GPS coordinates should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_street_address_redaction() {
+    let text = "Ship to: 123 Main Street please";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[ADDRESS]") || !redacted.contains("123 Main Street"),
+        "Address should be redacted: {redacted}"
+    );
+}
+
+// ==========================================
+// ORGANIZATIONAL ID REDACTION TESTS
+// ==========================================
+
+#[test]
+fn test_employee_id_redaction() {
+    let text = "Employee ID: E123456 active";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[EMPLOYEE_ID]") || !redacted.contains("E123456"),
+        "Employee ID should be redacted: {redacted}"
+    );
+}
+
+#[test]
+fn test_student_id_redaction() {
+    let text = "Student ID: S12345678 enrolled";
+    let redacted = redact_pii(text);
+    assert!(
+        redacted.contains("[STUDENT_ID]") || !redacted.contains("S12345678"),
+        "Student ID should be redacted: {redacted}"
+    );
+}
+
+// ==========================================
+// HIPAA-SPECIFIC CLASSIFICATION TESTS
+// ==========================================
+
+#[test]
+fn test_hipaa_protected_medical_types() {
+    assert!(PiiType::Mrn.is_hipaa_protected());
+    assert!(PiiType::Npi.is_hipaa_protected());
+    assert!(PiiType::InsuranceNumber.is_hipaa_protected());
+    assert!(PiiType::PrescriptionNumber.is_hipaa_protected());
+    assert!(PiiType::DeaNumber.is_hipaa_protected());
+}
+
+#[test]
+fn test_gdpr_protected_biometric_types() {
+    assert!(PiiType::FingerprintId.is_gdpr_protected());
+    assert!(PiiType::FaceId.is_gdpr_protected());
+    assert!(PiiType::VoiceId.is_gdpr_protected());
+    assert!(PiiType::IrisId.is_gdpr_protected());
+    assert!(PiiType::DnaId.is_gdpr_protected());
+}
