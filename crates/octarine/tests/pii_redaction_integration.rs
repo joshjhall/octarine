@@ -478,3 +478,98 @@ fn test_gdpr_protected_biometric_types() {
     assert!(PiiType::IrisId.is_gdpr_protected());
     assert!(PiiType::DnaId.is_gdpr_protected());
 }
+
+// ==========================================
+// COUNTRY-SPECIFIC GOVERNMENT ID TESTS
+// ==========================================
+// Covers the 11 country-specific IDs wired into scan_government. Sample
+// values come from the validation unit tests in
+// crates/octarine/src/primitives/identifiers/government/validation/*.rs.
+
+#[test]
+fn test_scan_detects_korea_rrn() {
+    let text = "KR ID: 900115-1234567";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::KoreaRrn),
+        "Expected KoreaRrn in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_italy_fiscal_code() {
+    // RSSMRA85M01H501Z — canonical sample from validation tests
+    let text = "CF: RSSMRA85M01H501Z";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::ItalyFiscalCode),
+        "Expected ItalyFiscalCode in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_india_aadhaar() {
+    // 2345 6789 0123 — valid 12-digit Aadhaar (passes format check)
+    let text = "Aadhaar: 2345 6789 0123";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::IndiaAadhaar),
+        "Expected IndiaAadhaar in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_spain_nif() {
+    // Valid 8-digit + letter NIF pattern
+    let text = "NIF: 12345678Z";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::SpainNif),
+        "Expected SpainNif in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_country_ids_flagged_contains_pii() {
+    // Text with multiple country-specific IDs — all must be classified as
+    // PII so that contains_pii fires downstream. Text-level redaction for
+    // country-specific IDs is a separate primitive-layer gap
+    // (redact_all_government_ids_in_text_with_policy only wires 6 types);
+    // this test only asserts classification/observability.
+    let text = "RRN 900115-1234567 and CF RSSMRA85M01H501Z and NIF 12345678Z";
+    let pii_types = scan_for_pii(text);
+
+    assert!(pii_types.contains(&PiiType::KoreaRrn));
+    assert!(pii_types.contains(&PiiType::ItalyFiscalCode));
+    assert!(pii_types.contains(&PiiType::SpainNif));
+}
+
+#[test]
+fn test_eu_country_ids_are_gdpr_protected() {
+    // EU-member government IDs must be flagged under GDPR
+    assert!(PiiType::FinlandHetu.is_gdpr_protected());
+    assert!(PiiType::PolandPesel.is_gdpr_protected());
+    assert!(PiiType::ItalyFiscalCode.is_gdpr_protected());
+    assert!(PiiType::SpainNif.is_gdpr_protected());
+    assert!(PiiType::SpainNie.is_gdpr_protected());
+}
+
+#[test]
+fn test_non_eu_country_ids_high_risk_only() {
+    // Non-EU regimes (PIPA/Privacy Act 1988/DPDPA/PDPA) aren't modeled,
+    // so these are high-risk but NOT GDPR-protected
+    for pii in [
+        PiiType::KoreaRrn,
+        PiiType::AustraliaTfn,
+        PiiType::AustraliaAbn,
+        PiiType::IndiaAadhaar,
+        PiiType::IndiaPan,
+        PiiType::SingaporeNric,
+    ] {
+        assert!(pii.is_high_risk(), "{pii:?} should be high-risk");
+        assert!(
+            !pii.is_gdpr_protected(),
+            "{pii:?} should not be GDPR-protected"
+        );
+    }
+}

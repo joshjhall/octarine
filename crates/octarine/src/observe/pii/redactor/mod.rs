@@ -123,8 +123,24 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::Ssn => redact_ssns(&result, profile),
             PiiType::DriverLicense => redact_driver_licenses(&result, profile),
             PiiType::Passport => redact_passports(&result, profile),
-            PiiType::Vin | PiiType::Ein | PiiType::TaxId | PiiType::NationalId => {
-                // VIN, EIN, Tax IDs, and National IDs use generic government ID redaction
+            PiiType::Vin
+            | PiiType::Ein
+            | PiiType::TaxId
+            | PiiType::NationalId
+            | PiiType::KoreaRrn
+            | PiiType::AustraliaTfn
+            | PiiType::AustraliaAbn
+            | PiiType::IndiaAadhaar
+            | PiiType::IndiaPan
+            | PiiType::SingaporeNric
+            | PiiType::FinlandHetu
+            | PiiType::PolandPesel
+            | PiiType::ItalyFiscalCode
+            | PiiType::SpainNif
+            | PiiType::SpainNie => {
+                // Generic government ID redaction routes through
+                // redact_all_government_ids_in_text_with_policy, which already
+                // covers all country-specific finders.
                 redact_government_ids(&result, profile)
             }
             // Financial

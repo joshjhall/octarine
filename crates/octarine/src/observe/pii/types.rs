@@ -64,6 +64,28 @@ pub enum PiiType {
     TaxId,
     /// National ID number (non-US government identifiers)
     NationalId,
+    /// South Korea Resident Registration Number (RRN)
+    KoreaRrn,
+    /// Australian Tax File Number (TFN)
+    AustraliaTfn,
+    /// Australian Business Number (ABN)
+    AustraliaAbn,
+    /// Indian Aadhaar number (Verhoeff checksum)
+    IndiaAadhaar,
+    /// Indian Permanent Account Number (PAN)
+    IndiaPan,
+    /// Singapore NRIC / FIN
+    SingaporeNric,
+    /// Finnish personal identity code (HETU)
+    FinlandHetu,
+    /// Polish personal identity number (PESEL)
+    PolandPesel,
+    /// Italian Codice Fiscale
+    ItalyFiscalCode,
+    /// Spanish NIF (Numero de Identificacion Fiscal)
+    SpainNif,
+    /// Spanish NIE (Numero de Identidad de Extranjero)
+    SpainNie,
 
     // =========================================================================
     // Medical Domain (PHI - Protected Health Information)
@@ -201,6 +223,17 @@ impl PiiType {
             Self::Ein => "ein",
             Self::TaxId => "tax_id",
             Self::NationalId => "national_id",
+            Self::KoreaRrn => "korea_rrn",
+            Self::AustraliaTfn => "australia_tfn",
+            Self::AustraliaAbn => "australia_abn",
+            Self::IndiaAadhaar => "india_aadhaar",
+            Self::IndiaPan => "india_pan",
+            Self::SingaporeNric => "singapore_nric",
+            Self::FinlandHetu => "finland_hetu",
+            Self::PolandPesel => "poland_pesel",
+            Self::ItalyFiscalCode => "italy_fiscal_code",
+            Self::SpainNif => "spain_nif",
+            Self::SpainNie => "spain_nie",
             // Medical
             Self::Mrn => "mrn",
             Self::Npi => "npi",
@@ -265,7 +298,18 @@ impl PiiType {
             | Self::Vin
             | Self::Ein
             | Self::TaxId
-            | Self::NationalId => "government",
+            | Self::NationalId
+            | Self::KoreaRrn
+            | Self::AustraliaTfn
+            | Self::AustraliaAbn
+            | Self::IndiaAadhaar
+            | Self::IndiaPan
+            | Self::SingaporeNric
+            | Self::FinlandHetu
+            | Self::PolandPesel
+            | Self::ItalyFiscalCode
+            | Self::SpainNif
+            | Self::SpainNie => "government",
             Self::Mrn
             | Self::Npi
             | Self::InsuranceNumber
@@ -313,6 +357,9 @@ impl PiiType {
             Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken |
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
+            Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
+            Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
+            Self::SpainNif | Self::SpainNie |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
@@ -333,6 +380,10 @@ impl PiiType {
             Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username |
             // Government IDs
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::TaxId | Self::NationalId |
+            // EU-member country-specific government IDs (non-EU IDs like KoreaRrn,
+            // AustraliaTfn/Abn, IndiaAadhaar/Pan, SingaporeNric are protected by
+            // their own regimes — PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
+            Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode | Self::SpainNif | Self::SpainNie |
             // Location
             Self::IpAddress | Self::GpsCoordinates | Self::Address | Self::PostalCode |
             // Biometric
@@ -454,18 +505,17 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::Passport => Self::Passport,
             IdentifierType::TaxId => Self::TaxId,
             IdentifierType::NationalId => Self::NationalId,
-            // fallback: no dedicated PiiType variants for country-specific IDs
-            IdentifierType::KoreaRrn
-            | IdentifierType::AustraliaTfn
-            | IdentifierType::AustraliaAbn
-            | IdentifierType::IndiaAadhaar
-            | IdentifierType::IndiaPan
-            | IdentifierType::SingaporeNric
-            | IdentifierType::FinlandHetu
-            | IdentifierType::PolandPesel
-            | IdentifierType::ItalyFiscalCode
-            | IdentifierType::SpainNif
-            | IdentifierType::SpainNie => Self::NationalId,
+            IdentifierType::KoreaRrn => Self::KoreaRrn,
+            IdentifierType::AustraliaTfn => Self::AustraliaTfn,
+            IdentifierType::AustraliaAbn => Self::AustraliaAbn,
+            IdentifierType::IndiaAadhaar => Self::IndiaAadhaar,
+            IdentifierType::IndiaPan => Self::IndiaPan,
+            IdentifierType::SingaporeNric => Self::SingaporeNric,
+            IdentifierType::FinlandHetu => Self::FinlandHetu,
+            IdentifierType::PolandPesel => Self::PolandPesel,
+            IdentifierType::ItalyFiscalCode => Self::ItalyFiscalCode,
+            IdentifierType::SpainNif => Self::SpainNif,
+            IdentifierType::SpainNie => Self::SpainNie,
 
             // Organizational
             IdentifierType::EmployeeId => Self::EmployeeId,
@@ -655,6 +705,48 @@ mod tests {
     }
 
     #[test]
+    fn test_country_specific_government_classifications() {
+        // EU-member IDs are GDPR-protected
+        for pii in [
+            PiiType::FinlandHetu,
+            PiiType::PolandPesel,
+            PiiType::ItalyFiscalCode,
+            PiiType::SpainNif,
+            PiiType::SpainNie,
+        ] {
+            assert_eq!(pii.domain(), "government", "{pii:?} domain");
+            assert!(pii.is_high_risk(), "{pii:?} should be high-risk");
+            assert!(pii.is_gdpr_protected(), "{pii:?} is EU, expect GDPR");
+            assert!(!pii.is_pci_protected(), "{pii:?} not PCI");
+            assert!(!pii.is_hipaa_protected(), "{pii:?} not HIPAA");
+            assert!(!pii.is_secret(), "{pii:?} not a secret");
+        }
+
+        // Non-EU IDs are high-risk but not GDPR-protected (PIPA/PDPA/DPDPA/
+        // Privacy Act 1988 are not yet modeled in the compliance flags)
+        for pii in [
+            PiiType::KoreaRrn,
+            PiiType::AustraliaTfn,
+            PiiType::AustraliaAbn,
+            PiiType::IndiaAadhaar,
+            PiiType::IndiaPan,
+            PiiType::SingaporeNric,
+        ] {
+            assert_eq!(pii.domain(), "government", "{pii:?} domain");
+            assert!(pii.is_high_risk(), "{pii:?} should be high-risk");
+            assert!(!pii.is_gdpr_protected(), "{pii:?} non-EU, no GDPR");
+            assert!(!pii.is_pci_protected(), "{pii:?} not PCI");
+            assert!(!pii.is_hipaa_protected(), "{pii:?} not HIPAA");
+            assert!(!pii.is_secret(), "{pii:?} not a secret");
+        }
+
+        // Names follow the IdentifierType variant naming
+        assert_eq!(PiiType::KoreaRrn.name(), "korea_rrn");
+        assert_eq!(PiiType::ItalyFiscalCode.name(), "italy_fiscal_code");
+        assert_eq!(PiiType::SpainNie.name(), "spain_nie");
+    }
+
+    #[test]
     fn test_hostname_classifications() {
         assert_eq!(PiiType::Hostname.name(), "hostname");
         assert_eq!(PiiType::Hostname.domain(), "network");
@@ -803,6 +895,38 @@ mod tests {
             PiiType::from(IdentifierType::NationalId),
             PiiType::NationalId
         );
+        assert_eq!(PiiType::from(IdentifierType::KoreaRrn), PiiType::KoreaRrn);
+        assert_eq!(
+            PiiType::from(IdentifierType::AustraliaTfn),
+            PiiType::AustraliaTfn
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::AustraliaAbn),
+            PiiType::AustraliaAbn
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::IndiaAadhaar),
+            PiiType::IndiaAadhaar
+        );
+        assert_eq!(PiiType::from(IdentifierType::IndiaPan), PiiType::IndiaPan);
+        assert_eq!(
+            PiiType::from(IdentifierType::SingaporeNric),
+            PiiType::SingaporeNric
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::FinlandHetu),
+            PiiType::FinlandHetu
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::PolandPesel),
+            PiiType::PolandPesel
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::ItalyFiscalCode),
+            PiiType::ItalyFiscalCode
+        );
+        assert_eq!(PiiType::from(IdentifierType::SpainNif), PiiType::SpainNif);
+        assert_eq!(PiiType::from(IdentifierType::SpainNie), PiiType::SpainNie);
 
         // Organizational
         assert_eq!(
@@ -917,27 +1041,6 @@ mod tests {
                 PiiType::from(id.clone()),
                 PiiType::ApiKey,
                 "{id:?} should fall back to ApiKey"
-            );
-        }
-
-        // Country-specific national-ID fallbacks (all collapse to NationalId)
-        for id in [
-            IdentifierType::KoreaRrn,
-            IdentifierType::AustraliaTfn,
-            IdentifierType::AustraliaAbn,
-            IdentifierType::IndiaAadhaar,
-            IdentifierType::IndiaPan,
-            IdentifierType::SingaporeNric,
-            IdentifierType::FinlandHetu,
-            IdentifierType::PolandPesel,
-            IdentifierType::ItalyFiscalCode,
-            IdentifierType::SpainNif,
-            IdentifierType::SpainNie,
-        ] {
-            assert_eq!(
-                PiiType::from(id.clone()),
-                PiiType::NationalId,
-                "{id:?} should fall back to NationalId"
             );
         }
 

@@ -75,6 +75,39 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     if !government.find_vehicle_ids_in_text(text).is_empty() {
         pii_types.push(PiiType::Vin);
     }
+    if !government.find_korea_rrns_in_text(text).is_empty() {
+        pii_types.push(PiiType::KoreaRrn);
+    }
+    if !government.find_australia_tfns_in_text(text).is_empty() {
+        pii_types.push(PiiType::AustraliaTfn);
+    }
+    if !government.find_australia_abns_in_text(text).is_empty() {
+        pii_types.push(PiiType::AustraliaAbn);
+    }
+    if !government.find_india_aadhaars_in_text(text).is_empty() {
+        pii_types.push(PiiType::IndiaAadhaar);
+    }
+    if !government.find_india_pans_in_text(text).is_empty() {
+        pii_types.push(PiiType::IndiaPan);
+    }
+    if !government.find_singapore_nrics_in_text(text).is_empty() {
+        pii_types.push(PiiType::SingaporeNric);
+    }
+    if !government.find_finland_hetus_in_text(text).is_empty() {
+        pii_types.push(PiiType::FinlandHetu);
+    }
+    if !government.find_poland_pesels_in_text(text).is_empty() {
+        pii_types.push(PiiType::PolandPesel);
+    }
+    if !government.find_italy_fiscal_codes_in_text(text).is_empty() {
+        pii_types.push(PiiType::ItalyFiscalCode);
+    }
+    if !government.find_spain_nifs_in_text(text).is_empty() {
+        pii_types.push(PiiType::SpainNif);
+    }
+    if !government.find_spain_nies_in_text(text).is_empty() {
+        pii_types.push(PiiType::SpainNie);
+    }
 }
 
 /// Scan for medical PII (MRN, NPI, insurance, ICD codes, prescriptions)
@@ -307,16 +340,13 @@ pub(super) fn is_pii_present_with_config_impl(text: &str, config: &PiiScannerCon
         }
     }
 
-    // Government domain
+    // Government domain — is_government_present aggregates all 17 government
+    // finders (including country-specific variants) via
+    // find_all_government_ids_in_text, so future additions are covered
+    // automatically.
     if config.scan_government {
         let government = GovernmentIdentifierBuilder::new();
-        if !government.find_ssns_in_text(text).is_empty()
-            || !government.find_driver_licenses_in_text(text).is_empty()
-            || !government.find_passports_in_text(text).is_empty()
-            || !government.find_tax_ids_in_text(text).is_empty()
-            || !government.find_national_ids_in_text(text).is_empty()
-            || !government.find_vehicle_ids_in_text(text).is_empty()
-        {
+        if government.is_government_present(text) {
             return true;
         }
     }
