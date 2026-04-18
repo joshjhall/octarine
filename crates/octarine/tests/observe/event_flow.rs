@@ -240,6 +240,8 @@ impl Writer for CountingWriter {
 
 #[test]
 fn test_writer_registration() {
+    super::ensure_test_dispatcher();
+
     let (writer, _count) = CountingWriter::new("test_counting_writer");
     register_writer(Box::new(writer));
 
@@ -255,6 +257,8 @@ fn test_writer_registration() {
 
 #[test]
 fn test_writer_health_monitoring() {
+    super::ensure_test_dispatcher();
+
     let (writer, _count) = CountingWriter::new("health_test_writer");
     register_writer(Box::new(writer));
 
@@ -271,6 +275,8 @@ fn test_writer_health_monitoring() {
 
 #[test]
 fn test_logging_shortcuts_do_not_panic() {
+    super::ensure_test_dispatcher();
+
     // These should execute without panicking
     // Note: They dispatch to async queue, so we can't verify output here
     debug("test", "Debug message");
@@ -282,6 +288,8 @@ fn test_logging_shortcuts_do_not_panic() {
 
 #[test]
 fn test_logging_with_empty_messages() {
+    super::ensure_test_dispatcher();
+
     // Empty messages should be handled gracefully
     info("test", "");
     warn("", "Empty operation");
@@ -289,6 +297,8 @@ fn test_logging_with_empty_messages() {
 
 #[test]
 fn test_logging_with_special_characters() {
+    super::ensure_test_dispatcher();
+
     // Special characters should not cause issues
     info("test", "Message with \"quotes\" and \\ backslash");
     info("test", "Message with\nnewline");

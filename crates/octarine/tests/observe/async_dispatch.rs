@@ -21,6 +21,8 @@ use std::time::Duration;
 
 #[test]
 fn test_dispatch_stats_available() {
+    super::ensure_test_dispatcher();
+
     let stats = dispatcher_stats();
 
     // Stats should have reasonable values
@@ -30,6 +32,8 @@ fn test_dispatch_stats_available() {
 
 #[test]
 fn test_dispatch_health_check() {
+    super::ensure_test_dispatcher();
+
     // Health checks should return without panic
     let is_healthy = dispatcher_is_healthy();
     let is_degraded = dispatcher_is_degraded();
@@ -54,6 +58,8 @@ fn test_dispatch_health_check() {
 
 #[test]
 fn test_dispatch_capacity() {
+    super::ensure_test_dispatcher();
+
     let stats = dispatcher_stats();
 
     // Channel capacity should be 10,000 as per implementation
@@ -69,6 +75,8 @@ fn test_dispatch_capacity() {
 
 #[test]
 fn test_logging_shortcuts_queue_events() {
+    super::ensure_test_dispatcher();
+
     let stats_before = dispatcher_stats();
 
     // Queue some events via logging shortcuts
@@ -94,6 +102,8 @@ fn test_logging_shortcuts_queue_events() {
 
 #[test]
 fn test_many_events_queued_successfully() {
+    super::ensure_test_dispatcher();
+
     let stats_before = dispatcher_stats();
 
     // Queue many events rapidly
@@ -121,6 +131,8 @@ fn test_many_events_queued_successfully() {
 
 #[test]
 fn test_health_score_formula() {
+    super::ensure_test_dispatcher();
+
     let score = dispatcher_health_score();
 
     // Health score is calculated as:
@@ -140,6 +152,8 @@ fn test_health_score_formula() {
 
 #[test]
 fn test_health_thresholds() {
+    super::ensure_test_dispatcher();
+
     // Document the health thresholds
     // is_healthy: drop_rate < 5%
     // is_degraded: drop_rate > 1% OR retry_rate > 10%
@@ -176,6 +190,8 @@ fn test_health_thresholds() {
 
 #[tokio::test]
 async fn test_dispatch_from_async_context() {
+    super::ensure_test_dispatcher();
+
     let stats_before = dispatcher_stats();
 
     // Queue events from async context
@@ -198,6 +214,8 @@ async fn test_dispatch_from_async_context() {
 
 #[tokio::test]
 async fn test_concurrent_dispatch_from_tasks() {
+    super::ensure_test_dispatcher();
+
     let stats_before = dispatcher_stats();
 
     // Spawn multiple tasks that all log concurrently
@@ -236,6 +254,8 @@ async fn test_concurrent_dispatch_from_tasks() {
 
 #[test]
 fn test_dispatch_handles_burst_load() {
+    super::ensure_test_dispatcher();
+
     let stats_before = dispatcher_stats();
 
     // Send a burst of events
@@ -263,6 +283,8 @@ fn test_dispatch_handles_burst_load() {
 
 #[test]
 fn test_drops_are_tracked() {
+    super::ensure_test_dispatcher();
+
     let stats = dispatcher_stats();
 
     // Drops should be tracked (may be 0 if no backpressure)
@@ -279,6 +301,8 @@ fn test_drops_are_tracked() {
 
 #[test]
 fn test_stats_are_monotonic() {
+    super::ensure_test_dispatcher();
+
     let stats1 = dispatcher_stats();
 
     // Queue more events
@@ -300,6 +324,8 @@ fn test_stats_are_monotonic() {
 
 #[test]
 fn test_stats_capacity_is_constant() {
+    super::ensure_test_dispatcher();
+
     let stats1 = dispatcher_stats();
     info("capacity_test", "Test event");
     let stats2 = dispatcher_stats();
@@ -316,6 +342,8 @@ fn test_stats_capacity_is_constant() {
 
 #[test]
 fn test_empty_message_dispatch() {
+    super::ensure_test_dispatcher();
+
     // Empty messages should be handled
     info("edge_test", "");
 
@@ -324,6 +352,8 @@ fn test_empty_message_dispatch() {
 
 #[test]
 fn test_large_message_dispatch() {
+    super::ensure_test_dispatcher();
+
     // Large messages should be handled
     let large_message = "x".repeat(10_000);
     info("large_test", &large_message);
@@ -333,6 +363,8 @@ fn test_large_message_dispatch() {
 
 #[test]
 fn test_unicode_message_dispatch() {
+    super::ensure_test_dispatcher();
+
     // Unicode should be handled
     info("unicode_test", "日本語メッセージ 🎉 émoji");
 
@@ -341,6 +373,8 @@ fn test_unicode_message_dispatch() {
 
 #[test]
 fn test_special_chars_dispatch() {
+    super::ensure_test_dispatcher();
+
     // Special characters should be handled
     info("special_test", "Line1\nLine2\tTabbed\r\nWindows");
     info("special_test", "Quotes: \"double\" and 'single'");
@@ -355,6 +389,8 @@ fn test_special_chars_dispatch() {
 
 #[test]
 fn test_extended_stats_available() {
+    super::ensure_test_dispatcher();
+
     let stats = dispatcher_stats_extended();
 
     // Extended stats should have all fields
@@ -367,6 +403,8 @@ fn test_extended_stats_available() {
 
 #[test]
 fn test_extended_stats_health_methods() {
+    super::ensure_test_dispatcher();
+
     let stats = dispatcher_stats_extended();
 
     // Health score should match DispatcherStats method
@@ -387,6 +425,8 @@ fn test_extended_stats_health_methods() {
 
 #[test]
 fn test_overflow_strategy_accessor() {
+    super::ensure_test_dispatcher();
+
     let strategy = dispatcher_overflow_strategy();
 
     // Default strategy should be RetryThenDrop
@@ -399,6 +439,8 @@ fn test_overflow_strategy_accessor() {
 
 #[test]
 fn test_capacity_accessor() {
+    super::ensure_test_dispatcher();
+
     let capacity = dispatcher_capacity();
 
     // Should match stats capacity

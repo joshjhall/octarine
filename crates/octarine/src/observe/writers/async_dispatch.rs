@@ -180,6 +180,27 @@ impl DispatcherConfig {
             ..Default::default()
         }
     }
+
+    /// Create a configuration tuned for integration tests.
+    ///
+    /// Sets `batch_size = 1` and `flush_interval = 10ms` so dispatched events
+    /// are delivered to registered writers within tens of milliseconds rather
+    /// than waiting up to the default 1-second flush tick. Intended to be
+    /// applied once, via `configure_dispatcher(DispatcherConfig::testing())`,
+    /// before any test dispatches through the global singleton. Subsequent
+    /// tests in the same test binary inherit the configuration.
+    ///
+    /// Eliminates the CI flakiness where global-singleton batching under
+    /// heavy parallel test load delays writer dispatch past typical poll
+    /// deadlines (see issue #223).
+    #[must_use]
+    pub fn testing() -> Self {
+        Self {
+            batch_size: 1,
+            flush_interval: Duration::from_millis(10),
+            ..Default::default()
+        }
+    }
 }
 
 // =============================================================================

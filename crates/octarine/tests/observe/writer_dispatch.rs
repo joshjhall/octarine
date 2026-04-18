@@ -114,6 +114,8 @@ impl Writer for AlwaysFailingWriter {
 
 #[tokio::test]
 async fn registered_writer_receives_dispatched_event() {
+    super::ensure_test_dispatcher();
+
     let capture = Arc::new(MemoryWriter::with_capacity(64));
     let name = "writer_dispatch_receives";
     let marker = "WD_RECEIVES_v1_7f4a";
@@ -144,6 +146,8 @@ async fn registered_writer_receives_dispatched_event() {
 
 #[tokio::test]
 async fn multiple_writers_all_receive_event() {
+    super::ensure_test_dispatcher();
+
     let a = Arc::new(MemoryWriter::with_capacity(64));
     let b = Arc::new(MemoryWriter::with_capacity(64));
     let name_a = "writer_dispatch_multi_a";
@@ -175,8 +179,9 @@ async fn multiple_writers_all_receive_event() {
 }
 
 #[tokio::test]
-#[ignore = "consistently fails in CI due to global dispatcher batching under parallel test load (issue #223)"]
 async fn failing_writer_does_not_block_others() {
+    super::ensure_test_dispatcher();
+
     let failures = Arc::new(AtomicUsize::new(0));
     let good = Arc::new(MemoryWriter::with_capacity(64));
     let failing_name = "writer_dispatch_failing";
@@ -214,6 +219,8 @@ async fn failing_writer_does_not_block_others() {
 
 #[tokio::test]
 async fn disabled_writer_receives_nothing() {
+    super::ensure_test_dispatcher();
+
     let capture = Arc::new(MemoryWriter::with_capacity(64));
     let name = "writer_dispatch_disabled";
     let marker = "WD_DISABLED_v1_5b88";
