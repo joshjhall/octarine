@@ -181,3 +181,120 @@ pub fn operation_failed(message: impl Into<String>) -> Problem {
 pub fn other(message: impl Into<String>) -> Problem {
     ProblemBuilder::new(message).other()
 }
+
+#[cfg(test)]
+#[allow(clippy::panic, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    // Note on surprising mappings verified against observe/problem/create.rs:
+    //   security() and security_audit() → Problem::PermissionDenied
+    //     (the Problem enum has no Security variant; create_security wraps in
+    //      PermissionDenied and emits a critical audit event as a side effect).
+    //   system() → Problem::Other
+    //     (per create_shortcuts.rs note: "system() doesn't exist, use other() for now").
+
+    #[test]
+    fn validation_returns_validation_variant() {
+        let p = validation("bad input");
+        assert!(matches!(&p, Problem::Validation(m) if m == "bad input"));
+    }
+
+    #[test]
+    fn validation_minimal_returns_validation_variant() {
+        let p = validation_minimal("bad input");
+        assert!(matches!(&p, Problem::Validation(m) if m == "bad input"));
+    }
+
+    #[test]
+    fn conversion_returns_conversion_variant() {
+        let p = conversion("cannot convert");
+        assert!(matches!(&p, Problem::Conversion(m) if m == "cannot convert"));
+    }
+
+    #[test]
+    fn sanitization_returns_sanitization_variant() {
+        let p = sanitization("contains shell meta");
+        assert!(matches!(&p, Problem::Sanitization(m) if m == "contains shell meta"));
+    }
+
+    #[test]
+    fn permission_denied_returns_permission_denied_variant() {
+        let p = permission_denied("access denied");
+        assert!(matches!(&p, Problem::PermissionDenied(m) if m == "access denied"));
+    }
+
+    #[test]
+    fn security_returns_permission_denied_variant() {
+        // NOTE: shortcut is named `security` but wraps in PermissionDenied — see module comment.
+        let p = security("SQL injection attempt");
+        assert!(matches!(&p, Problem::PermissionDenied(m) if m == "SQL injection attempt"));
+    }
+
+    #[test]
+    fn security_audit_returns_permission_denied_variant() {
+        let p = security_audit("privilege escalation", "alice");
+        assert!(matches!(&p, Problem::PermissionDenied(m) if m == "privilege escalation"));
+    }
+
+    #[test]
+    fn system_returns_other_variant() {
+        // NOTE: shortcut is named `system` but returns Problem::Other — see module comment.
+        let p = system("disk full");
+        assert!(matches!(&p, Problem::Other(m) if m == "disk full"));
+    }
+
+    #[test]
+    fn config_returns_config_variant() {
+        let p = config("missing API key");
+        assert!(matches!(&p, Problem::Config(m) if m == "missing API key"));
+    }
+
+    #[test]
+    fn not_found_returns_not_found_variant() {
+        let p = not_found("user#42");
+        assert!(matches!(&p, Problem::NotFound(m) if m == "user#42"));
+    }
+
+    #[test]
+    fn auth_returns_auth_variant() {
+        let p = auth("invalid token");
+        assert!(matches!(&p, Problem::Auth(m) if m == "invalid token"));
+    }
+
+    #[test]
+    fn network_returns_network_variant() {
+        let p = network("connection refused");
+        assert!(matches!(&p, Problem::Network(m) if m == "connection refused"));
+    }
+
+    #[test]
+    fn database_returns_database_variant() {
+        let p = database("deadlock detected");
+        assert!(matches!(&p, Problem::Database(m) if m == "deadlock detected"));
+    }
+
+    #[test]
+    fn parse_returns_parse_variant() {
+        let p = parse("unexpected token");
+        assert!(matches!(&p, Problem::Parse(m) if m == "unexpected token"));
+    }
+
+    #[test]
+    fn timeout_returns_timeout_variant() {
+        let p = timeout("request timed out after 30s");
+        assert!(matches!(&p, Problem::Timeout(m) if m == "request timed out after 30s"));
+    }
+
+    #[test]
+    fn operation_failed_returns_operation_failed_variant() {
+        let p = operation_failed("retry budget exhausted");
+        assert!(matches!(&p, Problem::OperationFailed(m) if m == "retry budget exhausted"));
+    }
+
+    #[test]
+    fn other_returns_other_variant() {
+        let p = other("unclassified error");
+        assert!(matches!(&p, Problem::Other(m) if m == "unclassified error"));
+    }
+}
