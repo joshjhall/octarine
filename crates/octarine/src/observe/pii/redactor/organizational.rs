@@ -40,3 +40,81 @@ pub(super) fn redact_badge_numbers(text: &str, profile: RedactionProfile) -> Str
         RedactionProfile::Development | RedactionProfile::Testing => text.to_string(),
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::panic, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    // ===== Employee IDs =====
+
+    #[test]
+    fn test_redact_employee_ids_strict() {
+        let text = "Employee ID: E123456";
+        let result = redact_employee_ids(text, RedactionProfile::ProductionStrict);
+        assert!(result.contains("[EMPLOYEE_ID]"));
+        assert!(!result.contains("E123456"));
+    }
+
+    #[test]
+    fn test_redact_employee_ids_testing_unchanged() {
+        let text = "Employee ID: E123456";
+        let result = redact_employee_ids(text, RedactionProfile::Testing);
+        assert_eq!(result, text);
+    }
+
+    #[test]
+    fn test_redact_employee_ids_no_pii() {
+        let text = "Employee onboarding complete";
+        let result = redact_employee_ids(text, RedactionProfile::ProductionStrict);
+        assert_eq!(result, text);
+    }
+
+    // ===== Student IDs =====
+
+    #[test]
+    fn test_redact_student_ids_strict() {
+        let text = "Student ID: S12345678";
+        let result = redact_student_ids(text, RedactionProfile::ProductionStrict);
+        assert!(result.contains("[STUDENT_ID]"));
+        assert!(!result.contains("S12345678"));
+    }
+
+    #[test]
+    fn test_redact_student_ids_testing_unchanged() {
+        let text = "Student ID: S12345678";
+        let result = redact_student_ids(text, RedactionProfile::Testing);
+        assert_eq!(result, text);
+    }
+
+    #[test]
+    fn test_redact_student_ids_no_pii() {
+        let text = "Student registration open";
+        let result = redact_student_ids(text, RedactionProfile::ProductionStrict);
+        assert_eq!(result, text);
+    }
+
+    // ===== Badge Numbers =====
+
+    #[test]
+    fn test_redact_badge_numbers_strict() {
+        let text = "Badge: BADGE# 98765";
+        let result = redact_badge_numbers(text, RedactionProfile::ProductionStrict);
+        assert!(result.contains("[BADGE_NUMBER]"));
+        assert!(!result.contains("98765"));
+    }
+
+    #[test]
+    fn test_redact_badge_numbers_testing_unchanged() {
+        let text = "Badge: BADGE# 98765";
+        let result = redact_badge_numbers(text, RedactionProfile::Testing);
+        assert_eq!(result, text);
+    }
+
+    #[test]
+    fn test_redact_badge_numbers_no_pii() {
+        let text = "Badge system maintenance scheduled";
+        let result = redact_badge_numbers(text, RedactionProfile::ProductionStrict);
+        assert_eq!(result, text);
+    }
+}
