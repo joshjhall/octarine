@@ -10,7 +10,7 @@ This document defines the naming conventions for all public API methods in octar
 | `Result<T, E>` | `validate_*` | Strict validation with error | `validate_email()`, `validate_secure()` |
 | `Vec<T>` | `detect_*` | Find all matches/occurrences | `detect_threats()`, `detect_emails()` |
 | `Option<T>` | `find_*` | Find single/first match | `find_extension()`, `find_email()` |
-| `&str` (accessor) | no prefix or `get_*` | Simple property access | `stem()`, `filename()`, `get_extension()` |
+| `&str` (accessor) | no prefix | Simple property access | `stem()`, `filename()`, `extension()` |
 | `String` (convert) | `to_*` | Lossless format conversion | `to_unix()`, `to_windows()`, `to_safe_filename()` |
 | `String` (clean) | `sanitize_*` | Security cleaning/threat removal | `sanitize()`, `sanitize_strict()` |
 | `String` (hide) | `redact_*` | Hide sensitive data for display | `redact_email()`, `redact_ssn()` |
@@ -94,20 +94,20 @@ fn find_extension(path: &str) -> Option<&str>;
 fn find_first_threat(path: &str) -> Option<Threat>;
 
 // ❌ WRONG
-fn get_extension(path: &str) -> Option<&str>;  // acceptable but find_* preferred
+fn get_extension(path: &str) -> Option<&str>;  // use find_* — get_* is prohibited
 fn detect_extension(path: &str) -> Option<&str>;  // detect_* returns Vec
 ```
 
-### Accessors: No Prefix or `get_*`
+### Accessors: No Prefix
 
-Simple property access uses no prefix or `get_*`:
+Simple property access uses no prefix. The `get_*` prefix is prohibited — drop it and name the accessor after the property:
 
 ```rust
 // ✅ CORRECT
 fn stem(path: &str) -> &str;
 fn filename(path: &str) -> &str;
 fn extension(path: &str) -> &str;
-fn get_parent(path: &str) -> Option<&str>;
+fn parent(path: &str) -> Option<&str>;
 ```
 
 ### Conversion: `to_*`
@@ -230,6 +230,7 @@ These prefixes are **prohibited** to maintain consistency:
 
 | Prohibited | Use Instead |
 |------------|-------------|
+| `get_*` | no prefix (accessors) or `find_*` / `calculate_*` (derived values) |
 | `has_*` | `is_*_present` |
 | `contains_*` | `is_*_present` or `is_*_contained` |
 | `check_*` | `is_*` (bool) or `validate_*` (Result) |
