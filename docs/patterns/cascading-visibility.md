@@ -418,4 +418,4 @@ pub struct EventBuilder {
 
 - [Builder Hierarchy Pattern](./builder-hierarchy-pattern.md) - File organization, naming conventions, directory structure
 - [Module Patterns](../architecture/module-patterns.md) - Three-layer architecture (core/builder/shortcuts)
-- [Primitives Refactor Plan](../../PRIMITIVES-REFACTOR.md) - Strategy for migrating to primitives module
+- [Refactor Plan](../architecture/refactor-plan.md) - Strategy for migrating to primitives module

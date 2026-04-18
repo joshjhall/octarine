@@ -31,48 +31,23 @@ octarine is a foundational security and observability library for Rust applicati
 
 ## Core Modules
 
-### 1. Security Module (`/src/security/`)
+Octarine uses a three-layer architecture that prevents circular dependencies. See [`layer-architecture.md`](./layer-architecture.md) for the full dependency rules.
 
-Provides comprehensive security primitives for safe input handling and system operations.
+### Layer 1: Primitives (`crates/octarine/src/primitives/`)
 
-#### Input Security (`/src/security/data/`)
+Pure functions with no observability dependencies. Visibility is `pub(crate)` — primitives are always wrapped by a Layer 3 module for public use. Organized around three orthogonal concerns:
 
-The input module organizes all input handling into nine security contexts based on OWASP categories:
+| Concern | Purpose | Example question |
+|---------|---------|------------------|
+| `primitives/data/` | FORMAT | "How should this be structured?" |
+| `primitives/security/` | THREATS | "Is this dangerous?" |
+| `primitives/identifiers/` | CLASSIFICATION | "What is it? Is it PII?" |
 
-1. **paths** - File system paths and directories
-1. **network** - URLs, IPs, ports, protocols
-1. **authentication** - Usernames, passwords, tokens, API keys
-1. **formats** - JSON, XML, CSV, dates, structured data
-1. **text** - Plain text, unicode, encoding
-1. **commands** - Shell commands, OS execution
-1. **queries** - SQL, NoSQL, GraphQL, LDAP
-1. **crypto** - Keys, certificates, algorithms
-1. **identifiers** - Email, phone, UUIDs, PII data
+Each concern has sub-domains (paths, network, text, and so on), yielding cells such as `primitives/security/paths/` (path-traversal detection) and `primitives/identifiers/network/` (IP/MAC/URL/UUID classification). Supporting primitive modules: `crypto/`, `io/`, `runtime/`, `types/`.
 
-Each context has three operations:
+### Layer 2: Observe (`crates/octarine/src/observe/`)
 
-- **Validation** - Check if input meets requirements
-- **Sanitization** - Make input safe for use
-- **Conversion** - Transform between formats
-
-#### Other Security Components
-
-- **access_control/** - Rate limiting and permissions
-- **file_security/** - Secure file operations
-- **process/** - Safe command execution
-- **secrets/** - Secret management and encryption
-- **detection/** - Pattern detection (secrets, PII)
-
-### 2. Observe Module (`/src/observe/`)
-
-Provides unified observability with automatic context capture and event generation.
-
-#### Core Components
-
-- **context/** - Automatic capture of tenant, user, environment
-- **event/** - Business, security, and system event generation
-- **problem/** - Error handling with automatic event creation
-- **writers/** - Output destinations (console, file, database)
+Public observability module that depends only on primitives. Submodules include `audit/`, `builder/`, `compliance/` (SOC2, HIPAA, GDPR, PCI-DSS mappings), `context/` (automatic WHO/WHAT/WHEN/WHERE capture), `event/`, `metrics/`, `pii/` (detection and redaction), `problem/`, `tracing/`, and `writers/` (console, file, SQLite, PostgreSQL).
 
 #### Event Flow
 
@@ -95,6 +70,23 @@ Event Sent to Writers
         ├──► File (Production)
         └──► Database (Compliance)
 ```
+
+### Layer 3: Public Operations
+
+Public modules that wrap primitives with observe instrumentation. Every Layer 3 operation emits events and metrics automatically:
+
+- `data/` — normalization and canonicalization (paths, network, text, formats, tokens)
+- `security/` — threat detection and validation (commands, formats, network, paths, queries)
+- `identifiers/` — PII classification and redaction
+- `runtime/` — async utilities
+- `crypto/` — cryptographic operations
+- `io/` — file operations
+- `auth/` — authentication flows
+- `http/` — HTTP operations
+
+### Testing Infrastructure (`crates/octarine/src/testing/`, feature-gated)
+
+Shared test fixtures, attack-pattern generators, and security assertions. Compiled only when the `testing` feature is enabled; production code never imports it.
 
 ## Key Design Patterns
 

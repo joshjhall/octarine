@@ -4,19 +4,17 @@ Principles and patterns for designing clean, secure, and ergonomic APIs in octar
 
 ## Quick Links
 
-- **Design Principles**: [`design-principles.md`](./design-principles.md) - Core API philosophy
+- **Naming Conventions**: [`naming-conventions.md`](./naming-conventions.md) - Prefix rules and API style
 - **Error Handling**: [`error-handling.md`](./error-handling.md) - Result patterns
-- **Examples**: [`examples/`](./examples/) - Usage examples
+- **Error Architecture**: [`error-architecture.md`](./error-architecture.md) - Problem types and audit trail
 
 ## In This Section
 
-### [Design Principles](./design-principles.md)
+### [Naming Conventions](./naming-conventions.md)
 
-- Clean API first (no legacy baggage)
-- Separation of concerns
-- Progressive disclosure
-- Type safety and ergonomics
-- Consistent naming conventions
+- Prefix-indicates-return-type rules
+- Consistent naming across layers
+- Prohibited prefixes
 
 ### [Error Handling](./error-handling.md)
 
@@ -25,19 +23,11 @@ Principles and patterns for designing clean, secure, and ergonomic APIs in octar
 - Error propagation patterns
 - Dual function pattern (strict/lenient)
 
-### [Async Patterns](./async-patterns.md)
+### [Error Architecture](./error-architecture.md)
 
-- When to use async
-- Context propagation in async
-- Cancellation safety
-- Async trait patterns
-
-### [API Examples](./examples/)
-
-- Common use cases
-- Integration patterns
-- Security examples
-- Performance examples
+- Problem type design
+- Audit-trail integration
+- Error propagation across layers
 
 ## API Patterns
 
@@ -94,7 +84,6 @@ Internal modules use `pub(crate)` or `pub(super)` for encapsulation.
 
 - [Architecture](../architecture/) - System design
 - [Security](../security/) - Security in APIs
-- [Contributing](../contributing/) - API contribution guidelines
 
 ## External Resources
 

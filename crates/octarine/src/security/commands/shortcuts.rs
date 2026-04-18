@@ -252,4 +252,89 @@ mod tests {
     fn test_escape_shell_arg_windows() {
         assert_eq!(escape_shell_arg_windows("simple"), "\"simple\"");
     }
+
+    #[test]
+    fn test_is_any_chain_present() {
+        assert!(is_any_chain_present("ls; rm -rf /"));
+        assert!(is_any_chain_present("a && b"));
+        assert!(!is_any_chain_present("safe-arg"));
+    }
+
+    #[test]
+    fn test_is_shell_expansion_present() {
+        assert!(is_shell_expansion_present("${HOME}"));
+        assert!(is_shell_expansion_present("$(whoami)"));
+        assert!(!is_shell_expansion_present("plain"));
+    }
+
+    #[test]
+    fn test_is_command_substitution_present() {
+        assert!(is_command_substitution_present("$(whoami)"));
+        assert!(is_command_substitution_present("`id`"));
+        assert!(!is_command_substitution_present("plain"));
+    }
+
+    #[test]
+    fn test_is_variable_expansion_present() {
+        assert!(is_variable_expansion_present("${VAR}"));
+        assert!(is_variable_expansion_present("$HOME"));
+        assert!(!is_variable_expansion_present("plain"));
+    }
+
+    #[test]
+    fn test_is_redirection_present() {
+        assert!(is_redirection_present("cmd > /etc/x"));
+        assert!(is_redirection_present("cmd < input"));
+        assert!(!is_redirection_present("plain"));
+    }
+
+    #[test]
+    fn test_is_glob_present() {
+        assert!(is_glob_present("*.txt"));
+        assert!(is_glob_present("file?.log"));
+        assert!(!is_glob_present("plain.txt"));
+    }
+
+    #[test]
+    fn test_validate_command_name() {
+        assert!(validate_command_name("git").is_ok());
+        // Path traversal is rejected.
+        assert!(validate_command_name("../bin/sh").is_err());
+        // Empty command is rejected.
+        assert!(validate_command_name("").is_err());
+    }
+
+    #[test]
+    fn test_validate_env() {
+        assert!(validate_env("MY_VAR", "safe value").is_ok());
+        // Dangerous name (contains `=`).
+        assert!(validate_env("BAD=NAME", "value").is_err());
+        // Dangerous value (command substitution).
+        assert!(validate_env("MY_VAR", "$(whoami)").is_err());
+    }
+
+    #[test]
+    fn test_validate_args() {
+        assert!(validate_args(["ls", "-la"]).is_ok());
+        assert!(validate_args(["ls", "$(whoami)"]).is_err());
+    }
+
+    #[test]
+    fn test_escape_shell_args() {
+        let escaped = escape_shell_args(["ls", "-la"]).expect("valid");
+        assert_eq!(escaped.len(), 2);
+        assert!(!escaped.first().expect("at least one arg").is_empty());
+        // Null bytes cannot be safely escaped.
+        assert!(escape_shell_args(["ls", "bad\0arg"]).is_err());
+    }
+
+    #[test]
+    fn test_join_shell_args() {
+        let joined = join_shell_args(["echo", "hello"]).expect("valid");
+        assert!(joined.contains("echo"));
+        assert!(joined.contains("hello"));
+        assert!(joined.contains(' '));
+        // Null bytes propagate the error.
+        assert!(join_shell_args(["echo", "bad\0arg"]).is_err());
+    }
 }

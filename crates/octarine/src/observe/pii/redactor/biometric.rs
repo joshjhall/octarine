@@ -83,6 +83,20 @@ pub(super) fn redact_dna_sequences(text: &str, profile: RedactionProfile) -> Str
     }
 }
 
+/// Redact biometric templates based on profile
+pub(super) fn redact_biometric_templates(text: &str, profile: RedactionProfile) -> String {
+    match profile {
+        RedactionProfile::ProductionStrict | RedactionProfile::ProductionLenient => {
+            let builder = BiometricIdentifierBuilder::new();
+            let policy = policy_from_profile(profile);
+            builder
+                .redact_biometric_templates_in_text(text, policy)
+                .into_owned()
+        }
+        RedactionProfile::Development | RedactionProfile::Testing => text.to_string(),
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::panic, clippy::expect_used)]
 mod tests {

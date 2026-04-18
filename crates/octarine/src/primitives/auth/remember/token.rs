@@ -274,12 +274,26 @@ impl std::fmt::Display for RememberToken {
 ///
 /// This is what gets sent to the client in the cookie.
 /// The format is `selector:validator` (both base64 encoded).
-#[derive(Debug, Clone)]
+///
+/// `Debug` is implemented manually to redact the plaintext `validator` —
+/// derived `Debug` would leak the secret via logs, panics, or test output.
+#[derive(Clone)]
 pub struct RememberTokenPair {
     /// The stored token (with hashed validator)
     token: RememberToken,
     /// The plaintext validator (only available at generation time)
     validator: String,
+}
+
+impl std::fmt::Debug for RememberTokenPair {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // `token` contains only a validator_hash (SHA-256), not plaintext —
+        // safe to print via its derived Debug. Only `validator` is secret.
+        f.debug_struct("RememberTokenPair")
+            .field("token", &self.token)
+            .field("validator", &"[REDACTED]")
+            .finish()
+    }
 }
 
 impl RememberTokenPair {
@@ -689,6 +703,24 @@ mod tests {
         let display = pair.token().to_string();
 
         assert!(display.contains("..."));
+    }
+
+    #[test]
+    fn test_pair_debug_redacts_validator() {
+        let config = RememberConfig::default();
+        let pair = generate_remember_token("user123", &config, None);
+        let debug_str = format!("{pair:?}");
+
+        // Plaintext validator must not appear anywhere in Debug output.
+        assert!(
+            !debug_str.contains(pair.validator()),
+            "Debug output leaked plaintext validator: {debug_str}"
+        );
+        // Redaction marker is present.
+        assert!(debug_str.contains("[REDACTED]"));
+        // Selector (not a secret) still visible for diagnostics.
+        assert!(debug_str.contains(pair.selector()));
+        assert!(debug_str.contains("RememberTokenPair"));
     }
 
     #[test]

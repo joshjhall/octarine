@@ -59,7 +59,7 @@ impl BiometricIdentifierBuilder {
     /// Find the type of biometric identifier
     #[must_use]
     pub fn find(&self, value: &str) -> Option<IdentifierType> {
-        detection::find_biometric_identifier(value)
+        detection::detect_biometric_identifier(value)
     }
 
     /// Check if value is any biometric identifier

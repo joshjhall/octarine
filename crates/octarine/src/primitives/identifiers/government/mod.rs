@@ -99,6 +99,7 @@ pub(crate) mod licenses;
 pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside government/
+mod common;
 mod conversion;
 mod detection;
 mod sanitization;
