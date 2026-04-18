@@ -367,6 +367,6 @@ Before deploying:
 ## See Also
 
 - [`error-handling.md`](./error-handling.md) - Error handling patterns
-- [`../src/security/`](../src/security/) - Security module implementation
+- [`../../crates/octarine/src/security/`](../../crates/octarine/src/security/) - Security module implementation
 - [`input-validation.md`](./input-validation.md) - Detailed validation guide
 - [`threat-model.md`](./threat-model.md) - Threat analysis

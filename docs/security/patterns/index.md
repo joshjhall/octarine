@@ -86,7 +86,7 @@ Each pattern includes:
 
 - [OWASP Guides](../owasp/) - Specific vulnerability prevention
 - [API Security](../../api/security.md) - Secure API design
-- [Source Code](../../../src/security/) - Actual implementations
+- [Source Code](../../../crates/octarine/src/security/) - Actual implementations
 
 ## Quick Reference
 

@@ -168,6 +168,6 @@ fn test_validates_input() {
 
 ## See Also
 
-- [`../src/observe/problem/`](../src/observe/problem/) - Problem type implementation
+- [`../../crates/octarine/src/observe/problem/`](../../crates/octarine/src/observe/problem/) - Problem type implementation
 - [`security-patterns.md`](./security-patterns.md) - Security-specific error handling
 - [`testing-strategy.md`](./testing-strategy.md) - Testing error conditions

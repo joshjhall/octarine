@@ -47,8 +47,8 @@ Comprehensive checklist to verify before any deployment or release.
 
 ## Implementation Modules
 
-- [`../../src/security/`](../../src/security/) - Security module source
-- [`../../src/observe/`](../../src/observe/) - Observability for security events
+- [`../../crates/octarine/src/security/`](../../crates/octarine/src/security/) - Security module source
+- [`../../crates/octarine/src/observe/`](../../crates/octarine/src/observe/) - Observability for security events
 
 ## Related Sections
 
