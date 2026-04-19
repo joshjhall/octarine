@@ -46,6 +46,20 @@ pub(super) async fn from_builder(builder: FileWriterBuilder) -> Result<FileWrite
         ))
     })?;
 
+    // On non-Unix platforms, file-level permission enforcement is a no-op.
+    // Warn the operator so audit-grade log isolation gaps are visible, rather
+    // than silently discarding the configured FileMode.
+    #[cfg(not(unix))]
+    {
+        crate::observe::warn(
+            "observe.writers.file",
+            format!(
+                "FileWriter on non-Unix platform: configured file_mode={} will not be enforced (set_mode is a no-op). Secure the log directory via OS-level ACLs.",
+                file_mode
+            ),
+        );
+    }
+
     // Configure circuit breaker for filesystem operations
     // Uses high-availability preset: quick to open (3 failures), needs 80% success to close
     let fs_circuit_breaker = Arc::new(CircuitBreaker::with_config(
