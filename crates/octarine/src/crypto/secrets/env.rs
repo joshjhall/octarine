@@ -133,10 +133,7 @@ impl SecureEnvBuilder {
     pub fn with_var(self, name: impl Into<String>, value: impl Into<String>) -> Self {
         let name = name.into();
         let value = value.into();
-        observe::debug(
-            "crypto.secrets.env",
-            format!("Adding variable: {}={}", name, value),
-        );
+        observe::debug("crypto.secrets.env", format!("Adding variable: {}", name));
         Self {
             inner: self.inner.with_var(name, value),
         }
