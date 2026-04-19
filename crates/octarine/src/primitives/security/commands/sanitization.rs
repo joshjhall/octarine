@@ -339,6 +339,29 @@ mod tests {
         assert_eq!(escape_shell_arg_windows("user's"), "\"user's\"");
     }
 
+    #[test]
+    fn test_escape_shell_arg_windows_percent_expansion() {
+        // cmd.exe expands %VAR% even inside double quotes; the current
+        // implementation passes percent characters through unchanged.
+        // Locks in current behavior so any future change to percent
+        // handling is caught on Linux CI.
+        assert_eq!(escape_shell_arg_windows("%PATH%"), "\"%PATH%\"");
+        assert_eq!(escape_shell_arg_windows("%USERNAME%"), "\"%USERNAME%\"");
+        assert_eq!(escape_shell_arg_windows("a%VAR%b"), "\"a%VAR%b\"");
+        assert_eq!(escape_shell_arg_windows("%"), "\"%\"");
+    }
+
+    #[test]
+    fn test_escape_shell_arg_windows_caret_escape() {
+        // ^ is the cmd.exe escape character; inside double quotes cmd.exe
+        // does not interpret it, so the current implementation passes it
+        // through unchanged. Locks in current behavior.
+        assert_eq!(escape_shell_arg_windows("^"), "\"^\"");
+        assert_eq!(escape_shell_arg_windows("a^b"), "\"a^b\"");
+        assert_eq!(escape_shell_arg_windows("^^"), "\"^^\"");
+        assert_eq!(escape_shell_arg_windows("^&calc"), "\"^&calc\"");
+    }
+
     // ------------------------------------------------------------------------
     // Platform-Aware Escaping Tests
     // ------------------------------------------------------------------------
