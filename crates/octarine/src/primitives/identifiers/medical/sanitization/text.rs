@@ -355,6 +355,22 @@ pub fn redact_dea_numbers_in_text(text: &str, policy: TextRedactionPolicy) -> Co
     Cow::Owned(result)
 }
 
+/// Redact every medical identifier type in `text` using the given policy.
+///
+/// Composes all per-identifier text redactors (MRN, insurance, prescription,
+/// NPI/provider, ICD-10/CPT codes, DEA numbers) in a single pass so callers
+/// get a fully sanitized `String` without managing the order themselves.
+///
+/// # Arguments
+///
+/// * `text` - Text to scan for any medical identifiers
+/// * `policy` - Text redaction policy applied uniformly to every identifier type
+///
+/// # Returns
+///
+/// Owned `String` with all detected medical identifiers replaced according to
+/// `policy`. The result is always owned because at least one underlying
+/// redactor may have transformed the input.
 pub fn redact_all_medical_in_text(text: &str, policy: TextRedactionPolicy) -> String {
     let result = redact_mrn_in_text(text, policy);
     let result = redact_insurance_in_text(&result, policy);

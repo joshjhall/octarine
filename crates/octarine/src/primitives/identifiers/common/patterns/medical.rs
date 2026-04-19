@@ -105,30 +105,39 @@ pub static DEA_UNLABELED: Lazy<Regex> =
 pub static DEA_EXACT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[A-Za-z]{2}\d{7}$").expect("BUG: Invalid regex pattern"));
 
+/// Patterns matching DEA (Drug Enforcement Administration) registration numbers,
+/// both labeled (`DEA: AB1234567`) and unlabeled (raw `AB1234567`).
 pub fn dea_numbers() -> Vec<&'static Regex> {
     vec![&*DEA_LABELED, &*DEA_UNLABELED]
 }
 
+/// Patterns matching labeled Medical Record Numbers (`MRN:`, `Patient ID:`, `Medical Record #`).
 pub fn mrn() -> Vec<&'static Regex> {
     vec![&*MRN_LABELED]
 }
 
+/// Patterns matching health insurance identifiers (Medicare format and labeled policy/group numbers).
 pub fn insurance() -> Vec<&'static Regex> {
     vec![&*INSURANCE_MEDICARE, &*INSURANCE_POLICY, &*INSURANCE_GROUP]
 }
 
+/// Patterns matching labeled prescription numbers (`RX#`, `Prescription Number:`, `rx`).
 pub fn prescriptions() -> Vec<&'static Regex> {
     vec![&*PRESCRIPTION]
 }
 
+/// Patterns matching healthcare provider identifiers (currently NPI / National Provider Identifier).
 pub fn provider_ids() -> Vec<&'static Regex> {
     vec![&*NPI]
 }
 
+/// Patterns matching standard medical coding systems (ICD-10 diagnosis codes and CPT procedure codes).
 pub fn medical_codes() -> Vec<&'static Regex> {
     vec![&*ICD10, &*CPT]
 }
 
+/// All medical patterns from this module — MRN, insurance (Medicare/policy/group),
+/// prescription, NPI, ICD-10, CPT, and DEA (labeled + unlabeled).
 pub fn all() -> Vec<&'static Regex> {
     vec![
         &*MRN_LABELED,

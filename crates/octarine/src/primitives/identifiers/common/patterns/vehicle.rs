@@ -34,6 +34,8 @@ pub static LICENSE_PLATE: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// All vehicle patterns from this module — labeled, explicit, and standalone
+/// 17-character VINs, plus US license plate formats.
 pub fn all() -> Vec<&'static Regex> {
     vec![
         &*VIN_LABELED,

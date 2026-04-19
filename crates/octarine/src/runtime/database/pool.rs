@@ -349,7 +349,12 @@ fn build_connect_options(config: &PoolConfig) -> Result<PgConnectOptions, PoolEr
     Ok(options)
 }
 
-// Stub implementation when postgres feature is not enabled
+/// Stub `ManagedPool` for builds without the `postgres` feature.
+///
+/// Provides the same surface as the real `ManagedPool` so downstream code
+/// can compile, but every constructor and method returns
+/// `Err(PoolError::Config(...))`. Enable the `postgres` feature to use the
+/// fully-functional pool documented above.
 #[cfg(not(feature = "postgres"))]
 pub struct ManagedPool {
     _private: (),

@@ -134,11 +134,21 @@ pub fn parse_certificate_der(data: &[u8]) -> Result<ParsedCertificate, Problem> 
     })
 }
 
+/// Parse an X.509 certificate from PEM (stub when `crypto-validation` is disabled).
+///
+/// Always returns `Err(Problem::validation(...))` because certificate
+/// parsing requires the `x509-parser` crate gated behind the feature.
+/// Enable `crypto-validation` to use the real parser.
 #[cfg(not(feature = "crypto-validation"))]
 pub fn parse_certificate_pem(_data: &str) -> Result<ParsedCertificate, Problem> {
     Err(Problem::validation("crypto-validation feature not enabled"))
 }
 
+/// Parse an X.509 certificate from DER bytes (stub when `crypto-validation` is disabled).
+///
+/// Always returns `Err(Problem::validation(...))` because certificate
+/// parsing requires the `x509-parser` crate gated behind the feature.
+/// Enable `crypto-validation` to use the real parser.
 #[cfg(not(feature = "crypto-validation"))]
 pub fn parse_certificate_der(_data: &[u8]) -> Result<ParsedCertificate, Problem> {
     Err(Problem::validation("crypto-validation feature not enabled"))

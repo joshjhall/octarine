@@ -72,30 +72,37 @@ pub static BIOMETRIC_TEMPLATE_GENERIC: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// Patterns matching labeled fingerprint identifiers (e.g., `fingerprint:`, `fp:`).
 pub fn fingerprints() -> Vec<&'static Regex> {
     vec![&*FINGERPRINT_LABELED]
 }
 
+/// Patterns matching facial recognition data (face encodings and Face ID / Touch ID identifiers).
 pub fn facial() -> Vec<&'static Regex> {
     vec![&*FACE_ENCODING, &*FACE_ID]
 }
 
+/// Patterns matching iris scan data (IrisCode hex sequences and labeled iris templates).
 pub fn iris() -> Vec<&'static Regex> {
     vec![&*IRIS_CODE, &*IRIS_TEMPLATE]
 }
 
+/// Patterns matching labeled voice print identifiers (`voiceprint:`, `voice_id:`, `speaker_id:`).
 pub fn voice() -> Vec<&'static Regex> {
     vec![&*VOICE_PRINT]
 }
 
+/// Patterns matching DNA data (raw ATCG nucleotide sequences and STR marker labels).
 pub fn dna() -> Vec<&'static Regex> {
     vec![&*DNA_SEQUENCE, &*DNA_STR_MARKER]
 }
 
+/// Patterns matching biometric template encodings (ISO/IEC 19794 FMR/FIR/FTR/IIR and generic).
 pub fn templates() -> Vec<&'static Regex> {
     vec![&*BIOMETRIC_TEMPLATE_ISO, &*BIOMETRIC_TEMPLATE_GENERIC]
 }
 
+/// All biometric patterns from this module (fingerprints, facial, iris, voice, DNA, templates).
 pub fn all() -> Vec<&'static Regex> {
     vec![
         &*FINGERPRINT_LABELED,
