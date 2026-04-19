@@ -156,6 +156,36 @@ impl FinancialBuilder {
         self.inner.is_bank_account(value)
     }
 
+    /// Check if value is a valid IBAN (format + MOD-97 checksum)
+    #[must_use]
+    pub fn is_iban(&self, value: &str) -> bool {
+        self.inner.is_iban(value)
+    }
+
+    /// Extract country code from an IBAN
+    #[must_use]
+    pub fn detect_iban_country<'a>(&self, value: &'a str) -> Option<&'a str> {
+        self.inner.detect_iban_country(value)
+    }
+
+    /// Check if value is a Bitcoin address (P2PKH, P2SH, or Bech32/Bech32m)
+    #[must_use]
+    pub fn is_bitcoin_address(&self, value: &str) -> bool {
+        self.inner.is_bitcoin_address(value)
+    }
+
+    /// Check if value is an Ethereum address (0x + 40 hex chars)
+    #[must_use]
+    pub fn is_ethereum_address(&self, value: &str) -> bool {
+        self.inner.is_ethereum_address(value)
+    }
+
+    /// Check if value is any supported cryptocurrency address
+    #[must_use]
+    pub fn is_crypto_address(&self, value: &str) -> bool {
+        self.inner.is_crypto_address(value)
+    }
+
     /// Check if value is likely a credit card (less strict)
     #[must_use]
     pub fn is_credit_card_likely(&self, value: &str) -> bool {
@@ -236,6 +266,39 @@ impl FinancialBuilder {
     #[must_use]
     pub fn detect_bank_accounts_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         self.inner.detect_bank_accounts_in_text(text)
+    }
+
+    /// Detect all IBANs in text with MOD-97 checksum validation
+    ///
+    /// Emits `pci_data_found` because IBAN is regulated financial PII
+    /// (PCI-DSS scope; GDPR scope in the EU).
+    #[must_use]
+    pub fn detect_ibans_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.detect_ibans_in_text(text);
+
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            increment_by(metric_names::pci_data_found(), matches.len() as u64);
+        }
+
+        matches
+    }
+
+    /// Detect all cryptocurrency addresses in text
+    ///
+    /// Covers Bitcoin (P2PKH, P2SH, Bech32/Bech32m) and Ethereum.
+    /// Emits `pci_data_found` — crypto wallet addresses are financial
+    /// identifiers subject to PCI-DSS handling requirements.
+    #[must_use]
+    pub fn detect_crypto_addresses_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.detect_crypto_addresses_in_text(text);
+
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            increment_by(metric_names::pci_data_found(), matches.len() as u64);
+        }
+
+        matches
     }
 
     /// Detect all financial identifiers in text
@@ -590,5 +653,65 @@ mod tests {
         let builder = FinancialBuilder::silent();
         assert!(builder.validate_credit_card("4111111111111111").is_ok());
         assert!(builder.validate_credit_card("4111111111111112").is_err());
+    }
+
+    #[test]
+    fn test_is_iban() {
+        let builder = FinancialBuilder::silent();
+        assert!(builder.is_iban("DE89370400440532013000"));
+        assert!(!builder.is_iban("not-an-iban"));
+    }
+
+    #[test]
+    fn test_detect_ibans_in_text() {
+        let builder = FinancialBuilder::silent();
+        let matches = builder.detect_ibans_in_text("IBAN: DE89 3704 0044 0532 0130 00");
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("one IBAN match expected");
+        assert_eq!(first.identifier_type, IdentifierType::Iban);
+    }
+
+    #[test]
+    fn test_detect_iban_country() {
+        let builder = FinancialBuilder::silent();
+        assert_eq!(
+            builder.detect_iban_country("GB29NWBK60161331926819"),
+            Some("GB")
+        );
+        assert_eq!(builder.detect_iban_country("not_iban"), None);
+    }
+
+    #[test]
+    fn test_is_bitcoin_address() {
+        let builder = FinancialBuilder::silent();
+        assert!(builder.is_bitcoin_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+        assert!(!builder.is_bitcoin_address("not-a-wallet"));
+    }
+
+    #[test]
+    fn test_is_ethereum_address() {
+        let builder = FinancialBuilder::silent();
+        assert!(builder.is_ethereum_address("0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"));
+    }
+
+    #[test]
+    fn test_is_crypto_address() {
+        let builder = FinancialBuilder::silent();
+        assert!(builder.is_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+        assert!(builder.is_crypto_address("0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"));
+    }
+
+    #[test]
+    fn test_detect_crypto_addresses_in_text() {
+        let builder = FinancialBuilder::silent();
+        let matches = builder.detect_crypto_addresses_in_text(
+            "Wallets: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa and 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+        );
+        assert_eq!(matches.len(), 2);
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::CryptoAddress)
+        );
     }
 }

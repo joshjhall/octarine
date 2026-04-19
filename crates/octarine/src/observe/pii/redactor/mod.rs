@@ -145,8 +145,14 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             }
             // Financial
             PiiType::CreditCard => redact_credit_cards(&result, profile),
-            PiiType::BankAccount => redact_bank_accounts(&result, profile),
-            PiiType::RoutingNumber | PiiType::PaymentToken => {
+            // IBAN is a structured bank account identifier; routes through the
+            // bank-account redactor until a dedicated `redact_ibans_in_text`
+            // primitive exists (follow-up — see scanner wiring in PR #157).
+            PiiType::BankAccount | PiiType::Iban => redact_bank_accounts(&result, profile),
+            // Crypto addresses are treated as tokenized financial identifiers.
+            // Reuses the payment-token redactor pending a dedicated
+            // `redact_crypto_addresses_in_text` primitive (follow-up).
+            PiiType::RoutingNumber | PiiType::PaymentToken | PiiType::CryptoAddress => {
                 redact_payment_tokens(&result, profile)
             }
             // Personal
