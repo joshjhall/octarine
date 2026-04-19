@@ -155,6 +155,10 @@ pub fn encode_pem(label: &str, data: &[u8]) -> String {
     pem::encode(&pem_block)
 }
 
+/// Encode data as PEM (no-op stub when `crypto-validation` is disabled).
+///
+/// Returns an empty `String` because the PEM encoder is unavailable without
+/// the feature. Enable `crypto-validation` to perform real encoding.
 #[cfg(not(feature = "crypto-validation"))]
 pub fn encode_pem(_label: &str, _data: &[u8]) -> String {
     String::new()

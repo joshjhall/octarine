@@ -33,6 +33,7 @@ pub mod email {
             .expect("BUG: Invalid regex pattern")
     });
 
+    /// All email patterns in this submodule — standard `user@domain.tld` and IP-literal `user@[1.2.3.4]`.
     pub fn all() -> Vec<&'static Regex> {
         vec![&*STANDARD, &*IP_LITERAL]
     }
@@ -137,6 +138,9 @@ pub mod phone {
             .expect("BUG: Invalid regex pattern")
     });
 
+    /// All phone patterns in this submodule — US formats (with country code,
+    /// parens, or plain) plus country-specific patterns for UK, DE, FR, AU,
+    /// IN, JP, BR, CN, and a generic E.164 text-scanning fallback.
     pub fn all() -> Vec<&'static Regex> {
         vec![
             &*WITH_COUNTRY_CODE,
@@ -672,22 +676,30 @@ pub static SSH_PRIVATE_KEY_HEADER: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// Patterns matching UUIDs — version 4, version 5, and any RFC 4122 version (1-5).
 pub fn uuids() -> Vec<&'static Regex> {
     vec![&*UUID_V4, &*UUID_V5, &*UUID_ANY]
 }
 
+/// Patterns matching MAC addresses in colon, hyphen, and Cisco dot-separated formats.
 pub fn macs() -> Vec<&'static Regex> {
     vec![&*MAC_COLON, &*MAC_HYPHEN, &*MAC_DOT]
 }
 
+/// Patterns matching IP addresses — IPv4, IPv6, and labeled IPv4 (`IP: 1.2.3.4`).
 pub fn ips() -> Vec<&'static Regex> {
     vec![&*IPV4, &*IPV6, &*IPV4_LABELED]
 }
 
+/// Patterns matching URLs — HTTP/HTTPS, FTP, WebSocket (wss/ws), and a generic protocol fallback.
 pub fn urls() -> Vec<&'static Regex> {
     vec![&*URL_HTTP, &*URL_FTP, &*URL_WSS, &*URL_WS, &*URL_GENERIC]
 }
 
+/// Patterns matching API keys, tokens, and connection-string secrets across
+/// major cloud, SaaS, and developer platforms (AWS, GCP, Azure, GitHub,
+/// GitLab, Stripe, Slack, OpenAI, Vault, and many others — see the
+/// individual `API_KEY_*` constants for the full list).
 pub fn api_keys() -> Vec<&'static Regex> {
     vec![
         &*API_KEY_GENERIC,
@@ -734,6 +746,8 @@ pub fn api_keys() -> Vec<&'static Regex> {
     ]
 }
 
+/// Patterns matching SSH key material — public keys (rsa/ed25519/ecdsa/dss),
+/// MD5 and SHA-256 fingerprints, and private-key PEM headers.
 pub fn ssh_keys() -> Vec<&'static Regex> {
     vec![
         &*SSH_PUBLIC_KEY,
@@ -743,6 +757,10 @@ pub fn ssh_keys() -> Vec<&'static Regex> {
     ]
 }
 
+/// All network patterns from this module — UUIDs, MAC addresses, IPs, URLs
+/// (incl. URLs with embedded credentials), international phone numbers, JWTs,
+/// API keys for every supported platform, OAuth/bearer tokens, database
+/// connection strings, and SSH key material.
 pub fn all() -> Vec<&'static Regex> {
     vec![
         &*UUID_V4,

@@ -73,6 +73,11 @@ pub fn parse_ssh_public_key(data: &str) -> Result<ParsedSshPublicKey, Problem> {
     })
 }
 
+/// Parse an SSH public key (stub when `crypto-validation` is disabled).
+///
+/// Always returns `Err(Problem::validation(...))` because SSH parsing
+/// requires the `ssh-key` crate gated behind the feature. Enable
+/// `crypto-validation` to use the real parser.
 #[cfg(not(feature = "crypto-validation"))]
 pub fn parse_ssh_public_key(_data: &str) -> Result<ParsedSshPublicKey, Problem> {
     Err(Problem::validation("crypto-validation feature not enabled"))
@@ -119,6 +124,12 @@ pub fn ssh_key_fingerprint(data: &str) -> Result<String, Problem> {
     Ok(public_key.fingerprint(ssh_key::HashAlg::Sha256).to_string())
 }
 
+/// Compute the SHA-256 fingerprint of an SSH public key (stub when
+/// `crypto-validation` is disabled).
+///
+/// Always returns `Err(Problem::validation(...))` because fingerprinting
+/// requires the `ssh-key` crate gated behind the feature. Enable
+/// `crypto-validation` to compute real fingerprints.
 #[cfg(not(feature = "crypto-validation"))]
 pub fn ssh_key_fingerprint(_data: &str) -> Result<String, Problem> {
     Err(Problem::validation("crypto-validation feature not enabled"))

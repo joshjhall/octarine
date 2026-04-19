@@ -100,6 +100,7 @@ pub static UK_POSTCODE: Lazy<Regex> = Lazy::new(|| {
 pub static CANADA_POSTAL: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b[A-Z]\d[A-Z]\s*\d[A-Z]\d\b").expect("BUG: Invalid regex pattern"));
 
+/// Patterns matching GPS coordinates (decimal degrees, DMS, and labeled latitude/longitude).
 pub fn coordinates() -> Vec<&'static Regex> {
     vec![
         &*DECIMAL_DEGREES,
@@ -109,14 +110,19 @@ pub fn coordinates() -> Vec<&'static Regex> {
     ]
 }
 
+/// Patterns matching physical addresses (US street addresses, PO boxes, apartment/suite numbers).
 pub fn addresses() -> Vec<&'static Regex> {
     vec![&*US_STREET_ADDRESS, &*PO_BOX, &*APT_SUITE]
 }
 
+/// Patterns matching postal codes (US ZIP and ZIP+4, UK postcode, Canadian postal code).
+///
+/// ZIP+4 is matched first so the more specific pattern wins over plain US ZIP.
 pub fn postal_codes() -> Vec<&'static Regex> {
     vec![&*US_ZIP_PLUS4, &*US_ZIP, &*UK_POSTCODE, &*CANADA_POSTAL]
 }
 
+/// All location patterns from this module (coordinates, addresses, postal codes).
 pub fn all() -> Vec<&'static Regex> {
     let mut patterns = Vec::new();
     patterns.extend(coordinates());
