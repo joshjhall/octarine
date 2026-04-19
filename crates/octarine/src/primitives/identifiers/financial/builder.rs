@@ -140,6 +140,12 @@ impl FinancialIdentifierBuilder {
         detection::detect_bank_accounts_in_text(text)
     }
 
+    /// Detect all routing numbers in text with ABA checksum validation
+    #[must_use]
+    pub fn detect_routing_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_routing_numbers_in_text(text)
+    }
+
     /// Detect all IBANs in text with MOD-97 checksum validation
     #[must_use]
     pub fn detect_ibans_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
@@ -606,6 +612,21 @@ mod tests {
                 .iter()
                 .all(|m| m.identifier_type == IdentifierType::Iban)
         );
+    }
+
+    #[test]
+    fn test_detect_routing_numbers_in_text() {
+        let builder = FinancialIdentifierBuilder::new();
+        let matches = builder.detect_routing_numbers_in_text("ABA routing: 021000021");
+        assert!(!matches.is_empty());
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::RoutingNumber)
+        );
+
+        let none = builder.detect_routing_numbers_in_text("no routing number here");
+        assert!(none.is_empty());
     }
 
     #[test]

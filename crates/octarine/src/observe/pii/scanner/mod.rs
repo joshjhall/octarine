@@ -225,6 +225,17 @@ mod tests {
     }
 
     #[test]
+    fn test_scan_for_pii_routing_number() {
+        let text = "ABA routing: 021000021"; // Valid ABA checksum
+        let types = scan_for_pii(text);
+        assert!(
+            types.contains(&PiiType::RoutingNumber),
+            "Should detect routing number, got {:?}",
+            types
+        );
+    }
+
+    #[test]
     fn test_scan_for_pii_email() {
         let text = "Contact: user@example.com";
         let types = scan_for_pii(text);
