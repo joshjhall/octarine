@@ -68,9 +68,12 @@ crates/octarine/src/
 ├── primitives/     # Layer 1: Internal foundation (pub(crate))
 │   ├── crypto/     # Cryptographic primitives
 │   ├── data/       # FORMAT: Normalization, canonicalization
-│   │   ├── paths/  # Path normalization
+│   │   ├── crypto/ # Cryptographic format primitives
+│   │   ├── formats/# Data format primitives
 │   │   ├── network/# URL/hostname formatting
-│   │   └── text/   # Text normalization, encoding
+│   │   ├── paths/  # Path normalization
+│   │   ├── text/   # Text normalization, encoding
+│   │   └── tokens/ # Token primitives
 │   ├── security/   # THREATS: Danger detection
 │   │   ├── commands/# Command injection detection
 │   │   ├── crypto/ # Cryptographic threat detection
@@ -85,7 +88,9 @@ crates/octarine/src/
 │   │   └── ...     # credentials, medical, government, etc.
 │   ├── io/         # File operations
 │   ├── runtime/    # Async utilities
-│   └── types/      # Common types (Problem, Result)
+│   ├── types/      # Common types (Problem, Result)
+│   ├── auth/       # Auth primitives (csrf, lockout, mfa, password, remember, reset, session)
+│   └── collections/# Collection primitives (buffer, cache)
 ├── observe/        # Layer 2: Observability (pub)
 │   ├── audit/      # Audit trail generation
 │   ├── builder/    # Observe builder patterns
@@ -101,8 +106,7 @@ crates/octarine/src/
 │   ├── paths/      # Path operations with observability
 │   ├── network/    # Network operations with observability
 │   ├── text/       # Text operations with observability
-│   ├── formats/    # Data format operations
-│   └── tokens/     # Token operations
+│   └── formats/    # Data format operations
 ├── security/       # Layer 3: Security operations with observe (pub)
 ├── identifiers/    # Layer 3: Identifier operations with observe (pub)
 ├── runtime/        # Layer 3: Runtime operations (pub)
