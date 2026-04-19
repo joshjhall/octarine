@@ -325,7 +325,7 @@ security/
 │   ├── mod.rs                 # SecurityBuilder facade
 │   ├── data.rs                # Re-exports from security/data/builder/
 │   ├── data_shortcuts.rs
-│   ├── access_control.rs      # Re-exports from security/access_control/builder/
+│   ├── paths.rs               # Re-exports from security/paths/builder/
 │   └── aggregate.rs
 │
 └── data/
