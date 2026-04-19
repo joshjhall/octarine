@@ -145,14 +145,19 @@ impl PersistentEncryption {
 
     /// Serialize to a byte vector.
     ///
-    /// Format (little-endian lengths):
+    /// # Wire format
+    ///
+    /// All length fields and the key version use little-endian encoding.
+    /// This is a canonical wire format, not native-endian, so ciphertexts
+    /// remain portable between little-endian and big-endian hosts.
+    ///
     /// ```text
-    /// [version: 4 bytes]
-    /// [kem_ct_len: 4 bytes][kem_ciphertext]
+    /// [version: 4 bytes (LE)]
+    /// [kem_ct_len: 4 bytes (LE)][kem_ciphertext]
     /// [chacha_nonce: 12 bytes]
-    /// [aes_ct_len: 4 bytes][aes_ciphertext]
+    /// [aes_ct_len: 4 bytes (LE)][aes_ciphertext]
     /// [aes_nonce: 12 bytes]
-    /// [ess_len: 4 bytes][encrypted_shared_secret]
+    /// [ess_len: 4 bytes (LE)][encrypted_shared_secret]
     /// [platform_nonce: 12 bytes]
     /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -200,6 +205,9 @@ impl PersistentEncryption {
     }
 
     /// Deserialize from a byte slice.
+    ///
+    /// See [`to_bytes`](Self::to_bytes) for the wire format. All length
+    /// fields and the key version are decoded as little-endian.
     ///
     /// # Errors
     ///

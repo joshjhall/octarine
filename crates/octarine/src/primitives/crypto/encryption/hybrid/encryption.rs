@@ -263,7 +263,13 @@ impl HybridEncryption {
 
     /// Serialize the complete encrypted message.
     ///
-    /// Format: `[kem_ct_len (4)][kem_ct][x25519_pk (32)][nonce (12)][ct_len (4)][ct]`
+    /// # Wire format
+    ///
+    /// `[kem_ct_len (4)][kem_ct][x25519_pk (32)][nonce (12)][ct_len (4)][ct]`
+    ///
+    /// All length fields use little-endian encoding. This is a canonical
+    /// wire format, not native-endian, so ciphertexts remain portable
+    /// between little-endian and big-endian hosts.
     pub fn to_bytes(&self) -> Vec<u8> {
         let kem_len = self.kem_ciphertext.len() as u32;
         let ct_len = self.ciphertext.len() as u32;
@@ -287,6 +293,9 @@ impl HybridEncryption {
     }
 
     /// Deserialize an encrypted message from bytes.
+    ///
+    /// See [`to_bytes`](Self::to_bytes) for the wire format. All length
+    /// fields are decoded as little-endian.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, CryptoError> {
         if bytes.len() < 4 {
             return Err(CryptoError::decryption("Message too short"));
