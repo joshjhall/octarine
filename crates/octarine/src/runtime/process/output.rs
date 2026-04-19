@@ -172,15 +172,24 @@ impl CommandOutput {
 }
 
 #[cfg(test)]
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
 
     use super::*;
-    use std::os::unix::process::ExitStatusExt;
 
+    #[cfg(unix)]
     fn mock_status(code: i32) -> ExitStatus {
-        ExitStatus::from_raw(code << 8) // Unix exit status encoding
+        use std::os::unix::process::ExitStatusExt;
+        // Unix encodes the exit code in the high byte of the wait-status word
+        ExitStatus::from_raw(code << 8)
+    }
+
+    #[cfg(windows)]
+    fn mock_status(code: i32) -> ExitStatus {
+        use std::os::windows::process::ExitStatusExt;
+        #[allow(clippy::cast_sign_loss)] // Test-only helper: negative codes are not used
+        ExitStatus::from_raw(code as u32)
     }
 
     #[test]

@@ -291,10 +291,10 @@ impl ConfigBuilder {
             return Err(ConfigError::file_error(path, "file not found"));
         }
 
-        observe::debug(
+        observe::warn(
             "runtime.config",
             format!(
-                "Adding config file (no Unix permission check available): {}",
+                "Adding config file on non-Unix platform: Unix mode 0600 enforcement unavailable, caller must secure via directory-level ACLs: {}",
                 path.display()
             ),
         );
