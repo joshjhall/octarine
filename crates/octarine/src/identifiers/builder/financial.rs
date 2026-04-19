@@ -268,6 +268,22 @@ impl FinancialBuilder {
         self.inner.detect_bank_accounts_in_text(text)
     }
 
+    /// Detect all routing numbers in text with ABA checksum validation
+    ///
+    /// Emits `pci_data_found` because routing numbers are financial PII
+    /// subject to PCI-DSS handling requirements.
+    #[must_use]
+    pub fn detect_routing_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.detect_routing_numbers_in_text(text);
+
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            increment_by(metric_names::pci_data_found(), matches.len() as u64);
+        }
+
+        matches
+    }
+
     /// Detect all IBANs in text with MOD-97 checksum validation
     ///
     /// Emits `pci_data_found` because IBAN is regulated financial PII
@@ -669,6 +685,18 @@ mod tests {
         assert_eq!(matches.len(), 1);
         let first = matches.first().expect("one IBAN match expected");
         assert_eq!(first.identifier_type, IdentifierType::Iban);
+    }
+
+    #[test]
+    fn test_detect_routing_numbers_in_text() {
+        let builder = FinancialBuilder::silent();
+        let matches = builder.detect_routing_numbers_in_text("ABA routing: 021000021");
+        assert!(!matches.is_empty());
+        let first = matches.first().expect("one routing match expected");
+        assert_eq!(first.identifier_type, IdentifierType::RoutingNumber);
+
+        let none = builder.detect_routing_numbers_in_text("no routing number here");
+        assert!(none.is_empty());
     }
 
     #[test]

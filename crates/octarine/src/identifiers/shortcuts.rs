@@ -278,6 +278,12 @@ pub fn is_routing_number(value: &str) -> bool {
     FinancialBuilder::new().is_routing_number(value)
 }
 
+/// Detect all routing numbers in text with ABA checksum validation
+#[must_use]
+pub fn detect_routing_numbers(text: &str) -> Vec<IdentifierMatch> {
+    FinancialBuilder::new().detect_routing_numbers_in_text(text)
+}
+
 /// Validate a routing number
 pub fn validate_routing_number(routing: &str) -> Result<(), Problem> {
     FinancialBuilder::new().validate_routing_number(routing)
@@ -1173,6 +1179,10 @@ mod tests {
         assert!(!is_routing_number("000000000"));
         assert!(validate_routing_number("021000021").is_ok());
         assert!(validate_routing_number("invalid").is_err());
+
+        let matches = detect_routing_numbers("ABA routing: 021000021");
+        assert!(!matches.is_empty());
+        assert!(detect_routing_numbers("no routing here").is_empty());
     }
 
     #[test]
