@@ -294,6 +294,50 @@ pub fn is_bank_account(value: &str) -> bool {
 }
 
 // ============================================================
+// IBAN SHORTCUTS
+// ============================================================
+
+/// Check if value is a valid IBAN (format + MOD-97 checksum)
+#[must_use]
+pub fn is_iban(value: &str) -> bool {
+    FinancialBuilder::new().is_iban(value)
+}
+
+/// Detect all IBANs in text with MOD-97 checksum validation
+#[must_use]
+pub fn detect_ibans(text: &str) -> Vec<IdentifierMatch> {
+    FinancialBuilder::new().detect_ibans_in_text(text)
+}
+
+// ============================================================
+// CRYPTO ADDRESS SHORTCUTS
+// ============================================================
+
+/// Check if value is a Bitcoin address (P2PKH, P2SH, or Bech32/Bech32m)
+#[must_use]
+pub fn is_bitcoin_address(value: &str) -> bool {
+    FinancialBuilder::new().is_bitcoin_address(value)
+}
+
+/// Check if value is an Ethereum address (0x + 40 hex chars)
+#[must_use]
+pub fn is_ethereum_address(value: &str) -> bool {
+    FinancialBuilder::new().is_ethereum_address(value)
+}
+
+/// Check if value is any supported cryptocurrency wallet address
+#[must_use]
+pub fn is_crypto_address(value: &str) -> bool {
+    FinancialBuilder::new().is_crypto_address(value)
+}
+
+/// Detect all cryptocurrency addresses in text
+#[must_use]
+pub fn detect_crypto_addresses(text: &str) -> Vec<IdentifierMatch> {
+    FinancialBuilder::new().detect_crypto_addresses_in_text(text)
+}
+
+// ============================================================
 // IP ADDRESS SHORTCUTS
 // ============================================================
 

@@ -573,3 +573,88 @@ fn test_non_eu_country_ids_high_risk_only() {
         );
     }
 }
+
+// ==========================================
+// IBAN & CRYPTO ADDRESS TESTS
+// ==========================================
+// IBAN samples use canonical MOD-97-valid values from the iban detection
+// unit tests. Crypto samples cover Bitcoin (P2PKH, P2SH, Bech32) and
+// Ethereum formats.
+
+#[test]
+fn test_scan_detects_iban() {
+    let text = "Transfer to DE89 3704 0044 0532 0130 00";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::Iban),
+        "Expected Iban in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_iban_no_spaces() {
+    let text = "IBAN: GB29NWBK60161331926819";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::Iban),
+        "Expected Iban in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_bitcoin_address() {
+    let text = "Send BTC to 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::CryptoAddress),
+        "Expected CryptoAddress in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_ethereum_address() {
+    let text = "ETH wallet: 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::CryptoAddress),
+        "Expected CryptoAddress in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_bitcoin_bech32() {
+    let text = "SegWit: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::CryptoAddress),
+        "Expected CryptoAddress in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_iban_is_gdpr_and_pci_protected() {
+    // IBAN identifies an EU account holder — both regimes apply
+    assert!(PiiType::Iban.is_gdpr_protected());
+    assert!(PiiType::Iban.is_pci_protected());
+    assert!(PiiType::Iban.is_high_risk());
+}
+
+#[test]
+fn test_crypto_address_is_pci_but_not_gdpr() {
+    // Crypto addresses are pseudonymous; GDPR scope requires upstream
+    // linkage to a natural person that we do not track here.
+    assert!(PiiType::CryptoAddress.is_pci_protected());
+    assert!(!PiiType::CryptoAddress.is_gdpr_protected());
+    assert!(PiiType::CryptoAddress.is_high_risk());
+}
+
+#[test]
+fn test_mixed_financial_pii_detected_together() {
+    // Combined text — all three variants must surface in one scan
+    let text = "Card 4242424242424242, IBAN DE89370400440532013000, \
+                wallet 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18";
+    let pii_types = scan_for_pii(text);
+    assert!(pii_types.contains(&PiiType::CreditCard));
+    assert!(pii_types.contains(&PiiType::Iban));
+    assert!(pii_types.contains(&PiiType::CryptoAddress));
+}

@@ -46,6 +46,10 @@ pub enum PiiType {
     RoutingNumber,
     /// Payment token (Stripe, PayPal, etc.)
     PaymentToken,
+    /// International Bank Account Number (ISO 13616)
+    Iban,
+    /// Cryptocurrency wallet address (Bitcoin, Ethereum)
+    CryptoAddress,
 
     // =========================================================================
     // Government Domain
@@ -215,6 +219,8 @@ impl PiiType {
             Self::BankAccount => "bank_account",
             Self::RoutingNumber => "routing_number",
             Self::PaymentToken => "payment_token",
+            Self::Iban => "iban",
+            Self::CryptoAddress => "crypto_address",
             // Government
             Self::Ssn => "ssn",
             Self::DriverLicense => "driver_license",
@@ -289,9 +295,12 @@ impl PiiType {
     pub fn domain(&self) -> &'static str {
         match self {
             Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username => "personal",
-            Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken => {
-                "financial"
-            }
+            Self::CreditCard
+            | Self::BankAccount
+            | Self::RoutingNumber
+            | Self::PaymentToken
+            | Self::Iban
+            | Self::CryptoAddress => "financial",
             Self::Ssn
             | Self::DriverLicense
             | Self::Passport
@@ -355,6 +364,7 @@ impl PiiType {
             self,
             // Financial
             Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken |
+            Self::Iban | Self::CryptoAddress |
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
@@ -384,6 +394,10 @@ impl PiiType {
             // AustraliaTfn/Abn, IndiaAadhaar/Pan, SingaporeNric are protected by
             // their own regimes — PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
             Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode | Self::SpainNif | Self::SpainNie |
+            // Financial — IBAN identifies an EU account holder (Recital 30 /
+            // Art. 4(1)). Crypto addresses are pseudonymous by design and are
+            // excluded unless linked to an identifiable person upstream.
+            Self::Iban |
             // Location
             Self::IpAddress | Self::GpsCoordinates | Self::Address | Self::PostalCode |
             // Biometric
@@ -397,7 +411,12 @@ impl PiiType {
     pub fn is_pci_protected(&self) -> bool {
         matches!(
             self,
-            Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken
+            Self::CreditCard
+                | Self::BankAccount
+                | Self::RoutingNumber
+                | Self::PaymentToken
+                | Self::Iban
+                | Self::CryptoAddress
         )
     }
 
@@ -481,10 +500,8 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::BankAccount => Self::BankAccount,
             IdentifierType::RoutingNumber => Self::RoutingNumber,
             IdentifierType::PaymentToken => Self::PaymentToken,
-            // fallback: no dedicated PiiType::CryptoAddress variant yet
-            IdentifierType::CryptoAddress => Self::PaymentToken,
-            // fallback: IBAN is a bank account number
-            IdentifierType::Iban => Self::BankAccount,
+            IdentifierType::CryptoAddress => Self::CryptoAddress,
+            IdentifierType::Iban => Self::Iban,
 
             // Token/Key
             IdentifierType::Jwt => Self::Jwt,
@@ -695,6 +712,31 @@ mod tests {
     }
 
     #[test]
+    fn test_iban_classifications() {
+        assert_eq!(PiiType::Iban.name(), "iban");
+        assert_eq!(PiiType::Iban.domain(), "financial");
+        assert!(PiiType::Iban.is_high_risk());
+        assert!(PiiType::Iban.is_pci_protected());
+        // IBAN identifies an EU account holder — GDPR applies
+        assert!(PiiType::Iban.is_gdpr_protected());
+        assert!(!PiiType::Iban.is_hipaa_protected());
+        assert!(!PiiType::Iban.is_secret());
+    }
+
+    #[test]
+    fn test_crypto_address_classifications() {
+        assert_eq!(PiiType::CryptoAddress.name(), "crypto_address");
+        assert_eq!(PiiType::CryptoAddress.domain(), "financial");
+        assert!(PiiType::CryptoAddress.is_high_risk());
+        assert!(PiiType::CryptoAddress.is_pci_protected());
+        // Crypto addresses are pseudonymous; GDPR does not apply absent an
+        // upstream linkage to an identifiable person.
+        assert!(!PiiType::CryptoAddress.is_gdpr_protected());
+        assert!(!PiiType::CryptoAddress.is_hipaa_protected());
+        assert!(!PiiType::CryptoAddress.is_secret());
+    }
+
+    #[test]
     fn test_national_id_classifications() {
         assert_eq!(PiiType::NationalId.name(), "national_id");
         assert_eq!(PiiType::NationalId.domain(), "government");
@@ -872,6 +914,11 @@ mod tests {
             PiiType::from(IdentifierType::PaymentToken),
             PiiType::PaymentToken
         );
+        assert_eq!(PiiType::from(IdentifierType::Iban), PiiType::Iban);
+        assert_eq!(
+            PiiType::from(IdentifierType::CryptoAddress),
+            PiiType::CryptoAddress
+        );
 
         // Token/Key
         assert_eq!(PiiType::from(IdentifierType::Jwt), PiiType::Jwt);
@@ -1013,21 +1060,8 @@ mod tests {
     #[test]
     fn from_identifier_type_fallback_mappings() {
         // Pin the intentional fallbacks so they can't silently change. When a
-        // dedicated PiiType variant is eventually added (e.g., PiiType::Iban,
-        // PiiType::CryptoAddress, country-specific IDs), the corresponding
+        // dedicated PiiType variant is eventually added, the corresponding
         // assertion here will flip and signal the mapping needs review.
-
-        // Payment fallbacks
-        assert_eq!(
-            PiiType::from(IdentifierType::Iban),
-            PiiType::BankAccount,
-            "Iban fallback: IBAN is a bank account number"
-        );
-        assert_eq!(
-            PiiType::from(IdentifierType::CryptoAddress),
-            PiiType::PaymentToken,
-            "CryptoAddress fallback: no dedicated PiiType variant yet"
-        );
 
         // Developer-token fallbacks (all collapse to ApiKey)
         for id in [

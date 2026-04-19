@@ -36,7 +36,7 @@ pub(super) fn scan_personal(text: &str, pii_types: &mut Vec<PiiType>) {
     }
 }
 
-/// Scan for financial PII (credit card, bank account, routing number)
+/// Scan for financial PII (credit card, bank account, routing number, IBAN, crypto)
 pub(super) fn scan_financial(text: &str, pii_types: &mut Vec<PiiType>) {
     let financial = FinancialIdentifierBuilder::new();
 
@@ -49,6 +49,12 @@ pub(super) fn scan_financial(text: &str, pii_types: &mut Vec<PiiType>) {
         }
         if !financial.detect_payment_tokens_in_text(text).is_empty() {
             pii_types.push(PiiType::PaymentToken);
+        }
+        if !financial.detect_ibans_in_text(text).is_empty() {
+            pii_types.push(PiiType::Iban);
+        }
+        if !financial.detect_crypto_addresses_in_text(text).is_empty() {
+            pii_types.push(PiiType::CryptoAddress);
         }
     }
 }
