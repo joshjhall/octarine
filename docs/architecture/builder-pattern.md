@@ -150,8 +150,8 @@ security/
 │   └── sanitization/
 │       ├── shortcuts.rs             # Sanitization-only
 │       └── ...
-└── access_control/
-    ├── shortcuts.rs                  # Access control only
+└── paths/
+    ├── shortcuts.rs                  # Path operations only
     └── ...
 ```
 

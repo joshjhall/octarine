@@ -405,7 +405,7 @@ Check mod.rs for module documentation:
 //! # Examples
 //!
 //! ```ignore
-//! use octarine::security::data::detection::identifiers::network;
+//! use octarine::primitives::identifiers::network;
 //!
 //! // Detect UUID
 //! let result = network::detect_network_identifier("550e8400-...");

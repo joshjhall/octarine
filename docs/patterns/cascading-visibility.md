@@ -264,10 +264,10 @@ let is_safe = security::validate_path("/path");
 ### What's NOT Accessible
 
 ```rust
-// ❌ These FAIL - modules are internal
-use octarine::security::data;                          // ERROR: `data` is private
-use octarine::security::data::detection;               // ERROR
-use octarine::security::data::detection::identifiers;  // ERROR
+// ❌ These FAIL - primitives layer is pub(crate), not importable externally
+use octarine::primitives;                              // ERROR: `primitives` is crate-private
+use octarine::primitives::security::paths;             // ERROR
+use octarine::primitives::identifiers::network;        // ERROR
 ```
 
 ## Implementation Checklist
