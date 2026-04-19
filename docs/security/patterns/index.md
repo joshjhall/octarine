@@ -54,7 +54,6 @@ Each pattern includes:
 ## Related Sections
 
 - [Security Guidelines](../security-guidelines.md) — Project-wide principles
-- [Data Module Architecture](../data-module-architecture.md) — Security/data module design
 - [Source Code](../../../crates/octarine/src/security/) — Actual implementations
 
 ## Quick Reference
