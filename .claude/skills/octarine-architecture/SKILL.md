@@ -14,7 +14,7 @@ code goes, diagnosing a visibility issue, or reviewing naming.
 | Layer | Path | Visibility | Can Import | CANNOT Import |
 |-------|------|-----------|------------|---------------|
 | **L1** | `primitives/` | `pub(crate)` | External crates, `Problem` type only | `observe::*`, any L3 module |
-| **L1b** | `testing/` | `pub` + `#[cfg(feature)]` | Everything | — |
+| **L1** | `testing/` | `pub` + `#[cfg(feature)]` | Everything | — |
 | **L2** | `observe/` | `pub` | `primitives/` | Any L3 module, `testing/` |
 | **L3** | `identifiers/`, `data/`, `runtime/`, `crypto/`, `security/` | `pub` | `primitives/` + `observe/` | `testing/` (except `#[cfg(test)]`) |
 
@@ -113,6 +113,6 @@ pub fn is_email(value: &str) -> bool {
 
 ## When NOT to Use
 
-- Working exclusively in the `testing/` module (it has its own visibility rules as L1b)
+- Working exclusively in the `testing/` module (it has its own visibility rules as a Layer 1 consumer)
 - Working on code outside `crates/octarine/src/`
 - Pure documentation changes
