@@ -44,7 +44,7 @@ Octarine has a strict three-layer architecture:
 | Layer | Path prefix (under `crates/octarine/src/`) | Visibility    | Can Import                                       |
 | ----- | ------------------------------------------ | ------------- | ------------------------------------------------ |
 | L1    | `primitives/`                              | `pub(crate)`  | External crates, `crate::observe::Problem` ONLY  |
-| L1b   | `testing/`                                 | `pub` + gated | Everything                                       |
+| L1    | `testing/`                                 | `pub` + gated | Everything                                       |
 | L2    | `observe/`                                 | `pub`         | `primitives/` only                               |
 | L3    | `identifiers/`, `data/`, `runtime/`, `crypto/`, `security/`, `auth/`, `http/`, `io/` | `pub` | `primitives/` + `observe/` |
 

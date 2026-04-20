@@ -4,7 +4,7 @@ This document defines the strict layer architecture that governs module dependen
 
 ## Overview
 
-octarine uses a **four-layer architecture** where each layer can only depend on layers below it:
+octarine uses a **three-layer architecture** where each layer can only depend on layers below it:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -81,9 +81,9 @@ octarine uses a **four-layer architecture** where each layer can only depend on 
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## The Four Layers Explained
+## The Three Layers Explained
 
-### Layer 1a: primitives/ (Internal Foundation)
+### Layer 1: primitives/ (Internal Foundation)
 
 **Visibility**: `pub(crate)` - Only accessible within octarine
 
@@ -110,7 +110,9 @@ use crate::security::*;       // No Layer 3 dependencies
 use crate::testing::*;        // No testing dependency
 ```
 
-### Layer 1b: testing/ (Shared Test Infrastructure)
+Layer 1 also includes shared test infrastructure, which is feature-gated and acts as a consumer of all layers.
+
+#### testing/ (Shared Test Infrastructure)
 
 **Visibility**: `pub` with `#[cfg(feature = "testing")]`
 
