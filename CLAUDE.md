@@ -222,6 +222,12 @@ See `docs/observe/` for detailed guides.
 - `builder.rs` - Builder patterns
 - `functions.rs` or `shortcuts.rs` - Convenience functions
 
+Layer 3 submodules follow one of three archetypes — see
+[Layer 3 Module Archetypes](docs/architecture/layer-architecture.md#layer-3-module-archetypes)
+for when to use the pure-function triple (`builder + types + shortcuts`),
+the stateful-service pattern (`manager + store + pool`), or a flat utility
+layout.
+
 ### Size Limits
 
 - Preferred: \<300 LOC per file

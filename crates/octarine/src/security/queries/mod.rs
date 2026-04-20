@@ -70,11 +70,8 @@
 
 mod builder;
 mod shortcuts;
+mod types;
 
 pub use builder::QueryBuilder;
 pub use shortcuts::*;
-
-// Re-export key types from primitives
-pub use crate::primitives::security::queries::{
-    GraphqlAnalysis, GraphqlConfig, GraphqlSchema, QueryThreat, QueryType,
-};
+pub use types::{GraphqlAnalysis, GraphqlConfig, GraphqlSchema, QueryThreat, QueryType};

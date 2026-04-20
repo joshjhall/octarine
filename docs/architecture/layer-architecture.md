@@ -195,6 +195,93 @@ pub fn validate_path(path: &str) -> Result<(), Problem> {
 use crate::testing::*;
 ```
 
+#### Layer 3 Module Archetypes
+
+Layer 3 submodules fall into two architectural archetypes plus a carve-out
+for thin utility modules. The choice depends on whether the module's
+operations are stateless or lifecycle-bound.
+
+##### Archetype A — Pure-function triple (builder + types + shortcuts)
+
+**When to use**: Stateless detection, validation, sanitization, or
+transformation. The operation takes input, consults config, returns a result.
+No persistent state between calls.
+
+**Examples**: `data/*`, `security/{commands,formats,network,paths,queries}`,
+`identifiers/`, `crypto/validation`, `io/formats`, `runtime/async`.
+
+**File layout**:
+
+```text
+module/
+├── mod.rs         # Re-exports only, plus module-level doc and architecture diagram
+├── builder.rs     # XxxBuilder wrapping a primitive builder with observe instrumentation
+├── types.rs       # Wrapper types bridging pub(crate) primitives → pub public API
+└── shortcuts.rs   # Module-level convenience functions that delegate to a default builder
+```
+
+Rationale: `primitives/` is `pub(crate)`, so its types cannot be re-exported
+directly at `pub`. Wrapper types in `types.rs` with bidirectional `From`
+impls (see `security/network/types.rs`) provide a stable public API that can
+evolve independently of the internal primitives.
+
+##### Archetype B — Stateful service (manager + store + optional pool)
+
+**When to use**: Lifecycle-bound resources, session-like state, pooled
+connections, or any module where successive calls share mutable state.
+
+**Examples**: `auth/{session,lockout,mfa,remember,reset}`, `runtime/database`,
+`crypto/secrets`.
+
+**File layout**:
+
+```text
+module/
+├── mod.rs         # Re-exports, doc, architecture diagram
+├── manager.rs     # Public API type that owns the state and exposes operations
+├── store.rs       # Persistence trait + implementations (in-memory, database, etc.)
+└── pool.rs        # Optional: connection pool, resource pool
+```
+
+Rationale: A `Builder` API with `shortcuts` assumes operations are stateless
+and cheap to construct. For a `SessionManager` or connection pool, each
+instance represents a live resource; exposing it through module-level
+shortcuts would either leak a global or force every caller to reconstruct
+state. The `manager` + `store` split keeps persistence pluggable while
+keeping the manager the single public entry point.
+
+##### When neither fits — thin utility modules
+
+Small single-concern modules (one algorithm, one protocol, one driver) MAY
+expose a flat `.rs`-per-concern layout without a builder or shortcuts
+surface. Examples:
+
+- `crypto/auth/hmac` — one algorithm family
+- `auth/csrf`, `auth/password` — one concern each
+- `crypto/keys/{kdf,password,random}` — algorithm variants
+- `runtime/cli/*`, `http/middleware/*`, `http/presets/*` — drivers/presets
+- `io/magic` — file-magic detection
+- `runtime/formats/{json,xml,yaml}` — format adapters
+
+A builder around a single free function adds ceremony without value. If one
+of these modules grows a second orthogonal concern (e.g. detection AND
+validation AND sanitization) it should be migrated to Archetype A.
+
+##### Hybrid modules
+
+If a module has a `builder.rs` but is missing `types.rs` or `shortcuts.rs`
+(e.g. `runtime/config` today), treat it as in-progress toward Archetype A and
+file follow-up work to complete the triple or justify the deviation in the
+module docstring.
+
+##### Quick archetype chooser
+
+| Question                                                  | Archetype                  |
+| --------------------------------------------------------- | -------------------------- |
+| Does every call return a fresh result from inputs alone?  | A — pure-function triple   |
+| Does the module own state that outlives a single call?    | B — stateful service       |
+| Is the module a single algorithm, protocol, or driver?    | Utility (flat `.rs` files) |
+
 ## The Critical Rule: Testing is a Consumer
 
 The `testing` module breaks the normal "down only" rule because it's a **consumer** of the public API, not a **provider** to it:
