@@ -14,7 +14,7 @@ mod builder;
 
 // Builder exports - these are the main way to work with events
 // Internal to observe module only
-pub(super) use builder::EventBuilder;
+pub(in crate::observe) use builder::EventBuilder;
 
 // Shortcuts module (internal to observe)
 pub(super) mod shortcuts;
