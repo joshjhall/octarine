@@ -71,7 +71,7 @@ mod export;
 pub(crate) mod builder;
 
 // Re-export builder for observe/builder/ to use
-pub(super) use builder::MetricsBuilder;
+pub(in crate::observe) use builder::MetricsBuilder;
 
 // Security validation no longer needed - handled by MetricName type
 

@@ -22,14 +22,14 @@ mod builder;
 // Builder exports - these are the main way to work with context
 // Internal to observe module only
 #[allow(unused_imports)]
-pub(super) use builder::ContextBuilder;
+pub(in crate::observe) use builder::ContextBuilder;
 
 // Export shortcuts at the appropriate level
 // Use the shortcuts module in this directory for cross-domain shortcuts
 pub(super) mod shortcuts;
 // Domain-specific shortcuts are in builder/shortcuts
 #[allow(unused_imports)]
-pub(super) use builder::shortcuts as domain_shortcuts;
+pub(in crate::observe) use builder::shortcuts as domain_shortcuts;
 
 // Public exports - carefully selected for external use
 // These are the only parts of context that should be exposed outside observe

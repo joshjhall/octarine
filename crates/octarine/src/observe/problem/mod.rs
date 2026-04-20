@@ -15,11 +15,11 @@ pub(crate) mod builder;
 // Builder exports - these are the main way to work with problems
 // Internal to observe module only
 #[allow(unused_imports)]
-pub(super) use builder::ProblemBuilder;
+pub(in crate::observe) use builder::ProblemBuilder;
 
 // Shortcuts for common patterns (internal to observe)
 // These provide pre-configured problems for common use cases
-pub(super) use builder::shortcuts;
+pub(in crate::observe) use builder::shortcuts;
 
 // Public exports - carefully selected for external use
 pub use types::{Problem, Result};

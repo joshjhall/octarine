@@ -125,5 +125,5 @@ pub use scanner::is_pii_present;
 pub use types::PiiType;
 
 // Internal API (for Event builder integration)
-pub(super) use redactor::scan_and_redact;
-pub(super) use types::PiiScanResult;
+pub(in crate::observe) use redactor::scan_and_redact;
+pub(in crate::observe) use types::PiiScanResult;
