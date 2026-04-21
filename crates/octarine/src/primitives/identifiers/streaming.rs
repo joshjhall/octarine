@@ -307,10 +307,17 @@ impl StreamingScanner {
                 | IdentifierType::Port
                 | IdentifierType::Jwt
                 | IdentifierType::ApiKey
-                | IdentifierType::SessionId => {
-                    // These are detected by network module's find_all_in_text
-                    // but we don't have specific find_X_in_text methods for them
-                    // Skip for now in selective scan
+                | IdentifierType::SessionId
+                | IdentifierType::OAuthToken
+                | IdentifierType::SshKey
+                | IdentifierType::OnePasswordToken
+                | IdentifierType::OnePasswordVaultRef
+                | IdentifierType::BearerToken
+                | IdentifierType::UrlWithCredentials => {
+                    // These are detected by network/token modules via
+                    // find_all_in_text / is_X predicates, but the streaming
+                    // scanner has no dedicated find_X_in_text methods for
+                    // them. Skip for now in selective scan.
                     continue;
                 }
 
