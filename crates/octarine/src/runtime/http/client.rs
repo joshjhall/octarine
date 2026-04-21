@@ -14,6 +14,9 @@ use std::time::Instant;
 use reqwest::Method;
 
 use crate::observe::{self, ObserveBuilder, Problem, Soc2Control};
+use crate::primitives::identifiers::network::{
+    TextRedactionPolicy, UrlRedactionStrategy, redact_url_with_strategy, redact_urls_in_text,
+};
 use crate::primitives::runtime::http::{
     HttpClient as PrimitiveClient, HttpClientConfig, HttpClientError,
     HttpRequestBuilder as PrimitiveRequestBuilder, HttpResponse,
@@ -324,6 +327,7 @@ impl<'a> HttpRequestBuilder<'a> {
         let start = Instant::now();
         let method = self.method.to_string();
         let url = self.url.clone();
+        let redacted_url = redact_url_with_strategy(&url, UrlRedactionStrategy::ShowDomain);
         let client_name = self.client.name().to_string();
 
         // Check rate limiter if configured
@@ -337,7 +341,7 @@ impl<'a> HttpRequestBuilder<'a> {
                         .message("HTTP request rate limited")
                         .with_metadata("client", client_name.clone())
                         .with_metadata("method", method.clone())
-                        .with_metadata("url", url.clone())
+                        .with_metadata("url", redacted_url.clone())
                         .with_metadata("retry_after_ms", retry_after.as_millis() as i64)
                         .soc2_control(Soc2Control::CC6_1) // Logical access control
                         .warn();
@@ -355,7 +359,7 @@ impl<'a> HttpRequestBuilder<'a> {
             .message("HTTP request started")
             .with_metadata("client", client_name.clone())
             .with_metadata("method", method.clone())
-            .with_metadata("url", url.clone())
+            .with_metadata("url", redacted_url.clone())
             .soc2_control(Soc2Control::CC7_2) // System monitoring
             .debug();
 
@@ -372,7 +376,7 @@ impl<'a> HttpRequestBuilder<'a> {
                         .message("HTTP request completed after retries")
                         .with_metadata("client", client_name.clone())
                         .with_metadata("method", method.clone())
-                        .with_metadata("url", url.clone())
+                        .with_metadata("url", redacted_url.clone())
                         .with_metadata("status", i64::from(status))
                         .with_metadata("attempts", i64::from(attempts))
                         .with_metadata("elapsed_ms", elapsed.as_millis() as i64)
@@ -383,7 +387,7 @@ impl<'a> HttpRequestBuilder<'a> {
                         .message("HTTP request completed")
                         .with_metadata("client", client_name.clone())
                         .with_metadata("method", method.clone())
-                        .with_metadata("url", url.clone())
+                        .with_metadata("url", redacted_url.clone())
                         .with_metadata("status", i64::from(status))
                         .with_metadata("elapsed_ms", elapsed.as_millis() as i64)
                         .soc2_control(Soc2Control::CC7_2)
@@ -396,7 +400,7 @@ impl<'a> HttpRequestBuilder<'a> {
                         .message("HTTP request returned error status")
                         .with_metadata("client", client_name.clone())
                         .with_metadata("method", method.clone())
-                        .with_metadata("url", url.clone())
+                        .with_metadata("url", redacted_url.clone())
                         .with_metadata("status", i64::from(status))
                         .with_metadata("attempts", i64::from(attempts))
                         .soc2_control(Soc2Control::CC7_2)
@@ -416,7 +420,7 @@ impl<'a> HttpRequestBuilder<'a> {
                             .with_metadata("client", client_name.clone())
                             .with_metadata("circuit", name.clone())
                             .with_metadata("method", method.clone())
-                            .with_metadata("url", url.clone())
+                            .with_metadata("url", redacted_url.clone())
                             .soc2_control(Soc2Control::CC7_2)
                             .warn();
 
@@ -434,7 +438,7 @@ impl<'a> HttpRequestBuilder<'a> {
                             .message("HTTP request failed after retries")
                             .with_metadata("client", client_name.clone())
                             .with_metadata("method", method.clone())
-                            .with_metadata("url", url.clone())
+                            .with_metadata("url", redacted_url.clone())
                             .with_metadata("attempts", i64::from(*attempts))
                             .with_metadata("elapsed_ms", req_elapsed.as_millis() as i64)
                             .with_metadata("error", message.clone())
@@ -443,7 +447,7 @@ impl<'a> HttpRequestBuilder<'a> {
 
                         Problem::OperationFailed(format!(
                             "HTTP {} {} failed after {} attempts: {}",
-                            method, url, attempts, message
+                            method, redacted_url, attempts, message
                         ))
                     }
                     HttpClientError::RateLimited => {
@@ -451,7 +455,7 @@ impl<'a> HttpRequestBuilder<'a> {
                             .message("HTTP request rate limited")
                             .with_metadata("client", client_name.clone())
                             .with_metadata("method", method.clone())
-                            .with_metadata("url", url.clone())
+                            .with_metadata("url", redacted_url.clone())
                             .soc2_control(Soc2Control::CC6_1) // Logical access control
                             .warn();
 
@@ -473,26 +477,29 @@ impl<'a> HttpRequestBuilder<'a> {
                         ObserveBuilder::new()
                             .message("Invalid URL")
                             .with_metadata("client", client_name.clone())
-                            .with_metadata("url", url.clone())
+                            .with_metadata("url", redacted_url.clone())
                             .with_metadata("error", msg.clone())
                             .warn();
 
                         Problem::OperationFailed(format!("Invalid URL: {}", msg))
                     }
                     HttpClientError::Reqwest(req_err) => {
+                        let redacted_err =
+                            redact_urls_in_text(&req_err.to_string(), TextRedactionPolicy::Partial)
+                                .into_owned();
                         ObserveBuilder::new()
                             .message("HTTP request error")
                             .with_metadata("client", client_name.clone())
                             .with_metadata("method", method.clone())
-                            .with_metadata("url", url.clone())
+                            .with_metadata("url", redacted_url.clone())
                             .with_metadata("elapsed_ms", elapsed.as_millis() as i64)
-                            .with_metadata("error", req_err.to_string())
+                            .with_metadata("error", redacted_err.clone())
                             .soc2_control(Soc2Control::CC7_2)
                             .error();
 
                         Problem::OperationFailed(format!(
                             "HTTP {} {} failed: {}",
-                            method, url, req_err
+                            method, redacted_url, redacted_err
                         ))
                     }
                 };
@@ -507,7 +514,10 @@ impl std::fmt::Debug for HttpRequestBuilder<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HttpRequestBuilder")
             .field("method", &self.method)
-            .field("url", &self.url)
+            .field(
+                "url",
+                &redact_url_with_strategy(&self.url, UrlRedactionStrategy::ShowDomain),
+            )
             .finish()
     }
 }
@@ -606,5 +616,21 @@ mod tests {
 
         let debug_str = format!("{:?}", client_without);
         assert!(debug_str.contains("has_rate_limiter: false"));
+    }
+
+    #[test]
+    fn test_send_redacts_query_string() {
+        // Locks in the redaction strategy used by HttpRequestBuilder::send() so
+        // no future refactor silently downgrades the log hygiene for query
+        // strings that may carry tokens, emails, or other PII.
+        let redacted = redact_url_with_strategy(
+            "https://api.example.com/users/42?token=secret123&email=a@b.com",
+            UrlRedactionStrategy::ShowDomain,
+        );
+        assert_eq!(redacted, "https://api.example.com***");
+        assert!(!redacted.contains("token"));
+        assert!(!redacted.contains("secret123"));
+        assert!(!redacted.contains("a@b.com"));
+        assert!(!redacted.contains("/users/42"));
     }
 }
