@@ -184,6 +184,20 @@ impl GovernmentIdentifierBuilder {
         detection::find_tax_ids_in_text(text)
     }
 
+    /// Check if value is a valid EIN (Employer Identification Number)
+    ///
+    /// Validates both the `XX-XXXXXXX` format and the IRS campus code prefix.
+    #[must_use]
+    pub fn is_ein(&self, value: &str) -> bool {
+        detection::is_ein(value)
+    }
+
+    /// Find all valid EINs in text
+    #[must_use]
+    pub fn find_eins_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_eins_in_text(text)
+    }
+
     /// Validate EIN format
     ///
     /// # Errors

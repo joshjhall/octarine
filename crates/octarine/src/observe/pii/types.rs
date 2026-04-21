@@ -520,6 +520,7 @@ impl From<IdentifierType> for PiiType {
             // Government
             IdentifierType::DriverLicense => Self::DriverLicense,
             IdentifierType::Passport => Self::Passport,
+            IdentifierType::Ein => Self::Ein,
             IdentifierType::TaxId => Self::TaxId,
             IdentifierType::NationalId => Self::NationalId,
             IdentifierType::KoreaRrn => Self::KoreaRrn,
@@ -937,6 +938,7 @@ mod tests {
             PiiType::DriverLicense
         );
         assert_eq!(PiiType::from(IdentifierType::Passport), PiiType::Passport);
+        assert_eq!(PiiType::from(IdentifierType::Ein), PiiType::Ein);
         assert_eq!(PiiType::from(IdentifierType::TaxId), PiiType::TaxId);
         assert_eq!(
             PiiType::from(IdentifierType::NationalId),

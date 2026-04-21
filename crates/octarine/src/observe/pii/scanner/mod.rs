@@ -218,6 +218,42 @@ mod tests {
     }
 
     #[test]
+    fn test_scan_for_pii_ein() {
+        // Valid EIN (12-3456789, Brookhaven prefix) — must surface as PiiType::Ein
+        // and PiiType::TaxId both, since EIN is a specific kind of tax ID.
+        let text = "Company EIN: 12-3456789";
+        let types = scan_for_pii(text);
+        assert!(
+            types.contains(&PiiType::Ein),
+            "Should detect EIN, got {:?}",
+            types
+        );
+        assert!(
+            types.contains(&PiiType::TaxId),
+            "EIN is a tax ID — both classifications should fire, got {:?}",
+            types
+        );
+    }
+
+    #[test]
+    fn test_scan_for_pii_invalid_ein_only_tax_id() {
+        // Invalid IRS prefix (00) — EIN-specific scan should NOT match,
+        // but the broad TaxId pattern still catches it.
+        let text = "Bad EIN: 00-0000001";
+        let types = scan_for_pii(text);
+        assert!(
+            !types.contains(&PiiType::Ein),
+            "Invalid IRS prefix must not produce PiiType::Ein, got {:?}",
+            types
+        );
+        assert!(
+            types.contains(&PiiType::TaxId),
+            "Broad tax ID pattern still matches, got {:?}",
+            types
+        );
+    }
+
+    #[test]
     fn test_scan_for_pii_credit_card() {
         let text = "Card: 4242424242424242"; // Stripe test card
         let types = scan_for_pii(text);

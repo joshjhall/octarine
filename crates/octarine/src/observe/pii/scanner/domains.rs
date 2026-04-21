@@ -75,6 +75,9 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     if !government.find_passports_in_text(text).is_empty() {
         pii_types.push(PiiType::Passport);
     }
+    if !government.find_eins_in_text(text).is_empty() {
+        pii_types.push(PiiType::Ein);
+    }
     if !government.find_tax_ids_in_text(text).is_empty() {
         pii_types.push(PiiType::TaxId);
     }
