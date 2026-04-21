@@ -32,9 +32,6 @@
 //! let contents = ops.read_file_sync("config.json")?;
 //! ```
 
-// This module provides public APIs for library consumers
-#![allow(dead_code)]
-
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -731,16 +728,6 @@ impl SecureFileOps {
             AuditLevel::Full | AuditLevel::Debug
         ) {
             observe::info(operation, message);
-        }
-    }
-
-    #[allow(dead_code)]
-    fn log_warn(&self, operation: &str, message: String) {
-        if matches!(
-            self.config.audit_level,
-            AuditLevel::Warnings | AuditLevel::Full | AuditLevel::Debug
-        ) {
-            observe::warn(operation, message);
         }
     }
 
