@@ -2,3 +2,4 @@
 - [Complete provider integration](feedback_complete_provider_integration.md) — new providers need builder, sanitization, and Layer 3 wrapping, not just detection
 - [Audit severity and dedup](feedback_audit_severity.md) — file all findings incl. low severity, but dedup aggressively against open issues
 - [GitHub status labels](feedback_github_labels.md) — verify all four `status/*` labels exist before `/next-issue-ship` (pr-pending was missing)
+- [audit-ai-config scans gitignored file](project_audit_ai_config_gitignored.md) — findings against .claude/settings.local.json can't be PR'd; fix locally and close with comment
