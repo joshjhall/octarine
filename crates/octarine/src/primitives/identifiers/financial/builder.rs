@@ -42,6 +42,16 @@ impl FinancialIdentifierBuilder {
         detection::is_financial_identifier(value)
     }
 
+    /// Detect financial identifier type (dual-API contract alias).
+    ///
+    /// Companion to [`Self::is_financial_identifier`] — both delegate to the
+    /// same aggregate detector; this one returns the matched
+    /// `IdentifierType`.
+    #[must_use]
+    pub fn detect_financial_identifier(&self, value: &str) -> Option<IdentifierType> {
+        detection::detect_financial_identifier(value)
+    }
+
     /// Check if value is a credit card
     #[must_use]
     pub fn is_credit_card(&self, value: &str) -> bool {

@@ -36,6 +36,8 @@ mod session;
 mod ssh;
 mod types;
 
+use super::super::types::IdentifierType;
+
 // Re-export types
 pub use types::{ApiKeyProvider, JwtAlgorithm, TokenType};
 
@@ -261,6 +263,72 @@ pub fn is_token_identifier(value: &str) -> bool {
     detect_token_type(value).is_some()
 }
 
+/// Detect token identifier type (dual-API contract).
+///
+/// Companion to [`is_token_identifier`] that returns the matched
+/// `IdentifierType`. Internally dispatches via [`detect_token_type`] and
+/// maps the richer `TokenType` enum to the cross-domain `IdentifierType`:
+///
+/// - Dedicated variants (`Jwt`, `GitHub` → `GitHubToken`, `GitLab` →
+///   `GitLabToken`, `AwsAccessKey`, `AwsSessionToken`, `SessionId`) map
+///   directly.
+/// - `UrlWithCredentials` maps to `Url`.
+/// - SSH keys/fingerprints map to `HighEntropyString` (no dedicated SSH
+///   variant in `IdentifierType`; matches the `From<IdentifierType>` bridge
+///   fallback in `observe/pii/types.rs`).
+/// - All other provider-specific tokens (Stripe, Square, Shopify, Mailgun,
+///   Discord, Slack, Telegram, OpenAI, etc.) map to `ApiKey`.
+#[must_use]
+pub fn detect_token_identifier(value: &str) -> Option<IdentifierType> {
+    let token_type = detect_token_type(value)?;
+    Some(match token_type {
+        TokenType::Jwt => IdentifierType::Jwt,
+        TokenType::GitHub => IdentifierType::GitHubToken,
+        TokenType::GitLab => IdentifierType::GitLabToken,
+        TokenType::AwsAccessKey => IdentifierType::AwsAccessKey,
+        TokenType::AwsSessionToken => IdentifierType::AwsSessionToken,
+        TokenType::SessionId => IdentifierType::SessionId,
+        TokenType::UrlWithCredentials => IdentifierType::Url,
+        // No SshKey variant in IdentifierType; HighEntropyString matches the
+        // observe/pii/types.rs bridge fallback for SSH material.
+        TokenType::SshPrivateKey
+        | TokenType::SshPublicKey
+        | TokenType::SshFingerprint
+        | TokenType::AwsSecretKey => IdentifierType::HighEntropyString,
+        // All remaining provider-specific tokens collapse to the generic
+        // ApiKey variant.
+        TokenType::GcpApiKey
+        | TokenType::AzureKey
+        | TokenType::StripeKey
+        | TokenType::OnePasswordServiceToken
+        | TokenType::OnePasswordVaultRef
+        | TokenType::BearerToken
+        | TokenType::GenericApiKey
+        | TokenType::SquareToken
+        | TokenType::PayPalToken
+        | TokenType::ShopifyToken
+        | TokenType::MailchimpToken
+        | TokenType::MailgunToken
+        | TokenType::ResendToken
+        | TokenType::BrevoToken
+        | TokenType::DatabricksToken
+        | TokenType::VaultToken
+        | TokenType::CloudflareOriginCaKey
+        | TokenType::NpmToken
+        | TokenType::PyPiToken
+        | TokenType::NuGetKey
+        | TokenType::ArtifactoryToken
+        | TokenType::DockerHubToken
+        | TokenType::TelegramToken
+        | TokenType::DiscordToken
+        | TokenType::SlackToken
+        | TokenType::TwilioToken
+        | TokenType::SendGridToken
+        | TokenType::OpenAiKey
+        | TokenType::BitbucketToken => IdentifierType::ApiKey,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -473,5 +541,56 @@ mod tests {
         assert!(!is_token_identifier("not-a-token"));
         assert!(!is_token_identifier("regular text"));
         assert!(!is_token_identifier(""));
+    }
+
+    #[test]
+    fn test_detect_token_identifier() {
+        // Dedicated mappings (tokens constructed at runtime to avoid
+        // triggering secret scanners on literal high-entropy strings).
+        let ghp = format!("{}{}", "ghp_", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij");
+        assert_eq!(
+            detect_token_identifier(&ghp),
+            Some(IdentifierType::GitHubToken)
+        );
+        assert_eq!(
+            detect_token_identifier("glpat-xxxxxxxxxxxxxxxxxxxx"),
+            Some(IdentifierType::GitLabToken)
+        );
+        let akia = format!("AKIA{}", "IOSFODNN7EXAMPLE");
+        assert_eq!(
+            detect_token_identifier(&akia),
+            Some(IdentifierType::AwsAccessKey)
+        );
+        let jwt = format!(
+            "{}.{}.{}",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
+            "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        );
+        assert_eq!(detect_token_identifier(&jwt), Some(IdentifierType::Jwt));
+        assert_eq!(
+            detect_token_identifier("Ab3De8Gh2Jk5Mn9Pq4Rs7Tv0Wx3Yz6"),
+            Some(IdentifierType::SessionId)
+        );
+
+        // SSH keys collapse to HighEntropyString
+        assert_eq!(
+            detect_token_identifier("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8..."),
+            Some(IdentifierType::HighEntropyString)
+        );
+
+        // Provider-specific tokens collapse to ApiKey
+        assert_eq!(
+            detect_token_identifier(&format!("sk_live_{}", "EXAMPLE000000000KEY01abcdef")),
+            Some(IdentifierType::ApiKey)
+        );
+        assert_eq!(
+            detect_token_identifier(&format!("shpat_{}", "abcdef1234567890abcdef1234567890")),
+            Some(IdentifierType::ApiKey)
+        );
+
+        // Non-tokens
+        assert_eq!(detect_token_identifier("not-a-token"), None);
+        assert_eq!(detect_token_identifier(""), None);
     }
 }

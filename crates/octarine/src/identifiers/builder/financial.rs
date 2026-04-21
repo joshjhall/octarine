@@ -138,6 +138,17 @@ impl FinancialBuilder {
         self.inner.is_financial_identifier(value)
     }
 
+    /// Detect financial identifier type (dual-API alias for [`Self::find`]).
+    ///
+    /// Provided to match the `detect_{domain}_identifier` /
+    /// `is_{domain}_identifier` contract shared by every identifier domain.
+    /// Unlike [`Self::find`], this is a plain pass-through without observe
+    /// instrumentation — use [`Self::find`] when you want metrics recorded.
+    #[must_use]
+    pub fn detect_financial_identifier(&self, value: &str) -> Option<IdentifierType> {
+        self.inner.detect_financial_identifier(value)
+    }
+
     /// Check if value is a credit card
     #[must_use]
     pub fn is_credit_card(&self, value: &str) -> bool {

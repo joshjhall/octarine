@@ -52,8 +52,8 @@ pub use username::{detect_usernames_in_text, is_username};
 
 // Re-export common/aggregate functions
 pub use common::{
-    detect_all_pii_in_text, find_personal_identifier, is_personal_identifier, is_pii,
-    is_pii_present,
+    detect_all_pii_in_text, detect_personal_identifier, find_personal_identifier,
+    is_personal_identifier, is_pii, is_pii_present,
 };
 
 // Re-export deduplicate_matches for internal use by sibling modules

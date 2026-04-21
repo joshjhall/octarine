@@ -63,6 +63,20 @@ pub fn is_financial_identifier(value: &str) -> bool {
     find_financial_identifier(value).is_some()
 }
 
+/// Detect financial identifier type (dual-API contract alias).
+///
+/// Every identifier domain exposes the pair `detect_{domain}_identifier` /
+/// `is_{domain}_identifier`. This is the aggregate entry point that returns
+/// which specific `IdentifierType` matched — the bool counterpart is
+/// [`is_financial_identifier`].
+///
+/// Semantically identical to [`find_financial_identifier`]; kept as an alias
+/// for contract consistency across domains.
+#[must_use]
+pub fn detect_financial_identifier(value: &str) -> Option<IdentifierType> {
+    find_financial_identifier(value)
+}
+
 /// Detect all financial identifiers in text
 ///
 /// Comprehensive scanner that detects all financial PII types in one pass:
@@ -218,6 +232,20 @@ mod tests {
         assert!(is_financial_identifier("4242424242424242"));
         assert!(is_financial_identifier("121000358"));
         assert!(!is_financial_identifier("not financial"));
+    }
+
+    #[test]
+    fn test_detect_financial_identifier() {
+        assert_eq!(
+            detect_financial_identifier("4242424242424242"),
+            Some(IdentifierType::CreditCard)
+        );
+        assert_eq!(
+            detect_financial_identifier("121000358"),
+            Some(IdentifierType::RoutingNumber)
+        );
+        assert_eq!(detect_financial_identifier("not financial"), None);
+        assert_eq!(detect_financial_identifier(""), None);
     }
 
     #[test]

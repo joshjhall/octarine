@@ -3,6 +3,7 @@
 //! Pure detection functions for identifying cryptographic artifact types.
 //! This is the CLASSIFICATION concern - answering "What type is this?"
 
+use super::super::types::IdentifierType;
 use super::patterns::{
     LABEL_CERTIFICATE, LABEL_CERTIFICATE_REQUEST, LABEL_EC_PRIVATE_KEY,
     LABEL_ENCRYPTED_PRIVATE_KEY, LABEL_OPENSSH_PRIVATE_KEY, LABEL_PRIVATE_KEY, LABEL_PUBLIC_KEY,
@@ -340,6 +341,33 @@ pub fn detect_crypto_artifact(data: &str) -> CryptoDetectionResult {
     result
 }
 
+/// Detect crypto identifier type (dual-API contract).
+///
+/// Companion to [`is_crypto_identifier`] that returns the matched
+/// `IdentifierType`. Internally dispatches to [`detect_crypto_artifact`] and
+/// maps any recognised artifact (PEM/DER/SSH format, known key type, or
+/// certificate) to [`IdentifierType::HighEntropyString`] — this is the
+/// closest existing variant, since `IdentifierType` has no dedicated
+/// `Certificate` / `PrivateKey` / `SshKey` variant. A follow-up may add
+/// those variants and refine this mapping.
+#[must_use]
+pub fn detect_crypto_identifier(data: &str) -> Option<IdentifierType> {
+    let result = detect_crypto_artifact(data);
+    if result.format != KeyFormat::Unknown || result.key_type.is_some() || result.is_certificate {
+        Some(IdentifierType::HighEntropyString)
+    } else {
+        None
+    }
+}
+
+/// Check whether `data` is any cryptographic artifact (dual-API contract).
+///
+/// Returns `true` when [`detect_crypto_identifier`] would return `Some`.
+#[must_use]
+pub fn is_crypto_identifier(data: &str) -> bool {
+    detect_crypto_identifier(data).is_some()
+}
+
 /// Detect signature algorithm from OID string
 ///
 /// Common OIDs:
@@ -518,6 +546,32 @@ FAKE_TEST_DATA_NOT_A_REAL_CERTIFICATE
         let result = detect_crypto_artifact(SAMPLE_SSH_RSA_KEY);
         assert_eq!(result.key_type, Some(KeyType::SshRsa));
         assert_eq!(result.format, KeyFormat::Ssh);
+    }
+
+    #[test]
+    fn test_detect_crypto_identifier() {
+        assert_eq!(
+            detect_crypto_identifier(SAMPLE_CERTIFICATE_PEM),
+            Some(IdentifierType::HighEntropyString)
+        );
+        assert_eq!(
+            detect_crypto_identifier(SAMPLE_RSA_PUBLIC_PEM),
+            Some(IdentifierType::HighEntropyString)
+        );
+        assert_eq!(
+            detect_crypto_identifier(SAMPLE_SSH_ED25519_KEY),
+            Some(IdentifierType::HighEntropyString)
+        );
+        assert_eq!(detect_crypto_identifier("plain text, not a key"), None);
+        assert_eq!(detect_crypto_identifier(""), None);
+    }
+
+    #[test]
+    fn test_is_crypto_identifier() {
+        assert!(is_crypto_identifier(SAMPLE_CERTIFICATE_PEM));
+        assert!(is_crypto_identifier(SAMPLE_SSH_RSA_KEY));
+        assert!(!is_crypto_identifier("plain text"));
+        assert!(!is_crypto_identifier(""));
     }
 
     #[test]
