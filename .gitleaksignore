@@ -12,3 +12,4 @@ crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:
 crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:564
 crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:589
 crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:640
+crates/octarine/src/identifiers/shortcuts.rs:stripe-access-token:1366

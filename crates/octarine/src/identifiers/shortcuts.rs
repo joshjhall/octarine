@@ -28,8 +28,9 @@ use crate::primitives::identifiers::{
 };
 
 use super::types::{
-    CredentialMatch, CreditCardType, DetectionConfidence, FinancialTextPolicy, GpsFormat,
-    IdentifierMatch, IdentifierType, LocationTextPolicy, PhoneRegion, PostalCodeType, UuidVersion,
+    ApiKeyProvider, CredentialMatch, CreditCardType, DetectionConfidence, FinancialTextPolicy,
+    GpsFormat, IdentifierMatch, IdentifierType, LocationTextPolicy, PhoneRegion, PostalCodeType,
+    UuidVersion,
 };
 use super::{
     BiometricBuilder, CredentialsBuilder, FinancialBuilder, GovernmentBuilder, IdentifierBuilder,
@@ -219,6 +220,15 @@ pub fn redact_username(username: &str) -> String {
 #[must_use]
 pub fn is_ssn(value: &str) -> bool {
     GovernmentBuilder::new().is_ssn(value)
+}
+
+/// Validate an SSN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the SSN format is invalid.
+pub fn validate_ssn(ssn: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_ssn(ssn)
 }
 
 /// Find all SSNs in text
@@ -454,6 +464,41 @@ pub fn is_jwt(value: &str) -> bool {
     TokenBuilder::new().is_jwt(value)
 }
 
+/// Validate a JWT token structure (format only; does not verify signature)
+///
+/// # Errors
+///
+/// Returns `Problem` if the JWT structure is invalid.
+pub fn validate_jwt(token: &str) -> Result<(), Problem> {
+    TokenBuilder::new().validate_jwt(token)
+}
+
+/// Validate an API key using common-provider length bounds (20..=200)
+///
+/// Covers typical providers (Stripe, AWS, GitHub, Slack, etc.). For custom
+/// bounds, call `TokenBuilder::new().validate_api_key(key, min, max)` directly.
+///
+/// # Errors
+///
+/// Returns `Problem` if the key is outside the length bounds or the format
+/// is not recognized.
+pub fn validate_api_key(key: &str) -> Result<ApiKeyProvider, Problem> {
+    TokenBuilder::new().validate_api_key(key, 20, 200)
+}
+
+/// Validate a session ID using common session length bounds (16..=128)
+///
+/// Covers UUIDs (36), HMAC sessions (64), and larger opaque IDs. For custom
+/// bounds, call `TokenBuilder::new().validate_session_id(session_id, min, max)` directly.
+///
+/// # Errors
+///
+/// Returns `Problem` if the session ID is outside the length bounds, has low
+/// entropy, or contains invalid characters.
+pub fn validate_session_id(session_id: &str) -> Result<(), Problem> {
+    TokenBuilder::new().validate_session_id(session_id, 16, 128)
+}
+
 /// Redact a JWT token
 #[must_use]
 pub fn redact_jwt(jwt: &str) -> String {
@@ -518,6 +563,54 @@ pub fn is_medical_record_number(value: &str) -> bool {
     MedicalBuilder::new().is_mrn(value)
 }
 
+/// Check if value is a provider ID (NPI — National Provider Identifier)
+#[must_use]
+pub fn is_provider_id(value: &str) -> bool {
+    MedicalBuilder::new().is_provider_id(value)
+}
+
+/// Check if value is a DEA number (format + checksum)
+#[must_use]
+pub fn is_dea_number(value: &str) -> bool {
+    MedicalBuilder::new().is_dea_number(value)
+}
+
+/// Check if value is a health insurance number
+#[must_use]
+pub fn is_health_insurance(value: &str) -> bool {
+    MedicalBuilder::new().is_insurance(value)
+}
+
+/// Check if value is a prescription number
+#[must_use]
+pub fn is_prescription(value: &str) -> bool {
+    MedicalBuilder::new().is_prescription(value)
+}
+
+/// Check if value is a medical code (ICD-10, CPT)
+#[must_use]
+pub fn is_medical_code(value: &str) -> bool {
+    MedicalBuilder::new().is_medical_code(value)
+}
+
+/// Validate a medical record number format
+///
+/// # Errors
+///
+/// Returns `Problem` if the MRN format is invalid.
+pub fn validate_mrn(mrn: &str) -> Result<(), Problem> {
+    MedicalBuilder::new().validate_mrn(mrn)
+}
+
+/// Validate an NPI (National Provider Identifier) format and checksum
+///
+/// # Errors
+///
+/// Returns `Problem` if the NPI format or checksum is invalid.
+pub fn validate_npi(npi: &str) -> Result<(), Problem> {
+    MedicalBuilder::new().validate_npi(npi)
+}
+
 /// Find all medical record numbers in text
 #[must_use]
 pub fn find_medical_records(text: &str) -> Vec<IdentifierMatch> {
@@ -554,6 +647,63 @@ pub fn redact_biometric(text: &str) -> String {
 #[must_use]
 pub fn is_employee_id(value: &str) -> bool {
     OrganizationalBuilder::new().is_employee_id(value)
+}
+
+/// Check if value is a student ID
+#[must_use]
+pub fn is_student_id(value: &str) -> bool {
+    OrganizationalBuilder::new().is_student_id(value)
+}
+
+/// Check if value is a badge number
+#[must_use]
+pub fn is_badge_number(value: &str) -> bool {
+    OrganizationalBuilder::new().is_badge_number(value)
+}
+
+/// Validate an employee ID format
+///
+/// # Errors
+///
+/// Returns `Problem` if the employee ID format is invalid.
+pub fn validate_employee_id(employee_id: &str) -> Result<(), Problem> {
+    OrganizationalBuilder::new().validate_employee_id(employee_id)
+}
+
+/// Validate a student ID format
+///
+/// # Errors
+///
+/// Returns `Problem` if the student ID format is invalid.
+pub fn validate_student_id(student_id: &str) -> Result<(), Problem> {
+    OrganizationalBuilder::new().validate_student_id(student_id)
+}
+
+/// Validate a badge number format
+///
+/// # Errors
+///
+/// Returns `Problem` if the badge number format is invalid.
+pub fn validate_badge_number(badge_number: &str) -> Result<(), Problem> {
+    OrganizationalBuilder::new().validate_badge_number(badge_number)
+}
+
+/// Redact an employee ID
+#[must_use]
+pub fn redact_employee_id(employee_id: &str) -> String {
+    OrganizationalBuilder::new().redact_employee_id(employee_id)
+}
+
+/// Redact a student ID
+#[must_use]
+pub fn redact_student_id(student_id: &str) -> String {
+    OrganizationalBuilder::new().redact_student_id(student_id)
+}
+
+/// Redact a badge number
+#[must_use]
+pub fn redact_badge_number(badge_number: &str) -> String {
+    OrganizationalBuilder::new().redact_badge_number(badge_number)
 }
 
 /// Find all employee IDs in text
@@ -1189,5 +1339,103 @@ mod tests {
     fn test_bank_account_shortcut() {
         assert!(is_bank_account("1234567890"));
         assert!(!is_bank_account("ab"));
+    }
+
+    #[test]
+    fn test_validate_ssn_shortcut() {
+        // Valid SSN (non-test pattern, valid area/group/serial)
+        assert!(validate_ssn("517-29-8346").is_ok());
+        // Invalid SSN (all zeros area)
+        assert!(validate_ssn("000-00-0000").is_err());
+        assert!(validate_ssn("not-an-ssn").is_err());
+    }
+
+    #[test]
+    fn test_validate_jwt_shortcut() {
+        let jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
+                   eyJzdWIiOiIxMjM0NTY3ODkwIn0.\
+                   dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+        assert!(validate_jwt(jwt).is_ok());
+        assert!(validate_jwt("not-a-jwt").is_err());
+        assert!(validate_jwt("only.two").is_err());
+    }
+
+    #[test]
+    fn test_validate_api_key_shortcut() {
+        // Valid prefixed API key within 20..=200 bounds
+        assert!(validate_api_key("sk_test_1234567890abcdef").is_ok());
+        // Too short (< 20)
+        assert!(validate_api_key("short").is_err());
+        // Obvious test/demo keys are rejected by the validator
+        assert!(validate_api_key("demokey1234567890abcdef").is_err());
+    }
+
+    #[test]
+    fn test_validate_session_id_shortcut() {
+        // 30-char high-entropy session ID within 16..=128 bounds
+        assert!(validate_session_id("Ab3De8Gh2Jk5Mn9Pq4Rs7Tv0Wx3Yz6").is_ok());
+        // Too short (< 16)
+        assert!(validate_session_id("short").is_err());
+        // Obvious test session IDs are rejected
+        assert!(validate_session_id("test_session_12345678").is_err());
+    }
+
+    #[test]
+    fn test_medical_identifier_shortcuts() {
+        assert!(is_provider_id("NPI: 1234567890"));
+        assert!(!is_provider_id("NPI: 3123456789")); // must start with 1 or 2
+
+        assert!(is_dea_number("AB1234563")); // valid checksum
+        assert!(!is_dea_number("AB1234560")); // invalid checksum
+
+        assert!(is_health_insurance("Policy Number: ABC123456789"));
+        assert!(!is_health_insurance("not insurance"));
+
+        assert!(is_prescription("RX# 123456789"));
+        assert!(!is_prescription("not a prescription"));
+
+        assert!(is_medical_code("A01.1")); // ICD-10
+        assert!(is_medical_code("CPT: 99213"));
+        assert!(!is_medical_code("not a code"));
+    }
+
+    #[test]
+    fn test_validate_mrn_shortcut() {
+        assert!(validate_mrn("MRN-123456").is_ok());
+        assert!(validate_mrn("ABC").is_err()); // too short
+        assert!(validate_mrn("MRN@123").is_err()); // invalid character
+    }
+
+    #[test]
+    fn test_validate_npi_shortcut() {
+        assert!(validate_npi("1245319599").is_ok()); // valid checksum
+        assert!(validate_npi("1234567890").is_err()); // invalid checksum
+        assert!(validate_npi("not-an-npi").is_err());
+    }
+
+    #[test]
+    fn test_organizational_identifier_shortcuts() {
+        assert!(is_student_id("S12345678"));
+        assert!(!is_student_id("invalid"));
+
+        assert!(is_badge_number("BADGE# 98765"));
+        assert!(!is_badge_number("invalid"));
+
+        assert!(validate_employee_id("E123456").is_ok());
+        assert!(validate_employee_id("E12").is_err()); // too short
+
+        assert!(validate_student_id("S12345678").is_ok());
+        assert!(validate_student_id("$(whoami)").is_err()); // injection
+
+        assert!(validate_badge_number("BADGE-12345").is_ok());
+        assert!(validate_badge_number("B").is_err());
+
+        // Redaction should not return the original input verbatim
+        let emp = redact_employee_id("E123456");
+        assert!(!emp.contains("E123456"));
+        let stu = redact_student_id("S12345678");
+        assert!(!stu.contains("S12345678"));
+        let badge = redact_badge_number("BADGE-12345");
+        assert!(!badge.contains("BADGE-12345"));
     }
 }
