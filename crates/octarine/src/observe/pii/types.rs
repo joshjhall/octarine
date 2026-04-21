@@ -507,6 +507,12 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::Jwt => Self::Jwt,
             IdentifierType::ApiKey => Self::ApiKey,
             IdentifierType::SessionId => Self::SessionId,
+            IdentifierType::OAuthToken => Self::OAuthToken,
+            IdentifierType::SshKey => Self::SshKey,
+            IdentifierType::OnePasswordToken => Self::OnePasswordToken,
+            IdentifierType::OnePasswordVaultRef => Self::OnePasswordVaultRef,
+            IdentifierType::BearerToken => Self::BearerToken,
+            IdentifierType::UrlWithCredentials => Self::UrlWithCredentials,
             // fallback: no dedicated PiiType variants for developer tokens
             IdentifierType::GitHubToken
             | IdentifierType::GitLabToken
@@ -925,6 +931,27 @@ mod tests {
         assert_eq!(PiiType::from(IdentifierType::Jwt), PiiType::Jwt);
         assert_eq!(PiiType::from(IdentifierType::ApiKey), PiiType::ApiKey);
         assert_eq!(PiiType::from(IdentifierType::SessionId), PiiType::SessionId);
+        assert_eq!(
+            PiiType::from(IdentifierType::OAuthToken),
+            PiiType::OAuthToken
+        );
+        assert_eq!(PiiType::from(IdentifierType::SshKey), PiiType::SshKey);
+        assert_eq!(
+            PiiType::from(IdentifierType::OnePasswordToken),
+            PiiType::OnePasswordToken
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::OnePasswordVaultRef),
+            PiiType::OnePasswordVaultRef
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::BearerToken),
+            PiiType::BearerToken
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::UrlWithCredentials),
+            PiiType::UrlWithCredentials
+        );
 
         // Database
         assert_eq!(

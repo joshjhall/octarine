@@ -270,12 +270,12 @@ pub fn is_token_identifier(value: &str) -> bool {
 /// maps the richer `TokenType` enum to the cross-domain `IdentifierType`:
 ///
 /// - Dedicated variants (`Jwt`, `GitHub` → `GitHubToken`, `GitLab` →
-///   `GitLabToken`, `AwsAccessKey`, `AwsSessionToken`, `SessionId`) map
-///   directly.
-/// - `UrlWithCredentials` maps to `Url`.
-/// - SSH keys/fingerprints map to `HighEntropyString` (no dedicated SSH
-///   variant in `IdentifierType`; matches the `From<IdentifierType>` bridge
-///   fallback in `observe/pii/types.rs`).
+///   `GitLabToken`, `AwsAccessKey`, `AwsSessionToken`, `SessionId`,
+///   `SshKey`, `OnePasswordToken`, `OnePasswordVaultRef`, `BearerToken`,
+///   `UrlWithCredentials`) map directly.
+/// - `AwsSecretKey` maps to `HighEntropyString` — AWS secrets have no
+///   dedicated variant and match the `From<IdentifierType>` bridge
+///   fallback in `observe/pii/types.rs`.
 /// - All other provider-specific tokens (Stripe, Square, Shopify, Mailgun,
 ///   Discord, Slack, Telegram, OpenAI, etc.) map to `ApiKey`.
 #[must_use]
@@ -288,21 +288,21 @@ pub fn detect_token_identifier(value: &str) -> Option<IdentifierType> {
         TokenType::AwsAccessKey => IdentifierType::AwsAccessKey,
         TokenType::AwsSessionToken => IdentifierType::AwsSessionToken,
         TokenType::SessionId => IdentifierType::SessionId,
-        TokenType::UrlWithCredentials => IdentifierType::Url,
-        // No SshKey variant in IdentifierType; HighEntropyString matches the
-        // observe/pii/types.rs bridge fallback for SSH material.
-        TokenType::SshPrivateKey
-        | TokenType::SshPublicKey
-        | TokenType::SshFingerprint
-        | TokenType::AwsSecretKey => IdentifierType::HighEntropyString,
+        TokenType::UrlWithCredentials => IdentifierType::UrlWithCredentials,
+        TokenType::SshPrivateKey | TokenType::SshPublicKey | TokenType::SshFingerprint => {
+            IdentifierType::SshKey
+        }
+        TokenType::OnePasswordServiceToken => IdentifierType::OnePasswordToken,
+        TokenType::OnePasswordVaultRef => IdentifierType::OnePasswordVaultRef,
+        TokenType::BearerToken => IdentifierType::BearerToken,
+        // AWS secret keys have no dedicated variant; HighEntropyString
+        // matches the observe/pii/types.rs bridge fallback.
+        TokenType::AwsSecretKey => IdentifierType::HighEntropyString,
         // All remaining provider-specific tokens collapse to the generic
         // ApiKey variant.
         TokenType::GcpApiKey
         | TokenType::AzureKey
         | TokenType::StripeKey
-        | TokenType::OnePasswordServiceToken
-        | TokenType::OnePasswordVaultRef
-        | TokenType::BearerToken
         | TokenType::GenericApiKey
         | TokenType::SquareToken
         | TokenType::PayPalToken
@@ -573,10 +573,39 @@ mod tests {
             Some(IdentifierType::SessionId)
         );
 
-        // SSH keys collapse to HighEntropyString
+        // SSH keys/fingerprints map to dedicated SshKey variant
         assert_eq!(
             detect_token_identifier("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8..."),
-            Some(IdentifierType::HighEntropyString)
+            Some(IdentifierType::SshKey)
+        );
+
+        // 1Password tokens and vault references
+        let op_token = format!(
+            "ops_{}",
+            "eyJzaWduSW5BZGRyZXNzIjoiaHR0cHM6Ly9teS4xcGFzc3dvcmQuY29tIiwidXNlckF1dGgiOiJ5"
+        );
+        assert_eq!(
+            detect_token_identifier(&op_token),
+            Some(IdentifierType::OnePasswordToken)
+        );
+        assert_eq!(
+            detect_token_identifier("op://Production/Database/password"),
+            Some(IdentifierType::OnePasswordVaultRef)
+        );
+
+        // Bearer tokens
+        assert_eq!(
+            detect_token_identifier(&format!(
+                "Bearer {}",
+                "abcdefghijklmnopqrstuvwxyz0123456789"
+            )),
+            Some(IdentifierType::BearerToken)
+        );
+
+        // URLs with embedded credentials
+        assert_eq!(
+            detect_token_identifier("https://user:pass@example.com/path"),
+            Some(IdentifierType::UrlWithCredentials)
         );
 
         // Provider-specific tokens collapse to ApiKey

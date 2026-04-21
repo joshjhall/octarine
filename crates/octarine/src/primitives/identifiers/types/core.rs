@@ -47,7 +47,13 @@ pub enum IdentifierType {
     Jwt,
     ApiKey,
     SessionId,
-    HighEntropyString, // Entropy-detected potential secrets
+    OAuthToken,          // Generic OAuth 2.0 access/refresh tokens
+    SshKey,              // SSH public/private keys and fingerprints
+    OnePasswordToken,    // 1Password service account tokens (ops_...)
+    OnePasswordVaultRef, // 1Password secret reference (op://vault/item/field)
+    BearerToken,         // Authorization: Bearer <token>
+    UrlWithCredentials,  // URL with embedded user:pass@host credentials
+    HighEntropyString,   // Entropy-detected potential secrets
 
     // Database identifiers
     ConnectionString,
