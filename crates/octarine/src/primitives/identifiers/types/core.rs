@@ -55,7 +55,8 @@ pub enum IdentifierType {
     // Government/Official identifiers
     DriverLicense,
     Passport,
-    TaxId, // EIN, TIN, ITIN
+    Ein,   // Employer Identification Number (XX-XXXXXXX, IRS campus prefix)
+    TaxId, // TIN, ITIN (EIN has its own variant)
     NationalId,
     KoreaRrn,        // South Korea Resident Registration Number
     AustraliaTfn,    // Australian Tax File Number

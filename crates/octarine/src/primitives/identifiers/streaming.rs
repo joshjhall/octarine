@@ -377,6 +377,13 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::Ein => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_eins_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::TaxId => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_tax_ids_in_text(text) {

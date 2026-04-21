@@ -249,6 +249,27 @@ pub fn redact_ssns(text: &str) -> String {
     GovernmentBuilder::new().redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::Token)
 }
 
+/// Check if value is a valid EIN (Employer Identification Number)
+#[must_use]
+pub fn is_ein(value: &str) -> bool {
+    GovernmentBuilder::new().is_ein(value)
+}
+
+/// Find all valid EINs in text
+#[must_use]
+pub fn find_eins(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_eins_in_text(text)
+}
+
+/// Validate an EIN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the EIN format or IRS campus code prefix is invalid.
+pub fn validate_ein(ein: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_ein(ein)
+}
+
 // ============================================================
 // CREDIT CARD SHORTCUTS
 // ============================================================
