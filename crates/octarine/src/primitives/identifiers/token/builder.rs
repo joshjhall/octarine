@@ -4,6 +4,7 @@
 
 use crate::primitives::Problem;
 
+use super::super::types::IdentifierType;
 use super::{conversion, detection, redaction, sanitization, validation};
 
 // Re-export types for convenience
@@ -256,6 +257,15 @@ impl TokenIdentifierBuilder {
     /// Check if value is any type of token
     pub fn is_token_identifier(&self, value: &str) -> bool {
         detection::is_token_identifier(value)
+    }
+
+    /// Detect token identifier type (dual-API contract).
+    ///
+    /// Companion to [`Self::is_token_identifier`] that returns the matched
+    /// `IdentifierType` (see [`detection::detect_token_identifier`] for the
+    /// `TokenType` → `IdentifierType` mapping).
+    pub fn detect_token_identifier(&self, value: &str) -> Option<IdentifierType> {
+        detection::detect_token_identifier(value)
     }
 
     // ============================================================================

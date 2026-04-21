@@ -10,8 +10,8 @@ use std::time::Instant;
 use crate::observe::Problem;
 use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::primitives::identifiers::{
-    CertificateType, CryptoDetectionResult, CryptoIdentifierBuilder, KeyFormat, KeyType,
-    SignatureAlgorithm,
+    CertificateType, CryptoDetectionResult, CryptoIdentifierBuilder, IdentifierType, KeyFormat,
+    KeyType, SignatureAlgorithm,
 };
 
 #[allow(clippy::expect_used)]
@@ -156,6 +156,21 @@ impl CryptoBuilder {
     #[must_use]
     pub fn is_public_key(&self, data: &str) -> bool {
         self.inner.is_public_key(data)
+    }
+
+    /// Check whether `data` is any cryptographic artifact (dual-API contract).
+    #[must_use]
+    pub fn is_crypto_identifier(&self, data: &str) -> bool {
+        self.inner.is_crypto_identifier(data)
+    }
+
+    /// Detect crypto identifier type (dual-API contract).
+    ///
+    /// Returns [`IdentifierType::HighEntropyString`] for any recognised
+    /// PEM/DER/SSH artifact, otherwise `None`.
+    #[must_use]
+    pub fn detect_crypto_identifier(&self, data: &str) -> Option<IdentifierType> {
+        self.inner.detect_crypto_identifier(data)
     }
 
     /// Check if the data is any type of cryptographic artifact

@@ -5,6 +5,7 @@
 
 use crate::primitives::Problem;
 
+use super::super::types::IdentifierType;
 use super::detection;
 use super::types::{
     CertificateType, CryptoDetectionResult, KeyFormat, KeyType, SignatureAlgorithm,
@@ -254,6 +255,26 @@ impl CryptoIdentifierBuilder {
         result.format != KeyFormat::Unknown || result.key_type.is_some() || result.is_certificate
     }
 
+    /// Check whether `data` is any cryptographic artifact (dual-API contract).
+    ///
+    /// Semantically identical to [`Self::is_crypto_artifact`]; kept as the
+    /// `is_{domain}_identifier` pair for [`Self::detect_crypto_identifier`]
+    /// so crypto conforms to the cross-domain contract.
+    #[must_use]
+    pub fn is_crypto_identifier(&self, data: &str) -> bool {
+        detection::is_crypto_identifier(data)
+    }
+
+    /// Detect crypto identifier type (dual-API contract).
+    ///
+    /// Returns [`IdentifierType::HighEntropyString`] for any recognised
+    /// PEM/DER/SSH artifact, otherwise `None`. See
+    /// [`detection::detect_crypto_identifier`] for the mapping rationale.
+    #[must_use]
+    pub fn detect_crypto_identifier(&self, data: &str) -> Option<IdentifierType> {
+        detection::detect_crypto_identifier(data)
+    }
+
     /// Classify a certificate type (requires parsing for accurate results)
     ///
     /// Note: This is a basic heuristic. For accurate classification,
@@ -340,6 +361,20 @@ FAKE_TEST_DATA_NOT_A_REAL_CERTIFICATE
         assert!(builder.is_crypto_artifact(SAMPLE_SSH_KEY));
         assert!(builder.is_crypto_artifact(SAMPLE_CERT_PEM));
         assert!(!builder.is_crypto_artifact("just some random text"));
+    }
+
+    #[test]
+    fn test_dual_api_identifier() {
+        let builder = CryptoIdentifierBuilder::new();
+
+        assert!(builder.is_crypto_identifier(SAMPLE_RSA_PEM));
+        assert!(!builder.is_crypto_identifier("just some random text"));
+
+        assert_eq!(
+            builder.detect_crypto_identifier(SAMPLE_CERT_PEM),
+            Some(IdentifierType::HighEntropyString)
+        );
+        assert_eq!(builder.detect_crypto_identifier("plain text"), None);
     }
 
     #[test]

@@ -95,6 +95,20 @@ pub fn is_personal_identifier(value: &str) -> bool {
     find_personal_identifier(value).is_some()
 }
 
+/// Detect personal identifier type (dual-API contract alias).
+///
+/// Every identifier domain exposes the pair `detect_{domain}_identifier` /
+/// `is_{domain}_identifier`. This is the aggregate entry point that returns
+/// which specific `IdentifierType` matched — the bool counterpart is
+/// [`is_personal_identifier`].
+///
+/// Semantically identical to [`find_personal_identifier`]; kept as an alias
+/// for contract consistency across domains.
+#[must_use]
+pub fn detect_personal_identifier(value: &str) -> Option<IdentifierType> {
+    find_personal_identifier(value)
+}
+
 /// Check if value is PII (any personal identifier)
 ///
 /// Alias for `is_personal_identifier` - checks if a single value matches
@@ -238,6 +252,28 @@ mod tests {
         assert!(is_pii("user@example.com"));
         assert!(is_pii("+15551234567"));
         assert!(!is_pii("550e8400-e29b-41d4-a716-446655440000")); // UUID is not PII
+    }
+
+    #[test]
+    fn test_detect_personal_identifier() {
+        assert_eq!(
+            detect_personal_identifier("user@example.com"),
+            Some(IdentifierType::Email)
+        );
+        assert_eq!(
+            detect_personal_identifier("+15551234567"),
+            Some(IdentifierType::PhoneNumber)
+        );
+        assert_eq!(
+            detect_personal_identifier("john_doe"),
+            Some(IdentifierType::Username)
+        );
+        assert_eq!(detect_personal_identifier(""), None);
+        // UUID is not PII
+        assert_eq!(
+            detect_personal_identifier("550e8400-e29b-41d4-a716-446655440000"),
+            None
+        );
     }
 
     #[test]

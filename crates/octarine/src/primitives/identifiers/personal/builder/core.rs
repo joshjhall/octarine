@@ -36,6 +36,16 @@ impl PersonalIdentifierBuilder {
         detection::is_personal_identifier(value)
     }
 
+    /// Detect personal identifier type (dual-API contract alias).
+    ///
+    /// Companion to [`Self::is_personal_identifier`]; returns the matched
+    /// `IdentifierType` instead of a bool. Semantically identical to
+    /// [`Self::find`] — kept for contract consistency with other domains.
+    #[must_use]
+    pub fn detect_personal_identifier(&self, value: &str) -> Option<IdentifierType> {
+        detection::detect_personal_identifier(value)
+    }
+
     /// Check if value is PII (any personal identifier)
     #[must_use]
     pub fn is_pii(&self, value: &str) -> bool {

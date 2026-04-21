@@ -110,6 +110,17 @@ impl PersonalBuilder {
         self.inner.is_personal_identifier(value)
     }
 
+    /// Detect personal identifier type (dual-API alias for [`Self::detect`]).
+    ///
+    /// Provided to match the `detect_{domain}_identifier` /
+    /// `is_{domain}_identifier` contract shared by every identifier domain.
+    /// Unlike [`Self::detect`], this is a plain pass-through without observe
+    /// instrumentation — use [`Self::detect`] when you want metrics recorded.
+    #[must_use]
+    pub fn detect_personal_identifier(&self, value: &str) -> Option<IdentifierType> {
+        self.inner.detect_personal_identifier(value)
+    }
+
     /// Check if value is an email address
     #[must_use]
     pub fn is_email(&self, value: &str) -> bool {

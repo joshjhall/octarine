@@ -75,5 +75,8 @@ pub use builder::CryptoIdentifierBuilder;
 // Re-export types for public API (needed for function signatures)
 pub use types::{CertificateType, CryptoDetectionResult, KeyFormat, KeyType, SignatureAlgorithm};
 
-// Detection functions are accessed via CryptoIdentifierBuilder, not directly exported
-// This follows the same pattern as primitives/identifiers/network/
+// Dual-API contract (shared across identifier domains): re-export the two
+// aggregate functions so callers can invoke them without going through
+// `CryptoIdentifierBuilder`. Other `is_*` / `detect_*` functions remain
+// behind the builder — the dual-API pair is the explicit exception.
+pub use detection::{detect_crypto_identifier, is_crypto_identifier};

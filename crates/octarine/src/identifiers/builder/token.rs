@@ -9,9 +9,9 @@ use std::borrow::Cow;
 
 use crate::observe::Problem;
 use crate::primitives::identifiers::{
-    ApiKeyProvider, ApiKeyRedactionStrategy, JwtAlgorithm, JwtMetadata, JwtRedactionStrategy,
-    SessionIdRedactionStrategy, SshFingerprintRedactionStrategy, SshKeyRedactionStrategy,
-    TokenIdentifierBuilder, TokenTextPolicy, TokenType,
+    ApiKeyProvider, ApiKeyRedactionStrategy, IdentifierType, JwtAlgorithm, JwtMetadata,
+    JwtRedactionStrategy, SessionIdRedactionStrategy, SshFingerprintRedactionStrategy,
+    SshKeyRedactionStrategy, TokenIdentifierBuilder, TokenTextPolicy, TokenType,
 };
 
 /// Token identifier builder with observability
@@ -313,6 +313,17 @@ impl TokenBuilder {
     #[must_use]
     pub fn is_token_identifier(&self, value: &str) -> bool {
         self.inner.is_token_identifier(value)
+    }
+
+    /// Detect token identifier type (dual-API contract).
+    ///
+    /// Companion to [`Self::is_token_identifier`] that returns the matched
+    /// `IdentifierType`. Unlike [`Self::detect_token_type`], the result uses
+    /// the cross-domain `IdentifierType` enum so tokens can be compared with
+    /// identifiers from other domains (network, personal, financial, etc.).
+    #[must_use]
+    pub fn detect_token_identifier(&self, value: &str) -> Option<IdentifierType> {
+        self.inner.detect_token_identifier(value)
     }
 
     // ============================================================================
