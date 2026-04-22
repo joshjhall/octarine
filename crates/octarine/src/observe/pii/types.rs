@@ -90,6 +90,8 @@ pub enum PiiType {
     SpainNif,
     /// Spanish NIE (Numero de Identidad de Extranjero)
     SpainNie,
+    /// UK National Insurance Number (NINO)
+    UkNi,
 
     // =========================================================================
     // Medical Domain (PHI - Protected Health Information)
@@ -240,6 +242,7 @@ impl PiiType {
             Self::ItalyFiscalCode => "italy_fiscal_code",
             Self::SpainNif => "spain_nif",
             Self::SpainNie => "spain_nie",
+            Self::UkNi => "uk_ni",
             // Medical
             Self::Mrn => "mrn",
             Self::Npi => "npi",
@@ -318,7 +321,8 @@ impl PiiType {
             | Self::PolandPesel
             | Self::ItalyFiscalCode
             | Self::SpainNif
-            | Self::SpainNie => "government",
+            | Self::SpainNie
+            | Self::UkNi => "government",
             Self::Mrn
             | Self::Npi
             | Self::InsuranceNumber
@@ -369,7 +373,7 @@ impl PiiType {
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
-            Self::SpainNif | Self::SpainNie |
+            Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
@@ -393,7 +397,7 @@ impl PiiType {
             // EU-member country-specific government IDs (non-EU IDs like KoreaRrn,
             // AustraliaTfn/Abn, IndiaAadhaar/Pan, SingaporeNric are protected by
             // their own regimes — PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
-            Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode | Self::SpainNif | Self::SpainNie |
+            Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode | Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Financial — IBAN identifies an EU account holder (Recital 30 /
             // Art. 4(1)). Crypto addresses are pseudonymous by design and are
             // excluded unless linked to an identifiable person upstream.
@@ -540,6 +544,7 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::ItalyFiscalCode => Self::ItalyFiscalCode,
             IdentifierType::SpainNif => Self::SpainNif,
             IdentifierType::SpainNie => Self::SpainNie,
+            IdentifierType::UkNi => Self::UkNi,
 
             // Organizational
             IdentifierType::EmployeeId => Self::EmployeeId,
@@ -755,17 +760,18 @@ mod tests {
 
     #[test]
     fn test_country_specific_government_classifications() {
-        // EU-member IDs are GDPR-protected
+        // EU-member (and UK GDPR) IDs are GDPR-protected
         for pii in [
             PiiType::FinlandHetu,
             PiiType::PolandPesel,
             PiiType::ItalyFiscalCode,
             PiiType::SpainNif,
             PiiType::SpainNie,
+            PiiType::UkNi,
         ] {
             assert_eq!(pii.domain(), "government", "{pii:?} domain");
             assert!(pii.is_high_risk(), "{pii:?} should be high-risk");
-            assert!(pii.is_gdpr_protected(), "{pii:?} is EU, expect GDPR");
+            assert!(pii.is_gdpr_protected(), "{pii:?} is EU/UK, expect GDPR");
             assert!(!pii.is_pci_protected(), "{pii:?} not PCI");
             assert!(!pii.is_hipaa_protected(), "{pii:?} not HIPAA");
             assert!(!pii.is_secret(), "{pii:?} not a secret");
@@ -793,6 +799,7 @@ mod tests {
         assert_eq!(PiiType::KoreaRrn.name(), "korea_rrn");
         assert_eq!(PiiType::ItalyFiscalCode.name(), "italy_fiscal_code");
         assert_eq!(PiiType::SpainNie.name(), "spain_nie");
+        assert_eq!(PiiType::UkNi.name(), "uk_ni");
     }
 
     #[test]
@@ -1003,6 +1010,7 @@ mod tests {
         );
         assert_eq!(PiiType::from(IdentifierType::SpainNif), PiiType::SpainNif);
         assert_eq!(PiiType::from(IdentifierType::SpainNie), PiiType::SpainNie);
+        assert_eq!(PiiType::from(IdentifierType::UkNi), PiiType::UkNi);
 
         // Organizational
         assert_eq!(

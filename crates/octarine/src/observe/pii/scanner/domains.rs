@@ -120,6 +120,9 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     if !government.find_spain_nies_in_text(text).is_empty() {
         pii_types.push(PiiType::SpainNie);
     }
+    if !government.find_uk_nis_in_text(text).is_empty() {
+        pii_types.push(PiiType::UkNi);
+    }
 }
 
 /// Scan for medical PII (MRN, NPI, insurance, ICD codes, prescriptions)

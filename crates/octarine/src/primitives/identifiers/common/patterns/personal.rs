@@ -397,6 +397,35 @@ pub mod finland_hetu {
     }
 }
 
+/// UK National Insurance Number (NINO) patterns
+///
+/// Format: 2 letters + 6 digits + 1 suffix letter, e.g. `AB123456C`.
+/// The `is_uk_ni` / `find_uk_nis_in_text` detection functions apply HMRC
+/// prefix/suffix validation (BG, GB, NK, KN, TN, NT, ZZ excluded; suffix
+/// must be A-D) on top of these shape-only patterns.
+pub mod uk_ni {
+    use super::*;
+
+    /// Bare UK NINO shape: 2 letters + 6 digits + 1 letter
+    /// Example: `AB123456C`
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[A-Z]{2}\d{6}[A-Z]\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// UK NINO with explicit label (two capture groups: label prefix, NINO value)
+    /// Example: `NI: AB123456C`, `NINO AB123456C`, `National Insurance: AB123456C`
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(\b(?i:NINO|NI(?:[\s-]?Number)?|National[\s-]?Insurance(?:[\s-]?Number)?)[\s:#-]*)((?i:[A-Z]{2}\d{6}[A-Z]))\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
 /// Spain NIF (Numero de Identificacion Fiscal) patterns
 pub mod spain_nif {
     use super::*;
