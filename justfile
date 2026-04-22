@@ -34,6 +34,13 @@ fmt:
 # Run all formatters and file fixers via pre-commit on every file in the repo
 fmt-all: pre-commit
 
+# ─── SemVer ──────────────────────────────────────────────────────────────────
+
+# Check for breaking public-API changes vs. the main branch baseline.
+# Requires origin/main to be fetched (CI uses fetch-depth: 0).
+semver-check:
+    cargo semver-checks check-release --workspace --baseline-rev origin/main
+
 # ─── Test ────────────────────────────────────────────────────────────────────
 
 # Run all workspace tests (all features — matches `just clippy`)

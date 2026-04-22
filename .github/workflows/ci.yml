@@ -79,6 +79,24 @@ jobs:
       - uses: taiki-e/install-action@cargo-deny
       - run: cargo deny check
 
+  semver:
+    name: SemVer
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: semver
+      - uses: taiki-e/install-action@cargo-semver-checks
+      - uses: taiki-e/install-action@just
+      - run: just semver-check
+
   arch:
     name: Architecture
     runs-on: ubuntu-latest
