@@ -70,7 +70,7 @@ pub use text::{
     redact_all_government_ids_in_text_with_policy, redact_driver_licenses_in_text_with_strategy,
     redact_national_ids_in_text_with_strategy, redact_passports_in_text_with_strategy,
     redact_ssns_in_text_with_strategy, redact_tax_ids_in_text_with_strategy,
-    redact_vehicle_ids_in_text_with_strategy,
+    redact_uk_nis_in_text_with_strategy, redact_vehicle_ids_in_text_with_strategy,
 };
 
 // ============================================================================

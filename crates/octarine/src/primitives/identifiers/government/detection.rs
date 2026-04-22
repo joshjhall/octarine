@@ -27,6 +27,7 @@
 use super::super::common::patterns;
 use super::super::types::{DetectionConfidence, IdentifierMatch, IdentifierType};
 use super::common::{is_itin_area, is_test_ssn};
+use super::validation::validate_uk_ni;
 
 // ============================================================================
 // Constants
@@ -473,6 +474,79 @@ pub fn find_finland_hetus_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Check if a value is a valid UK National Insurance Number (NINO)
+///
+/// Format: 2 letters + 6 digits + 1 suffix letter (e.g. `AB123456C`).
+/// Applies HMRC prefix/suffix rules — invalid prefixes
+/// (BG, GB, NK, KN, TN, NT, ZZ), reserved first letters (D, F, I, Q, U, V),
+/// and non A-D suffixes are rejected. Test patterns (AA000000A, etc.) are
+/// also rejected.
+///
+/// This detection function combines a regex shape check with the full
+/// validator, so it has no false positives for bare NINOs.
+#[must_use]
+pub fn is_uk_ni(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    if !patterns::uk_ni::STANDARD.is_match(value) {
+        return false;
+    }
+    validate_uk_ni(value).is_ok()
+}
+
+/// Find all UK NINO patterns in text with HMRC validation
+///
+/// Scans for UK National Insurance Number patterns and filters out any
+/// regex match whose prefix/suffix rules fail (invalid prefixes, reserved
+/// first letters, non A-D suffix, test patterns).
+///
+/// Labeled patterns (`"NI: AB123456C"`) get High confidence; bare patterns
+/// get Medium. The returned match text is the full regex match including
+/// the label for labeled patterns — consistent with SSN text scanning.
+#[must_use]
+pub fn find_uk_nis_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for (pattern_idx, pattern) in patterns::uk_ni::all().iter().enumerate() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+
+            // For LABELED (index 0) the NINO is in capture group 2; for
+            // STANDARD the full match is the NINO itself.
+            let nino_text = if pattern_idx == 0 {
+                capture.get(2).map_or(full_match.as_str(), |m| m.as_str())
+            } else {
+                full_match.as_str()
+            };
+
+            if validate_uk_ni(nino_text).is_err() {
+                continue;
+            }
+
+            let confidence = if pattern_idx == 0 {
+                DetectionConfidence::High
+            } else {
+                DetectionConfidence::Medium
+            };
+
+            matches.push(IdentifierMatch::new(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::UkNi,
+                confidence,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Check if a value matches Spain NIF format
 #[must_use]
 pub fn is_spain_nif(value: &str) -> bool {
@@ -658,6 +732,8 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::SpainNif)
     } else if is_spain_nie(value) {
         Some(IdentifierType::SpainNie)
+    } else if is_uk_ni(value) {
+        Some(IdentifierType::UkNi)
     } else if is_national_id(value) {
         Some(IdentifierType::NationalId)
     } else if is_vehicle_id(value) {
@@ -1112,6 +1188,7 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_italy_fiscal_codes_in_text(text));
     all_matches.extend(find_spain_nifs_in_text(text));
     all_matches.extend(find_spain_nies_in_text(text));
+    all_matches.extend(find_uk_nis_in_text(text));
     all_matches.extend(find_national_ids_in_text(text));
     all_matches.extend(find_vehicle_ids_in_text(text));
 
@@ -1483,5 +1560,111 @@ mod tests {
         let second = deduped.get(1).expect("Should have second match");
         assert_eq!(first.matched_text, "test1long");
         assert_eq!(second.matched_text, "test2");
+    }
+
+    // ========================================================================
+    // UK NINO detection tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_uk_ni_valid() {
+        assert!(is_uk_ni("AB123456C"));
+        assert!(is_uk_ni("CE123456A"));
+        assert!(is_uk_ni("HJ987654B"));
+        assert!(is_uk_ni("LA456789D"));
+    }
+
+    #[test]
+    fn test_is_uk_ni_rejects_invalid_prefix() {
+        // HMRC-prohibited prefix pairs
+        assert!(!is_uk_ni("BG123456A"));
+        assert!(!is_uk_ni("GB123456A"));
+        assert!(!is_uk_ni("NK123456A"));
+        assert!(!is_uk_ni("KN123456A"));
+        assert!(!is_uk_ni("ZZ999999A")); // ZZ (also a test pattern)
+    }
+
+    #[test]
+    fn test_is_uk_ni_rejects_reserved_first_letter() {
+        // Reserved temporary-prefix first letters
+        for first in ['D', 'F', 'I', 'Q', 'U', 'V'] {
+            let candidate = format!("{first}A123456C");
+            assert!(!is_uk_ni(&candidate), "{candidate} should be rejected");
+        }
+    }
+
+    #[test]
+    fn test_is_uk_ni_rejects_invalid_suffix() {
+        assert!(!is_uk_ni("AB123456E"));
+        assert!(!is_uk_ni("AB123456Z"));
+    }
+
+    #[test]
+    fn test_is_uk_ni_rejects_wrong_shape() {
+        assert!(!is_uk_ni("not a nino"));
+        assert!(!is_uk_ni("A1123456C")); // Only one letter prefix
+        assert!(!is_uk_ni("AB1234567")); // All digits after prefix
+        assert!(!is_uk_ni(""));
+    }
+
+    #[test]
+    fn test_find_uk_nis_in_text_labeled_high_confidence() {
+        let text = "Employee NI: AB123456C";
+        let matches = find_uk_nis_in_text(text);
+        assert_eq!(matches.len(), 1);
+        let m = matches.first().expect("one match");
+        assert_eq!(m.identifier_type, IdentifierType::UkNi);
+        assert_eq!(m.confidence, DetectionConfidence::High);
+        assert!(m.matched_text.contains("AB123456C"));
+    }
+
+    #[test]
+    fn test_find_uk_nis_in_text_bare_medium_confidence() {
+        let text = "The record is AB123456C overall.";
+        let matches = find_uk_nis_in_text(text);
+        assert_eq!(matches.len(), 1);
+        let m = matches.first().expect("one match");
+        assert_eq!(m.identifier_type, IdentifierType::UkNi);
+        assert_eq!(m.confidence, DetectionConfidence::Medium);
+        assert_eq!(m.matched_text, "AB123456C");
+    }
+
+    #[test]
+    fn test_find_uk_nis_rejects_invalid_in_text() {
+        // Regex shape matches but HMRC rules reject — expect no matches
+        let text = "Spurious value BG123456A in the doc";
+        assert!(find_uk_nis_in_text(text).is_empty());
+    }
+
+    #[test]
+    fn test_find_uk_nis_multiple() {
+        let text = "First NI: AB123456C, second HJ987654B.";
+        let matches = find_uk_nis_in_text(text);
+        assert_eq!(matches.len(), 2);
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::UkNi)
+        );
+    }
+
+    #[test]
+    fn test_detect_government_identifier_uk_ni() {
+        // The dedicated UkNi variant should win over the generic NationalId
+        assert_eq!(
+            detect_government_identifier("AB123456C"),
+            Some(IdentifierType::UkNi)
+        );
+    }
+
+    #[test]
+    fn test_find_all_government_ids_includes_uk_ni() {
+        let text = "NI: AB123456C";
+        let all = find_all_government_ids_in_text(text);
+        assert!(
+            all.iter()
+                .any(|m| m.identifier_type == IdentifierType::UkNi),
+            "expected at least one UkNi match in: {all:?}"
+        );
     }
 }

@@ -322,6 +322,76 @@ pub fn redact_national_ids_in_text_with_strategy(
 }
 
 // ============================================================================
+// UK NINO Text Redaction
+// ============================================================================
+
+/// Redact all UK National Insurance Number patterns in text with explicit strategy
+///
+/// Only NINOs that pass HMRC prefix/suffix validation are redacted —
+/// values with invalid prefixes (BG, GB, ZZ, ...) or non A-D suffixes are
+/// left untouched. Labels ("NI: ", "NINO ", ...) are preserved; only the
+/// NINO value is replaced.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::government::sanitization::{
+///     redact_uk_nis_in_text_with_strategy, NationalIdRedactionStrategy,
+/// };
+///
+/// let text = "Employee NI: AB123456C";
+/// let safe = redact_uk_nis_in_text_with_strategy(text, NationalIdRedactionStrategy::Token);
+/// assert_eq!(safe.as_ref(), "Employee NI: [NATIONAL_ID]");
+/// ```
+#[must_use]
+pub fn redact_uk_nis_in_text_with_strategy(
+    text: &str,
+    strategy: NationalIdRedactionStrategy,
+) -> Cow<'_, str> {
+    use super::super::validation::validate_uk_ni;
+
+    let mut result = Cow::Borrowed(text);
+
+    for (i, pattern) in patterns::uk_ni::all().iter().enumerate() {
+        if pattern.is_match(&result) {
+            if i == 0 {
+                // LABELED pattern: group 1 = label prefix, group 2 = NINO
+                result = Cow::Owned(
+                    pattern
+                        .replace_all(&result, |caps: &regex::Captures<'_>| {
+                            let prefix = caps.get(1).map_or("", |m| m.as_str());
+                            let nino = caps.get(2).map_or("", |m| m.as_str());
+                            if validate_uk_ni(nino).is_err() {
+                                return caps
+                                    .get(0)
+                                    .map_or(String::new(), |m| m.as_str().to_string());
+                            }
+                            let redacted = redact_national_id_with_strategy(nino, strategy);
+                            format!("{}{}", prefix, redacted)
+                        })
+                        .into_owned(),
+                );
+            } else {
+                // STANDARD pattern: full match is the NINO
+                result = Cow::Owned(
+                    pattern
+                        .replace_all(&result, |caps: &regex::Captures<'_>| {
+                            let nino = caps.get(0).map_or("", |m| m.as_str());
+                            if validate_uk_ni(nino).is_err() {
+                                return nino.to_string();
+                            }
+                            redact_national_id_with_strategy(nino, strategy)
+                        })
+                        .into_owned(),
+                );
+            }
+        }
+    }
+
+    result
+}
+
+// ============================================================================
 // Vehicle ID Text Redaction
 // ============================================================================
 
@@ -440,6 +510,11 @@ pub fn redact_all_government_ids_in_text_with_policy(
     let result = redact_tax_ids_in_text_with_strategy(&result, tax_id_strategy);
     let result = redact_driver_licenses_in_text_with_strategy(&result, driver_license_strategy);
     let result = redact_passports_in_text_with_strategy(&result, passport_strategy);
+    // UK NINOs first — label-preserving and prefix/suffix validated — so that
+    // `redact_national_ids_in_text_with_strategy` below (which uses the
+    // generic national_id regex set) does not over-match already-handled
+    // values.
+    let result = redact_uk_nis_in_text_with_strategy(&result, national_id_strategy);
     let result = redact_national_ids_in_text_with_strategy(&result, national_id_strategy);
     let result = redact_vehicle_ids_in_text_with_strategy(&result, vehicle_id_strategy);
 
@@ -596,5 +671,38 @@ mod tests {
         let text = "SSN: 900-00-0001";
         let result = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::Token);
         assert!(matches!(result, Cow::Owned(_)));
+    }
+
+    // ========================================================================
+    // UK NINO Text Redaction Tests
+    // ========================================================================
+
+    #[test]
+    fn test_redact_uk_nis_preserves_label() {
+        let text = "Employee NI: AB123456C";
+        let result = redact_uk_nis_in_text_with_strategy(text, NationalIdRedactionStrategy::Token);
+        assert_eq!(result.as_ref(), "Employee NI: [NATIONAL_ID]");
+    }
+
+    #[test]
+    fn test_redact_uk_nis_bare_value() {
+        let text = "ref AB123456C end";
+        let result = redact_uk_nis_in_text_with_strategy(text, NationalIdRedactionStrategy::Token);
+        assert_eq!(result.as_ref(), "ref [NATIONAL_ID] end");
+    }
+
+    #[test]
+    fn test_redact_uk_nis_leaves_invalid_nino_alone() {
+        // Invalid HMRC prefix — not a real NINO, no redaction
+        let text = "junk BG123456A";
+        let result = redact_uk_nis_in_text_with_strategy(text, NationalIdRedactionStrategy::Token);
+        assert_eq!(result.as_ref(), "junk BG123456A");
+    }
+
+    #[test]
+    fn test_redact_uk_nis_multiple() {
+        let text = "one AB123456C, two HJ987654B.";
+        let result = redact_uk_nis_in_text_with_strategy(text, NationalIdRedactionStrategy::Token);
+        assert_eq!(result.as_ref(), "one [NATIONAL_ID], two [NATIONAL_ID].");
     }
 }

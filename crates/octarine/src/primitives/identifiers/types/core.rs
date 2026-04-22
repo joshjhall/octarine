@@ -75,6 +75,7 @@ pub enum IdentifierType {
     ItalyFiscalCode, // Italian Codice Fiscale
     SpainNif,        // Spanish NIF (Numero de Identificacion Fiscal)
     SpainNie,        // Spanish NIE (Numero de Identidad de Extranjero)
+    UkNi,            // UK National Insurance Number (NINO)
 
     // Organizational identifiers
     EmployeeId,
