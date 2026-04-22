@@ -277,104 +277,10 @@ impl ShutdownCoordinator {
         // Execute hooks with overall timeout
         let timeout_result = tokio::time::timeout(self.timeout, async {
             for hook in hooks.iter() {
-                // Use hook's individual timeout or default
-                let hook_timeout = hook.timeout.unwrap_or(default_hook_timeout);
-                let max_attempts = hook.max_retries.saturating_add(1); // retries + initial attempt
-
-                let retry_info = if hook.max_retries > 0 {
-                    format!(", max_retries={}", hook.max_retries)
-                } else {
-                    String::new()
-                };
-
-                observe::debug(
-                    "shutdown_hook_executing",
-                    format!(
-                        "Executing shutdown hook '{}' with {}ms timeout{}",
-                        hook.name,
-                        hook_timeout.as_millis(),
-                        retry_info
-                    ),
-                );
-
-                let hook_start = std::time::Instant::now();
-                let mut last_error = None;
-                let mut hook_succeeded = false;
-                let mut hook_timed_out = false;
-
-                // Try execution with retries
-                for attempt in 0..max_attempts {
-                    if attempt > 0 {
-                        observe::debug(
-                            "shutdown_hook_retry",
-                            format!(
-                                "Retrying shutdown hook '{}' (attempt {}/{})",
-                                hook.name,
-                                attempt.saturating_add(1),
-                                max_attempts
-                            ),
-                        );
-                        tokio::time::sleep(hook.retry_delay).await;
-                    }
-
-                    let result = tokio::time::timeout(hook_timeout, (hook.func)()).await;
-
-                    match result {
-                        Ok(Ok(())) => {
-                            hook_succeeded = true;
-                            break;
-                        }
-                        Ok(Err(e)) => {
-                            last_error = Some(e);
-                            // Continue to retry if we have attempts left
-                        }
-                        Err(_) => {
-                            hook_timed_out = true;
-                            // Timeout - don't retry, timeouts are usually not transient
-                            break;
-                        }
-                    }
-                }
-
-                let hook_duration = hook_start.elapsed();
-
-                if hook_succeeded {
-                    succeeded = succeeded.saturating_add(1);
-                    observe::info(
-                        "shutdown_hook_completed",
-                        format!(
-                            "Shutdown hook '{}' completed successfully in {}ms",
-                            hook.name,
-                            hook_duration.as_millis()
-                        ),
-                    );
-                } else if hook_timed_out {
-                    timed_out = timed_out.saturating_add(1);
-                    observe::warn(
-                        "shutdown_hook_timeout",
-                        format!(
-                            "Shutdown hook '{}' timed out after {}ms",
-                            hook.name,
-                            hook_timeout.as_millis()
-                        ),
-                    );
-                } else if let Some(ref e) = last_error {
-                    failed = failed.saturating_add(1);
-                    let retry_msg = if hook.max_retries > 0 {
-                        format!(" after {} retries", hook.max_retries)
-                    } else {
-                        String::new()
-                    };
-                    observe::error(
-                        "shutdown_hook_failed",
-                        format!(
-                            "Shutdown hook '{}' failed{} in {}ms: {}",
-                            hook.name,
-                            retry_msg,
-                            hook_duration.as_millis(),
-                            e
-                        ),
-                    );
+                match execute_single_hook(hook, default_hook_timeout).await {
+                    HookOutcome::Succeeded => succeeded = succeeded.saturating_add(1),
+                    HookOutcome::TimedOut => timed_out = timed_out.saturating_add(1),
+                    HookOutcome::Failed => failed = failed.saturating_add(1),
                 }
             }
         })
@@ -424,6 +330,111 @@ impl ShutdownCoordinator {
 
         stats
     }
+}
+
+// ============================================================================
+// Per-Hook Execution
+// ============================================================================
+
+#[derive(Debug, Clone, Copy)]
+enum HookOutcome {
+    Succeeded,
+    TimedOut,
+    Failed,
+}
+
+/// Execute one shutdown hook with its configured timeout and retry policy.
+///
+/// Encapsulates the retry loop, timeout enforcement, and per-outcome
+/// observability so that `run_hooks` only has to aggregate counts.
+async fn execute_single_hook(hook: &ShutdownHook, default_timeout: Duration) -> HookOutcome {
+    let hook_timeout = hook.timeout.unwrap_or(default_timeout);
+    let max_attempts = hook.max_retries.saturating_add(1); // retries + initial attempt
+
+    let retry_info = if hook.max_retries > 0 {
+        format!(", max_retries={}", hook.max_retries)
+    } else {
+        String::new()
+    };
+
+    observe::debug(
+        "shutdown_hook_executing",
+        format!(
+            "Executing shutdown hook '{}' with {}ms timeout{}",
+            hook.name,
+            hook_timeout.as_millis(),
+            retry_info
+        ),
+    );
+
+    let hook_start = std::time::Instant::now();
+    let mut last_error = None;
+
+    for attempt in 0..max_attempts {
+        if attempt > 0 {
+            observe::debug(
+                "shutdown_hook_retry",
+                format!(
+                    "Retrying shutdown hook '{}' (attempt {}/{})",
+                    hook.name,
+                    attempt.saturating_add(1),
+                    max_attempts
+                ),
+            );
+            tokio::time::sleep(hook.retry_delay).await;
+        }
+
+        match tokio::time::timeout(hook_timeout, (hook.func)()).await {
+            Ok(Ok(())) => {
+                observe::info(
+                    "shutdown_hook_completed",
+                    format!(
+                        "Shutdown hook '{}' completed successfully in {}ms",
+                        hook.name,
+                        hook_start.elapsed().as_millis()
+                    ),
+                );
+                return HookOutcome::Succeeded;
+            }
+            Ok(Err(e)) => {
+                last_error = Some(e);
+                // Continue to retry if we have attempts left
+            }
+            Err(_) => {
+                // Timeout - don't retry, timeouts are usually not transient
+                observe::warn(
+                    "shutdown_hook_timeout",
+                    format!(
+                        "Shutdown hook '{}' timed out after {}ms",
+                        hook.name,
+                        hook_timeout.as_millis()
+                    ),
+                );
+                return HookOutcome::TimedOut;
+            }
+        }
+    }
+
+    let retry_msg = if hook.max_retries > 0 {
+        format!(" after {} retries", hook.max_retries)
+    } else {
+        String::new()
+    };
+    let error_display = last_error
+        .as_ref()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| "no error captured".to_string());
+    observe::error(
+        "shutdown_hook_failed",
+        format!(
+            "Shutdown hook '{}' failed{} in {}ms: {}",
+            hook.name,
+            retry_msg,
+            hook_start.elapsed().as_millis(),
+            error_display
+        ),
+    );
+    HookOutcome::Failed
 }
 
 // ============================================================================

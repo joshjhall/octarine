@@ -226,18 +226,21 @@ fn validate_gps_coordinate_impl(trimmed: &str) -> Result<GpsFormat, Problem> {
 pub fn validate_street_address(address: &str) -> Result<(), Problem> {
     let trimmed = address.trim();
 
-    // Null byte check (CRITICAL - prevents string truncation in C APIs)
-    if trimmed.contains('\0') {
+    // Critical security checks first (null byte, injection, traversal) so
+    // attacks fail fast before any format validation runs.
+    if is_null_byte_present(trimmed) {
         return Err(Problem::Validation(
             "Street address contains null byte".into(),
         ));
     }
-
-    // Injection pattern check (CRITICAL - addresses used in file paths/commands)
-    // Must check BEFORE other validation to fail fast on attacks
     if is_injection_pattern_present(trimmed) {
         return Err(Problem::Validation(
             "Street address contains injection pattern".into(),
+        ));
+    }
+    if is_path_traversal_present(trimmed) {
+        return Err(Problem::Validation(
+            "Street address contains path traversal pattern".into(),
         ));
     }
 
@@ -245,50 +248,52 @@ pub fn validate_street_address(address: &str) -> Result<(), Problem> {
     // Detection patterns require specific US formats with recognized suffixes.
     // Validator is intentionally lenient for international/non-standard addresses.
 
-    // Path traversal check (addresses may be used in file paths)
-    if trimmed.contains("..") {
-        return Err(Problem::Validation(
-            "Street address contains path traversal pattern".into(),
-        ));
-    }
-
-    // Length validation (5-200 characters is reasonable)
     if trimmed.len() < 5 || trimmed.len() > 200 {
         return Err(Problem::Validation(
             "Street address must be 5-200 characters".into(),
         ));
     }
-
-    // Must contain at least one digit (street number)
-    if !trimmed.chars().any(|c| c.is_ascii_digit()) {
+    if !is_street_number_present(trimmed) {
         return Err(Problem::Validation(
             "Street address must contain a street number".into(),
         ));
     }
-
-    // Must contain at least one letter (street name)
-    if !trimmed.chars().any(|c| c.is_ascii_alphabetic()) {
+    if !is_street_name_present(trimmed) {
         return Err(Problem::Validation(
             "Street address must contain a street name".into(),
         ));
     }
-
-    // Check for valid characters (alphanumeric + common address chars)
-    if !trimmed.chars().all(|c| {
-        c.is_ascii_alphanumeric()
-            || c == ' '
-            || c == ','
-            || c == '.'
-            || c == '-'
-            || c == '#'
-            || c == '/'
-    }) {
+    if !trimmed.chars().all(is_valid_address_character) {
         return Err(Problem::Validation(
             "Street address contains invalid characters".into(),
         ));
     }
 
     Ok(())
+}
+
+// ============================================================================
+// Street Address Predicates
+// ============================================================================
+
+fn is_null_byte_present(s: &str) -> bool {
+    s.contains('\0')
+}
+
+fn is_path_traversal_present(s: &str) -> bool {
+    s.contains("..")
+}
+
+fn is_street_number_present(s: &str) -> bool {
+    s.chars().any(|c| c.is_ascii_digit())
+}
+
+fn is_street_name_present(s: &str) -> bool {
+    s.chars().any(|c| c.is_ascii_alphabetic())
+}
+
+fn is_valid_address_character(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, ' ' | ',' | '.' | '-' | '#' | '/')
 }
 
 /// Validate postal code format (returns Result with postal code type)

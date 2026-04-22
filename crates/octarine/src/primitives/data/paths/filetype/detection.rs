@@ -152,6 +152,36 @@ static CERTIFICATE_EXTENSIONS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 });
 
 // ============================================================================
+// Dispatch Tables
+// ============================================================================
+
+// Each entry pairs a membership set with the FileCategory it maps to.
+// Order matters — security-sensitive categories are checked first so that
+// ambiguous extensions like `.key` resolve to Credential rather than a
+// benign category further down the list.
+type ExtensionRule = (&'static Lazy<HashSet<&'static str>>, FileCategory);
+
+static EXTENSION_RULES: &[ExtensionRule] = &[
+    (&CREDENTIAL_EXTENSIONS, FileCategory::Credential),
+    (&CERTIFICATE_EXTENSIONS, FileCategory::Certificate),
+    (&EXECUTABLE_EXTENSIONS, FileCategory::Executable),
+    (&LIBRARY_EXTENSIONS, FileCategory::Library),
+    (&IMAGE_EXTENSIONS, FileCategory::Image),
+    (&AUDIO_EXTENSIONS, FileCategory::Audio),
+    (&VIDEO_EXTENSIONS, FileCategory::Video),
+    (&DOCUMENT_EXTENSIONS, FileCategory::Document),
+    (&SPREADSHEET_EXTENSIONS, FileCategory::Spreadsheet),
+    (&PRESENTATION_EXTENSIONS, FileCategory::Presentation),
+    (&TEXT_EXTENSIONS, FileCategory::Text),
+    (&SOURCE_CODE_EXTENSIONS, FileCategory::SourceCode),
+    (&SCRIPT_EXTENSIONS, FileCategory::Script),
+    (&CONFIG_EXTENSIONS, FileCategory::Config),
+    (&DATA_EXTENSIONS, FileCategory::Data),
+    (&ARCHIVE_EXTENSIONS, FileCategory::Archive),
+    (&COMPRESSED_EXTENSIONS, FileCategory::Compressed),
+];
+
+// ============================================================================
 // Detection Functions
 // ============================================================================
 
@@ -219,79 +249,31 @@ fn get_extension_lower(path: &str) -> Option<String> {
 
 /// Detect category by extension
 fn detect_by_extension(ext: &str) -> FileCategory {
-    // Order matters - check more specific/sensitive first
-    if CREDENTIAL_EXTENSIONS.contains(ext) {
-        return FileCategory::Credential;
-    }
-    if CERTIFICATE_EXTENSIONS.contains(ext) {
-        return FileCategory::Certificate;
-    }
-    if EXECUTABLE_EXTENSIONS.contains(ext) {
-        return FileCategory::Executable;
-    }
-    if LIBRARY_EXTENSIONS.contains(ext) {
-        return FileCategory::Library;
-    }
-    if IMAGE_EXTENSIONS.contains(ext) {
-        return FileCategory::Image;
-    }
-    if AUDIO_EXTENSIONS.contains(ext) {
-        return FileCategory::Audio;
-    }
-    if VIDEO_EXTENSIONS.contains(ext) {
-        return FileCategory::Video;
-    }
-    if DOCUMENT_EXTENSIONS.contains(ext) {
-        return FileCategory::Document;
-    }
-    if SPREADSHEET_EXTENSIONS.contains(ext) {
-        return FileCategory::Spreadsheet;
-    }
-    if PRESENTATION_EXTENSIONS.contains(ext) {
-        return FileCategory::Presentation;
-    }
-    if TEXT_EXTENSIONS.contains(ext) {
-        return FileCategory::Text;
-    }
-    if SOURCE_CODE_EXTENSIONS.contains(ext) {
-        return FileCategory::SourceCode;
-    }
-    if SCRIPT_EXTENSIONS.contains(ext) {
-        return FileCategory::Script;
-    }
-    if CONFIG_EXTENSIONS.contains(ext) {
-        return FileCategory::Config;
-    }
-    if DATA_EXTENSIONS.contains(ext) {
-        return FileCategory::Data;
-    }
-    if ARCHIVE_EXTENSIONS.contains(ext) {
-        return FileCategory::Archive;
-    }
-    if COMPRESSED_EXTENSIONS.contains(ext) {
-        return FileCategory::Compressed;
-    }
-
-    FileCategory::Unknown
+    EXTENSION_RULES
+        .iter()
+        .find(|(set, _)| set.contains(ext))
+        .map(|(_, cat)| *cat)
+        .unwrap_or(FileCategory::Unknown)
 }
 
-/// Detect category by special filename patterns
-fn detect_by_filename(path: &str) -> Option<FileCategory> {
-    let filename = path.rsplit(['/', '\\']).next()?;
-    let lower = filename.to_lowercase();
+// ============================================================================
+// Filename Predicates
+// ============================================================================
+// Rule order in FILENAME_RULES matches the original if-chain so that
+// overlapping cases resolve identically (e.g. `.htpasswd` matches the
+// credential rule before the hidden-file rule, and `.env.local` matches
+// the env rule before the hidden-file rule).
 
-    // Temporary files
-    if lower.ends_with('~')
+fn is_temporary_filename(lower: &str) -> bool {
+    lower.ends_with('~')
         || lower.starts_with('#')
         || lower.ends_with(".tmp")
         || lower.ends_with(".temp")
         || lower.ends_with(".swp")
-    {
-        return Some(FileCategory::Temporary);
-    }
+}
 
-    // Credential files by name
-    if lower.contains("password")
+fn is_credential_filename(lower: &str) -> bool {
+    lower.contains("password")
         || lower.contains("secret")
         || lower.contains("credential")
         || lower.contains("api_key")
@@ -299,26 +281,41 @@ fn detect_by_filename(path: &str) -> Option<FileCategory> {
         || lower == ".htpasswd"
         || lower == "shadow"
         || lower == "passwd"
-    {
-        return Some(FileCategory::Credential);
-    }
+}
 
-    // SSH keys
-    if lower.starts_with("id_") || lower == "authorized_keys" || lower == "known_hosts" {
-        return Some(FileCategory::Key);
-    }
+fn is_ssh_key_filename(lower: &str) -> bool {
+    lower.starts_with("id_") || lower == "authorized_keys" || lower == "known_hosts"
+}
 
-    // Environment files
-    if lower == ".env" || lower.starts_with(".env.") {
-        return Some(FileCategory::Credential);
-    }
+fn is_env_filename(lower: &str) -> bool {
+    lower == ".env" || lower.starts_with(".env.")
+}
 
-    // Hidden files (dotfiles without extension) - must check after specific dotfiles
-    if lower.starts_with('.') && !lower[1..].contains('.') {
-        return Some(FileCategory::Hidden);
-    }
+// Dotfile with no secondary extension (e.g. `.bashrc`, not `.bash.bak`).
+// Char-iterator form avoids `lower[1..]` which would trip clippy::indexing_slicing.
+fn is_hidden_filename(lower: &str) -> bool {
+    let mut chars = lower.chars();
+    matches!(chars.next(), Some('.')) && !chars.any(|c| c == '.')
+}
 
-    None
+type FilenameRule = (fn(&str) -> bool, FileCategory);
+
+static FILENAME_RULES: &[FilenameRule] = &[
+    (is_temporary_filename, FileCategory::Temporary),
+    (is_credential_filename, FileCategory::Credential),
+    (is_ssh_key_filename, FileCategory::Key),
+    (is_env_filename, FileCategory::Credential),
+    (is_hidden_filename, FileCategory::Hidden),
+];
+
+/// Detect category by special filename patterns
+fn detect_by_filename(path: &str) -> Option<FileCategory> {
+    let filename = path.rsplit(['/', '\\']).next()?;
+    let lower = filename.to_lowercase();
+    FILENAME_RULES
+        .iter()
+        .find(|(pred, _)| pred(&lower))
+        .map(|(_, cat)| *cat)
 }
 
 // ============================================================================
