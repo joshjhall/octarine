@@ -11,15 +11,14 @@ setup-git
 echo "==> Configuring glab..."
 setup-glab
 
-# --- Git hooks via pre-commit ---
-if command -v pre-commit &>/dev/null; then
-    echo "==> Installing pre-commit hooks..."
-    # pre-commit refuses to install when core.hooksPath is set
+# --- Git hooks via lefthook ---
+if command -v lefthook &>/dev/null; then
+    echo "==> Installing lefthook hooks..."
+    # lefthook refuses to install when core.hooksPath is set
     git config --unset-all core.hooksPath 2>/dev/null || true
-    pre-commit install --install-hooks
-    pre-commit install --hook-type pre-push
+    lefthook install
 else
-    echo "WARN: pre-commit not found. Run post-create.sh first or: pipx install pre-commit"
+    echo "WARN: lefthook not found. Check that the containers submodule is present."
 fi
 
 echo "==> Post-start setup complete."

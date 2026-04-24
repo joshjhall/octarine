@@ -1,0 +1,136 @@
+# Lefthook configuration for octarine
+# Install hooks: lefthook install
+# Run manually:  lefthook run pre-commit [--all-files]
+#
+# Replaces .pre-commit-config.yaml. Lefthook is a Go binary shipped by the
+# containers submodule — no Python runtime required.
+
+# ============================================================================
+# Pre-commit stage: runs on `git commit`
+# ============================================================================
+pre-commit:
+  parallel: true
+  commands:
+
+    # --- General file checks (native shell, no Python runtime) ---
+
+    trailing-whitespace:
+      run: containers/bin/fix-trailing-whitespace.sh {staged_files}
+      stage_fixed: true
+
+    end-of-file-fixer:
+      run: containers/bin/fix-end-of-file.sh {staged_files}
+      stage_fixed: true
+
+    check-yaml:
+      glob: "*.{yml,yaml}"
+      run: |
+        fail=0
+        for f in {staged_files}; do
+          if ! yq . "$f" >/dev/null; then
+            echo "ERROR: invalid YAML: $f"
+            fail=1
+          fi
+        done
+        exit "$fail"
+
+    check-json:
+      glob: "*.json"
+      exclude:
+        - ".devcontainer/devcontainer.json"
+      run: |
+        fail=0
+        for f in {staged_files}; do
+          if ! jq empty "$f" >/dev/null 2>&1; then
+            echo "ERROR: invalid JSON: $f"
+            fail=1
+          fi
+        done
+        exit "$fail"
+
+    check-toml:
+      glob: "*.toml"
+      run: taplo check {staged_files}
+
+    check-added-large-files:
+      run: |
+        max=512000  # 500 KB (matches prior --maxkb=500)
+        fail=0
+        for f in {staged_files}; do
+          [ -f "$f" ] || continue
+          size=$(/usr/bin/wc -c < "$f")
+          if [ "$size" -gt "$max" ]; then
+            echo "ERROR: $f is $size bytes (max: $max)"
+            fail=1
+          fi
+        done
+        exit "$fail"
+
+    check-merge-conflict:
+      run: |
+        if /usr/bin/grep -lE '^(<{7} |>{7} |={7}$)' {staged_files} 2>/dev/null; then
+          echo "ERROR: merge conflict markers found in the above file(s)"
+          exit 1
+        fi
+
+    detect-private-key:
+      exclude:
+        - "crates/octarine/src/primitives/identifiers/**"
+      run: |
+        if /usr/bin/grep -lE 'BEGIN (RSA|OPENSSH|DSA|EC|PGP) PRIVATE KEY' {staged_files} 2>/dev/null; then
+          echo "ERROR: private key detected in the above file(s)"
+          exit 1
+        fi
+
+    # --- Security scanning ---
+
+    gitleaks:
+      run: gitleaks protect --staged --verbose --redact
+
+    # --- Rust formatting ---
+
+    cargo-fmt:
+      glob: "*.rs"
+      run: cargo fmt --all --
+
+    # --- JSON linting (Biome) ---
+
+    biome-json:
+      glob: "*.json"
+      exclude:
+        - ".devcontainer/**"
+      run: biome check --write {staged_files}
+      stage_fixed: true
+
+    # --- Shell script linting ---
+
+    shellcheck:
+      glob: "*.sh"
+      run: shellcheck {staged_files}
+
+    # --- Architecture enforcement ---
+
+    arch-check:
+      glob: "*.rs"
+      run: bash scripts/arch-check.sh --staged-only
+
+    # --- Custom guards ---
+
+    no-env-file:
+      run: |
+        if git diff --cached --name-only | /usr/bin/grep -qE "^\.env(\.secrets)?$"; then
+          echo "ERROR: .env file staged for commit"
+          exit 1
+        fi
+
+# ============================================================================
+# Pre-push stage: runs on `git push`
+# ============================================================================
+pre-push:
+  parallel: false
+  commands:
+    cargo-clippy:
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+    cargo-test:
+      run: cargo test --workspace
