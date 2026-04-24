@@ -122,9 +122,9 @@ deps-check: deps-audit deps-deny deps-outdated
 clean:
     cargo clean
 
-# Run pre-commit hooks on all files
+# Run all pre-commit hooks on every file (via lefthook)
 pre-commit:
-    pre-commit run --all-files
+    lefthook run pre-commit --all-files
 
 # Count tests (listed, not executed)
 test-count:
@@ -216,12 +216,12 @@ release VERSION:
     echo "  CHANGELOG.md updated"
 
     # Commit and tag
-    # Pre-commit hooks may fix formatting (e.g., trailing newlines). If the first
+    # Lefthook hooks may fix formatting (e.g., trailing newlines). If the first
     # commit fails because hooks modified files, re-stage and retry once.
     echo "── Committing ──"
     git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
     if ! git commit -m "release: v$VERSION"; then
-        echo "  Pre-commit hooks modified files, retrying..."
+        echo "  Lefthook hooks modified files, retrying..."
         git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
         git commit -m "release: v$VERSION"
     fi
