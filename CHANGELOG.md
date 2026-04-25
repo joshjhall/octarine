@@ -2,6 +2,98 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [0.3.0-beta.2] - 2026-04-25
+
+### Added
+
+- feat(identifiers): add dedicated UK NINO identifier (#258)
+- feat(identifiers): add IdentifierType::Ein variant for EIN-specific classification (#239)
+- feat(identifiers): complete dual-API contract for financial, personal, token, crypto (#238)
+
+### Fixed
+
+- fix(auth): zeroize plaintext token buffers for reset and remember-me (#270)
+- chore(tooling): migrate pre-commit (Python) to lefthook (Go binary) (#268)
+- fix(deps): bump rustls-webpki to 0.103.13 (RUSTSEC-2026-0104) (#267)
+- fix(http): redact URL query strings in observability logs (#241)
+- fix(identifiers): add 6 IdentifierType variants for PiiType symmetry (#240)
+- fix(identifiers): add missing shortcuts for ssn/jwt/medical/organizational/token-validate (#237)
+- Merge pull request #225 from joshjhall/fix/issue-223-dispatcher-test-config
+- fix(observe): harden integration-test dispatcher config against CI flakes
+- fix(test): increase poll deadline for failing_writer_does_not_block_others
+- Merge pull request #222 from joshjhall/fix/issue-169-data-network-shortcuts-bypasses
+- Merge pull request #216 from joshjhall/fix/issue-210-observe-dispatch-to-writers-sync-panics
+- Merge pull request #215 from joshjhall/fix/issue-158-detection-validation-arrow
+- Merge pull request #213 from joshjhall/fix/issue-161-biometric-template-pii-type
+- Merge pull request #207 from joshjhall/fix/issue-154-redact-token-debug-impls
+- fix(data): route network shortcuts through UrlNormalizationBuilder
+- fix(observe): dispatch writers async-natively from the dispatcher runtime
+- fix(identifiers): move SSA helpers out of validation to break inheritance arrow
+- fix(observe): add PiiType::BiometricTemplate variant to close pii-sync gap
+- fix(auth): redact plaintext tokens from Debug impls
+- fix(observe): parameterize audit writer WHERE clauses
+
+### Changed
+
+- refactor: reduce complexity in detection dispatch and shutdown hooks (#243)
+- refactor(io): remove module-level dead_code suppression in ops.rs (#242)
+- refactor(observe): replace pub(super) use with pub(in crate::observe) use (#236)
+- Merge pull request #214 from joshjhall/refactor/issue-159-biometric-detect-rename
+- docs: fix src/ path prefix to crates/octarine/src/
+- refactor(identifiers): rename find_biometric_identifier to detect_biometric_identifier
+
+### Documentation
+
+- docs(architecture): standardize on three-layer terminology (#234)
+- docs(identifiers,crypto,runtime): add doc comments to public APIs (#233)
+- docs: remove stale broken link references
+- Merge pull request #231 from joshjhall/docs/issue-217-phantom-api-paths-in-example-cod
+- docs: replace phantom API paths in example code blocks
+- Merge pull request #219 from joshjhall/docs/issue-184-fix-broken-docs-links
+- Merge pull request #218 from joshjhall/docs/issue-185-phantom-api-docs
+- Merge pull request #209 from joshjhall/docs/issue-183-refactor-plan-staleness
+- docs: prune/redirect dead sibling and index links
+- docs: prune PRIMITIVES-REFACTOR.md references
+- docs: redirect refactor-plan links to docs/architecture/refactor-plan.md
+- docs: fix src/ path prefix to crates/octarine/src/
+- docs: add SECURITY.md with vulnerability reporting policy
+- docs: remove phantom API docs and prohibit get_* prefix
+- docs(architecture): make refactor-plan self-contained; drop dead src/refactor-plan.md links
+- docs: update README version, layer list, and switch docs/index to just (#204)
+
+### Testing
+
+- test(http): add behavioral assertions for HTTP presets (#271)
+- refactor(io): remove module-level dead_code suppression in ops.rs (#242)
+- test(security): cover %VAR% and ^ in escape_shell_arg_windows (#232)
+- fix(observe): harden integration-test dispatcher config against CI flakes
+- test(observe): ignore flaky failing_writer test in CI (issue #223)
+- Merge pull request #221 from joshjhall/test/issue-177-pii-redactor-submodule-tests
+- Merge pull request #220 from joshjhall/test/issue-179-securefileops-async-test-coverage
+- Merge pull request #212 from joshjhall/test/issue-176-security-shortcut-coverage
+- Merge pull request #211 from joshjhall/test/issue-178-shortcut-tests
+- test(observe): add tests for PII redactor submodules
+- test(io): add async test coverage for SecureFileOps methods
+- test(security): add shortcut coverage for network/paths/commands/queries
+- test(observe): add unit tests for Problem and Event shortcuts
+- test(just): enable --all-features in test recipes so gated tests run (#206)
+
+### CI
+
+- ci: add lychee link-check workflow for docs and root markdown
+- ci: skip workflow on docs-only changes via paths-ignore (#205)
+
+### Build
+
+- feat(identifiers): complete dual-API contract for financial, personal, token, crypto (#238)
+- fix(identifiers): add missing shortcuts for ssn/jwt/medical/organizational/token-validate (#237)
+
+### Other
+
+- resolve merge conflict: keep biometric_templates function and add tests
+- resolve merge conflicts: combine link fixes with phantom-api and refactor-plan changes
+- resolve merge conflict: keep Data Module Architecture removal, use Refactor Status title
+
 ## [0.3.0-beta.1] - 2026-04-15
 
 ### Added
