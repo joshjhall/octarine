@@ -3,6 +3,11 @@
 use std::time::Duration;
 
 use octarine::crypto::secrets::{Classification, EncryptedSecretStorage, SecretType};
+use tokio::time::timeout;
+
+/// Per-test executor timeout. Prevents a stalled runtime or held lock from
+/// hanging CI; longest legitimate internal deadline in this file is ~100 ms.
+const TEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 // =========================================================================
 // Basic insert and access (sync)
@@ -40,25 +45,29 @@ fn test_access_nonexistent_sync() {
 /// Insert typed with classification and access (async).
 #[tokio::test]
 async fn test_insert_typed_and_access_async() {
-    let storage = EncryptedSecretStorage::new();
+    timeout(TEST_TIMEOUT, async {
+        let storage = EncryptedSecretStorage::new();
 
-    storage
-        .insert_typed(
-            "db_password",
-            "hunter2",
-            SecretType::DatabaseCredential,
-            Classification::Restricted,
-            None,
-        )
-        .await
-        .expect("insert typed");
+        storage
+            .insert_typed(
+                "db_password",
+                "hunter2",
+                SecretType::DatabaseCredential,
+                Classification::Restricted,
+                None,
+            )
+            .await
+            .expect("insert typed");
 
-    let value = storage
-        .with_secret("db_password", "db_connect", |v| v.to_string())
-        .await
-        .expect("access");
+        let value = storage
+            .with_secret("db_password", "db_connect", |v| v.to_string())
+            .await
+            .expect("access");
 
-    assert_eq!(value, "hunter2");
+        assert_eq!(value, "hunter2");
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 // =========================================================================
@@ -68,74 +77,82 @@ async fn test_insert_typed_and_access_async() {
 /// Insert with short TTL → wait → access fails.
 #[tokio::test]
 async fn test_ttl_expiration() {
-    let storage = EncryptedSecretStorage::new();
+    timeout(TEST_TIMEOUT, async {
+        let storage = EncryptedSecretStorage::new();
 
-    storage
-        .insert_typed(
-            "temp_token",
-            "short-lived-value",
-            SecretType::AuthToken,
-            Classification::Confidential,
-            Some(Duration::from_millis(50)),
-        )
-        .await
-        .expect("insert with TTL");
+        storage
+            .insert_typed(
+                "temp_token",
+                "short-lived-value",
+                SecretType::AuthToken,
+                Classification::Confidential,
+                Some(Duration::from_millis(50)),
+            )
+            .await
+            .expect("insert with TTL");
 
-    // Should be accessible immediately
-    let value = storage
-        .with_secret("temp_token", "immediate_read", |v| v.to_string())
-        .await
-        .expect("immediate access");
-    assert_eq!(value, "short-lived-value");
+        // Should be accessible immediately
+        let value = storage
+            .with_secret("temp_token", "immediate_read", |v| v.to_string())
+            .await
+            .expect("immediate access");
+        assert_eq!(value, "short-lived-value");
 
-    // Wait for expiration
-    tokio::time::sleep(Duration::from_millis(100)).await;
+        // Wait for expiration
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
-    // Should now be expired
-    let result = storage
-        .with_secret("temp_token", "expired_read", |v| v.to_string())
-        .await;
-    assert!(result.is_err(), "Expired secret should not be accessible");
+        // Should now be expired
+        let result = storage
+            .with_secret("temp_token", "expired_read", |v| v.to_string())
+            .await;
+        assert!(result.is_err(), "Expired secret should not be accessible");
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 /// purge_expired removes expired entries.
 #[tokio::test]
 async fn test_purge_expired() {
-    let storage = EncryptedSecretStorage::new();
+    timeout(TEST_TIMEOUT, async {
+        let storage = EncryptedSecretStorage::new();
 
-    storage
-        .insert_typed(
-            "short",
-            "expires-soon",
-            SecretType::Generic,
-            Classification::Internal,
-            Some(Duration::from_millis(10)),
-        )
-        .await
-        .expect("insert short TTL");
+        storage
+            .insert_typed(
+                "short",
+                "expires-soon",
+                SecretType::Generic,
+                Classification::Internal,
+                Some(Duration::from_millis(10)),
+            )
+            .await
+            .expect("insert short TTL");
 
-    storage
-        .insert_typed(
-            "long",
-            "lives-forever",
-            SecretType::Generic,
-            Classification::Internal,
-            None,
-        )
-        .await
-        .expect("insert no TTL");
+        storage
+            .insert_typed(
+                "long",
+                "lives-forever",
+                SecretType::Generic,
+                Classification::Internal,
+                None,
+            )
+            .await
+            .expect("insert no TTL");
 
-    tokio::time::sleep(Duration::from_millis(50)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
-    let purged = storage.purge_expired().await;
-    assert!(purged >= 1, "Should purge at least 1 expired secret");
+        let purged = storage.purge_expired().await;
+        assert!(purged >= 1, "Should purge at least 1 expired secret");
 
-    // Long-lived secret still accessible
-    let value = storage
-        .with_secret("long", "read", |v| v.to_string())
-        .await
-        .expect("long-lived should still work");
-    assert_eq!(value, "lives-forever");
+        // Long-lived secret still accessible
+        let value = storage
+            .with_secret("long", "read", |v| v.to_string())
+            .await
+            .expect("long-lived should still work");
+        assert_eq!(value, "lives-forever");
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 // =========================================================================
@@ -145,19 +162,23 @@ async fn test_purge_expired() {
 /// Remove → contains returns false.
 #[tokio::test]
 async fn test_remove() {
-    let storage = EncryptedSecretStorage::new();
+    timeout(TEST_TIMEOUT, async {
+        let storage = EncryptedSecretStorage::new();
 
-    storage.insert("removable", "value").await.expect("insert");
+        storage.insert("removable", "value").await.expect("insert");
 
-    assert!(storage.contains("removable").await);
+        assert!(storage.contains("removable").await);
 
-    let removed = storage.remove("removable").await;
-    assert!(removed, "Should report removal");
+        let removed = storage.remove("removable").await;
+        assert!(removed, "Should report removal");
 
-    assert!(
-        !storage.contains("removable").await,
-        "Should no longer contain removed secret"
-    );
+        assert!(
+            !storage.contains("removable").await,
+            "Should no longer contain removed secret"
+        );
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 // =========================================================================
@@ -167,45 +188,53 @@ async fn test_remove() {
 /// Store multiple secrets, verify each independently.
 #[tokio::test]
 async fn test_multiple_secrets() {
-    let storage = EncryptedSecretStorage::new();
+    timeout(TEST_TIMEOUT, async {
+        let storage = EncryptedSecretStorage::new();
 
-    storage.insert("key1", "value1").await.expect("insert 1");
-    storage.insert("key2", "value2").await.expect("insert 2");
-    storage.insert("key3", "value3").await.expect("insert 3");
+        storage.insert("key1", "value1").await.expect("insert 1");
+        storage.insert("key2", "value2").await.expect("insert 2");
+        storage.insert("key3", "value3").await.expect("insert 3");
 
-    assert_eq!(storage.len().await, 3);
+        assert_eq!(storage.len().await, 3);
 
-    let v1 = storage
-        .with_secret("key1", "read", |v| v.to_string())
-        .await
-        .expect("read 1");
-    let v2 = storage
-        .with_secret("key2", "read", |v| v.to_string())
-        .await
-        .expect("read 2");
-    let v3 = storage
-        .with_secret("key3", "read", |v| v.to_string())
-        .await
-        .expect("read 3");
+        let v1 = storage
+            .with_secret("key1", "read", |v| v.to_string())
+            .await
+            .expect("read 1");
+        let v2 = storage
+            .with_secret("key2", "read", |v| v.to_string())
+            .await
+            .expect("read 2");
+        let v3 = storage
+            .with_secret("key3", "read", |v| v.to_string())
+            .await
+            .expect("read 3");
 
-    assert_eq!(v1, "value1");
-    assert_eq!(v2, "value2");
-    assert_eq!(v3, "value3");
+        assert_eq!(v1, "value1");
+        assert_eq!(v2, "value2");
+        assert_eq!(v3, "value3");
 
-    let names = storage.names().await;
-    assert_eq!(names.len(), 3);
+        let names = storage.names().await;
+        assert_eq!(names.len(), 3);
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 /// clear removes all secrets.
 #[tokio::test]
 async fn test_clear() {
-    let storage = EncryptedSecretStorage::new();
+    timeout(TEST_TIMEOUT, async {
+        let storage = EncryptedSecretStorage::new();
 
-    storage.insert("a", "1").await.expect("insert a");
-    storage.insert("b", "2").await.expect("insert b");
+        storage.insert("a", "1").await.expect("insert a");
+        storage.insert("b", "2").await.expect("insert b");
 
-    storage.clear().await;
-    assert!(storage.is_empty().await, "Should be empty after clear");
+        storage.clear().await;
+        assert!(storage.is_empty().await, "Should be empty after clear");
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 /// Builder configures storage with ID.
