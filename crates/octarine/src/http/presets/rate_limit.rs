@@ -35,6 +35,30 @@ pub use tower_governor::GovernorLayer;
 pub use tower_governor::GovernorError;
 
 // ============================================================================
+// Preset Rates
+// ============================================================================
+
+/// `api()` preset — ~100 requests/minute (2/sec with smoothing), burst 150.
+const API_RATE_PER_SEC: u64 = 2;
+const API_BURST: u32 = 150;
+
+/// `auth()` preset — 5 requests/minute (1/sec), burst 5. OWASP recommendation.
+const AUTH_RATE_PER_SEC: u64 = 1;
+const AUTH_BURST: u32 = 5;
+
+/// `search()` preset — 30 requests/minute (1/sec), burst 50.
+const SEARCH_RATE_PER_SEC: u64 = 1;
+const SEARCH_BURST: u32 = 50;
+
+/// `upload()` preset — 10 requests/minute (1/sec), burst 20.
+const UPLOAD_RATE_PER_SEC: u64 = 1;
+const UPLOAD_BURST: u32 = 20;
+
+/// `webhook()` preset — ~1000 requests/minute (20/sec), burst 1500.
+const WEBHOOK_RATE_PER_SEC: u64 = 20;
+const WEBHOOK_BURST: u32 = 1500;
+
+// ============================================================================
 // Preset Configurations
 // ============================================================================
 
@@ -60,8 +84,8 @@ pub fn api<ReqBody>() -> tower_governor::GovernorLayer<
     ReqBody,
 > {
     let config = GovernorConfigBuilder::default()
-        .per_second(2) // ~100 per minute with some smoothing
-        .burst_size(150)
+        .per_second(API_RATE_PER_SEC)
+        .burst_size(API_BURST)
         .finish();
 
     // SAFETY: These are hardcoded valid configuration values that cannot fail
@@ -94,8 +118,8 @@ pub fn auth<ReqBody>() -> tower_governor::GovernorLayer<
     ReqBody,
 > {
     let config = GovernorConfigBuilder::default()
-        .per_second(1)
-        .burst_size(5)
+        .per_second(AUTH_RATE_PER_SEC)
+        .burst_size(AUTH_BURST)
         .finish();
 
     // SAFETY: These are hardcoded valid configuration values that cannot fail
@@ -127,8 +151,8 @@ pub fn search<ReqBody>() -> tower_governor::GovernorLayer<
     ReqBody,
 > {
     let config = GovernorConfigBuilder::default()
-        .per_second(1)
-        .burst_size(50)
+        .per_second(SEARCH_RATE_PER_SEC)
+        .burst_size(SEARCH_BURST)
         .finish();
 
     // SAFETY: These are hardcoded valid configuration values that cannot fail
@@ -160,8 +184,8 @@ pub fn upload<ReqBody>() -> tower_governor::GovernorLayer<
     ReqBody,
 > {
     let config = GovernorConfigBuilder::default()
-        .per_second(1)
-        .burst_size(20)
+        .per_second(UPLOAD_RATE_PER_SEC)
+        .burst_size(UPLOAD_BURST)
         .finish();
 
     // SAFETY: These are hardcoded valid configuration values that cannot fail
@@ -193,8 +217,8 @@ pub fn webhook<ReqBody>() -> tower_governor::GovernorLayer<
     ReqBody,
 > {
     let config = GovernorConfigBuilder::default()
-        .per_second(20) // ~1000 per minute
-        .burst_size(1500)
+        .per_second(WEBHOOK_RATE_PER_SEC)
+        .burst_size(WEBHOOK_BURST)
         .finish();
 
     // SAFETY: These are hardcoded valid configuration values that cannot fail
@@ -282,6 +306,15 @@ impl RateLimitBuilder {
 
         tower_governor::GovernorLayer::new(Arc::new(config))
     }
+
+    /// Test-only accessor for builder state.
+    ///
+    /// Returns `(requests_per_second, burst_size)`. Used by unit tests to
+    /// assert builder behavior without needing access to private fields.
+    #[cfg(test)]
+    pub(crate) fn config(&self) -> (u64, u32) {
+        (self.requests_per_second, self.burst_size)
+    }
 }
 
 impl Default for RateLimitBuilder {
@@ -293,6 +326,37 @@ impl Default for RateLimitBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ------------------------------------------------------------------------
+    // Preset constant assertions — guard against accidental rate changes
+    // ------------------------------------------------------------------------
+
+    #[test]
+    fn test_preset_rates() {
+        // Convert per-second back to per-minute for human-readable assertions
+        // matching the documented values in the module table.
+        assert_eq!(API_RATE_PER_SEC, 2);
+        assert_eq!(API_BURST, 150);
+
+        assert_eq!(AUTH_RATE_PER_SEC, 1);
+        assert_eq!(AUTH_BURST, 5);
+
+        assert_eq!(SEARCH_RATE_PER_SEC, 1);
+        assert_eq!(SEARCH_BURST, 50);
+
+        assert_eq!(UPLOAD_RATE_PER_SEC, 1);
+        assert_eq!(UPLOAD_BURST, 20);
+
+        assert_eq!(WEBHOOK_RATE_PER_SEC, 20);
+        assert_eq!(WEBHOOK_BURST, 1500);
+    }
+
+    // ------------------------------------------------------------------------
+    // Preset smoke tests — confirm constructors succeed (don't panic on
+    // invalid governor config). Behavioral testing of GovernorLayer requires
+    // ConnectInfo<SocketAddr> in the request, which Router::oneshot() does
+    // not populate; preset rates are asserted via test_preset_rates above.
+    // ------------------------------------------------------------------------
 
     #[test]
     fn test_api_creates_layer() {
@@ -319,24 +383,81 @@ mod tests {
         let _layer = webhook::<axum::body::Body>();
     }
 
+    // ------------------------------------------------------------------------
+    // Builder state assertions — verify the public API actually mutates
+    // state. The cfg(test) `config()` accessor returns the internal pair.
+    // ------------------------------------------------------------------------
+
     #[test]
     fn test_builder_default() {
-        let _layer = RateLimitBuilder::new().build::<axum::body::Body>();
+        let builder = RateLimitBuilder::new();
+        assert_eq!(builder.config(), (2, 150));
+
+        // Default impl matches new()
+        assert_eq!(RateLimitBuilder::default().config(), (2, 150));
     }
 
     #[test]
-    fn test_builder_custom() {
-        let _layer = RateLimitBuilder::new()
+    fn test_builder_requests_per_minute_converts_to_per_second() {
+        // 60/min -> 1/sec
+        let builder = RateLimitBuilder::new().requests_per_minute(60);
+        assert_eq!(builder.config().0, 1);
+
+        // 600/min -> 10/sec
+        let builder = RateLimitBuilder::new().requests_per_minute(600);
+        assert_eq!(builder.config().0, 10);
+    }
+
+    #[test]
+    fn test_builder_requests_per_minute_below_60_clamps_to_one() {
+        // 30/min would round down to 0; setter must clamp to minimum 1
+        // because GovernorConfig rejects per_second(0).
+        let builder = RateLimitBuilder::new().requests_per_minute(30);
+        assert_eq!(builder.config().0, 1);
+
+        // Zero must also clamp.
+        let builder = RateLimitBuilder::new().requests_per_minute(0);
+        assert_eq!(builder.config().0, 1);
+    }
+
+    #[test]
+    fn test_builder_requests_per_second_clamps_to_one() {
+        let builder = RateLimitBuilder::new().requests_per_second(0);
+        assert_eq!(builder.config().0, 1);
+
+        let builder = RateLimitBuilder::new().requests_per_second(50);
+        assert_eq!(builder.config().0, 50);
+    }
+
+    #[test]
+    fn test_builder_burst_size_clamps_to_one() {
+        let builder = RateLimitBuilder::new().burst_size(0);
+        assert_eq!(builder.config().1, 1);
+
+        let builder = RateLimitBuilder::new().burst_size(200);
+        assert_eq!(builder.config().1, 200);
+    }
+
+    #[test]
+    fn test_builder_chained_setters_compose() {
+        let builder = RateLimitBuilder::new()
             .requests_per_minute(60)
-            .burst_size(100)
-            .build::<axum::body::Body>();
+            .burst_size(100);
+        assert_eq!(builder.config(), (1, 100));
+
+        let builder = RateLimitBuilder::new()
+            .requests_per_second(10)
+            .burst_size(50);
+        assert_eq!(builder.config(), (10, 50));
     }
 
     #[test]
-    fn test_builder_per_second() {
+    fn test_builder_build_does_not_panic() {
+        // The build() path uses .expect() — make sure clamped minimums
+        // produce a valid governor config rather than panicking.
         let _layer = RateLimitBuilder::new()
-            .requests_per_second(10)
-            .burst_size(50)
+            .requests_per_minute(0) // clamped
+            .burst_size(0) // clamped
             .build::<axum::body::Body>();
     }
 }

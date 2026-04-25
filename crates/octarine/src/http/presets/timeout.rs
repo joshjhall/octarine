@@ -149,6 +149,12 @@ pub fn custom_timeout(duration: Duration) -> TimeoutLayer {
 mod tests {
     use super::*;
 
+    // Construction smoke tests — confirm constructors do not panic on valid
+    // inputs. TimeoutLayer exposes no public accessors, so behavioral
+    // assertions (408 after deadline, 200 within deadline) live in
+    // `tests/http/presets.rs` and exercise the layer via Router::oneshot()
+    // with `tokio::time::pause()` for deterministic clock control.
+
     #[test]
     fn test_default_timeout_creates_layer() {
         let _layer = default_timeout();
