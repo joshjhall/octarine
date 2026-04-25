@@ -141,6 +141,11 @@ pub fn custom_body(bytes: usize) -> RequestBodyLimitLayer {
 mod tests {
     use super::*;
 
+    // Construction smoke tests — confirm constructors do not panic on valid
+    // inputs. RequestBodyLimitLayer exposes no public accessors, so behavioral
+    // assertions (413 on oversized body, 200 on under-size body) live in
+    // `tests/http/presets.rs` and exercise the layer via Router::oneshot().
+
     #[test]
     fn test_default_body_creates_layer() {
         let _layer = default_body();

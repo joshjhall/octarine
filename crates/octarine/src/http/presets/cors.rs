@@ -195,6 +195,11 @@ pub fn read_only(origins: &[&str]) -> CorsLayer {
 mod tests {
     use super::*;
 
+    // Construction smoke tests — confirm constructors do not panic on valid
+    // inputs. tower-http's CorsLayer exposes no public accessors, so behavioral
+    // assertions (Access-Control-* headers, allowed origins, max-age) live in
+    // `tests/http/presets.rs` and exercise the layer via Router::oneshot().
+
     #[test]
     fn test_development_creates_layer() {
         let _layer = development();

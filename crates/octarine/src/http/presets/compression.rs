@@ -123,6 +123,12 @@ pub fn request_decompression() -> RequestDecompressionLayer {
 mod tests {
     use super::*;
 
+    // Construction smoke tests — confirm constructors do not panic on valid
+    // inputs. CompressionLayer exposes no public accessors, so behavioral
+    // assertions (Content-Encoding header, gzip-only encoding negotiation,
+    // request decompression round-trip) live in `tests/http/presets.rs` and
+    // exercise the layer via Router::oneshot().
+
     #[test]
     fn test_default_compression_creates_layer() {
         let _layer = default_compression();
