@@ -2,6 +2,7 @@
 //!
 //! Provides persistent login operations with audit logging for ASVS V3.5 compliance.
 
+use crate::crypto::secrets::{Secret, SecretString};
 use crate::observe;
 use crate::primitives::auth::remember::{
     RememberConfig, RememberToken, RememberTokenPair, generate_remember_token, parse_cookie_value,
@@ -37,7 +38,7 @@ use super::store::RememberTokenStore;
 ///
 /// // Issue a remember-me token on login
 /// let pair = manager.issue_token("user123", None)?;
-/// // Set cookie: pair.cookie_value()
+/// // Set cookie: manager.cookie_value(&pair).expose_secret()
 ///
 /// // Later, validate the cookie and get a new session
 /// let user_id = manager.validate_and_refresh(&cookie_value)?;
@@ -58,6 +59,25 @@ impl<S: RememberTokenStore> RememberManager<S> {
     #[must_use]
     pub fn with_store(store: S) -> Self {
         Self::new(store, RememberConfig::default())
+    }
+
+    /// Build the wire-format remember-me cookie value (`selector:validator`)
+    /// for a freshly issued [`RememberTokenPair`].
+    ///
+    /// The returned [`SecretString`] zeroizes its backing buffer on drop
+    /// and redacts itself in `Debug`/`Display` output. Callers should
+    /// expose the inner string via `.expose_secret()` only at the
+    /// HTTP-cookie boundary and avoid copying it into long-lived
+    /// `String`s.
+    ///
+    /// This helper lives at Layer 3 because it composes a new owned
+    /// `String` from the pair's plaintext validator. Layer 1 deliberately
+    /// does not expose a plaintext-`String` cookie helper — the leaky
+    /// intermediate buffer was the original defense-in-depth gap that
+    /// motivated this method (see issue #208).
+    #[must_use]
+    pub fn cookie_value(&self, pair: &RememberTokenPair) -> SecretString {
+        Secret::new(format!("{}:{}", pair.selector(), pair.validator()))
     }
 
     /// Issue a new remember-me token
@@ -328,6 +348,7 @@ impl<S: RememberTokenStore> RememberManager<S> {
 mod tests {
     use super::*;
     use crate::auth::remember::store::MemoryRememberStore;
+    use crate::crypto::secrets::ExposeSecret;
     use std::time::Duration;
 
     fn create_manager() -> RememberManager<MemoryRememberStore> {
@@ -342,7 +363,7 @@ mod tests {
         let pair = manager
             .issue_token("user@example.com", None)
             .expect("should succeed");
-        assert!(!pair.cookie_value().is_empty());
+        assert!(!manager.cookie_value(&pair).expose_secret().is_empty());
         assert_eq!(pair.token().user_id(), "user@example.com");
     }
 
@@ -363,8 +384,9 @@ mod tests {
         let pair = manager
             .issue_token("user@example.com", None)
             .expect("should succeed");
+        let cookie = manager.cookie_value(&pair);
         let user_id = manager
-            .validate(&pair.cookie_value())
+            .validate(cookie.expose_secret())
             .expect("should succeed");
         assert_eq!(user_id, "user@example.com");
     }
@@ -387,8 +409,9 @@ mod tests {
             .issue_token("user@example.com", None)
             .expect("should succeed");
 
+        let cookie = manager.cookie_value(&pair);
         let (user_id, new_pair) = manager
-            .validate_and_refresh(&pair.cookie_value())
+            .validate_and_refresh(cookie.expose_secret())
             .expect("should succeed");
 
         assert_eq!(user_id, "user@example.com");
@@ -402,20 +425,21 @@ mod tests {
         let pair = manager
             .issue_token("user@example.com", None)
             .expect("should succeed");
-        let old_cookie = pair.cookie_value();
+        let old_cookie = manager.cookie_value(&pair);
 
         let (user_id, new_pair) = manager
-            .validate_and_refresh(&old_cookie)
+            .validate_and_refresh(old_cookie.expose_secret())
             .expect("should succeed");
 
         assert_eq!(user_id, "user@example.com");
         assert!(new_pair.is_some()); // Rotation happened
 
         let new_pair = new_pair.unwrap();
-        assert_ne!(new_pair.cookie_value(), old_cookie);
+        let new_cookie = manager.cookie_value(&new_pair);
+        assert_ne!(new_cookie.expose_secret(), old_cookie.expose_secret());
 
         // Old cookie should no longer be valid
-        let result = manager.validate(&old_cookie);
+        let result = manager.validate(old_cookie.expose_secret());
         assert!(result.is_err());
     }
 
@@ -426,13 +450,15 @@ mod tests {
         let pair = manager
             .issue_token("user@example.com", None)
             .expect("should succeed");
-        let cookie = pair.cookie_value();
+        let cookie = manager.cookie_value(&pair);
 
-        let revoked = manager.revoke(&cookie).expect("should succeed");
+        let revoked = manager
+            .revoke(cookie.expose_secret())
+            .expect("should succeed");
         assert!(revoked);
 
         // Cookie should no longer be valid
-        let result = manager.validate(&cookie);
+        let result = manager.validate(cookie.expose_secret());
         assert!(result.is_err());
     }
 
@@ -532,7 +558,7 @@ mod tests {
 
         std::thread::sleep(Duration::from_millis(20));
 
-        let result = manager.validate(&pair.cookie_value());
+        let result = manager.validate(manager.cookie_value(&pair).expose_secret());
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("expired"));
     }

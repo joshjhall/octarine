@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
+use zeroize::Zeroize;
 
 use crate::primitives::auth::reset::ResetToken;
 use crate::primitives::types::Problem;
@@ -144,6 +145,17 @@ struct ResetEntry {
 /// In-memory reset token store for development and testing
 ///
 /// Not suitable for production multi-instance deployments.
+///
+/// # Security note
+///
+/// This in-memory store uses the plaintext token as the `HashMap` lookup
+/// key for simplicity. Production stores should hash the lookup key
+/// (e.g., HMAC with a per-deployment secret) so the database never holds
+/// reusable plaintext credentials. The token bytes embedded inside each
+/// stored `ResetToken` are zeroized on drop because `ResetToken` wraps
+/// them in a zeroizing buffer; the lookup-key copies maintained by this
+/// store are zeroized when the store itself is dropped (see the `Drop`
+/// impl below).
 #[derive(Debug, Default)]
 pub struct MemoryResetStore {
     /// Tokens indexed by token value
@@ -162,6 +174,29 @@ impl MemoryResetStore {
             tokens: RwLock::new(HashMap::new()),
             user_tokens: RwLock::new(HashMap::new()),
             last_requests: RwLock::new(HashMap::new()),
+        }
+    }
+}
+
+impl Drop for MemoryResetStore {
+    fn drop(&mut self) {
+        // Zeroize the plaintext lookup keys held by this store. The
+        // `ResetToken` values inside each entry zeroize themselves via
+        // their internal `SecretStringCore` wrapper, but the `HashMap`
+        // keys are owned `String`s — we wipe them on store drop so the
+        // plaintext is not left in heap memory after the store dies.
+        if let Ok(tokens) = self.tokens.get_mut() {
+            for (key, _) in tokens.drain() {
+                let mut key = key;
+                key.zeroize();
+            }
+        }
+        if let Ok(user_tokens) = self.user_tokens.get_mut() {
+            for (_, mut values) in user_tokens.drain() {
+                for value in &mut values {
+                    value.zeroize();
+                }
+            }
         }
     }
 }

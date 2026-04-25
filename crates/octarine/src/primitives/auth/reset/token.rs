@@ -9,6 +9,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::RngCore;
 use std::time::{Duration, Instant};
 
+use crate::primitives::crypto::secrets::{ExposeSecretCore, SecretCore, SecretStringCore};
 use crate::primitives::types::Problem;
 
 // ============================================================================
@@ -106,12 +107,14 @@ impl ResetConfigBuilder {
 /// Reset tokens are secure, time-limited, single-use tokens for password
 /// reset flows. Each token has 256 bits of entropy by default.
 ///
-/// `Debug` is implemented manually to mask the plaintext `token` field —
+/// The plaintext token value is stored in a zeroizing `SecretStringCore`
+/// wrapper so the secret bytes are wiped from heap memory when the token
+/// is dropped. `Debug` is implemented manually to mask the plaintext —
 /// derived `Debug` would leak the secret via logs, panics, or test output.
 #[derive(Clone)]
 pub struct ResetToken {
-    /// The token value (URL-safe base64)
-    token: String,
+    /// The token value (URL-safe base64), zeroized on drop.
+    token: SecretStringCore,
     /// The user this token is for
     user_id: String,
     /// When the token was created
@@ -126,7 +129,7 @@ impl ResetToken {
     /// Create a new reset token
     fn new(token: String, user_id: String, lifetime: Duration) -> Self {
         Self {
-            token,
+            token: SecretCore::new(token),
             user_id,
             created_at: Instant::now(),
             lifetime,
@@ -150,7 +153,7 @@ impl ResetToken {
         used: bool,
     ) -> Self {
         Self {
-            token,
+            token: SecretCore::new(token),
             user_id,
             created_at: Instant::now(),
             lifetime: remaining_lifetime,
@@ -159,9 +162,14 @@ impl ResetToken {
     }
 
     /// Get the token value
+    ///
+    /// Returns a borrowed view into the zeroizing buffer. Callers should
+    /// avoid copying the returned `&str` into long-lived `String`
+    /// allocations — the zeroization guarantee only applies to bytes that
+    /// stay inside the `ResetToken`'s buffer.
     #[must_use]
     pub fn value(&self) -> &str {
-        &self.token
+        self.token.expose_secret()
     }
 
     /// Get the user ID
@@ -211,10 +219,11 @@ impl ResetToken {
 impl std::fmt::Display for ResetToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Only show first 8 chars for security in logs
-        if self.token.len() > 8 {
-            write!(f, "{}...", &self.token[..8])
+        let token = self.token.expose_secret();
+        if let Some(prefix) = token.get(..8) {
+            write!(f, "{prefix}...")
         } else {
-            write!(f, "{}", &self.token)
+            write!(f, "{token}")
         }
     }
 }
@@ -222,10 +231,10 @@ impl std::fmt::Display for ResetToken {
 impl std::fmt::Debug for ResetToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Mask the plaintext token — same first-8-char scheme as Display.
-        let masked = self
-            .token
+        let token = self.token.expose_secret();
+        let masked = token
             .get(..8)
-            .map_or_else(|| self.token.clone(), |prefix| format!("{prefix}..."));
+            .map_or_else(|| token.clone(), |prefix| format!("{prefix}..."));
         f.debug_struct("ResetToken")
             .field("token", &masked)
             .field("user_id", &self.user_id)
@@ -239,7 +248,8 @@ impl std::fmt::Debug for ResetToken {
 impl PartialEq for ResetToken {
     fn eq(&self, other: &Self) -> bool {
         // Constant-time comparison to prevent timing attacks
-        constant_time_compare(&self.token, &other.token) && self.user_id == other.user_id
+        constant_time_compare(self.token.expose_secret(), other.token.expose_secret())
+            && self.user_id == other.user_id
     }
 }
 
@@ -645,5 +655,17 @@ mod tests {
         assert!(!constant_time_compare("abc", "abd"));
         assert!(!constant_time_compare("abc", "ab"));
         assert!(!constant_time_compare("ab", "abc"));
+    }
+
+    #[test]
+    fn test_token_zeroized_on_drop() {
+        // Smoke test: building, exposing, and dropping a ResetToken does
+        // not panic and the SecretStringCore wrapper is in place. Actual
+        // memory zeroization is covered by SecretCore's own test suite —
+        // we just verify the wiring here.
+        let config = ResetConfig::default();
+        let token = generate_reset_token("user123", &config);
+        assert!(!token.value().is_empty());
+        drop(token);
     }
 }
