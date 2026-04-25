@@ -1,6 +1,7 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
 use octarine::auth::{MemoryRememberStore, RememberConfig, RememberManager};
+use octarine::crypto::secrets::ExposeSecret;
 
 fn make_manager_with_rotation() -> RememberManager<MemoryRememberStore> {
     let store = MemoryRememberStore::new();
@@ -22,9 +23,9 @@ fn test_issue_and_validate() {
     let pair = manager
         .issue_token("alice", Some("Chrome on Mac"))
         .expect("issue token");
-    let cookie = pair.cookie_value();
+    let cookie = manager.cookie_value(&pair);
 
-    let user_id = manager.validate(&cookie).expect("validate");
+    let user_id = manager.validate(cookie.expose_secret()).expect("validate");
     assert_eq!(user_id, "alice");
 }
 
@@ -34,11 +35,11 @@ fn test_token_rotation_on_use() {
     let manager = make_manager_with_rotation();
 
     let pair = manager.issue_token("alice", None).expect("issue token");
-    let old_cookie = pair.cookie_value();
+    let old_cookie = manager.cookie_value(&pair);
 
     // validate_and_refresh should return new token pair
     let (user_id, new_pair) = manager
-        .validate_and_refresh(&old_cookie)
+        .validate_and_refresh(old_cookie.expose_secret())
         .expect("validate and refresh");
     assert_eq!(user_id, "alice");
     assert!(
@@ -46,16 +47,18 @@ fn test_token_rotation_on_use() {
         "Should return new token pair when rotation is enabled"
     );
 
-    let new_cookie = new_pair.expect("new pair").cookie_value();
+    let new_cookie = manager.cookie_value(&new_pair.expect("new pair"));
 
     // Old cookie should now be invalid
     assert!(
-        manager.validate(&old_cookie).is_err(),
+        manager.validate(old_cookie.expose_secret()).is_err(),
         "Old cookie should be invalid after rotation"
     );
 
     // New cookie should work
-    let user_id2 = manager.validate(&new_cookie).expect("validate new cookie");
+    let user_id2 = manager
+        .validate(new_cookie.expose_secret())
+        .expect("validate new cookie");
     assert_eq!(user_id2, "alice");
 }
 
@@ -65,10 +68,10 @@ fn test_no_rotation_when_disabled() {
     let manager = make_manager_without_rotation();
 
     let pair = manager.issue_token("bob", None).expect("issue token");
-    let cookie = pair.cookie_value();
+    let cookie = manager.cookie_value(&pair);
 
     let (user_id, new_pair) = manager
-        .validate_and_refresh(&cookie)
+        .validate_and_refresh(cookie.expose_secret())
         .expect("validate and refresh");
     assert_eq!(user_id, "bob");
     assert!(
@@ -77,7 +80,9 @@ fn test_no_rotation_when_disabled() {
     );
 
     // Original cookie still works
-    let user_id2 = manager.validate(&cookie).expect("validate again");
+    let user_id2 = manager
+        .validate(cookie.expose_secret())
+        .expect("validate again");
     assert_eq!(user_id2, "bob");
 }
 
@@ -93,13 +98,16 @@ fn test_revoke_single_token() {
         .issue_token("alice", Some("Device 2"))
         .expect("token 2");
 
+    let cookie1 = manager.cookie_value(&pair1);
+    let cookie2 = manager.cookie_value(&pair2);
+
     // Revoke first token
-    let revoked = manager.revoke(&pair1.cookie_value()).expect("revoke");
+    let revoked = manager.revoke(cookie1.expose_secret()).expect("revoke");
     assert!(revoked);
 
     // First token invalid, second still valid
-    assert!(manager.validate(&pair1.cookie_value()).is_err());
-    assert!(manager.validate(&pair2.cookie_value()).is_ok());
+    assert!(manager.validate(cookie1.expose_secret()).is_err());
+    assert!(manager.validate(cookie2.expose_secret()).is_ok());
 }
 
 /// revoke_all for user invalidates all tokens.
@@ -117,15 +125,19 @@ fn test_revoke_all_for_user() {
         .issue_token("bob", Some("Device 1"))
         .expect("bob token");
 
+    let cookie1 = manager.cookie_value(&pair1);
+    let cookie2 = manager.cookie_value(&pair2);
+    let bob_cookie = manager.cookie_value(&bob_pair);
+
     let count = manager.revoke_all("alice").expect("revoke all");
     assert_eq!(count, 2, "Should revoke 2 tokens for alice");
 
     // Alice's tokens invalid
-    assert!(manager.validate(&pair1.cookie_value()).is_err());
-    assert!(manager.validate(&pair2.cookie_value()).is_err());
+    assert!(manager.validate(cookie1.expose_secret()).is_err());
+    assert!(manager.validate(cookie2.expose_secret()).is_err());
 
     // Bob's token still valid
-    assert!(manager.validate(&bob_pair.cookie_value()).is_ok());
+    assert!(manager.validate(bob_cookie.expose_secret()).is_ok());
 }
 
 /// get_active_tokens returns correct set.

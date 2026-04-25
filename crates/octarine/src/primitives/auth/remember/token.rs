@@ -10,6 +10,7 @@ use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};
 
+use crate::primitives::crypto::secrets::{ExposeSecretCore, SecretCore, SecretStringCore};
 use crate::primitives::types::Problem;
 
 // ============================================================================
@@ -275,14 +276,25 @@ impl std::fmt::Display for RememberToken {
 /// This is what gets sent to the client in the cookie.
 /// The format is `selector:validator` (both base64 encoded).
 ///
-/// `Debug` is implemented manually to redact the plaintext `validator` —
-/// derived `Debug` would leak the secret via logs, panics, or test output.
+/// The plaintext `validator` is stored in a zeroizing `SecretStringCore`
+/// buffer so the secret bytes are wiped from heap memory when the pair
+/// is dropped. `Debug` is implemented manually to redact the plaintext.
+///
+/// # Cookie assembly
+///
+/// To build the wire-format cookie value (`selector:validator`), use
+/// `octarine::auth::remember::RememberManager::cookie_value(&pair)`,
+/// which returns a `Secret<String>` so the assembled cookie string also
+/// zeroizes on drop. Layer 1 deliberately does not expose a
+/// plaintext-`String` cookie helper: a leaky intermediate buffer was the
+/// original defense-in-depth gap (see issue #208).
 #[derive(Clone)]
 pub struct RememberTokenPair {
     /// The stored token (with hashed validator)
     token: RememberToken,
-    /// The plaintext validator (only available at generation time)
-    validator: String,
+    /// The plaintext validator (only available at generation time),
+    /// zeroized on drop.
+    validator: SecretStringCore,
 }
 
 impl std::fmt::Debug for RememberTokenPair {
@@ -297,12 +309,6 @@ impl std::fmt::Debug for RememberTokenPair {
 }
 
 impl RememberTokenPair {
-    /// Get the cookie value (selector:validator)
-    #[must_use]
-    pub fn cookie_value(&self) -> String {
-        format!("{}:{}", self.token.selector, self.validator)
-    }
-
     /// Get the stored token
     #[must_use]
     pub fn token(&self) -> &RememberToken {
@@ -316,9 +322,16 @@ impl RememberTokenPair {
     }
 
     /// Get the validator (only available at generation time)
+    ///
+    /// Returns a borrowed view into the zeroizing buffer. Callers should
+    /// avoid copying the returned `&str` into long-lived `String`
+    /// allocations — the zeroization guarantee only applies to bytes that
+    /// stay inside the pair's buffer. Use
+    /// `octarine::auth::remember::RememberManager::cookie_value` to
+    /// produce a wire-format cookie value that is itself zeroizing.
     #[must_use]
     pub fn validator(&self) -> &str {
-        &self.validator
+        self.validator.expose_secret()
     }
 }
 
@@ -368,7 +381,10 @@ pub fn generate_remember_token(
         device_info.map(String::from),
     );
 
-    RememberTokenPair { token, validator }
+    RememberTokenPair {
+        token,
+        validator: SecretCore::new(validator),
+    }
 }
 
 /// Validate a remember-me token
@@ -558,11 +574,15 @@ mod tests {
     }
 
     #[test]
-    fn test_cookie_value() {
+    fn test_cookie_value_format() {
+        // Layer 1 no longer exposes a `cookie_value()` helper (it leaked
+        // plaintext into a fresh `String`). Verify the format invariant
+        // by assembling the cookie inline — Layer 3 (`RememberManager`)
+        // is responsible for the zeroizing public helper.
         let config = RememberConfig::default();
         let pair = generate_remember_token("user123", &config, None);
 
-        let cookie = pair.cookie_value();
+        let cookie = format!("{}:{}", pair.selector(), pair.validator());
         assert!(cookie.contains(':'));
 
         let parts: Vec<&str> = cookie.split(':').collect();
@@ -586,7 +606,8 @@ mod tests {
         let config = RememberConfig::default();
         let pair = generate_remember_token("user123", &config, None);
 
-        let result = validate_remember_token(&pair.cookie_value(), pair.token());
+        let cookie = format!("{}:{}", pair.selector(), pair.validator());
+        let result = validate_remember_token(&cookie, pair.token());
         assert!(result.is_ok());
     }
 
@@ -623,7 +644,8 @@ mod tests {
 
         std::thread::sleep(Duration::from_millis(20));
 
-        let result = validate_remember_token(&pair.cookie_value(), pair.token());
+        let cookie = format!("{}:{}", pair.selector(), pair.validator());
+        let result = validate_remember_token(&cookie, pair.token());
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("expired"));
     }
@@ -635,7 +657,8 @@ mod tests {
         let mut token = pair.token().clone();
         token.revoke();
 
-        let result = validate_remember_token(&pair.cookie_value(), &token);
+        let cookie = format!("{}:{}", pair.selector(), pair.validator());
+        let result = validate_remember_token(&cookie, &token);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("revoked"));
     }
@@ -777,5 +800,17 @@ mod tests {
         assert!(!constant_time_compare("abc", "abd"));
         assert!(!constant_time_compare("abc", "ab"));
         assert!(!constant_time_compare("ab", "abc"));
+    }
+
+    #[test]
+    fn test_validator_zeroized_on_drop() {
+        // Smoke test: building, exposing, and dropping a RememberTokenPair
+        // does not panic and the SecretStringCore wrapper is in place.
+        // Memory zeroization is covered by SecretCore's own test suite —
+        // we just verify the wiring here.
+        let config = RememberConfig::default();
+        let pair = generate_remember_token("user123", &config, None);
+        assert!(!pair.validator().is_empty());
+        drop(pair);
     }
 }

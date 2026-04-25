@@ -25,7 +25,9 @@
 //!
 //! // Request a reset (sends email to user)
 //! let token = manager.request_reset("user@example.com")?;
-//! // Send token.value() to user via email
+//! // Send token.value() to user via email — the returned `&str` is a
+//! // borrow of a zeroizing buffer, so do not copy it into a long-lived
+//! // `String` beyond the send operation.
 //!
 //! // When user submits the reset form:
 //! manager.validate_and_consume(&submitted_token, "user@example.com")?;
