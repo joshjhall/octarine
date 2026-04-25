@@ -797,215 +797,268 @@ impl EncryptedStorageBuilder {
 mod tests {
     use super::*;
 
+    /// Per-test executor timeout. Prevents a stalled runtime or held lock
+    /// from hanging CI; longest legitimate internal deadline below is the
+    /// 5 s poll loop in `test_background_cleanup`.
+    const TEST_TIMEOUT: Duration = Duration::from_secs(30);
+
     #[tokio::test]
     async fn test_new() {
-        let storage = EncryptedSecretStorage::new();
-        assert!(storage.is_empty().await);
-        assert!(storage.id().is_none());
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
+            assert!(storage.is_empty().await);
+            assert!(storage.id().is_none());
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_builder() {
-        let storage = EncryptedSecretStorage::builder()
-            .with_id("test-encrypted")
-            .with_cleanup_interval(Duration::from_secs(30))
-            .build();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::builder()
+                .with_id("test-encrypted")
+                .with_cleanup_interval(Duration::from_secs(30))
+                .build();
 
-        assert_eq!(storage.id(), Some("test-encrypted"));
-        assert_eq!(storage.cleanup_interval(), Duration::from_secs(30));
+            assert_eq!(storage.id(), Some("test-encrypted"));
+            assert_eq!(storage.cleanup_interval(), Duration::from_secs(30));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_insert_and_access() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage.insert("api_key", "sk-12345").await.expect("insert");
+            storage.insert("api_key", "sk-12345").await.expect("insert");
 
-        assert!(storage.contains("api_key").await);
-        assert_eq!(storage.len().await, 1);
+            assert!(storage.contains("api_key").await);
+            assert_eq!(storage.len().await, 1);
 
-        // Access via closure
-        let result = storage
-            .with_secret("api_key", "test", |value| {
-                assert_eq!(value, "sk-12345");
-                value.len()
-            })
-            .await
-            .expect("with_secret");
+            // Access via closure
+            let result = storage
+                .with_secret("api_key", "test", |value| {
+                    assert_eq!(value, "sk-12345");
+                    value.len()
+                })
+                .await
+                .expect("with_secret");
 
-        assert_eq!(result, 8);
+            assert_eq!(result, 8);
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_insert_typed() {
-        let storage = EncryptedSecretStorage::builder()
-            .with_id("typed-test")
-            .build();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::builder()
+                .with_id("typed-test")
+                .build();
 
-        storage
-            .insert_typed(
-                "password",
-                "hunter2",
-                SecretType::Password,
-                Classification::Restricted,
-                None,
-            )
-            .await
-            .expect("insert_typed");
+            storage
+                .insert_typed(
+                    "password",
+                    "hunter2",
+                    SecretType::Password,
+                    Classification::Restricted,
+                    None,
+                )
+                .await
+                .expect("insert_typed");
 
-        let result = storage
-            .with_secret("password", "auth", |value| value.to_string())
-            .await
-            .expect("with_secret");
+            let result = storage
+                .with_secret("password", "auth", |value| value.to_string())
+                .await
+                .expect("with_secret");
 
-        assert_eq!(result, "hunter2");
+            assert_eq!(result, "hunter2");
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_not_found() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        let result = storage.with_secret("missing", "test", |_| ()).await;
+            let result = storage.with_secret("missing", "test", |_| ()).await;
 
-        assert!(matches!(result, Err(EncryptedStorageError::NotFound(_))));
+            assert!(matches!(result, Err(EncryptedStorageError::NotFound(_))));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_expired() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage
-            .insert_typed(
-                "ephemeral",
-                "temp",
-                SecretType::AuthToken,
-                Classification::Confidential,
-                Some(Duration::from_nanos(1)), // Instant expiration
-            )
-            .await
-            .expect("insert_typed");
+            storage
+                .insert_typed(
+                    "ephemeral",
+                    "temp",
+                    SecretType::AuthToken,
+                    Classification::Confidential,
+                    Some(Duration::from_nanos(1)), // Instant expiration
+                )
+                .await
+                .expect("insert_typed");
 
-        tokio::time::sleep(Duration::from_millis(1)).await;
+            tokio::time::sleep(Duration::from_millis(1)).await;
 
-        let result = storage.with_secret("ephemeral", "test", |_| ()).await;
+            let result = storage.with_secret("ephemeral", "test", |_| ()).await;
 
-        assert!(matches!(result, Err(EncryptedStorageError::Expired(_))));
+            assert!(matches!(result, Err(EncryptedStorageError::Expired(_))));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_with_secret_bytes() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage.insert("binary", "hello").await.expect("insert");
+            storage.insert("binary", "hello").await.expect("insert");
 
-        let result = storage
-            .with_secret_bytes("binary", "test", |bytes| bytes.len())
-            .await
-            .expect("with_secret_bytes");
+            let result = storage
+                .with_secret_bytes("binary", "test", |bytes| bytes.len())
+                .await
+                .expect("with_secret_bytes");
 
-        assert_eq!(result, 5);
+            assert_eq!(result, 5);
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_remove() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage.insert("key", "value").await.expect("insert");
-        assert!(storage.contains("key").await);
+            storage.insert("key", "value").await.expect("insert");
+            assert!(storage.contains("key").await);
 
-        assert!(storage.remove("key").await);
-        assert!(!storage.contains("key").await);
-        assert!(!storage.remove("key").await);
+            assert!(storage.remove("key").await);
+            assert!(!storage.contains("key").await);
+            assert!(!storage.remove("key").await);
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_clear() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage.insert("key1", "value1").await.expect("insert");
-        storage.insert("key2", "value2").await.expect("insert");
+            storage.insert("key1", "value1").await.expect("insert");
+            storage.insert("key2", "value2").await.expect("insert");
 
-        storage.clear().await;
+            storage.clear().await;
 
-        assert!(storage.is_empty().await);
+            assert!(storage.is_empty().await);
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_names() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage.insert("key1", "value1").await.expect("insert");
-        storage.insert("key2", "value2").await.expect("insert");
+            storage.insert("key1", "value1").await.expect("insert");
+            storage.insert("key2", "value2").await.expect("insert");
 
-        let names = storage.names().await;
-        assert_eq!(names.len(), 2);
-        assert!(names.contains(&"key1".to_string()));
-        assert!(names.contains(&"key2".to_string()));
+            let names = storage.names().await;
+            assert_eq!(names.len(), 2);
+            assert!(names.contains(&"key1".to_string()));
+            assert!(names.contains(&"key2".to_string()));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_purge_expired() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        // Add expiring secret
-        storage
-            .insert_typed(
-                "expired",
-                "temp",
-                SecretType::AuthToken,
-                Classification::Confidential,
-                Some(Duration::from_nanos(1)),
-            )
-            .await
-            .expect("insert_typed");
+            // Add expiring secret
+            storage
+                .insert_typed(
+                    "expired",
+                    "temp",
+                    SecretType::AuthToken,
+                    Classification::Confidential,
+                    Some(Duration::from_nanos(1)),
+                )
+                .await
+                .expect("insert_typed");
 
-        // Add permanent secret
-        storage.insert("permanent", "value").await.expect("insert");
+            // Add permanent secret
+            storage.insert("permanent", "value").await.expect("insert");
 
-        tokio::time::sleep(Duration::from_millis(1)).await;
+            tokio::time::sleep(Duration::from_millis(1)).await;
 
-        let purged = storage.purge_expired().await;
-        assert_eq!(purged, 1);
-        assert_eq!(storage.len().await, 1);
-        assert!(storage.contains("permanent").await);
+            let purged = storage.purge_expired().await;
+            assert_eq!(purged, 1);
+            assert_eq!(storage.len().await, 1);
+            assert!(storage.contains("permanent").await);
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_background_cleanup() {
-        let storage = EncryptedSecretStorage::builder()
-            .with_id("bg-test")
-            .with_cleanup_interval(Duration::from_millis(10))
-            .build();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::builder()
+                .with_id("bg-test")
+                .with_cleanup_interval(Duration::from_millis(10))
+                .build();
 
-        // Add expiring secret
-        storage
-            .insert_typed(
-                "ephemeral",
-                "temp",
-                SecretType::AuthToken,
-                Classification::Confidential,
-                Some(Duration::from_nanos(1)),
-            )
-            .await
-            .expect("insert_typed");
+            // Add expiring secret
+            storage
+                .insert_typed(
+                    "ephemeral",
+                    "temp",
+                    SecretType::AuthToken,
+                    Classification::Confidential,
+                    Some(Duration::from_nanos(1)),
+                )
+                .await
+                .expect("insert_typed");
 
-        storage.insert("permanent", "value").await.expect("insert");
+            storage.insert("permanent", "value").await.expect("insert");
 
-        storage.start_cleanup().await;
-        assert!(storage.is_cleanup_running().await);
+            storage.start_cleanup().await;
+            assert!(storage.is_cleanup_running().await);
 
-        // Poll until cleanup runs (with timeout) - more reliable than fixed sleep
-        let start = std::time::Instant::now();
-        let timeout = Duration::from_secs(5);
-        while storage.len().await > 1 && start.elapsed() < timeout {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
+            // Poll until cleanup runs (with timeout) - more reliable than fixed sleep
+            let start = std::time::Instant::now();
+            let timeout = Duration::from_secs(5);
+            while storage.len().await > 1 && start.elapsed() < timeout {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
 
-        assert_eq!(storage.len().await, 1);
-        assert!(storage.contains("permanent").await);
+            assert_eq!(storage.len().await, 1);
+            assert!(storage.contains("permanent").await);
 
-        storage.stop_cleanup().await;
-        assert!(!storage.is_cleanup_running().await);
+            storage.stop_cleanup().await;
+            assert!(!storage.is_cleanup_running().await);
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[test]
@@ -1023,19 +1076,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_debug_shows_encrypted() {
-        let storage = EncryptedSecretStorage::builder()
-            .with_id("debug-test")
-            .build();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::builder()
+                .with_id("debug-test")
+                .build();
 
-        storage
-            .insert("secret", "super-secret")
-            .await
-            .expect("insert");
+            storage
+                .insert("secret", "super-secret")
+                .await
+                .expect("insert");
 
-        let debug = format!("{:?}", storage);
-        assert!(debug.contains("[ENCRYPTED]"));
-        assert!(debug.contains("debug-test"));
-        assert!(!debug.contains("super-secret"));
+            let debug = format!("{:?}", storage);
+            assert!(debug.contains("[ENCRYPTED]"));
+            assert!(debug.contains("debug-test"));
+            assert!(!debug.contains("super-secret"));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[test]
@@ -1055,32 +1112,40 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_secret_bytes_not_found() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        let result = storage.with_secret_bytes("missing", "test", |_| ()).await;
+            let result = storage.with_secret_bytes("missing", "test", |_| ()).await;
 
-        assert!(matches!(result, Err(EncryptedStorageError::NotFound(_))));
+            assert!(matches!(result, Err(EncryptedStorageError::NotFound(_))));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 
     #[tokio::test]
     async fn test_with_secret_bytes_expired() {
-        let storage = EncryptedSecretStorage::new();
+        tokio::time::timeout(TEST_TIMEOUT, async {
+            let storage = EncryptedSecretStorage::new();
 
-        storage
-            .insert_typed(
-                "ephemeral",
-                "temp",
-                SecretType::AuthToken,
-                Classification::Confidential,
-                Some(Duration::from_nanos(1)),
-            )
-            .await
-            .expect("insert_typed");
+            storage
+                .insert_typed(
+                    "ephemeral",
+                    "temp",
+                    SecretType::AuthToken,
+                    Classification::Confidential,
+                    Some(Duration::from_nanos(1)),
+                )
+                .await
+                .expect("insert_typed");
 
-        tokio::time::sleep(Duration::from_millis(1)).await;
+            tokio::time::sleep(Duration::from_millis(1)).await;
 
-        let result = storage.with_secret_bytes("ephemeral", "test", |_| ()).await;
+            let result = storage.with_secret_bytes("ephemeral", "test", |_| ()).await;
 
-        assert!(matches!(result, Err(EncryptedStorageError::Expired(_))));
+            assert!(matches!(result, Err(EncryptedStorageError::Expired(_))));
+        })
+        .await
+        .expect("test timed out after 30s");
     }
 }

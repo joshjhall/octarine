@@ -14,6 +14,11 @@ use octarine::observe::writers::{
 };
 use octarine::{debug, error, info, warn};
 use std::time::Duration;
+use tokio::time::timeout;
+
+/// Per-test executor timeout. Prevents a stalled runtime or held lock from
+/// hanging CI; longest legitimate internal sleep in this file is 100 ms.
+const TEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 // ============================================================================
 // Basic Dispatch Tests
@@ -190,62 +195,70 @@ fn test_health_thresholds() {
 
 #[tokio::test]
 async fn test_dispatch_from_async_context() {
-    super::ensure_test_dispatcher();
+    timeout(TEST_TIMEOUT, async {
+        super::ensure_test_dispatcher();
 
-    let stats_before = dispatcher_stats();
+        let stats_before = dispatcher_stats();
 
-    // Queue events from async context
-    for i in 0..10 {
-        info("async_test", format!("Async event {}", i));
-    }
+        // Queue events from async context
+        for i in 0..10 {
+            info("async_test", format!("Async event {}", i));
+        }
 
-    // Brief pause
-    tokio::time::sleep(Duration::from_millis(50)).await;
+        // Brief pause
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
-    let stats_after = dispatcher_stats();
+        let stats_after = dispatcher_stats();
 
-    let queued = stats_after.total_written - stats_before.total_written;
-    assert!(
-        queued >= 10,
-        "Expected 10 events from async context, got {}",
-        queued
-    );
+        let queued = stats_after.total_written - stats_before.total_written;
+        assert!(
+            queued >= 10,
+            "Expected 10 events from async context, got {}",
+            queued
+        );
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 #[tokio::test]
 async fn test_concurrent_dispatch_from_tasks() {
-    super::ensure_test_dispatcher();
+    timeout(TEST_TIMEOUT, async {
+        super::ensure_test_dispatcher();
 
-    let stats_before = dispatcher_stats();
+        let stats_before = dispatcher_stats();
 
-    // Spawn multiple tasks that all log concurrently
-    let mut handles = vec![];
+        // Spawn multiple tasks that all log concurrently
+        let mut handles = vec![];
 
-    for task_id in 0..5 {
-        handles.push(tokio::spawn(async move {
-            for i in 0..10 {
-                info("concurrent_test", format!("Task {} event {}", task_id, i));
-            }
-        }));
-    }
+        for task_id in 0..5 {
+            handles.push(tokio::spawn(async move {
+                for i in 0..10 {
+                    info("concurrent_test", format!("Task {} event {}", task_id, i));
+                }
+            }));
+        }
 
-    // Wait for all tasks
-    for handle in handles {
-        handle.await.expect("Task should complete");
-    }
+        // Wait for all tasks
+        for handle in handles {
+            handle.await.expect("Task should complete");
+        }
 
-    // Brief pause for queuing
-    tokio::time::sleep(Duration::from_millis(100)).await;
+        // Brief pause for queuing
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
-    let stats_after = dispatcher_stats();
+        let stats_after = dispatcher_stats();
 
-    // Should have queued 50 events (5 tasks * 10 events each)
-    let queued = stats_after.total_written - stats_before.total_written;
-    assert!(
-        queued >= 45,
-        "Expected at least 45 events from concurrent tasks, got {}",
-        queued
-    );
+        // Should have queued 50 events (5 tasks * 10 events each)
+        let queued = stats_after.total_written - stats_before.total_written;
+        assert!(
+            queued >= 45,
+            "Expected at least 45 events from concurrent tasks, got {}",
+            queued
+        );
+    })
+    .await
+    .expect("test timed out after 30s");
 }
 
 // ============================================================================
