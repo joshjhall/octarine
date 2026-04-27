@@ -9,10 +9,18 @@
 // Allow dead_code: This is a new module that will be used by consumers
 #![allow(dead_code)]
 
+use std::time::Instant;
+
+use crate::observe::metrics::{increment_by, record};
 use crate::observe::{Problem, event};
 use crate::primitives::security::network::NetworkSecurityBuilder as PrimitiveNetworkSecurityBuilder;
 
 use super::types::{HostType, NetworkSecurityHostnameConfig, NetworkSecurityUrlConfig, PortRange};
+
+crate::define_metrics! {
+    validate_ms => "security.network.validate_ms",
+    threats_detected => "security.network.threats_detected",
+}
 
 // ============================================================================
 // NetworkSecurityBuilder
@@ -130,6 +138,7 @@ impl NetworkSecurityBuilder {
 
         if self.emit_events && result {
             event::warn(format!("Dangerous scheme detected: {}", url));
+            increment_by(metric_names::threats_detected(), 1);
         }
 
         result
@@ -232,6 +241,7 @@ impl NetworkSecurityBuilder {
 
         if self.emit_events && result {
             event::critical(format!("Cloud metadata access detected: {}", url));
+            increment_by(metric_names::threats_detected(), 1);
         }
 
         result
@@ -279,6 +289,7 @@ impl NetworkSecurityBuilder {
 
         if self.emit_events && result {
             event::critical(format!("SSRF detected: {}", url_or_host));
+            increment_by(metric_names::threats_detected(), 1);
         }
 
         result
@@ -300,9 +311,14 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if any SSRF risk is detected.
     pub fn validate_ssrf_safe(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_ssrf_safe(url);
 
         if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
             if result.is_err() {
                 event::critical(format!("SSRF validation failed: {}", url));
             } else {
@@ -319,10 +335,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the URL targets internal resources.
     pub fn validate_not_internal(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_not_internal(url);
 
-        if self.emit_events && result.is_err() {
-            event::critical(format!("Internal URL blocked: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::critical(format!("Internal URL blocked: {}", url));
+            }
         }
 
         result
@@ -334,10 +357,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the scheme is dangerous.
     pub fn validate_safe_scheme(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_safe_scheme(url);
 
-        if self.emit_events && result.is_err() {
-            event::critical(format!("Dangerous scheme blocked: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::critical(format!("Dangerous scheme blocked: {}", url));
+            }
         }
 
         result
@@ -349,10 +379,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the URL targets cloud metadata.
     pub fn validate_not_cloud_metadata(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_not_cloud_metadata(url);
 
-        if self.emit_events && result.is_err() {
-            event::critical(format!("Cloud metadata blocked: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::critical(format!("Cloud metadata blocked: {}", url));
+            }
         }
 
         result
@@ -364,10 +401,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the URL is a shortener.
     pub fn validate_not_url_shortener(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_not_url_shortener(url);
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("URL shortener blocked: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("URL shortener blocked: {}", url));
+            }
         }
 
         result
@@ -383,10 +427,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the URL is malformed or uses dangerous schemes.
     pub fn validate_url_format(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_url_format(url);
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("Invalid URL format: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("Invalid URL format: {}", url));
+            }
         }
 
         result
@@ -398,11 +449,18 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the scheme is not in the allowed list.
     pub fn validate_url_scheme(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let config = NetworkSecurityUrlConfig::default();
         let result = self.inner.validate_url_scheme(url, &(&config).into());
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("URL scheme not allowed: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("URL scheme not allowed: {}", url));
+            }
         }
 
         result
@@ -414,11 +472,18 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the URL is not HTTPS.
     pub fn validate_https_required(&self, url: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let config = NetworkSecurityUrlConfig::https_only();
         let result = self.inner.validate_url_scheme(url, &(&config).into());
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("HTTPS required: {}", url));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("HTTPS required: {}", url));
+            }
         }
 
         result
@@ -434,10 +499,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the hostname is invalid.
     pub fn validate_hostname(&self, hostname: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_hostname(hostname);
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("Invalid hostname: {}", hostname));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("Invalid hostname: {}", hostname));
+            }
         }
 
         result
@@ -449,13 +521,20 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the hostname is invalid.
     pub fn validate_hostname_lenient(&self, hostname: &str) -> Result<(), Problem> {
+        let start = Instant::now();
         let config = NetworkSecurityHostnameConfig::lenient();
         let result = self
             .inner
             .validate_hostname_with_config(hostname, &(&config).into());
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("Invalid hostname: {}", hostname));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("Invalid hostname: {}", hostname));
+            }
         }
 
         result
@@ -471,14 +550,21 @@ impl NetworkSecurityBuilder {
         hostname: &str,
         max_length: usize,
     ) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_hostname_length(hostname, max_length);
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!(
-                "Hostname too long: {} (max {})",
-                hostname.len(),
-                max_length
-            ));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!(
+                    "Hostname too long: {} (max {})",
+                    hostname.len(),
+                    max_length
+                ));
+            }
         }
 
         result
@@ -494,10 +580,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the port is invalid.
     pub fn validate_port(&self, port: u16) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_port(port);
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("Invalid port: {}", port));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("Invalid port: {}", port));
+            }
         }
 
         result
@@ -509,10 +602,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the port is outside the range.
     pub fn validate_port_range(&self, port: u16, range: PortRange) -> Result<(), Problem> {
+        let start = Instant::now();
         let result = self.inner.validate_port_range(port, range.into());
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("Port {} out of range", port));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("Port {} out of range", port));
+            }
         }
 
         result
@@ -524,10 +624,17 @@ impl NetworkSecurityBuilder {
     ///
     /// Returns `Problem::validation` if the string is not a valid port.
     pub fn parse_port(&self, s: &str) -> Result<u16, Problem> {
+        let start = Instant::now();
         let result = self.inner.parse_port(s);
 
-        if self.emit_events && result.is_err() {
-            event::warn(format!("Invalid port string: {}", s));
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                event::warn(format!("Invalid port string: {}", s));
+            }
         }
 
         result
@@ -540,7 +647,12 @@ impl NetworkSecurityBuilder {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
+    use crate::observe::metrics::{flush_for_testing, snapshot};
+    use std::sync::Mutex;
+
+    static METRICS_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_builder_creation() {
@@ -606,5 +718,65 @@ mod tests {
         assert!(builder.validate_port(80).is_ok());
         assert!(builder.validate_port(443).is_ok());
         assert!(builder.validate_port(0).is_err());
+    }
+
+    #[test]
+    fn test_with_events_toggle() {
+        let builder = NetworkSecurityBuilder::new().with_events(false);
+        assert!(!builder.emit_events);
+    }
+
+    #[test]
+    fn test_metrics_validate_ms_recorded() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = NetworkSecurityBuilder::new();
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.network.validate_ms")
+            .map_or(0, |h| h.count);
+
+        let _ = builder.validate_url_format("https://example.com");
+        flush_for_testing();
+
+        let after = snapshot()
+            .histograms
+            .get("security.network.validate_ms")
+            .map_or(0, |h| h.count);
+        assert!(after > before, "validate_ms should record");
+    }
+
+    #[test]
+    fn test_metrics_threats_detected_counter() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = NetworkSecurityBuilder::new();
+        flush_for_testing();
+        let before = snapshot()
+            .counters
+            .get("security.network.threats_detected")
+            .map_or(0, |c| c.value);
+
+        assert!(builder.is_potential_ssrf("http://localhost/admin"));
+        flush_for_testing();
+
+        let after = snapshot()
+            .counters
+            .get("security.network.threats_detected")
+            .map_or(0, |c| c.value);
+        assert!(after > before, "threats_detected should increment");
+    }
+
+    #[test]
+    fn test_silent_mode_emits_no_metrics() {
+        // Structural test: `silent()` returns a builder with emit_events=false,
+        // and every metric call site in this module is gated by `if self.emit_events`.
+        // A behavioral delta-assertion would race with concurrent tests across the
+        // workspace that hit these same global metric names via shortcuts/facade.
+        let builder = NetworkSecurityBuilder::silent();
+        assert!(!builder.emit_events);
+
+        // Sanity: invoking through the silent builder still works functionally.
+        assert!(builder.is_potential_ssrf("http://localhost/admin"));
+        assert!(builder.validate_url_format("https://example.com").is_ok());
     }
 }
