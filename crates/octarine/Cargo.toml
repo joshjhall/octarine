@@ -85,7 +85,7 @@ bytes = "1.10"
 
 # File operations
 fd-lock = "4.0"
-rand = "0.9"
+rand = "0.10"
 tempfile = "3.20"
 atomic-write-file = "0.3"
 
