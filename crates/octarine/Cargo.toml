@@ -43,7 +43,7 @@ uuid = { workspace = true }
 
 # Cryptography and encoding
 base64 = "0.22"
-sha2 = "0.10"
+sha2 = "0.11"
 sha3 = "0.11"
 keccak = "0.2"
 hex = "0.4"
