@@ -224,7 +224,7 @@ pretty_assertions = "1.4"
 serial_test = "3.2"
 test-case = "3.3"
 wiremock = "0.6"
-fake = { version = "4.4", features = ["derive"] }
+fake = { version = "5.1", features = ["derive"] }
 assert_cmd = "2.0"
 rexpect = "0.6"
 
