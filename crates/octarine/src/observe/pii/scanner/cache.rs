@@ -45,6 +45,30 @@ impl ScannerStats {
 /// Global scanner statistics
 pub(super) static SCANNER_STATS: ScannerStats = ScannerStats::new();
 
+/// Reset all scanner statistics to zero.
+///
+/// Test-only helper used by serial tests in `health.rs` that need to
+/// drive the scanner into specific states by populating the atomic
+/// counters directly.
+#[cfg(test)]
+pub(super) fn reset_stats() {
+    SCANNER_STATS
+        .total_scans
+        .store(0, std::sync::atomic::Ordering::Relaxed);
+    SCANNER_STATS
+        .cache_hits
+        .store(0, std::sync::atomic::Ordering::Relaxed);
+    SCANNER_STATS
+        .cache_misses
+        .store(0, std::sync::atomic::Ordering::Relaxed);
+    SCANNER_STATS
+        .total_pii_found
+        .store(0, std::sync::atomic::Ordering::Relaxed);
+    SCANNER_STATS
+        .total_scan_time_us
+        .store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// LRU cache entry for scan results
 struct CacheEntry {
     pii_types: Vec<PiiType>,

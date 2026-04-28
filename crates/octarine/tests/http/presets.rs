@@ -529,3 +529,290 @@ async fn test_request_decompression_inflates_gzipped_body() {
     // The handler must have seen the inflated payload, not the gzipped one.
     assert_eq!(received_len, plaintext.len());
 }
+
+// ============================================================================
+// CORS — additional preset coverage (issue #275)
+// ============================================================================
+
+/// `production(&[a, b])` echoes back any of the configured origins, not
+/// just the first. Guards against a regression where multi-origin allow
+/// lists silently collapse to a single match.
+#[tokio::test]
+async fn test_cors_production_multiple_origins_each_allowed() {
+    let app = Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(cors::production(&[
+            "https://app.example.com",
+            "https://admin.example.com",
+        ]));
+
+    for origin in ["https://app.example.com", "https://admin.example.com"] {
+        let request = Request::builder()
+            .method(Method::OPTIONS)
+            .uri("/")
+            .header(header::ORIGIN, origin)
+            .header(header::ACCESS_CONTROL_REQUEST_METHOD, "POST")
+            .body(Body::empty())
+            .expect("valid request");
+
+        let response = app.clone().oneshot(request).await.expect("response");
+        let allow_origin = response
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .unwrap_or_else(|| panic!("origin {origin} should be allowed"))
+            .to_str()
+            .expect("ASCII");
+        assert_eq!(
+            allow_origin, origin,
+            "must echo the matching origin verbatim"
+        );
+    }
+}
+
+/// `read_only(&["x"])` echoes only the listed origin and rejects others
+/// (this preset is the read-only sibling of `production`, so it must
+/// honor the same allow-list semantics).
+#[tokio::test]
+async fn test_cors_read_only_specific_origins_rejects_others() {
+    let app = Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(cors::read_only(&["https://allowed.example.com"]));
+
+    // Allowed origin → echoed back.
+    let request = Request::builder()
+        .method(Method::OPTIONS)
+        .uri("/")
+        .header(header::ORIGIN, "https://allowed.example.com")
+        .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+        .body(Body::empty())
+        .expect("valid request");
+    let response = app.clone().oneshot(request).await.expect("response");
+    let allow_origin = response
+        .headers()
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .expect("allowed origin should echo")
+        .to_str()
+        .expect("ASCII");
+    assert_eq!(allow_origin, "https://allowed.example.com");
+
+    // Disallowed origin → no Allow-Origin header.
+    let request = Request::builder()
+        .method(Method::OPTIONS)
+        .uri("/")
+        .header(header::ORIGIN, "https://other.example.com")
+        .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+        .body(Body::empty())
+        .expect("valid request");
+    let response = app.oneshot(request).await.expect("response");
+    assert!(
+        response
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .is_none(),
+        "read_only with explicit allow-list must not echo other origins",
+    );
+}
+
+// ============================================================================
+// Body limits — additional preset coverage (issue #275)
+// ============================================================================
+
+/// `upload_body()` (50 MB) admits a payload that `large_body()` (10 MB)
+/// would reject, confirming the higher ceiling actually applies.
+#[tokio::test]
+async fn test_limits_upload_body_admits_above_large_limit() {
+    let app = Router::new()
+        .route("/", post(echo_body))
+        .layer(limits::upload_body());
+
+    // 12 MB — would be rejected by large_body() (10 MB) but allowed by
+    // upload_body() (50 MB).
+    let payload = vec![0_u8; 12 * 1024 * 1024];
+    let len = payload.len();
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/")
+        .header(header::CONTENT_LENGTH, len.to_string())
+        .body(Body::from(payload))
+        .expect("valid request");
+
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+/// `ingestion_body()` (100 MB) admits a payload that `upload_body()`
+/// (50 MB) would reject, confirming the highest ceiling applies.
+#[tokio::test]
+async fn test_limits_ingestion_body_admits_above_upload_limit() {
+    let app = Router::new()
+        .route("/", post(echo_body))
+        .layer(limits::ingestion_body());
+
+    // 60 MB — would be rejected by upload_body() (50 MB) but allowed by
+    // ingestion_body() (100 MB).
+    let payload = vec![0_u8; 60 * 1024 * 1024];
+    let len = payload.len();
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/")
+        .header(header::CONTENT_LENGTH, len.to_string())
+        .body(Body::from(payload))
+        .expect("valid request");
+
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+// ============================================================================
+// Timeout — additional preset coverage (issue #275)
+//
+// Each test uses `tokio::time::pause()` + `advance()` for deterministic
+// behavior under coverage tooling (no wall-clock sleeps; see
+// `octarine-test-resilience` skill).
+// ============================================================================
+
+/// `default_timeout()` (30 s) returns 408 when the handler runs longer
+/// than the deadline.
+#[tokio::test(start_paused = true)]
+async fn test_timeout_default_fires_after_deadline() {
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async {
+                tokio::time::sleep(Duration::from_secs(31)).await;
+                "ok"
+            }),
+        )
+        .layer(timeout::default_timeout());
+
+    let request = Request::builder()
+        .uri("/")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let pending = tokio::spawn(app.oneshot(request));
+    tokio::time::advance(Duration::from_secs(31)).await;
+
+    let response = pending
+        .await
+        .expect("join handle")
+        .expect("response result");
+
+    assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+}
+
+/// `upload_timeout()` (300 s) admits a handler that runs for 200 s —
+/// upload-style requests must not be cut off prematurely.
+#[tokio::test(start_paused = true)]
+async fn test_timeout_upload_admits_long_handler() {
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async {
+                tokio::time::sleep(Duration::from_secs(200)).await;
+                "ok"
+            }),
+        )
+        .layer(timeout::upload_timeout());
+
+    let request = Request::builder()
+        .uri("/")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let pending = tokio::spawn(app.oneshot(request));
+    // Advance past the handler sleep but well before the 300 s deadline.
+    tokio::time::advance(Duration::from_secs(201)).await;
+
+    let response = pending
+        .await
+        .expect("join handle")
+        .expect("response result");
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+/// `custom_timeout(Duration)` enforces exactly the duration passed in.
+#[tokio::test(start_paused = true)]
+async fn test_timeout_custom_enforces_specified_duration() {
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                "ok"
+            }),
+        )
+        .layer(timeout::custom_timeout(Duration::from_secs(2)));
+
+    let request = Request::builder()
+        .uri("/")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let pending = tokio::spawn(app.oneshot(request));
+    tokio::time::advance(Duration::from_secs(3)).await;
+
+    let response = pending
+        .await
+        .expect("join handle")
+        .expect("response result");
+
+    assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+}
+
+// ============================================================================
+// Compression — additional preset coverage (issue #275)
+// ============================================================================
+
+/// `fast_compression()` honors `Accept-Encoding: gzip` and emits gzipped
+/// content (the speed/ratio knob lives below the wire encoding, so the
+/// behavioral signature is the same as `default_compression`).
+#[tokio::test]
+async fn test_compression_fast_honors_gzip() {
+    let app = Router::new()
+        .route("/", get(|| async { vec![b'A'; 4096] }))
+        .layer(compression::fast_compression());
+
+    let request = Request::builder()
+        .uri("/")
+        .header(header::ACCEPT_ENCODING, "gzip")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    let encoding = response
+        .headers()
+        .get(header::CONTENT_ENCODING)
+        .expect("should set Content-Encoding")
+        .to_str()
+        .expect("ASCII");
+    assert_eq!(encoding, "gzip");
+}
+
+/// `best_compression()` honors `Accept-Encoding: gzip` and emits gzipped
+/// content. This locks in the contract that the "best" preset still
+/// negotiates the same encodings — only the compression level differs.
+#[tokio::test]
+async fn test_compression_best_honors_gzip() {
+    let app = Router::new()
+        .route("/", get(|| async { vec![b'A'; 4096] }))
+        .layer(compression::best_compression());
+
+    let request = Request::builder()
+        .uri("/")
+        .header(header::ACCEPT_ENCODING, "gzip")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    let encoding = response
+        .headers()
+        .get(header::CONTENT_ENCODING)
+        .expect("should set Content-Encoding")
+        .to_str()
+        .expect("ASCII");
+    assert_eq!(encoding, "gzip");
+}

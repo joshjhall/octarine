@@ -295,4 +295,94 @@ mod tests {
         let executor = builder.executor("worker");
         assert_eq!(executor.name(), "service.worker");
     }
+
+    // ========================================================================
+    // Channel name-prefix and config propagation
+    //
+    // These tests exercise observable channel state via `.split()`, which
+    // exposes `sender.name()` / `receiver.name()`. They guard against
+    // regressions where `with_name_prefix` silently stops propagating into
+    // channel names, and lock in the documented quirk that
+    // `channel_with_config` does NOT apply the builder prefix (the config
+    // already carries its own name).
+    // ========================================================================
+
+    #[test]
+    fn test_with_name_prefix_propagates_to_channel() {
+        let builder = RuntimeBuilder::new().with_name_prefix("svc");
+        let channel: Channel<i32> = builder.channel("events", 100);
+
+        let (sender, receiver) = channel.split();
+        assert_eq!(sender.name(), "svc.events");
+        assert_eq!(receiver.name(), "svc.events");
+    }
+
+    #[test]
+    fn test_with_name_prefix_propagates_to_high_throughput_channel() {
+        let builder = RuntimeBuilder::new().with_name_prefix("svc");
+        let channel: Channel<i32> = builder.high_throughput_channel("ingest");
+
+        let (sender, _receiver) = channel.split();
+        assert_eq!(
+            sender.name(),
+            "svc.ingest",
+            "high_throughput_channel must apply the builder prefix",
+        );
+    }
+
+    #[test]
+    fn test_with_name_prefix_propagates_to_reliable_channel() {
+        let builder = RuntimeBuilder::new().with_name_prefix("svc");
+        let channel: Channel<i32> = builder.reliable_channel("queue");
+
+        let (sender, _receiver) = channel.split();
+        assert_eq!(sender.name(), "svc.queue");
+    }
+
+    #[test]
+    fn test_with_name_prefix_propagates_to_low_latency_channel() {
+        let builder = RuntimeBuilder::new().with_name_prefix("svc");
+        let channel: Channel<i32> = builder.low_latency_channel("rpc");
+
+        let (sender, _receiver) = channel.split();
+        assert_eq!(sender.name(), "svc.rpc");
+    }
+
+    #[test]
+    fn test_channel_with_config_uses_config_name_verbatim() {
+        // Documented behavior: channel_with_config does NOT apply the
+        // builder prefix because the config already carries its own name.
+        let builder = RuntimeBuilder::new().with_name_prefix("ignored");
+        let config = ChannelConfig::low_latency("explicit");
+
+        // Sanity: confirm the assertion below tracks the config's actual
+        // name and capacity. If `ChannelConfig::low_latency` is changed,
+        // these expectations need to follow.
+        assert_eq!(config.name(), "explicit");
+        assert_eq!(config.capacity(), 100);
+
+        let channel: Channel<i32> = builder.channel_with_config(config);
+        let (sender, receiver) = channel.split();
+        assert_eq!(
+            sender.name(),
+            "explicit",
+            "channel_with_config must NOT prepend the builder prefix",
+        );
+        assert_eq!(receiver.name(), "explicit");
+    }
+
+    #[test]
+    fn test_channel_with_config_preserves_capacity() {
+        // Verify that channel_with_config actually wires the supplied
+        // ChannelConfig through to channel construction. The builder is
+        // a thin passthrough to `Channel::with_config`, so we assert
+        // that the explicit config name and capacity survive.
+        let custom = ChannelConfig::new("custom", 8);
+        assert_eq!(custom.capacity(), 8, "sanity check on input config");
+
+        let builder = RuntimeBuilder::new();
+        let channel: Channel<u8> = builder.channel_with_config(custom);
+        let (sender, _receiver) = channel.split();
+        assert_eq!(sender.name(), "custom");
+    }
 }

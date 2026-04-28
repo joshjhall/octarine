@@ -635,6 +635,62 @@ mod tests {
         assert!(result.verified);
     }
 
+    /// Async path against a missing file: must return an error with the
+    /// "does not exist" wording, leave no residue, and not panic. Mirrors
+    /// the existing sync test (`test_secure_delete_sync_nonexistent`)
+    /// but exercises the `secure_delete()` async entry point.
+    #[tokio::test]
+    async fn test_secure_delete_async_nonexistent() {
+        let dir = tempdir().expect("create temp dir");
+        let missing = dir.path().join("does_not_exist.txt");
+        // Sanity: the file must really not exist for this test to mean anything.
+        assert!(
+            !missing.exists(),
+            "test fixture must not pre-create the file"
+        );
+
+        let result = secure_delete(&missing).await;
+        let err = result.expect_err("missing file must produce an error");
+
+        let message = err.to_string();
+        assert!(
+            message.contains("does not exist"),
+            "error should mention 'does not exist', got: {message}",
+        );
+
+        // No residue: the parent dir is untouched and no file was created
+        // at the rejected path.
+        assert!(dir.path().exists(), "parent tempdir must still exist");
+        assert!(
+            !missing.exists(),
+            "must not create the file we tried to delete"
+        );
+    }
+
+    /// Async path against a directory: must reject with the "not a file"
+    /// wording. Mirrors `test_secure_delete_sync_directory` for the async
+    /// API.
+    #[tokio::test]
+    async fn test_secure_delete_async_directory() {
+        let dir = tempdir().expect("create temp dir");
+
+        let result = secure_delete(dir.path()).await;
+        let err = result.expect_err("directory path must produce an error");
+
+        let message = err.to_string();
+        assert!(
+            message.contains("not a file"),
+            "error should mention 'not a file', got: {message}",
+        );
+
+        // Directory must remain — secure_delete must reject before touching it.
+        assert!(dir.path().exists(), "directory must remain after rejection");
+        assert!(
+            dir.path().is_dir(),
+            "directory entry must still be a directory"
+        );
+    }
+
     // =========================================================================
     // Sync Tests
     // =========================================================================
