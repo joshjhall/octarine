@@ -1,3 +1,4 @@
 [submodule "containers"]
 	path = containers
-	url = ssh://git@github.com/joshjhall/containers.git
+	url = https://github.com/joshjhall/containers.git
+	update = none
