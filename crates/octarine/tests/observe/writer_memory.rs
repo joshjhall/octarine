@@ -435,29 +435,53 @@ async fn test_batch_write_respects_capacity() {
 // Thread Safety
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_writes() {
-    let writer = Arc::new(MemoryWriter::new());
-    let mut handles = vec![];
+    use std::collections::HashSet;
+    use tokio::sync::Barrier;
 
-    // Spawn multiple tasks writing concurrently
-    for i in 0..10 {
+    let writer = Arc::new(MemoryWriter::new());
+    let task_count = 10usize;
+    let writes_per_task = 10usize;
+    // Barrier so all tasks start writing at the same instant — without
+    // this, early-spawned tasks could finish before later ones start,
+    // hiding races behind cooperative scheduling.
+    let barrier = Arc::new(Barrier::new(task_count));
+    let mut handles = Vec::with_capacity(task_count);
+
+    for i in 0..task_count {
         let w = Arc::clone(&writer);
+        let b = Arc::clone(&barrier);
         handles.push(tokio::spawn(async move {
-            for j in 0..10 {
-                let event = Event::new(EventType::Info, format!("Task {} Event {}", i, j));
+            b.wait().await;
+            for j in 0..writes_per_task {
+                let event = Event::new(EventType::Info, format!("Task {i} Event {j}"));
                 w.write(&event).await.expect("write should succeed");
             }
         }));
     }
 
-    // Wait for all writes
     for handle in handles {
         handle.await.expect("task should complete");
     }
 
-    // All events should be written
-    assert_eq!(writer.len(), 100);
+    // Total count: catches dropped writes.
+    assert_eq!(writer.len(), task_count * writes_per_task);
+
+    // Uniqueness: every (task, event) pair must appear exactly once —
+    // catches lost or duplicated writes a count check would miss.
+    let stored = writer.all_events();
+    let messages: HashSet<String> = stored.iter().map(|e| e.message.clone()).collect();
+    assert_eq!(messages.len(), task_count * writes_per_task);
+    for i in 0..task_count {
+        for j in 0..writes_per_task {
+            let expected = format!("Task {i} Event {j}");
+            assert!(
+                messages.contains(&expected),
+                "missing event from concurrent write: {expected}"
+            );
+        }
+    }
 }
 
 #[tokio::test]

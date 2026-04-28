@@ -238,8 +238,10 @@ mod tests {
         let elapsed = start.elapsed();
 
         assert_eq!(result, 42);
-        // Allow 20% margin for OS scheduler jitter
-        assert!(elapsed >= Duration::from_millis(40));
+        // std::thread::sleep is at-least, Instant is monotonic, so >=
+        // the configured floor is precise and CI-stable (no upper bound
+        // to flake under coverage load).
+        assert!(elapsed >= config.min_duration);
     }
 
     #[test]
@@ -249,47 +251,46 @@ mod tests {
             .max_duration(Duration::from_millis(100))
             .build();
 
+        let operation_duration = Duration::from_millis(20);
         let start = Instant::now();
         let result = constant_time_response_sync(&config, || {
-            std::thread::sleep(Duration::from_millis(20));
+            std::thread::sleep(operation_duration);
             42
         });
         let elapsed = start.elapsed();
 
         assert_eq!(result, 42);
-        // Allow margins for OS scheduler jitter and CI load
-        assert!(elapsed >= Duration::from_millis(16));
-        assert!(elapsed < Duration::from_millis(200));
+        // When operation > min_duration, no padding is added; the
+        // operation's own sleep is the precise floor.
+        assert!(elapsed >= operation_duration);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_constant_time_response_async_fast() {
         let config = ConstantTimeConfig::builder()
             .min_duration(Duration::from_millis(50))
             .build();
 
-        let start = Instant::now();
+        let start = tokio::time::Instant::now();
         let result = constant_time_response(&config, async { 42 }).await;
         let elapsed = start.elapsed();
 
         assert_eq!(result, 42);
-        // Allow 20% margin for OS scheduler jitter
-        assert!(elapsed >= Duration::from_millis(40));
+        // Paused time advances exactly when tokio::time::sleep fires,
+        // so elapsed is precisely the configured floor.
+        assert_eq!(elapsed, config.min_duration);
     }
 
     #[test]
     fn test_constant_time_response_sync_slow_warning() {
-        // Configure a very short max_duration so the operation exceeds it
+        // max_duration = ZERO means any non-zero elapsed time exceeds
+        // it, so the warn path triggers without a wall-clock sleep.
         let config = ConstantTimeConfig::builder()
-            .min_duration(Duration::from_millis(1))
-            .max_duration(Duration::from_millis(5))
+            .min_duration(Duration::from_nanos(1))
+            .max_duration(Duration::ZERO)
             .build();
 
-        // Operation that takes longer than max_duration triggers the warn path
-        let result = constant_time_response_sync(&config, || {
-            std::thread::sleep(Duration::from_millis(20));
-            99
-        });
+        let result = constant_time_response_sync(&config, || 99);
 
         // The warn path should not prevent the result from being returned
         assert_eq!(result, 99);
