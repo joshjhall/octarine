@@ -658,3 +658,122 @@ fn test_mixed_financial_pii_detected_together() {
     assert!(pii_types.contains(&PiiType::Iban));
     assert!(pii_types.contains(&PiiType::CryptoAddress));
 }
+
+// ==========================================
+// EDGE CASES — Empty, oversize, international formats
+//
+// Covers issue #275 acceptance criteria for missing scenarios in the
+// PII redaction integration suite. Each test asserts on redaction
+// output, not just absence of crash.
+// ==========================================
+
+/// Empty input: redaction must produce an empty string (no panic, no
+/// inserted markers) and `scan_for_pii` must report no findings.
+#[test]
+fn test_redact_empty_string() {
+    assert_eq!(redact_pii(""), "");
+    assert!(
+        scan_for_pii("").is_empty(),
+        "scan of empty string must report no PII",
+    );
+}
+
+/// Embedded SSN in a string under each detector's MAX_INPUT_LENGTH
+/// (10 KB) is still redacted — the scanner does not skip merely because
+/// the input is large. This is the "happy path" sibling of the
+/// over-limit test below.
+#[test]
+fn test_redact_large_input_under_limit_still_redacts_ssn() {
+    let padding = "x".repeat(4_000);
+    // Total length ~= 8 KB — well under the per-detector 10 KB guard.
+    let text = format!("{padding} SSN: 900-00-0001 {padding}");
+    assert!(
+        text.len() < 10_000,
+        "fixture must stay under MAX_INPUT_LENGTH; got {}",
+        text.len(),
+    );
+
+    let redacted = redact_pii(&text);
+    assert!(
+        redacted.contains("[SSN]"),
+        "SSN inside an under-limit string must still be redacted",
+    );
+    assert!(
+        !redacted.contains("900-00-0001"),
+        "raw SSN must not survive redaction",
+    );
+}
+
+/// Embedded SSN in a string above each detector's MAX_INPUT_LENGTH
+/// (10 KB) documents the current short-circuit behavior: detectors
+/// return no matches once the input exceeds their guard, so PII passes
+/// through unredacted. This test locks that contract in: any future
+/// change that starts truncating the input or chunking the scan must
+/// update both this test and the `MAX_INPUT_LENGTH` comments in
+/// `primitives/identifiers/*/detection.rs`.
+#[test]
+fn test_redact_large_input_above_limit_skips_pii() {
+    let padding = "x".repeat(11_000);
+    // Total length ~= 22 KB — above the per-detector 10 KB guard.
+    let text = format!("{padding} SSN: 900-00-0001 {padding}");
+    assert!(
+        text.len() > 10_000,
+        "fixture must exceed MAX_INPUT_LENGTH; got {}",
+        text.len(),
+    );
+
+    let redacted = redact_pii(&text);
+    // Output is the same length as input — nothing was substituted.
+    assert_eq!(
+        redacted.len(),
+        text.len(),
+        "above-limit input passes through with no substitutions",
+    );
+    assert!(
+        !redacted.contains("[SSN]"),
+        "SSN detector short-circuits at MAX_INPUT_LENGTH (10 KB) — \
+         no [SSN] marker should appear",
+    );
+    assert!(
+        redacted.contains("900-00-0001"),
+        "raw SSN survives because the detector skipped this oversize input",
+    );
+}
+
+/// IBAN in canonical UK format (with spaces) is detected and redacted.
+/// IBAN routes through the bank-account redactor (see
+/// `observe/pii/redactor/mod.rs:152`), which emits `[BANK_ACCOUNT]`
+/// rather than a separate `[IBAN]` token.
+#[test]
+fn test_redact_iban_uk_format_with_spaces() {
+    let text = "Account: GB82 WEST 1234 5698 7654 32";
+    let redacted = redact_pii(text);
+    assert_eq!(
+        redacted, "Account: [BANK_ACCOUNT]",
+        "UK IBAN with spaces must redact to [BANK_ACCOUNT]",
+    );
+}
+
+/// International phone in UK format (`+44 20 7946 0958`) — the Ofcom
+/// example reserved range — is detected and redacted to `[PHONE]`.
+#[test]
+fn test_redact_phone_uk_format() {
+    let text = "Call: +44 20 7946 0958";
+    let redacted = redact_pii(text);
+    assert_eq!(
+        redacted, "Call: [PHONE]",
+        "UK phone with spaces must redact to [PHONE]",
+    );
+}
+
+/// International phone in Japanese format (`+81-3-1234-5678`) is
+/// detected and redacted to `[PHONE]`.
+#[test]
+fn test_redact_phone_japan_format() {
+    let text = "Call: +81-3-1234-5678";
+    let redacted = redact_pii(text);
+    assert_eq!(
+        redacted, "Call: [PHONE]",
+        "Japan phone with hyphens must redact to [PHONE]",
+    );
+}
