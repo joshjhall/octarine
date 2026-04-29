@@ -6,7 +6,7 @@
 //! - V3.5.3: Tokens are rotated on use to prevent fixation attacks
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::RngCore;
+use rand::Rng;
 use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};
 

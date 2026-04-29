@@ -3,7 +3,7 @@
 //! Backup codes that can be used when TOTP is unavailable.
 
 use crate::primitives::types::Problem;
-use rand::Rng;
+use rand::RngExt;
 
 // ============================================================================
 // Recovery Code

@@ -43,7 +43,7 @@ uuid = { workspace = true }
 
 # Cryptography and encoding
 base64 = "0.22"
-sha2 = "0.10"
+sha2 = "0.11"
 sha3 = "0.11"
 keccak = "0.2"
 hex = "0.4"
@@ -85,7 +85,7 @@ bytes = "1.10"
 
 # File operations
 fd-lock = "4.0"
-rand = "0.9"
+rand = "0.10"
 tempfile = "3.20"
 atomic-write-file = "0.3"
 
@@ -136,7 +136,7 @@ http-body-util = { version = "0.1", optional = true }
 jsonwebtoken = { version = "10.2", optional = true, features = ["rust_crypto"] }
 zxcvbn = { version = "3", optional = true }
 totp-rs = { version = "5", optional = true, features = ["gen_secret", "otpauth"] }
-sha1 = { version = "0.10", optional = true }
+sha1 = { version = "0.11", optional = true }
 
 # GraphQL parsing (optional, for query validation)
 graphql-parser = { version = "0.4", optional = true }
@@ -224,7 +224,7 @@ pretty_assertions = "1.4"
 serial_test = "3.2"
 test-case = "3.3"
 wiremock = "0.6"
-fake = { version = "4.4", features = ["derive"] }
+fake = { version = "5.1", features = ["derive"] }
 assert_cmd = "2.0"
 rexpect = "0.6"
 

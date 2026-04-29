@@ -6,7 +6,7 @@
 //! - V2.5.4: Rate limiting for reset requests
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::RngCore;
+use rand::Rng;
 use std::time::{Duration, Instant};
 
 use crate::primitives::crypto::secrets::{ExposeSecretCore, SecretCore, SecretStringCore};

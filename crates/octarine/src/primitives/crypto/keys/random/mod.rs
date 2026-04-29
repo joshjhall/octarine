@@ -64,7 +64,7 @@ pub use types::{
     random_u64_bounded, random_u64_range, random_u128, random_usize, random_usize_bounded,
 };
 
-use rand::RngCore;
+use rand::Rng;
 
 use crate::primitives::crypto::CryptoError;
 

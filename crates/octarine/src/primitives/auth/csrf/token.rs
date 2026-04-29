@@ -2,7 +2,7 @@
 //!
 //! Provides secure CSRF token generation using cryptographic randomness.
 
-use rand::Rng;
+use rand::RngExt;
 use std::time::{Duration, Instant};
 
 use crate::primitives::types::Problem;

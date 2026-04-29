@@ -3,7 +3,7 @@
 //! Implements ASVS V3.1.1: Session tokens must have at least 128 bits of entropy.
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::RngCore;
+use rand::Rng;
 use std::fmt;
 
 /// Session identifier with at least 128 bits of entropy
