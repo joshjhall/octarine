@@ -2,6 +2,26 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [0.3.0-beta.3] - 2026-04-28
+
+### Fixed
+
+- fix(tooling): make .gitmodules anonymous-readable and skip cargo fetches
+- fix(observe): add metrics instrumentation to 5 Layer 3 builders (#273)
+
+### Changed
+
+- chore(deps): bundle dependabot bumps and migrate to rand 0.10 (closes #277-#281)
+  - rand 0.9 → 0.10 (`rand_core::RngCore` is now `rand_core::Rng`; old `rand::Rng` extension trait is now `rand::RngExt`)
+  - sha1 0.10 → 0.11, sha2 0.10 → 0.11, fake 4.4 → 5.1
+  - tokio 1.52.0 → 1.52.1, uuid 1.23.0 → 1.23.1, zxcvbn 3.1.0 → 3.1.1, assert_cmd 2.2.0 → 2.2.1, local-ip-address 0.6.11 → 0.6.12, libc 0.2.185 → 0.2.186
+
+### Testing
+
+- test(auth,observe): use paused time and real concurrency in flaky tests (#284)
+- test(http,runtime,io,observe): assertion density and missing-scenario coverage (#282)
+- test(crypto, observe): add per-test tokio::time::timeout guards (#272)
+
 ## [0.3.0-beta.2] - 2026-04-25
 
 ### Added
