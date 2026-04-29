@@ -403,6 +403,12 @@ impl SecurityBuilder {
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
+    use crate::observe::metrics::{flush_for_testing, snapshot};
+    use std::sync::Mutex;
+
+    /// Serializes metrics-touching tests within this file so they don't race
+    /// each other on the shared global registry.
+    static METRICS_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_builder_creation() {
@@ -450,5 +456,89 @@ mod tests {
         assert!(!clean.contains(".."));
 
         assert!(security.sanitize("safe/path").is_ok());
+    }
+
+    #[test]
+    fn test_metrics_validate_ms_recorded() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = SecurityBuilder::new();
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.paths.validate_ms")
+            .map_or(0, |h| h.count);
+
+        let _ = builder.validate_path("safe/path");
+        flush_for_testing();
+
+        let after = snapshot()
+            .histograms
+            .get("security.paths.validate_ms")
+            .map_or(0, |h| h.count);
+        assert!(after > before, "validate_ms should record");
+    }
+
+    #[test]
+    fn test_metrics_threats_detected_counter() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = SecurityBuilder::new();
+        flush_for_testing();
+        let before = snapshot()
+            .counters
+            .get("security.paths.threats_detected")
+            .map_or(0, |c| c.value);
+
+        assert!(builder.is_traversal_present("../etc/passwd"));
+        flush_for_testing();
+
+        let after = snapshot()
+            .counters
+            .get("security.paths.threats_detected")
+            .map_or(0, |c| c.value);
+        assert!(after > before, "threats_detected should increment");
+    }
+
+    #[test]
+    fn test_silent_mode_emits_no_metrics() {
+        // Structural test: `silent()` returns a builder with emit_events=false,
+        // and every metric call site in this module is gated by `if self.emit_events`.
+        // A behavioral delta-assertion would race with concurrent tests across the
+        // workspace that hit these same global metric names via shortcuts/facade.
+        let builder = SecurityBuilder::silent();
+        assert!(!builder.emit_events);
+
+        // Sanity: invoking through the silent builder still works functionally.
+        assert!(builder.is_threat_present("../etc/passwd"));
+        assert!(builder.validate_path("safe/path").is_ok());
+        assert!(builder.sanitize("../etc/passwd").is_ok());
+    }
+
+    #[test]
+    fn test_paths_edge_cases() {
+        // Edge-case inputs flagged by the audit (umbrella #181 / issue #274):
+        // empty string, unicode, Windows separators on Linux, very long paths.
+        // The contract is "well-defined behavior, no panic" — exact ok/err
+        // depends on the primitive's policy, so we just exercise the path.
+        let security = SecurityBuilder::silent();
+
+        // Empty string — should be handled (validate_not_empty rejects).
+        let _ = security.validate_path("");
+        let _ = security.is_threat_present("");
+
+        // Unicode path: non-ASCII filename should not crash the validator.
+        // A bare unicode filename has no traversal/injection markers, so it
+        // is expected to pass the strict validator.
+        assert!(security.validate_path("café/file.txt").is_ok());
+
+        // Windows separators on a Linux host: backslashes are not directory
+        // separators here, so this is a single filename containing `\`. It
+        // contains no threats and should validate.
+        assert!(security.validate_path("foo\\bar.txt").is_ok());
+
+        // Long path: 4096 chars (typical PATH_MAX). Should not panic; either
+        // accepted or rejected for length, both are acceptable behaviors.
+        let long_path = "a/".repeat(2048);
+        let _ = security.validate_path(&long_path);
+        let _ = security.is_threat_present(&long_path);
     }
 }

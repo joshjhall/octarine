@@ -779,4 +779,89 @@ mod tests {
         assert!(builder.is_potential_ssrf("http://localhost/admin"));
         assert!(builder.validate_url_format("https://example.com").is_ok());
     }
+
+    #[test]
+    fn test_validate_hostname_length_error_path() {
+        let builder = NetworkSecurityBuilder::silent();
+
+        // Success: within RFC 1035 max (253).
+        assert!(
+            builder
+                .validate_hostname_length("ok.example.com", 253)
+                .is_ok()
+        );
+
+        // Error: 300 chars exceeds 253.
+        let too_long = "a".repeat(300);
+        assert!(builder.validate_hostname_length(&too_long, 253).is_err());
+
+        // Error: even smaller maxes are enforced (length-only check is policy-driven).
+        assert!(
+            builder
+                .validate_hostname_length("abcdef.example.com", 5)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_classify_host_variants() {
+        use super::super::types::HostType;
+        let builder = NetworkSecurityBuilder::silent();
+
+        assert_eq!(builder.classify_host("192.168.1.1"), HostType::Ipv4);
+        assert_eq!(builder.classify_host("::1"), HostType::Ipv6);
+        assert_eq!(builder.classify_host("[::1]"), HostType::Ipv6);
+        assert_eq!(builder.classify_host("example.com"), HostType::Domain);
+        assert_eq!(builder.classify_host(""), HostType::Unknown);
+    }
+
+    #[test]
+    fn test_ssrf_ipv4_range_boundaries() {
+        // RFC 1918 boundary coverage (issue #274 / umbrella #181).
+        let builder = NetworkSecurityBuilder::silent();
+
+        // 10.0.0.0/8 — full /8 is private.
+        assert!(builder.is_potential_ssrf("http://10.0.0.0/"));
+        assert!(builder.is_potential_ssrf("http://10.255.255.255/"));
+
+        // 172.16.0.0/12 — 172.16.x.x through 172.31.x.x.
+        assert!(builder.is_potential_ssrf("http://172.16.0.0/"));
+        assert!(builder.is_potential_ssrf("http://172.31.255.255/"));
+
+        // Just outside 172.16-31 should NOT trigger SSRF.
+        assert!(!builder.is_potential_ssrf("http://172.15.0.0/"));
+        assert!(!builder.is_potential_ssrf("http://172.32.0.0/"));
+
+        // 192.168.0.0/16 — full /16 is private.
+        assert!(builder.is_potential_ssrf("http://192.168.0.0/"));
+        assert!(builder.is_potential_ssrf("http://192.168.255.255/"));
+    }
+
+    #[test]
+    fn test_ssrf_ipv6_private_addresses() {
+        // IPv6 private-range coverage (issue #274 / umbrella #181).
+        let builder = NetworkSecurityBuilder::silent();
+
+        // Direct IPv6 classification — non-bracketed form parses cleanly.
+        // Unique-local (fc00::/7).
+        assert!(builder.is_private_ipv6("fd00::1"));
+        assert!(builder.is_private_ipv6("fc00::1"));
+        // Link-local (fe80::/10).
+        assert!(builder.is_private_ipv6("fe80::1"));
+        // Loopback.
+        assert!(builder.is_private_ipv6("::1"));
+        // Unspecified.
+        assert!(builder.is_private_ipv6("::"));
+        // Public IPv6 (documentation prefix) should not match.
+        assert!(!builder.is_private_ipv6("2001:db8::1"));
+
+        // SSRF via URL form: bracketed `[::1]` works because it's in the
+        // localhost lookup table. Other private IPv6 ranges are not yet
+        // detected in `is_potential_ssrf` (the URL-host extractor returns
+        // `[fd00::1]` with brackets, which `is_private_ipv6` cannot parse).
+        // The direct `is_private_ipv6` checks above are the canonical
+        // coverage; URL-form SSRF for arbitrary private IPv6 is tracked
+        // as a separate primitive-level gap.
+        assert!(builder.is_potential_ssrf("http://[::1]/"));
+    }
 }

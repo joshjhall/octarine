@@ -161,4 +161,63 @@ mod tests {
         assert!(validate_yaml_safe("key: value").is_ok());
         assert!(validate_yaml_safe("!!python/object").is_err());
     }
+
+    #[test]
+    fn test_validate_json_safe_depth_failure() {
+        // JsonPolicy::strict() max_depth = 32; build a chain of 40 nested objects.
+        let mut deep = String::with_capacity(120);
+        for _ in 0..40 {
+            deep.push_str("{\"a\":");
+        }
+        deep.push('1');
+        for _ in 0..40 {
+            deep.push('}');
+        }
+        assert!(validate_json_safe(&deep).is_err());
+
+        // Sanity: shallow JSON passes strict.
+        assert!(validate_json_safe(r#"{"a":1}"#).is_ok());
+    }
+
+    #[test]
+    fn test_validate_json_safe_size_failure() {
+        // JsonPolicy::strict() max_size = 1MB; build a payload above that.
+        let big = format!("{{\"a\":\"{}\"}}", "x".repeat(1_100_000));
+        assert!(validate_json_safe(&big).is_err());
+    }
+
+    #[test]
+    fn test_detect_xml_threats_doctype() {
+        // Bare DOCTYPE (no entity) should produce a DtdPresent threat.
+        let threats = detect_xml_threats("<!DOCTYPE html><root/>");
+        assert!(
+            threats.contains(&FormatThreat::DtdPresent),
+            "expected DtdPresent in {:?}",
+            threats
+        );
+
+        // Clean XML produces no threats via the shortcut entry point.
+        assert!(detect_xml_threats("<root><child/></root>").is_empty());
+    }
+
+    #[test]
+    fn test_yaml_anchor_bomb_via_shortcut() {
+        // Anchor-bomb heuristic (primitives/security/formats/yaml/detection.rs):
+        // 1 anchor + > 10 aliases triggers the self-referential branch.
+        let mut yaml = String::from("a: &a value\nlist:\n");
+        for _ in 0..12 {
+            yaml.push_str("  - *a\n");
+        }
+
+        // is_yaml_unsafe combines unsafe-tag and anchor-bomb checks.
+        assert!(is_yaml_unsafe(&yaml));
+
+        // detect_yaml_threats with strict policy (max_aliases=0) flags AnchorBomb.
+        let threats = detect_yaml_threats(&yaml, &YamlPolicy::strict());
+        assert!(
+            threats.contains(&FormatThreat::YamlAnchorBomb),
+            "expected YamlAnchorBomb in {:?}",
+            threats
+        );
+    }
 }
