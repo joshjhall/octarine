@@ -393,4 +393,54 @@ mod tests {
             .expect("should escape");
         assert!(!escaped.is_empty());
     }
+
+    #[test]
+    fn test_validate_args_multi_arg_error() {
+        // The error path of validate_args (issue #274 / umbrella #181):
+        // a list with one bad item should propagate the failure.
+        let security = CommandSecurityBuilder::new();
+
+        let bad = ["safe-arg", "$(rm -rf /)", "also-safe"];
+        let err = security
+            .validate_args(bad)
+            .expect_err("middle arg has command substitution; expected Err");
+        // Error message should reference the offending argument index ("Argument 1").
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("Argument 1"),
+            "expected indexed error, got: {}",
+            msg
+        );
+
+        // All-safe inputs pass.
+        assert!(security.validate_args(["a", "b", "c"]).is_ok());
+        // Empty iterator is vacuously ok.
+        let empty: [&str; 0] = [];
+        assert!(security.validate_args(empty).is_ok());
+    }
+
+    #[test]
+    fn test_validate_env_dangerous_name() {
+        let security = CommandSecurityBuilder::new();
+
+        // Shell metacharacter in name is dangerous (per is_dangerous_env_name).
+        assert!(security.validate_env("BAD$NAME", "ok").is_err());
+        // `=` in the name is dangerous.
+        assert!(security.validate_env("KEY=other", "ok").is_err());
+        // Empty name is dangerous.
+        assert!(security.validate_env("", "value").is_err());
+    }
+
+    #[test]
+    fn test_validate_env_dangerous_value() {
+        let security = CommandSecurityBuilder::new();
+
+        // Shell expansion in value is dangerous.
+        assert!(security.validate_env("PATH", "$(whoami)").is_err());
+        // Null byte in value is dangerous.
+        assert!(security.validate_env("PATH", "ok\0bad").is_err());
+
+        // Positive case: plain value passes.
+        assert!(security.validate_env("PATH", "/usr/bin").is_ok());
+    }
 }
