@@ -182,13 +182,39 @@ release VERSION:
     ENTRY="## [$VERSION] - $DATE"$'\n'
 
     if [ -n "$PREV_TAG" ]; then
-        # Group commits by conventional commit type
-        for TYPE_LABEL in "feat:Added" "fix:Fixed" "refactor:Changed" "docs:Documentation" "test:Testing" "perf:Performance" "ci:CI" "build:Build"; do
-            PREFIX="${TYPE_LABEL%%:*}"
-            LABEL="${TYPE_LABEL##*:}"
+        # Conventional-commit prefix → CHANGELOG section. Multiple prefixes can
+        # share a section (refactor + chore both → "Changed"); we collect
+        # commits per section, then emit each section once with all of them.
+        SECTION_ORDER="Added Fixed Changed Documentation Testing Performance CI Build"
+        declare -A SECTION_COMMITS
+        # Map: prefix → section label
+        declare -A PREFIX_SECTION=(
+            [feat]=Added
+            [fix]=Fixed
+            [refactor]=Changed
+            [chore]=Changed
+            [docs]=Documentation
+            [test]=Testing
+            [perf]=Performance
+            [ci]=CI
+            [build]=Build
+        )
+
+        for PREFIX in "${!PREFIX_SECTION[@]}"; do
+            LABEL="${PREFIX_SECTION[$PREFIX]}"
             COMMITS=$(git log "$PREV_TAG"..HEAD --oneline --grep="^$PREFIX" 2>/dev/null | sed 's/^[a-f0-9]* /- /' || true)
             if [ -n "$COMMITS" ]; then
-                ENTRY+=$'\n'"### $LABEL"$'\n'$'\n'"$COMMITS"$'\n'
+                if [ -n "${SECTION_COMMITS[$LABEL]:-}" ]; then
+                    SECTION_COMMITS[$LABEL]+=$'\n'"$COMMITS"
+                else
+                    SECTION_COMMITS[$LABEL]="$COMMITS"
+                fi
+            fi
+        done
+
+        for LABEL in $SECTION_ORDER; do
+            if [ -n "${SECTION_COMMITS[$LABEL]:-}" ]; then
+                ENTRY+=$'\n'"### $LABEL"$'\n'$'\n'"${SECTION_COMMITS[$LABEL]}"$'\n'
             fi
         done
 
