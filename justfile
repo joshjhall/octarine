@@ -79,12 +79,24 @@ test-mod PATTERN FEATURES='':
 # ─── Architecture ────────────────────────────────────────────────────────────
 
 # Run architecture enforcement checks (layer boundaries, naming, lint rules)
-arch-check:
-    bash scripts/arch-check.sh
+arch-check *ARGS:
+    python3 -m scripts.arch_check {{ARGS}}
 
-# Lint shell scripts with shellcheck
+# Run the pytest suite for arch_check
+arch-check-test:
+    python3 -m pytest tests/arch_check/ -q
+
+# Lint shell scripts with shellcheck (no-op when no .sh files present)
 shellcheck:
-    shellcheck scripts/*.sh
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shopt -s nullglob
+    files=(scripts/*.sh)
+    if [ ${#files[@]} -eq 0 ]; then
+        echo "shellcheck: no shell scripts to lint"
+    else
+        shellcheck "${files[@]}"
+    fi
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
