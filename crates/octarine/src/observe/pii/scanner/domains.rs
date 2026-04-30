@@ -210,7 +210,7 @@ pub(super) fn scan_organizational(text: &str, pii_types: &mut Vec<PiiType>) {
     }
 }
 
-/// Scan for network identifiers (IP, MAC, UUID, URL)
+/// Scan for network identifiers (IP, MAC, UUID, URL, domain, hostname, port)
 pub(super) fn scan_network(text: &str, pii_types: &mut Vec<PiiType>) {
     let network = NetworkIdentifierBuilder::new();
 
@@ -230,6 +230,16 @@ pub(super) fn scan_network(text: &str, pii_types: &mut Vec<PiiType>) {
         if !network.find_domains_in_text(text).is_empty() {
             pii_types.push(PiiType::Domain);
         }
+    }
+
+    // Hostname and Port are checked unconditionally: their regex patterns are
+    // not part of `is_network_present`'s aggregate, so the guard above would
+    // skip text containing only a hostname or port.
+    if !network.find_hostnames_in_text(text).is_empty() {
+        pii_types.push(PiiType::Hostname);
+    }
+    if !network.find_ports_in_text(text).is_empty() {
+        pii_types.push(PiiType::Port);
     }
 }
 
@@ -404,7 +414,10 @@ pub(super) fn is_pii_present_with_config_impl(text: &str, config: &PiiScannerCon
     // Network domain
     if config.scan_network {
         let network = NetworkIdentifierBuilder::new();
-        if network.is_network_present(text) {
+        if network.is_network_present(text)
+            || !network.find_hostnames_in_text(text).is_empty()
+            || !network.find_ports_in_text(text).is_empty()
+        {
             return true;
         }
     }

@@ -85,6 +85,20 @@ pub fn is_hostname(value: &str) -> bool {
     NetworkBuilder::new().is_hostname(value)
 }
 
+/// Find all hostname-like tokens in text
+///
+/// Conservative filter skips plain English words.
+#[must_use]
+pub fn find_hostnames(text: &str) -> Vec<IdentifierMatch> {
+    NetworkBuilder::new().find_hostnames_in_text(text)
+}
+
+/// Find all port tokens (`:N`) in text
+#[must_use]
+pub fn find_ports(text: &str) -> Vec<IdentifierMatch> {
+    NetworkBuilder::new().find_ports_in_text(text)
+}
+
 // ============================================================
 // UUID SHORTCUTS
 // ============================================================

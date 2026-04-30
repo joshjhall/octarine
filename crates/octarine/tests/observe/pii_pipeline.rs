@@ -399,3 +399,23 @@ fn test_multiple_emails_all_redacted() {
     // Both should be replaced with [EMAIL]
     assert_eq!(redacted.matches("[EMAIL]").count(), 2);
 }
+
+#[test]
+fn test_detects_hostname_in_scan() {
+    let text = "Deploy to db-prod-01 and verify cache:8080 is healthy.";
+    let types = scan_for_pii(text);
+    assert!(
+        types.contains(&PiiType::Hostname),
+        "expected PiiType::Hostname in {types:?}",
+    );
+}
+
+#[test]
+fn test_detects_port_in_scan() {
+    let text = "Service listens on :8080 and :443.";
+    let types = scan_for_pii(text);
+    assert!(
+        types.contains(&PiiType::Port),
+        "expected PiiType::Port in {types:?}",
+    );
+}
