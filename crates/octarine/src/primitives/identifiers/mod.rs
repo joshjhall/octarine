@@ -133,11 +133,9 @@ pub(crate) use token::TokenIdentifierBuilder;
 #[cfg(feature = "crypto-validation")]
 pub(crate) use crypto::CryptoIdentifierBuilder;
 
-// Re-export crypto types for crate-internal use (feature-gated)
+// Re-export crypto types — pub so L3 can re-export (feature-gated)
 #[cfg(feature = "crypto-validation")]
-pub(crate) use crypto::{
-    CertificateType, CryptoDetectionResult, KeyFormat, KeyType, SignatureAlgorithm,
-};
+pub use crypto::{CertificateType, CryptoDetectionResult, KeyFormat, KeyType, SignatureAlgorithm};
 
 // Re-export TextRedactionPolicy types — pub so L3 can re-export
 pub use biometric::redaction::TextRedactionPolicy as BiometricTextPolicy;

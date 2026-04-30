@@ -2,16 +2,15 @@
 //!
 //! Convenience functions for common crypto validation operations.
 
-use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
-use crate::primitives::security::crypto::CryptoPolicy;
+use super::{CryptoPolicy, KeyType, SignatureAlgorithm};
 use crate::primitives::types::Problem;
 
+#[cfg(feature = "crypto-validation")]
+use super::CryptoAuditResult;
 #[cfg(feature = "crypto-validation")]
 use super::builder::CryptoValidationBuilder;
 #[cfg(feature = "crypto-validation")]
 use super::types::{ValidatedCertificate, ValidatedSshKey, ValidationSummary};
-#[cfg(feature = "crypto-validation")]
-use crate::primitives::security::crypto::CryptoAuditResult;
 
 // ============================================================================
 // Certificate Validation Shortcuts

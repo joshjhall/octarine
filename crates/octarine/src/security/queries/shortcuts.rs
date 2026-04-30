@@ -3,8 +3,7 @@
 //! Convenience functions for common query security operations.
 //! These wrap the QueryBuilder for simple use cases.
 
-use super::QueryBuilder;
-use crate::primitives::security::queries::QueryThreat;
+use super::{GraphqlAnalysis, QueryBuilder, QueryThreat, QueryType};
 use crate::primitives::types::Problem;
 
 // ============================================================================
@@ -167,7 +166,7 @@ pub fn detect_graphql_threats(query: &str) -> Vec<QueryThreat> {
 /// Returns detailed analysis including depth, alias count, field count,
 /// and detected threats.
 #[must_use]
-pub fn analyze_graphql_query(query: &str) -> crate::primitives::security::queries::GraphqlAnalysis {
+pub fn analyze_graphql_query(query: &str) -> GraphqlAnalysis {
     QueryBuilder::new().analyze_graphql_query(query)
 }
 
@@ -179,10 +178,7 @@ pub fn analyze_graphql_query(query: &str) -> crate::primitives::security::querie
 ///
 /// Use this when you need to handle multiple query types dynamically.
 #[must_use]
-pub fn detect_threats(
-    input: &str,
-    query_type: crate::primitives::security::queries::QueryType,
-) -> Vec<QueryThreat> {
+pub fn detect_threats(input: &str, query_type: QueryType) -> Vec<QueryThreat> {
     QueryBuilder::new().detect_threats(input, query_type)
 }
 
@@ -190,10 +186,7 @@ pub fn detect_threats(
 ///
 /// Use this when you need to handle multiple query types dynamically.
 #[must_use]
-pub fn is_injection_present(
-    input: &str,
-    query_type: crate::primitives::security::queries::QueryType,
-) -> bool {
+pub fn is_injection_present(input: &str, query_type: QueryType) -> bool {
     QueryBuilder::new().is_injection_present(input, query_type)
 }
 
@@ -243,8 +236,6 @@ mod tests {
 
     #[test]
     fn test_generic_shortcuts() {
-        use crate::primitives::security::queries::QueryType;
-
         // Test is_injection_present with different query types
         assert!(is_injection_present("' OR 1=1 --", QueryType::Sql));
         assert!(is_injection_present("$gt", QueryType::NoSql));
