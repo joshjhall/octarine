@@ -1,0 +1,27 @@
+# Octarine is a Rust workspace. This pyproject.toml exists solely to:
+#   1. Pin the pytest dev dependency for the arch_check test suite.
+#   2. Declare pytest's test discovery root.
+#
+# The script at `scripts/arch_check/` enforces architecture rules for the
+# Rust crate; its tests live under `tests/arch_check/`. No Python code ships
+# with the published Rust crate.
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "octarine-tooling"
+version = "0.0.0"
+description = "Architecture enforcement tooling for the octarine Rust crate."
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools]
+# Empty package list — this project is a tooling shim, not a distributable.
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests/arch_check"]

@@ -112,7 +112,7 @@ pre-commit:
 
     arch-check:
       glob: "*.rs"
-      run: bash scripts/arch-check.sh --staged-only
+      run: python3 -m scripts.arch_check --staged-only
 
     # --- Custom guards ---
 

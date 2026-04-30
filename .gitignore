@@ -48,3 +48,9 @@ target/criterion/
 .claude/memory/tmp/
 .claude/worktrees/
 .worktrees/
+
+# Python (arch_check tooling)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/

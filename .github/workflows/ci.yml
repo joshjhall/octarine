@@ -126,8 +126,14 @@ jobs:
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: pip
+      - run: pip install pytest
       - uses: taiki-e/install-action@just
       - run: just arch-check
+      - run: just arch-check-test
 
   check-windows:
     name: Check (Windows)
