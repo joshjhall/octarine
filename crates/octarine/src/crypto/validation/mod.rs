@@ -102,6 +102,9 @@ pub use types::{ValidatedCertificate, ValidatedKey, ValidatedSshKey};
 // Re-export policy from security primitives
 pub use crate::primitives::security::crypto::{CryptoAuditResult, CryptoPolicy, CryptoThreat};
 
+// Re-export key/algorithm types from identifiers primitives
+pub use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
+
 // Re-export shortcuts
 pub use shortcuts::{
     is_safe_signature_algorithm, is_secure_hash, is_strong_key, is_strong_key_strict,
