@@ -236,6 +236,21 @@ impl NetworkIdentifierBuilder {
         detection::find_domains_in_text(text)
     }
 
+    /// Find all hostname-like tokens in text
+    ///
+    /// Conservative filter skips plain English words (requires hyphen, digit,
+    /// or `:port` suffix). Confidence: Low.
+    #[must_use]
+    pub fn find_hostnames_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_hostnames_in_text(text)
+    }
+
+    /// Find all port tokens (`:N`) in text
+    #[must_use]
+    pub fn find_ports_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_ports_in_text(text)
+    }
+
     /// Find all URLs in text
     #[must_use]
     pub fn find_urls_in_text(&self, text: &str) -> Vec<IdentifierMatch> {

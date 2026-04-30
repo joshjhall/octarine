@@ -59,7 +59,8 @@ pub use common::{
 
 // Domain, hostname, port
 pub use domain::{
-    find_domains_in_text, is_domain, is_hostname, is_port, is_test_domain, is_test_hostname,
+    find_domains_in_text, find_hostnames_in_text, find_ports_in_text, is_domain, is_hostname,
+    is_port, is_test_domain, is_test_hostname,
 };
 
 // IP addresses

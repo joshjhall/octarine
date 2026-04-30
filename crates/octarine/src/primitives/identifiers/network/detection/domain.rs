@@ -76,6 +76,62 @@ pub fn find_domains_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Conservative filter: HOSTNAME regex matches any single word, so require
+/// a hyphen, an ASCII digit, or a `:port` suffix to avoid flagging plain
+/// English. Trade-off: bare `localhost` is filtered; `localhost:8080` passes.
+fn is_likely_real_hostname(matched: &str) -> bool {
+    matched.contains('-') || matched.chars().any(|c| c.is_ascii_digit()) || matched.contains(':')
+}
+
+/// Find all hostname-like tokens in text
+///
+/// Filters plain English words via a conservative rule. Detection-only;
+/// validation is out of scope.
+#[must_use]
+pub fn find_hostnames_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+    for capture in patterns::network::HOSTNAME.captures_iter(text) {
+        let full_match = get_full_match(&capture);
+        let matched_text = full_match.as_str();
+        if !is_likely_real_hostname(matched_text) {
+            continue;
+        }
+        matches.push(IdentifierMatch::new(
+            full_match.start(),
+            full_match.end(),
+            matched_text.to_string(),
+            IdentifierType::Hostname,
+            DetectionConfidence::Low,
+        ));
+    }
+    deduplicate_matches(matches)
+}
+
+/// Find all port tokens (`:N`) in text
+#[must_use]
+pub fn find_ports_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+    for capture in patterns::network::PORT.captures_iter(text) {
+        let full_match = get_full_match(&capture);
+        matches.push(IdentifierMatch::new(
+            full_match.start(),
+            full_match.end(),
+            full_match.as_str().to_string(),
+            IdentifierType::Port,
+            DetectionConfidence::Medium,
+        ));
+    }
+    deduplicate_matches(matches)
+}
+
 // ============================================================================
 // Test Data Detection
 // ============================================================================
@@ -280,5 +336,58 @@ mod tests {
         // Regular hostnames - NOT test
         assert!(!is_test_hostname("production-db"));
         assert!(!is_test_hostname("web-server"));
+    }
+
+    #[test]
+    fn test_find_hostnames_in_text_filters_english_words() {
+        let matches = find_hostnames_in_text("Hello there, this is the server.");
+        assert!(
+            matches.is_empty(),
+            "expected zero hostnames in plain English, got {matches:?}"
+        );
+    }
+
+    #[test]
+    fn test_find_hostnames_in_text_detects_real_hostnames() {
+        let matches = find_hostnames_in_text("server1 my-db-prod cache:8080");
+        let values: Vec<&str> = matches.iter().map(|m| m.matched_text.as_str()).collect();
+        assert!(values.contains(&"server1"), "missing server1 in {values:?}");
+        assert!(
+            values.contains(&"my-db-prod"),
+            "missing my-db-prod in {values:?}"
+        );
+        assert!(
+            values.iter().any(|v| v.starts_with("cache")),
+            "missing cache:8080 in {values:?}"
+        );
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::Hostname)
+        );
+    }
+
+    #[test]
+    fn test_find_hostnames_in_text_localhost_alone_filtered() {
+        // Bare `localhost` (no digit/hyphen/colon) — filtered. Trade-off for
+        // the conservative rule. `localhost:8080` still passes.
+        assert!(find_hostnames_in_text("localhost").is_empty());
+        assert!(!find_hostnames_in_text("localhost:8080").is_empty());
+    }
+
+    #[test]
+    fn test_find_ports_in_text() {
+        let matches = find_ports_in_text("Connect to :8080 or :443 for HTTPS.");
+        assert_eq!(matches.len(), 2);
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::Port)
+        );
+    }
+
+    #[test]
+    fn test_find_ports_in_text_empty() {
+        assert!(find_ports_in_text("no ports here").is_empty());
     }
 }
