@@ -57,7 +57,5 @@ mod store;
 pub use manager::ResetManager;
 pub use store::{MemoryResetStore, ResetTokenStore};
 
-// Re-export types from primitives
-pub use crate::primitives::auth::reset::{
-    ResetConfig, ResetConfigBuilder, ResetToken, generate_reset_token, validate_reset_token,
-};
+// Re-export types from primitives (function wrappers live in `ResetManager`)
+pub use crate::primitives::auth::reset::{ResetConfig, ResetConfigBuilder, ResetToken};

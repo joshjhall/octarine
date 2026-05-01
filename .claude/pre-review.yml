@@ -1,0 +1,32 @@
+# Pre-review gate configuration for `next-issue-ship` skill.
+#
+# The pre-review scanner (containers/lib/features/templates/claude/skills/
+# next-issue-ship/pre-review-gates.sh) runs `missing-test-file` and
+# `untested-public-api` checks before opening a PR. Its default heuristics
+# emit false positives on a few octarine-specific conventions; this file
+# silences those without weakening the actual signal.
+#
+# Pattern syntax: gitignore-style. Project overrides are merged AFTER the
+# scanner's defaults (test-skip-patterns.default), so later rules win.
+
+test_skip_patterns:
+  # ── Rust mod.rs aggregators ──────────────────────────────────────────
+  # mod.rs files are pure re-export aggregators in this crate. They have
+  # no testable logic of their own; behavior is exercised through the
+  # types and functions they re-export, which carry their own tests.
+  - "**/mod.rs"
+
+  # ── Rust documentation-only modules ──────────────────────────────────
+  # Public API surface in lib.rs is exercised through integration tests
+  # under crates/octarine/tests/, not collocated unit tests.
+  - "crates/*/src/lib.rs"
+
+  # ── Tooling scripts with cross-tree test mirrors ─────────────────────
+  # arch_check tests live at tests/arch_check/test_<name>.py, mirroring
+  # scripts/arch_check/<name>.py. The default scanner only looks for tests
+  # near the source file, so it can't find these without help.
+  - "scripts/arch_check/**/*.py"
+
+  # ── Build-system shims ───────────────────────────────────────────────
+  # Procedural macro entry points and re-export crates.
+  - "crates/octarine-derive/src/lib.rs"

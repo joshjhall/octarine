@@ -28,7 +28,7 @@
 //! let bounded = random::u32_bounded(100)?; // 0-99
 //! ```
 
-// Re-export all random functions from primitives (no instrumentation)
+// arch-check: allow unwrapped-fn -- RNG primitives called in tight loops; observe would flood logs
 pub use crate::primitives::crypto::keys::{
     // Core random functions
     fill_random,

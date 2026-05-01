@@ -51,7 +51,7 @@ pub use self::hmac::*;
 // Re-export types directly from primitives (no wrapper needed)
 pub use crate::primitives::crypto::auth::HmacSha3_256;
 
-// Re-export constant-time functions (no observe needed - low level primitives)
+// arch-check: allow unwrapped-fn -- constant-time primitives; observe calls would leak timing
 pub use crate::primitives::crypto::auth::{
     ct_copy_if, ct_eq, ct_eq_array, ct_is_zero_array, ct_is_zero_slice, ct_select_u8,
     ct_select_u32, ct_select_u64, ct_select_usize,

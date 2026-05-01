@@ -70,8 +70,7 @@ mod store;
 pub use manager::RememberManager;
 pub use store::{MemoryRememberStore, RememberTokenStore};
 
-// Re-export types from primitives
+// Re-export types from primitives (function wrappers live in `RememberManager`)
 pub use crate::primitives::auth::remember::{
     RememberConfig, RememberConfigBuilder, RememberToken, RememberTokenPair,
-    generate_remember_token, validate_remember_token,
 };
