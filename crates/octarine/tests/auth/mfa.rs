@@ -1,6 +1,6 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
-use octarine::auth::{MfaManager, generate_recovery_codes};
+use octarine::auth::MfaManager;
 
 /// Full enrollment workflow: start → generate code → complete.
 #[test]
@@ -136,7 +136,7 @@ fn test_regenerate_recovery_codes() {
 /// generate_recovery_codes produces correct count and length.
 #[test]
 fn test_recovery_code_generation() {
-    let codes = generate_recovery_codes(8, 10).expect("generate codes");
+    let codes = MfaManager::generate_recovery_codes(8, 10).expect("generate codes");
 
     assert_eq!(codes.codes().len(), 8, "Should have 8 codes");
     for code in codes.codes() {

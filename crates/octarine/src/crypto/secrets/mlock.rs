@@ -43,7 +43,7 @@ use crate::observe;
 use crate::primitives::crypto::CryptoError;
 use crate::primitives::crypto::secrets::{PrimitiveLockedBox, PrimitiveLockedSecret};
 
-// Re-export utility functions from primitives
+// arch-check: allow unwrapped-fn -- platform status queries; no security-relevant operation to audit
 pub use crate::primitives::crypto::secrets::{
     is_mlock_supported, max_lockable_memory, try_mlock, try_munlock,
 };

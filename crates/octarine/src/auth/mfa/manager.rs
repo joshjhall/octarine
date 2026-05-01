@@ -250,6 +250,20 @@ impl MfaManager {
         Ok(codes)
     }
 
+    /// Generate recovery codes with explicit count and length.
+    ///
+    /// Convenience helper that bypasses `TotpConfig` when callers (e.g.
+    /// tests, admin tooling) need ad-hoc generation. Operations performed
+    /// through this method are not tied to any user, so no audit event is
+    /// emitted — use `regenerate_recovery_codes` for user-bound flows.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generation fails.
+    pub fn generate_recovery_codes(count: usize, length: usize) -> Result<RecoveryCodes, Problem> {
+        generate_recovery_codes(count, length)
+    }
+
     /// Get the configuration
     #[must_use]
     pub fn config(&self) -> &TotpConfig {

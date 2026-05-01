@@ -40,7 +40,5 @@ mod protection;
 
 pub use protection::CsrfProtection;
 
-// Re-export types from primitives
-pub use crate::primitives::auth::csrf::{
-    CsrfConfig, CsrfConfigBuilder, CsrfToken, SameSite, generate_csrf_token, validate_csrf_token,
-};
+// Re-export types from primitives (function wrappers live in `CsrfProtection`)
+pub use crate::primitives::auth::csrf::{CsrfConfig, CsrfConfigBuilder, CsrfToken, SameSite};

@@ -153,5 +153,5 @@ pub use timing::{
 #[cfg(feature = "auth-totp")]
 pub use mfa::{
     MfaManager, RecoveryCode, RecoveryCodes, TotpAlgorithm, TotpConfig, TotpConfigBuilder,
-    TotpSecret, generate_recovery_codes, generate_totp_secret, validate_totp_code,
+    TotpSecret,
 };

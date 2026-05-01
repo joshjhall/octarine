@@ -21,9 +21,7 @@ mod manager;
 
 pub use manager::MfaManager;
 
-// Re-export types from primitives
+// Re-export types from primitives (function wrappers live in `MfaManager`)
 pub use crate::primitives::auth::mfa::{
-    RecoveryCode, RecoveryCodes, TotpAlgorithm, TotpCode, TotpConfig, TotpConfigBuilder,
-    TotpSecret, generate_recovery_codes, generate_totp_code, generate_totp_secret, get_otpauth_uri,
-    validate_totp_code,
+    RecoveryCode, RecoveryCodes, TotpAlgorithm, TotpCode, TotpConfig, TotpConfigBuilder, TotpSecret,
 };
