@@ -46,6 +46,14 @@ Audit logging and operational observability
 - Audit logging
 - Compliance trails
 
+### 📦 [Releases](./releases/)
+
+Release process, versioning policy, and changelog conventions
+
+- Bump-type decision tree
+- Release checklist
+- CHANGELOG format
+
 ## Quick Start
 
 ```bash

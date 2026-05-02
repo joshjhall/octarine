@@ -148,26 +148,69 @@ test-count:
 
 # ─── Release ────────────────────────────────────────────────────────────────
 
-# Create a release: just release 0.3.0 or just release 0.3.0-beta.1
-release VERSION:
+# Create a release. Accepts either a literal version or a bump keyword:
+#   just release 0.3.0              # literal version
+#   just release 0.3.0-beta.1       # literal prerelease
+#   just release patch              # 0.3.0-beta.3 → 0.3.0 (finalize)
+#   just release minor              # 0.3.0-beta.3 → 0.3.0 (finalize)
+#   just release major              # 0.3.0-beta.3 → 1.0.0
+#   just release beta               # 0.3.0-beta.3 → 0.3.0-beta.4
+#   just release rc                 # 0.3.0-beta.3 → 0.3.0-rc.1
+#
+# Keyword bumps shell out to `python3 -m scripts.release` which owns the
+# semver state machine (alpha → beta → rc → stable). See
+# docs/releases/versioning.md for the full bump policy.
+release ARG:
     #!/usr/bin/env bash
     set -euo pipefail
-    VERSION="{{VERSION}}"
+    ARG="{{ARG}}"
 
-    # Validate semver format (X.Y.Z or X.Y.Z-prerelease.N)
-    if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+\.[0-9]+)?$ ]]; then
-        echo "ERROR: Invalid version '$VERSION'"
-        echo "Expected: X.Y.Z or X.Y.Z-{alpha,beta,rc}.N"
+    # Read the current workspace version from Cargo.toml.
+    CURRENT=$(/usr/bin/awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
+    if [ -z "$CURRENT" ]; then
+        echo "ERROR: could not read current version from Cargo.toml" >&2
+        exit 1
+    fi
+
+    # Distinguish bump keyword from literal version. Literal versions always
+    # contain a dot; keywords never do.
+    if [[ "$ARG" == *.* ]]; then
+        VERSION="$ARG"
+        # Validate the literal via the same parser the helper uses.
+        if ! python3 -m scripts.release parse "$VERSION" >/dev/null; then
+            exit 1
+        fi
+    else
+        case "$ARG" in
+            major|minor|patch|beta|rc) ;;
+            *)
+                echo "ERROR: '$ARG' is neither a version (X.Y.Z[-pre.N]) nor a bump keyword" >&2
+                echo "       Keywords: major | minor | patch | beta | rc" >&2
+                exit 1
+                ;;
+        esac
+        VERSION=$(python3 -m scripts.release bump "$ARG" --current "$CURRENT")
+    fi
+
+    # Workspace member sync: octarine must inherit the workspace version OR
+    # already match it literally. octarine-derive is intentionally untouched
+    # (independent versioning policy).
+    OCTARINE_LINE=$(/usr/bin/awk '/^version/{print; exit}' crates/octarine/Cargo.toml)
+    if [[ "$OCTARINE_LINE" != *"workspace = true"* ]] \
+       && [[ "$OCTARINE_LINE" != "version = \"$CURRENT\""* ]]; then
+        echo "ERROR: crates/octarine/Cargo.toml version is out of sync with workspace" >&2
+        echo "       workspace: $CURRENT" >&2
+        echo "       crate:     $OCTARINE_LINE" >&2
         exit 1
     fi
 
     # Ensure clean working tree
     if [ -n "$(git status --porcelain)" ]; then
-        echo "ERROR: Working tree is not clean. Commit or stash changes first."
+        echo "ERROR: Working tree is not clean. Commit or stash changes first." >&2
         exit 1
     fi
 
-    echo "═══ Releasing v$VERSION ═══"
+    echo "═══ Releasing v$VERSION (from v$CURRENT) ═══"
     echo ""
 
     # Run full pre-flight validation
@@ -181,9 +224,29 @@ release VERSION:
     # Update version in workspace and crate Cargo.toml
     echo "── Updating versions ──"
     sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-    sed -i "s/^version = \".*\"/version = \"$VERSION\"/" crates/octarine/Cargo.toml
+    if [[ "$OCTARINE_LINE" != *"workspace = true"* ]]; then
+        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" crates/octarine/Cargo.toml
+        echo "  crates/octarine/Cargo.toml → $VERSION"
+    fi
     echo "  Cargo.toml → $VERSION"
-    echo "  crates/octarine/Cargo.toml → $VERSION"
+
+    # Sweep version references in human-readable docs. The list is
+    # intentionally explicit and limited to live "current version" callouts —
+    # historical references (e.g. "Complete as of vX.Y.Z" in
+    # docs/architecture/refactor-plan.md) must not be auto-rewritten.
+    # Doctest examples in src/**/*.rs reference major.minor only
+    # (e.g. version = "0.2") and are out of scope here.
+    echo "── Updating doc version references ──"
+    DOC_FILES=(
+        README.md
+        CONTRIBUTING.md
+    )
+    for f in "${DOC_FILES[@]}"; do
+        if [ -f "$f" ] && grep -q "v$CURRENT" "$f"; then
+            sed -i "s|v$CURRENT|v$VERSION|g" "$f"
+            echo "  $f"
+        fi
+    done
 
     # Regenerate lockfile
     cargo check --workspace --quiet 2>/dev/null
@@ -191,7 +254,7 @@ release VERSION:
     # Generate changelog entry
     echo "── Generating changelog ──"
     DATE=$(date +%Y-%m-%d)
-    ENTRY="## [$VERSION] - $DATE"$'\n'
+    ENTRY="## [$VERSION] - $DATE"$'\n'$'\n'"<!-- TODO: review and curate before push -->"$'\n'
 
     if [ -n "$PREV_TAG" ]; then
         # Conventional-commit prefix → CHANGELOG section. Multiple prefixes can
@@ -258,9 +321,15 @@ release VERSION:
     # commit fails because hooks modified files, re-stage and retry once.
     echo "── Committing ──"
     git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
+    for f in "${DOC_FILES[@]}"; do
+        if [ -f "$f" ]; then git add "$f"; fi
+    done
     if ! git commit -m "release: v$VERSION"; then
         echo "  Lefthook hooks modified files, retrying..."
         git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
+        for f in "${DOC_FILES[@]}"; do
+            if [ -f "$f" ]; then git add "$f"; fi
+        done
         git commit -m "release: v$VERSION"
     fi
     git tag -a "v$VERSION" -m "Release v$VERSION"
@@ -275,6 +344,62 @@ release VERSION:
     echo ""
     echo "═══ Release v$VERSION ready ═══"
     echo ""
+    echo "Review the new CHANGELOG entry (look for the 'TODO: review' marker)"
+    echo "and amend the commit if needed before pushing."
+    echo ""
     echo "Next steps:"
     echo "  git push && git push --tags"
     echo "  gh release create v$VERSION$PRERELEASE_FLAG --generate-notes"
+
+# Preview a release without touching disk. Prints the proposed version, the
+# doc files that would be rewritten, and a snapshot of commits since the last
+# tag. Use this to smoke-test bump keywords before running the real release.
+release-preview ARG:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ARG="{{ARG}}"
+
+    CURRENT=$(/usr/bin/awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
+    if [[ "$ARG" == *.* ]]; then
+        VERSION="$ARG"
+        if ! python3 -m scripts.release parse "$VERSION" >/dev/null; then
+            exit 1
+        fi
+    else
+        case "$ARG" in
+            major|minor|patch|beta|rc) ;;
+            *)
+                echo "ERROR: '$ARG' is neither a version nor a bump keyword" >&2
+                exit 1
+                ;;
+        esac
+        VERSION=$(python3 -m scripts.release bump "$ARG" --current "$CURRENT")
+    fi
+
+    PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+    echo "Current: v$CURRENT"
+    echo "New:     v$VERSION"
+    echo ""
+    echo "Doc files that would be rewritten (v$CURRENT → v$VERSION):"
+    DOC_FILES=(
+        README.md
+        CONTRIBUTING.md
+    )
+    for f in "${DOC_FILES[@]}"; do
+        if [ -f "$f" ] && grep -q "v$CURRENT" "$f"; then
+            count=$(grep -c "v$CURRENT" "$f")
+            echo "  $f  ($count occurrence(s))"
+        fi
+    done
+    echo ""
+    if [ -n "$PREV_TAG" ]; then
+        echo "Commits since $PREV_TAG:"
+        git log "$PREV_TAG"..HEAD --oneline | head -20
+    else
+        echo "No prior tag — this would be the initial release."
+    fi
+
+# Run the pytest suite for the release helper.
+release-test:
+    python3 -m pytest tests/release/ -q

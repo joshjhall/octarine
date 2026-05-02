@@ -24,4 +24,4 @@ dev = ["pytest>=7"]
 packages = []
 
 [tool.pytest.ini_options]
-testpaths = ["tests/arch_check"]
+testpaths = ["tests/arch_check", "tests/release"]
