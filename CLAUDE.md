@@ -54,6 +54,10 @@ from `.claude/skills/` to prevent the most common implementation errors:
 - **`octarine-platform-compat`** — WHEN writing `cfg()` attributes,
   platform-specific code, file permissions, signal handling, or path
   operations targeting Windows, macOS, Linux, or ARM64.
+- **`octarine-release`** — WHEN cutting a release, picking a bump type
+  (major/minor/patch/beta/rc), or auditing a change for SemVer impact.
+  Encodes the pre-1.0 versioning policy and the breaking-change catalog
+  for Layer 3 public APIs.
 
 Seven project-specific audit agents are available in `.claude/agents/` for
 codebase audits: `audit-octarine-layers`, `audit-octarine-visibility`,
