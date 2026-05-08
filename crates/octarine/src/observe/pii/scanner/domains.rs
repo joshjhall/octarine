@@ -10,7 +10,7 @@ use crate::primitives::identifiers::{
     BiometricIdentifierBuilder, CredentialIdentifierBuilder, FinancialIdentifierBuilder,
     GovernmentIdentifierBuilder, LocationIdentifierBuilder, MedicalIdentifierBuilder,
     NetworkIdentifierBuilder, OrganizationalIdentifierBuilder, PersonalIdentifierBuilder,
-    TokenIdentifierBuilder,
+    TokenIdentifierBuilder, TokenType,
 };
 
 /// Scan for personal PII (email, phone, name, birthdate)
@@ -247,8 +247,34 @@ pub(super) fn scan_network(text: &str, pii_types: &mut Vec<PiiType>) {
 pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
     let token = TokenIdentifierBuilder::new();
 
-    // API keys
-    if token.is_api_key(text) || token.redact_api_keys_in_text(text).as_ref() != text {
+    // Provider-specific token attribution. Iterate whitespace-split words and
+    // dispatch through detect_token_type so each provider gets its own PiiType
+    // variant (issue #97). Suppress the generic ApiKey emission when any
+    // provider matched — it is reserved for unrecognized api-key-shaped input.
+    let mut provider_matched = false;
+    for word in text.split_whitespace() {
+        // Strip surrounding shell punctuation (quotes, commas, parens, colons,
+        // semicolons) but preserve characters that appear inside provider
+        // tokens: `-` `_` `.` (separators) and `=` (base64 padding, e.g.
+        // Azure `AccountKey=...==`).
+        let trimmed = word.trim_matches(|c: char| {
+            !c.is_alphanumeric() && c != '-' && c != '_' && c != '.' && c != '='
+        });
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some(token_type) = token.detect_token_type(trimmed)
+            && let Some(pii) = token_type_to_pii(token_type)
+        {
+            pii_types.push(pii);
+            provider_matched = true;
+        }
+    }
+
+    // Generic ApiKey fallback: only when no provider-specific match.
+    if !provider_matched
+        && (token.is_api_key(text) || token.redact_api_keys_in_text(text).as_ref() != text)
+    {
         pii_types.push(PiiType::ApiKey);
     }
 
@@ -307,6 +333,66 @@ pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
     if credential.is_passphrases_present(text) {
         pii_types.push(PiiType::Passphrase);
     }
+}
+
+/// Map a detected `TokenType` to the corresponding provider-specific
+/// `PiiType` variant.
+///
+/// Returns `None` for token types that are already handled by sibling
+/// dispatches in `scan_tokens` (Jwt, SessionId, SshKey*, OnePassword*,
+/// BearerToken, UrlWithCredentials) so they are not double-emitted, and for
+/// `GenericApiKey` (handled by the trailing fallback). `AwsSecretKey` maps
+/// to `ApiKey` because AWS secret keys are 40 base64 chars and
+/// indistinguishable from random high-entropy strings — a dedicated variant
+/// would create false positives.
+fn token_type_to_pii(t: TokenType) -> Option<PiiType> {
+    Some(match t {
+        TokenType::GitHub => PiiType::GitHubToken,
+        TokenType::GitLab => PiiType::GitLabToken,
+        TokenType::BitbucketToken => PiiType::BitbucketToken,
+        TokenType::AwsAccessKey => PiiType::AwsAccessKey,
+        TokenType::AwsSessionToken => PiiType::AwsSessionToken,
+        TokenType::AwsSecretKey => PiiType::ApiKey,
+        TokenType::GcpApiKey => PiiType::GcpApiKey,
+        TokenType::AzureKey => PiiType::AzureKey,
+        TokenType::StripeKey => PiiType::StripeKey,
+        TokenType::SquareToken => PiiType::SquareToken,
+        TokenType::ShopifyToken => PiiType::ShopifyToken,
+        TokenType::PayPalToken => PiiType::PayPalToken,
+        TokenType::MailchimpToken => PiiType::MailchimpToken,
+        TokenType::MailgunToken => PiiType::MailgunToken,
+        TokenType::ResendToken => PiiType::ResendToken,
+        TokenType::BrevoToken => PiiType::BrevoToken,
+        TokenType::DatabricksToken => PiiType::DatabricksToken,
+        TokenType::VaultToken => PiiType::VaultToken,
+        TokenType::CloudflareOriginCaKey => PiiType::CloudflareOriginCaKey,
+        TokenType::NpmToken => PiiType::NpmToken,
+        TokenType::PyPiToken => PiiType::PyPiToken,
+        TokenType::NuGetKey => PiiType::NuGetKey,
+        TokenType::ArtifactoryToken => PiiType::ArtifactoryToken,
+        TokenType::DockerHubToken => PiiType::DockerHubToken,
+        TokenType::TelegramToken => PiiType::TelegramToken,
+        TokenType::SendGridToken => PiiType::SendGridToken,
+        TokenType::OpenAiKey => PiiType::OpenAiKey,
+        TokenType::DiscordToken => PiiType::DiscordToken,
+        TokenType::SlackToken => PiiType::SlackToken,
+        TokenType::TwilioToken => PiiType::TwilioToken,
+        // Already handled by sibling dispatches in scan_tokens — return
+        // None to avoid double-emission.
+        TokenType::Jwt
+        | TokenType::SessionId
+        | TokenType::UrlWithCredentials
+        | TokenType::SshPrivateKey
+        | TokenType::SshPublicKey
+        | TokenType::SshFingerprint
+        | TokenType::OnePasswordServiceToken
+        | TokenType::OnePasswordVaultRef
+        | TokenType::BearerToken
+        // Generic api-key shape — emit ApiKey via the trailing fallback so
+        // it is suppressed when a provider-specific match exists in the
+        // same text.
+        | TokenType::GenericApiKey => return None,
+    })
 }
 
 /// Internal scan function with config (for direct use and cache population)

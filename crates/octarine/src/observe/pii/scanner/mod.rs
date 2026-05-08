@@ -287,9 +287,13 @@ mod tests {
 
     #[test]
     fn test_scan_for_pii_api_key() {
+        // Stripe-prefixed key now resolves to the dedicated StripeKey variant
+        // (issue #97). Generic ApiKey is the fallback for unrecognized
+        // api-key-shaped input only.
         let text = &format!("Key: sk_test_{}", "EXAMPLE000000000000KEY01");
         let types = scan_for_pii(text);
-        assert!(types.contains(&PiiType::ApiKey));
+        assert!(types.contains(&PiiType::StripeKey));
+        assert!(!types.contains(&PiiType::ApiKey));
     }
 
     #[test]

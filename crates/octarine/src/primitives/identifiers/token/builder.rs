@@ -162,6 +162,11 @@ impl TokenIdentifierBuilder {
         detection::is_sendgrid_key(value)
     }
 
+    /// Check if value is an OpenAI API key
+    pub fn is_openai_key(&self, value: &str) -> bool {
+        detection::is_openai_key(value)
+    }
+
     /// Check if value is a Twilio Account SID
     pub fn is_twilio_account_sid(&self, value: &str) -> bool {
         detection::is_twilio_account_sid(value)
