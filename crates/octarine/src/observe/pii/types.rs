@@ -187,6 +187,68 @@ pub enum PiiType {
     /// Connection string with embedded credentials (MSSQL, JDBC, database URLs)
     ConnectionString,
 
+    // -------------------------------------------------------------------------
+    // Provider-specific tokens
+    // -------------------------------------------------------------------------
+    /// GitHub Personal Access Token (ghp_, gho_, ghu_, ghs_, ghr_)
+    GitHubToken,
+    /// GitLab Personal Access Token (glpat-) or Deploy Token
+    GitLabToken,
+    /// Bitbucket Cloud App Password (ATBB...)
+    BitbucketToken,
+    /// AWS Access Key ID (AKIA* long-term, ASIA* temporary STS)
+    AwsAccessKey,
+    /// AWS Session Token (long base64 string from STS)
+    AwsSessionToken,
+    /// Google Cloud Platform API Key (AIza*)
+    GcpApiKey,
+    /// Azure Storage Account Key
+    AzureKey,
+    /// Stripe API Key (sk_live_, sk_test_, pk_live_, pk_test_, rk_*)
+    StripeKey,
+    /// Square API key (sq0atp-*, sq0csp-*, sq0idp-*)
+    SquareToken,
+    /// Shopify API token (shpat_*, shpca_*, shppa_*, shpss_*)
+    ShopifyToken,
+    /// PayPal/Braintree access token
+    PayPalToken,
+    /// Mailchimp API key
+    MailchimpToken,
+    /// Mailgun API key
+    MailgunToken,
+    /// Resend API key
+    ResendToken,
+    /// Brevo/Sendinblue API key
+    BrevoToken,
+    /// Databricks access token
+    DatabricksToken,
+    /// HashiCorp Vault token (hvs., s., b.)
+    VaultToken,
+    /// Cloudflare Origin CA key
+    CloudflareOriginCaKey,
+    /// NPM access token
+    NpmToken,
+    /// PyPI API token
+    PyPiToken,
+    /// NuGet API key
+    NuGetKey,
+    /// JFrog Artifactory API key
+    ArtifactoryToken,
+    /// Docker Hub Personal Access Token
+    DockerHubToken,
+    /// Telegram bot token
+    TelegramToken,
+    /// SendGrid API key
+    SendGridToken,
+    /// OpenAI API key (sk-*, sk-proj-*, org-*)
+    OpenAiKey,
+    /// Discord bot token or webhook URL
+    DiscordToken,
+    /// Slack token (bot/user/app/config/legacy) or webhook URL
+    SlackToken,
+    /// Twilio Account SID (AC...) or API Key SID (SK...)
+    TwilioToken,
+
     // =========================================================================
     // Credential Domain (NIST 800-63 Factor 1: Something You Know)
     // =========================================================================
@@ -284,6 +346,36 @@ impl PiiType {
             Self::BearerToken => "bearer_token",
             Self::UrlWithCredentials => "url_with_credentials",
             Self::ConnectionString => "connection_string",
+            // Provider-specific tokens
+            Self::GitHubToken => "github_token",
+            Self::GitLabToken => "gitlab_token",
+            Self::BitbucketToken => "bitbucket_token",
+            Self::AwsAccessKey => "aws_access_key",
+            Self::AwsSessionToken => "aws_session_token",
+            Self::GcpApiKey => "gcp_api_key",
+            Self::AzureKey => "azure_key",
+            Self::StripeKey => "stripe_key",
+            Self::SquareToken => "square_token",
+            Self::ShopifyToken => "shopify_token",
+            Self::PayPalToken => "paypal_token",
+            Self::MailchimpToken => "mailchimp_token",
+            Self::MailgunToken => "mailgun_token",
+            Self::ResendToken => "resend_token",
+            Self::BrevoToken => "brevo_token",
+            Self::DatabricksToken => "databricks_token",
+            Self::VaultToken => "vault_token",
+            Self::CloudflareOriginCaKey => "cloudflare_origin_ca_key",
+            Self::NpmToken => "npm_token",
+            Self::PyPiToken => "pypi_token",
+            Self::NuGetKey => "nuget_key",
+            Self::ArtifactoryToken => "artifactory_token",
+            Self::DockerHubToken => "docker_hub_token",
+            Self::TelegramToken => "telegram_token",
+            Self::SendGridToken => "sendgrid_token",
+            Self::OpenAiKey => "openai_key",
+            Self::DiscordToken => "discord_token",
+            Self::SlackToken => "slack_token",
+            Self::TwilioToken => "twilio_token",
             // Credential
             Self::Password => "password",
             Self::Pin => "pin",
@@ -353,7 +445,36 @@ impl PiiType {
             | Self::OnePasswordVaultRef
             | Self::BearerToken
             | Self::UrlWithCredentials
-            | Self::ConnectionString => "token",
+            | Self::ConnectionString
+            | Self::GitHubToken
+            | Self::GitLabToken
+            | Self::BitbucketToken
+            | Self::AwsAccessKey
+            | Self::AwsSessionToken
+            | Self::GcpApiKey
+            | Self::AzureKey
+            | Self::StripeKey
+            | Self::SquareToken
+            | Self::ShopifyToken
+            | Self::PayPalToken
+            | Self::MailchimpToken
+            | Self::MailgunToken
+            | Self::ResendToken
+            | Self::BrevoToken
+            | Self::DatabricksToken
+            | Self::VaultToken
+            | Self::CloudflareOriginCaKey
+            | Self::NpmToken
+            | Self::PyPiToken
+            | Self::NuGetKey
+            | Self::ArtifactoryToken
+            | Self::DockerHubToken
+            | Self::TelegramToken
+            | Self::SendGridToken
+            | Self::OpenAiKey
+            | Self::DiscordToken
+            | Self::SlackToken
+            | Self::TwilioToken => "token",
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase => "credential",
             Self::Generic => "generic",
         }
@@ -382,7 +503,16 @@ impl PiiType {
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase |
             Self::ApiKey | Self::Jwt | Self::SessionId | Self::OAuthToken | Self::SshKey |
             Self::OnePasswordToken | Self::OnePasswordVaultRef | Self::BearerToken | Self::UrlWithCredentials |
-            Self::ConnectionString
+            Self::ConnectionString |
+            Self::GitHubToken | Self::GitLabToken | Self::BitbucketToken |
+            Self::AwsAccessKey | Self::AwsSessionToken |
+            Self::GcpApiKey | Self::AzureKey | Self::StripeKey |
+            Self::SquareToken | Self::ShopifyToken | Self::PayPalToken |
+            Self::MailchimpToken | Self::MailgunToken | Self::ResendToken | Self::BrevoToken |
+            Self::DatabricksToken | Self::VaultToken | Self::CloudflareOriginCaKey |
+            Self::NpmToken | Self::PyPiToken | Self::NuGetKey | Self::ArtifactoryToken | Self::DockerHubToken |
+            Self::TelegramToken | Self::SendGridToken | Self::OpenAiKey |
+            Self::DiscordToken | Self::SlackToken | Self::TwilioToken
         )
     }
 
@@ -463,6 +593,35 @@ impl PiiType {
                 | Self::UrlWithCredentials
                 | Self::ConnectionString
                 | Self::PaymentToken
+                | Self::GitHubToken
+                | Self::GitLabToken
+                | Self::BitbucketToken
+                | Self::AwsAccessKey
+                | Self::AwsSessionToken
+                | Self::GcpApiKey
+                | Self::AzureKey
+                | Self::StripeKey
+                | Self::SquareToken
+                | Self::ShopifyToken
+                | Self::PayPalToken
+                | Self::MailchimpToken
+                | Self::MailgunToken
+                | Self::ResendToken
+                | Self::BrevoToken
+                | Self::DatabricksToken
+                | Self::VaultToken
+                | Self::CloudflareOriginCaKey
+                | Self::NpmToken
+                | Self::PyPiToken
+                | Self::NuGetKey
+                | Self::ArtifactoryToken
+                | Self::DockerHubToken
+                | Self::TelegramToken
+                | Self::SendGridToken
+                | Self::OpenAiKey
+                | Self::DiscordToken
+                | Self::SlackToken
+                | Self::TwilioToken
         )
     }
 }
@@ -517,12 +676,15 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::OnePasswordVaultRef => Self::OnePasswordVaultRef,
             IdentifierType::BearerToken => Self::BearerToken,
             IdentifierType::UrlWithCredentials => Self::UrlWithCredentials,
-            // fallback: no dedicated PiiType variants for developer tokens
-            IdentifierType::GitHubToken
-            | IdentifierType::GitLabToken
-            | IdentifierType::AwsAccessKey
-            | IdentifierType::AwsSessionToken
-            | IdentifierType::HighEntropyString => Self::ApiKey,
+            // Provider-specific developer tokens — each maps to its dedicated
+            // PiiType variant. AWS secret keys still fall back via
+            // HighEntropyString (no dedicated variant — they're 40 base64
+            // chars, indistinguishable from random high-entropy strings).
+            IdentifierType::GitHubToken => Self::GitHubToken,
+            IdentifierType::GitLabToken => Self::GitLabToken,
+            IdentifierType::AwsAccessKey => Self::AwsAccessKey,
+            IdentifierType::AwsSessionToken => Self::AwsSessionToken,
+            IdentifierType::HighEntropyString => Self::ApiKey,
 
             // Database
             IdentifierType::ConnectionString => Self::ConnectionString,
@@ -1100,20 +1262,31 @@ mod tests {
         // dedicated PiiType variant is eventually added, the corresponding
         // assertion here will flip and signal the mapping needs review.
 
-        // Developer-token fallbacks (all collapse to ApiKey)
-        for id in [
-            IdentifierType::GitHubToken,
-            IdentifierType::GitLabToken,
-            IdentifierType::AwsAccessKey,
-            IdentifierType::AwsSessionToken,
-            IdentifierType::HighEntropyString,
-        ] {
-            assert_eq!(
-                PiiType::from(id.clone()),
-                PiiType::ApiKey,
-                "{id:?} should fall back to ApiKey"
-            );
-        }
+        // Provider-specific developer tokens now map to dedicated variants
+        // (issue #97). HighEntropyString remains the only ApiKey fallback —
+        // AWS secret keys are 40 base64 chars and indistinguishable from
+        // random high-entropy strings without context.
+        assert_eq!(
+            PiiType::from(IdentifierType::GitHubToken),
+            PiiType::GitHubToken
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::GitLabToken),
+            PiiType::GitLabToken
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::AwsAccessKey),
+            PiiType::AwsAccessKey
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::AwsSessionToken),
+            PiiType::AwsSessionToken
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::HighEntropyString),
+            PiiType::ApiKey,
+            "HighEntropyString remains the ApiKey fallback (no dedicated variant)"
+        );
 
         // Generic catch-all
         assert_eq!(PiiType::from(IdentifierType::Unknown), PiiType::Generic);

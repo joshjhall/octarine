@@ -62,11 +62,15 @@ fn test_detects_phone_number() {
 
 #[test]
 fn test_detects_api_key() {
+    // Stripe-prefixed key now resolves to PiiType::StripeKey (issue #97).
+    // Generic ApiKey is reserved as the fallback for unrecognized
+    // api-key-shaped input.
     let text = &format!("Key: sk_test_{}", "EXAMPLE000000000000KEY01");
     assert!(is_pii_present(text));
 
     let types = scan_for_pii(text);
-    assert!(types.contains(&PiiType::ApiKey));
+    assert!(types.contains(&PiiType::StripeKey));
+    assert!(!types.contains(&PiiType::ApiKey));
 }
 
 #[test]
@@ -417,5 +421,269 @@ fn test_detects_port_in_scan() {
     assert!(
         types.contains(&PiiType::Port),
         "expected PiiType::Port in {types:?}",
+    );
+}
+
+// ============================================================================
+// Provider-specific token attribution (issue #97)
+//
+// Each test confirms that a recognizable provider token is reported with its
+// dedicated PiiType variant and that the generic ApiKey fallback is suppressed.
+// Fixtures are constructed via format!() to avoid pre-commit secret-scanner
+// false positives — same convention as the unit tests in
+// primitives/identifiers/token/detection/mod.rs.
+// ============================================================================
+
+fn assert_provider(text: &str, expected: PiiType) {
+    let types = scan_for_pii(text);
+    assert!(
+        types.contains(&expected),
+        "expected {expected:?} in {types:?} for input {text:?}"
+    );
+    assert!(
+        !types.contains(&PiiType::ApiKey),
+        "generic ApiKey should be suppressed when {expected:?} matches; got {types:?}"
+    );
+}
+
+#[test]
+fn test_detects_github_token() {
+    assert_provider(
+        &format!("token: ghp_{}", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij"),
+        PiiType::GitHubToken,
+    );
+}
+
+#[test]
+fn test_detects_gitlab_token() {
+    assert_provider(
+        &format!("Auth: glpat-{}", "xxxxxxxxxxxxxxxxxxxx"),
+        PiiType::GitLabToken,
+    );
+}
+
+#[test]
+fn test_detects_bitbucket_token() {
+    assert_provider(&format!("ATBB{}", "x".repeat(32)), PiiType::BitbucketToken);
+}
+
+#[test]
+fn test_detects_aws_access_key() {
+    let akia = format!("AKIA{}", "IOSFODNN7EXAMPLE");
+    assert_provider(&format!("AWS_KEY={akia}"), PiiType::AwsAccessKey);
+}
+
+// AwsSessionToken is intentionally not tested here. The session-token regex
+// (`[A-Za-z0-9/+=]{100,}`) is a strict superset of the AWS secret-key regex
+// (`[A-Za-z0-9/+=]{40}`) which is checked first in `detect_token_type`,
+// and AwsSecretKey routes to PiiType::ApiKey by design (see plan §F.4 —
+// AWS secret keys are indistinguishable from random high-entropy strings
+// without context). Real session-token attribution requires the
+// `is_aws_session_token` short-circuit on the From<IdentifierType> path,
+// which is exercised by the unit test
+// `from_identifier_type_fallback_mappings` in observe/pii/types.rs.
+
+#[test]
+fn test_detects_gcp_api_key() {
+    // Constructed via format! so gitleaks doesn't flag a literal AIza key.
+    let key = format!("AIza{}", "SyDaGmWKa4JsXZ-HjGw7ISLn_3namBGewQe");
+    assert_provider(&format!("GOOGLE_KEY={key}"), PiiType::GcpApiKey);
+}
+
+#[test]
+fn test_detects_azure_key() {
+    let key = format!(
+        "AccountKey={}",
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/abcdefghijklmnopqrstuvwx=="
+    );
+    assert_provider(&key, PiiType::AzureKey);
+}
+
+#[test]
+fn test_detects_stripe_key() {
+    assert_provider(
+        &format!("STRIPE=sk_live_{}", "EXAMPLE000000000KEY01abcdef"),
+        PiiType::StripeKey,
+    );
+}
+
+#[test]
+fn test_detects_square_token() {
+    assert_provider(
+        &format!("token=sq0atp-{}", "ABCDEFghijklmnopqrstuv"),
+        PiiType::SquareToken,
+    );
+}
+
+#[test]
+fn test_detects_shopify_token() {
+    assert_provider(
+        &format!("shpat_{}", "abcdef1234567890abcdef1234567890"),
+        PiiType::ShopifyToken,
+    );
+}
+
+#[test]
+fn test_detects_paypal_token() {
+    assert_provider(
+        &format!(
+            "access_token$production${}${}",
+            "abc1234567890xyz", "abcdef1234567890abcdef1234567890"
+        ),
+        PiiType::PayPalToken,
+    );
+}
+
+#[test]
+fn test_detects_mailchimp_token() {
+    assert_provider(
+        &format!("{}{}-us6", "abcdef1234567890", "abcdef1234567890"),
+        PiiType::MailchimpToken,
+    );
+}
+
+#[test]
+fn test_detects_mailgun_token() {
+    assert_provider(
+        &format!("key-{}", "ABCDEFghijklmnopqrstuv1234567890"),
+        PiiType::MailgunToken,
+    );
+}
+
+#[test]
+fn test_detects_resend_token() {
+    assert_provider(
+        &format!("re_{}", "ABCDEFghijklmnopqrstuv1234567890ab"),
+        PiiType::ResendToken,
+    );
+}
+
+#[test]
+fn test_detects_brevo_token() {
+    assert_provider(
+        &format!("xkeysib-{}-{}", "a".repeat(64), "B".repeat(16)),
+        PiiType::BrevoToken,
+    );
+}
+
+#[test]
+fn test_detects_databricks_token() {
+    assert_provider(&format!("dapi{}", "a".repeat(32)), PiiType::DatabricksToken);
+}
+
+#[test]
+fn test_detects_vault_token() {
+    assert_provider(&format!("hvs.{}", "A".repeat(24)), PiiType::VaultToken);
+}
+
+#[test]
+fn test_detects_cloudflare_origin_ca_key() {
+    assert_provider(
+        &format!("v1.0-{}-{}", "a".repeat(24), "b".repeat(146)),
+        PiiType::CloudflareOriginCaKey,
+    );
+}
+
+#[test]
+fn test_detects_npm_token() {
+    assert_provider(&format!("npm_{}", "A".repeat(36)), PiiType::NpmToken);
+}
+
+#[test]
+fn test_detects_pypi_token() {
+    assert_provider(
+        &format!("pypi-AgEIcHlwaS5vcmc{}", "A".repeat(50)),
+        PiiType::PyPiToken,
+    );
+}
+
+#[test]
+fn test_detects_nuget_key() {
+    assert_provider(&format!("oy2{}", "a".repeat(43)), PiiType::NuGetKey);
+}
+
+#[test]
+fn test_detects_artifactory_token() {
+    assert_provider(&format!("AKC{}", "a".repeat(10)), PiiType::ArtifactoryToken);
+}
+
+#[test]
+fn test_detects_docker_hub_token() {
+    assert_provider(
+        &format!("dckr_pat_{}", "A".repeat(27)),
+        PiiType::DockerHubToken,
+    );
+}
+
+#[test]
+fn test_detects_telegram_token() {
+    assert_provider(
+        &format!("12345678:{}", "A".repeat(35)),
+        PiiType::TelegramToken,
+    );
+}
+
+#[test]
+fn test_detects_sendgrid_token() {
+    assert_provider(
+        &format!("SG.{}.{}", "A".repeat(22), "b".repeat(43)),
+        PiiType::SendGridToken,
+    );
+}
+
+#[test]
+fn test_detects_openai_key() {
+    assert_provider(
+        &format!("sk-{}T3BlbkFJ{}", "A".repeat(20), "B".repeat(20)),
+        PiiType::OpenAiKey,
+    );
+}
+
+#[test]
+fn test_detects_discord_token() {
+    assert_provider(
+        &format!("M{}.{}.{}", "A".repeat(23), "AbCdEf", "a".repeat(27)),
+        PiiType::DiscordToken,
+    );
+}
+
+#[test]
+fn test_detects_slack_token() {
+    assert_provider(
+        &format!("xoxb-{}-{}", "1".repeat(12), "A".repeat(24)),
+        PiiType::SlackToken,
+    );
+}
+
+#[test]
+fn test_detects_twilio_token() {
+    assert_provider(&format!("AC{}", "a".repeat(32)), PiiType::TwilioToken);
+}
+
+#[test]
+fn test_unrecognized_api_key_falls_back_to_generic() {
+    // api_key=... shape with no provider prefix. The redact_api_keys_in_text
+    // primitive recognises the labeled form and the generic fallback fires.
+    let text = "config: api_key=zzzz9999aaaa8888bbbb7777cccc6666";
+    let types = scan_for_pii(text);
+    assert!(
+        types.contains(&PiiType::ApiKey),
+        "unrecognized api-key shape should fall back to ApiKey: {types:?}"
+    );
+}
+
+#[test]
+fn test_multiple_providers_in_one_text() {
+    let text = format!(
+        "GH: ghp_{} STRIPE: sk_live_{} AWS: AKIA{}",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij", "EXAMPLE000000000KEY01abcdef", "IOSFODNN7EXAMPLE"
+    );
+    let types = scan_for_pii(&text);
+    assert!(types.contains(&PiiType::GitHubToken), "{types:?}");
+    assert!(types.contains(&PiiType::StripeKey), "{types:?}");
+    assert!(types.contains(&PiiType::AwsAccessKey), "{types:?}");
+    assert!(
+        !types.contains(&PiiType::ApiKey),
+        "generic ApiKey must be suppressed when providers matched: {types:?}"
     );
 }

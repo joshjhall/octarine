@@ -118,7 +118,40 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::OnePasswordVaultRef
             | PiiType::BearerToken
             | PiiType::UrlWithCredentials
-            | PiiType::ConnectionString => redact_api_keys(&result, profile),
+            | PiiType::ConnectionString
+            // Provider-specific tokens (issue #97). Per-provider redaction
+            // profiles (e.g., show "sk_live_" prefix for Stripe) are a
+            // follow-up. For now they all route through the generic API-key
+            // redactor, which already handles most provider prefixes.
+            | PiiType::GitHubToken
+            | PiiType::GitLabToken
+            | PiiType::BitbucketToken
+            | PiiType::AwsAccessKey
+            | PiiType::AwsSessionToken
+            | PiiType::GcpApiKey
+            | PiiType::AzureKey
+            | PiiType::StripeKey
+            | PiiType::SquareToken
+            | PiiType::ShopifyToken
+            | PiiType::PayPalToken
+            | PiiType::MailchimpToken
+            | PiiType::MailgunToken
+            | PiiType::ResendToken
+            | PiiType::BrevoToken
+            | PiiType::DatabricksToken
+            | PiiType::VaultToken
+            | PiiType::CloudflareOriginCaKey
+            | PiiType::NpmToken
+            | PiiType::PyPiToken
+            | PiiType::NuGetKey
+            | PiiType::ArtifactoryToken
+            | PiiType::DockerHubToken
+            | PiiType::TelegramToken
+            | PiiType::SendGridToken
+            | PiiType::OpenAiKey
+            | PiiType::DiscordToken
+            | PiiType::SlackToken
+            | PiiType::TwilioToken => redact_api_keys(&result, profile),
             // Government IDs
             PiiType::Ssn => redact_ssns(&result, profile),
             PiiType::DriverLicense => redact_driver_licenses(&result, profile),
