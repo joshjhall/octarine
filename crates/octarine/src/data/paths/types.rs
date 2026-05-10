@@ -18,9 +18,6 @@
 //! - **CWE-175**: Improper Handling of Mixed Encoding
 //! - **CWE-707**: Improper Neutralization
 
-// Import SecurityThreat from its canonical location
-use crate::security::paths::SecurityThreat;
-
 // ============================================================================
 // Platform Types
 // ============================================================================
@@ -322,11 +319,44 @@ impl From<crate::primitives::data::paths::FileCategory> for FileCategory {
 }
 
 // ============================================================================
-// Security Threat Types
+// Threat Annotation
 // ============================================================================
 
-// SecurityThreat is now in security::paths::types (canonical location)
-// Imported at top of file and re-exported via data::paths::mod.rs
+/// Data-local annotation describing a security threat detected in a path.
+///
+/// `data::paths` operates strictly in the FORMAT concern, so it does not
+/// import the `SecurityThreat` enum from the `security` concern. Instead,
+/// detection results expose just the metadata callers need to log, sort, or
+/// display threats — without coupling the data module to the security
+/// module's type hierarchy.
+///
+/// For full threat handling (variants, validation, sanitization), use
+/// [`crate::security::paths`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ThreatAnnotation {
+    /// CWE identifier (e.g. `"CWE-22"`)
+    pub cwe: &'static str,
+    /// Severity level (1-5, higher = more severe)
+    pub severity: u8,
+    /// Human-readable description
+    pub description: &'static str,
+}
+
+impl std::fmt::Display for ThreatAnnotation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.description, self.cwe)
+    }
+}
+
+impl From<crate::primitives::data::paths::SecurityThreat> for ThreatAnnotation {
+    fn from(t: crate::primitives::data::paths::SecurityThreat) -> Self {
+        Self {
+            cwe: t.cwe(),
+            severity: t.severity(),
+            description: t.description(),
+        }
+    }
+}
 
 // ============================================================================
 // Result Types
@@ -351,8 +381,8 @@ pub struct PathDetectionResult {
     pub has_extension: bool,
     /// File extension if present
     pub extension: Option<String>,
-    /// Security threats detected
-    pub threats: Vec<SecurityThreat>,
+    /// Security threats detected, expressed as data-local annotations.
+    pub threats: Vec<ThreatAnnotation>,
 }
 
 impl PathDetectionResult {
@@ -371,7 +401,7 @@ impl PathDetectionResult {
     /// Get the highest severity threat (if any)
     #[must_use]
     pub fn max_severity(&self) -> Option<u8> {
-        self.threats.iter().map(SecurityThreat::severity).max()
+        self.threats.iter().map(|t| t.severity).max()
     }
 
     /// Get the number of threats detected
@@ -729,10 +759,15 @@ mod tests {
     }
 
     #[test]
-    fn test_security_threat() {
-        assert_eq!(SecurityThreat::Traversal.cwe(), "CWE-22");
-        assert_eq!(SecurityThreat::CommandInjection.severity(), 5);
-        assert!(!SecurityThreat::Traversal.description().is_empty());
+    fn test_threat_annotation() {
+        let annotation = ThreatAnnotation {
+            cwe: "CWE-22",
+            severity: 4,
+            description: "Directory traversal attempt using '..'",
+        };
+        assert_eq!(annotation.cwe, "CWE-22");
+        assert_eq!(annotation.severity, 4);
+        assert!(annotation.to_string().contains("CWE-22"));
     }
 
     #[test]

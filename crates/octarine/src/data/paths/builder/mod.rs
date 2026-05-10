@@ -7,7 +7,6 @@
 //!
 //! Each builder focuses on a specific domain:
 //!
-//! - [`SecurityBuilder`] - Security detection, validation, and sanitization
 //! - [`BoundaryBuilder`] - Directory jailing and boundary validation
 //! - [`FilenameBuilder`] - Filename operations (detection, validation, sanitization, construction)
 //! - [`CharacteristicBuilder`] - Path type and platform detection
@@ -17,6 +16,9 @@
 //! - [`PathContextBuilder`] - Context-specific sanitization (env, ssh, credential, op)
 //! - [`ConstructionBuilder`] - Safe path building
 //! - [`LenientBuilder`] - Lenient sanitization (always returns a value)
+//!
+//! Security detection, validation, and sanitization live in their own concern
+//! at [`crate::security::paths::SecurityBuilder`].
 //!
 //! # Unified PathBuilder
 //!
@@ -36,9 +38,10 @@
 //! ## Using Specialized Builders
 //!
 //! ```
-//! use octarine::data::paths::{SecurityBuilder, FilenameBuilder};
+//! use octarine::data::paths::FilenameBuilder;
+//! use octarine::security::paths::SecurityBuilder;
 //!
-//! // Security operations
+//! // Security operations (lives in the security concern)
 //! let security = SecurityBuilder::new();
 //! if security.is_traversal_present("../secret") {
 //!     // Handle threat

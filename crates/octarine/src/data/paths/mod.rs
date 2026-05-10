@@ -19,7 +19,6 @@
 //! This module provides multiple specialized builders for different use cases:
 //!
 //! - [`PathBuilder`] - Unified API for all path operations
-//! - [`SecurityBuilder`] - Security detection, validation, and sanitization
 //! - [`BoundaryBuilder`] - Directory jailing and containment
 //! - [`FilenameBuilder`] - Filename operations (validation, sanitization, construction)
 //! - [`CharacteristicBuilder`] - Path type and platform detection
@@ -29,6 +28,9 @@
 //! - [`PathContextBuilder`] - Context-specific sanitization (env, ssh, credential, op)
 //! - [`ConstructionBuilder`] - Safe path building
 //! - [`LenientBuilder`] - Lenient sanitization (always returns a value)
+//!
+//! Security detection, validation, and sanitization live in their own concern:
+//! see [`crate::security::paths::SecurityBuilder`].
 //!
 //! # Usage
 //!
@@ -73,9 +75,10 @@
 //! ## Specialized Builders
 //!
 //! ```
-//! use octarine::data::paths::{SecurityBuilder, FilenameBuilder, HomeBuilder};
+//! use octarine::data::paths::{FilenameBuilder, HomeBuilder};
+//! use octarine::security::paths::SecurityBuilder;
 //!
-//! // Security operations
+//! // Security operations (lives in the security concern)
 //! let security = SecurityBuilder::new();
 //! if security.is_traversal_present("../secret") {
 //!     // Handle threat
@@ -120,23 +123,19 @@ mod lenient;
 // Re-export the main PathBuilder
 pub use builder::PathBuilder;
 
-// Re-export all specialized builders (except SecurityBuilder, which is in security::paths)
+// Re-export all specialized builders. Security operations are a separate
+// concern — import `SecurityBuilder` from `crate::security::paths`.
 pub use builder::{
     BoundaryBuilder, CharacteristicBuilder, ConstructionBuilder, FilenameBuilder, FiletypeBuilder,
     FormatBuilder, HomeBuilder, LenientBuilder, PathContextBuilder,
 };
 
-// Re-export SecurityBuilder from security::paths for backwards compatibility
-pub use crate::security::paths::SecurityBuilder;
-
 // Re-export types for public API
 pub use types::{
     BoundaryStrategy, FileCategory, FilenameSanitizationStrategy, PathDetectionResult, PathFormat,
     PathType, PathValidationResult, Platform, SanitizationContext, SeparatorStyle,
+    ThreatAnnotation,
 };
-
-// Re-export security types from their canonical location (security::paths)
-pub use crate::security::paths::{PathSanitizationStrategy, SecurityThreat};
 
 // Re-export shortcuts at module level for convenience
 pub use shortcuts::*;
