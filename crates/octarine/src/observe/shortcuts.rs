@@ -41,6 +41,11 @@ pub fn trace(operation: &str, message: impl Into<String>) {
     event_shortcuts::trace(operation, message);
 }
 
+/// Log a critical message with operation context
+pub fn critical(operation: &str, message: impl Into<String>) {
+    event_shortcuts::critical(operation, message);
+}
+
 /// Log a validation success
 pub fn validation_success(message: impl Into<String>) {
     success("validation", message);

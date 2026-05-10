@@ -336,7 +336,9 @@ pub use context::{LocalNetworkContext, get_local_network, refresh_local_network}
 pub use builder::ObserveBuilder;
 
 // Simple shortcuts for common operations (no Problem return)
-pub use shortcuts::{auth_success, debug, error, info, success, trace, validation_success, warn};
+pub use shortcuts::{
+    auth_success, critical, debug, error, info, success, trace, validation_success, warn,
+};
 
 // Error handling shortcuts (return Problems)
 pub use shortcuts::{fail, fail_permission, fail_security, fail_validation, todo};

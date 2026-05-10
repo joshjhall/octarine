@@ -46,3 +46,10 @@ pub fn trace(operation: &str, message: impl Into<String>) {
         .message(message)
         .trace();
 }
+
+/// Log critical with operation context
+pub fn critical(operation: &str, message: impl Into<String>) {
+    ObserveBuilder::for_operation(operation)
+        .message(message)
+        .critical();
+}
