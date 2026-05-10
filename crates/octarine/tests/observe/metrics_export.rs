@@ -8,7 +8,7 @@ use octarine::observe::metrics::{
     DefaultLabels, MetricName, PrometheusConfig, PrometheusExporter, StatsDConfig, StatsDWriter,
     gauge, increment, increment_by, record,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // ============================================================================
 // Prometheus Exporter Tests
@@ -192,20 +192,37 @@ fn test_prometheus_with_live_metrics() {
     gauge(gauge_name, 42);
     record(histogram_name, 0.5);
 
-    // Small delay to allow async dispatch
-    std::thread::sleep(Duration::from_millis(50));
-
-    // Export via Prometheus
+    // Poll the Prometheus exporter until live metrics are observable. The
+    // previous implementation slept 50ms then silently skipped the assertion
+    // when output was empty, which converted "metrics never arrived" into a
+    // passing test. Fail loudly on timeout so a regression is debuggable.
     let exporter = PrometheusExporter::new(PrometheusConfig::new().namespace("integration"));
-    let output = exporter.render().expect("render should succeed");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let output = loop {
+        let rendered = exporter.render().expect("render should succeed");
+        if !rendered.is_empty()
+            && (rendered.contains("# TYPE")
+                || rendered.contains("counter")
+                || rendered.contains("gauge"))
+        {
+            break rendered;
+        }
+        if Instant::now() > deadline {
+            panic!(
+                "Timed out waiting for Prometheus exporter to expose live metrics. \
+                 Last render output (len={}): {:?}",
+                rendered.len(),
+                rendered
+            );
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
 
-    // Should contain metric types and values
-    // Note: metrics may or may not be present depending on timing
-    if !output.is_empty() {
-        assert!(
-            output.contains("# TYPE") || output.contains("counter") || output.contains("gauge")
-        );
-    }
+    assert!(
+        output.contains("# TYPE") || output.contains("counter") || output.contains("gauge"),
+        "Prometheus output missing expected markers: {:?}",
+        output
+    );
 }
 
 #[test]

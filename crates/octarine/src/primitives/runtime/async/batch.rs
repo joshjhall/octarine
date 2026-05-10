@@ -147,7 +147,18 @@ mod tests {
         batch.add("test");
         assert!(!batch.should_flush());
 
-        std::thread::sleep(Duration::from_millis(60));
+        // Poll until the age threshold elapses. A fixed 60ms sleep against a
+        // 50ms threshold leaves no margin under loaded CI.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !batch.should_flush() {
+            if Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for batch.should_flush() (elapsed: {:?})",
+                    batch.elapsed()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
         assert!(batch.should_flush());
     }
 
@@ -214,8 +225,17 @@ mod tests {
         let mut batch = BatchProcessor::new(10, Duration::from_millis(50));
         batch.add(1);
 
-        // Wait for age threshold
-        std::thread::sleep(Duration::from_millis(60));
+        // Poll until the age threshold elapses.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !batch.should_flush() {
+            if Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for batch.should_flush() (elapsed: {:?})",
+                    batch.elapsed()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
         assert!(batch.should_flush());
 
         // Take items - should reset timer

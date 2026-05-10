@@ -382,8 +382,15 @@ mod tests {
         cache.insert("key", "value");
         assert_eq!(cache.get(&"key"), Some("value"));
 
-        // Wait for expiration
-        std::thread::sleep(Duration::from_millis(60));
+        // Poll until the entry expires. CI under coverage instrumentation
+        // can stretch a 50ms TTL well beyond a fixed 60ms sleep.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while cache.get(&"key").is_some() {
+            if Instant::now() > deadline {
+                panic!("Timed out waiting for cache entry to expire");
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
 
         assert_eq!(cache.get(&"key"), None);
     }
@@ -398,10 +405,22 @@ mod tests {
 
         assert_eq!(cache.len(), 5);
 
-        // Wait for expiration
-        std::thread::sleep(Duration::from_millis(60));
-
-        let expired = cache.cleanup_expired();
+        // Poll until all entries expire (cleanup_expired sees them as stale).
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let expired = loop {
+            let count = cache.cleanup_expired();
+            if count == 5 {
+                break count;
+            }
+            if Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for 5 entries to expire (got {}, len {})",
+                    count,
+                    cache.len()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        };
         assert_eq!(expired, 5);
         assert_eq!(cache.len(), 0);
     }
