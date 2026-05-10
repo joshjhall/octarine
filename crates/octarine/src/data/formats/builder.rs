@@ -67,16 +67,16 @@ impl FormatBuilder {
     /// Parse JSON content
     pub fn parse_json(&self, input: &str) -> Result<JsonValue> {
         let start = Instant::now();
-        debug("format.parse", "Parsing JSON content");
         let result = self.inner.parse_json(input);
         if self.emit_events {
+            debug("format.parse", "Parsing JSON content");
             record(
                 metric_names::parse_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            warn("format.parse", "JSON parsing failed");
+            if result.is_err() {
+                warn("format.parse", "JSON parsing failed");
+            }
         }
         result
     }
@@ -84,9 +84,9 @@ impl FormatBuilder {
     /// Serialize value to JSON
     pub fn serialize_json<T: Serialize>(&self, value: &T) -> Result<String> {
         let start = Instant::now();
-        debug("format.serialize", "Serializing to JSON");
         let result = self.inner.serialize_json(value);
         if self.emit_events {
+            debug("format.serialize", "Serializing to JSON");
             record(
                 metric_names::serialize_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
@@ -98,9 +98,9 @@ impl FormatBuilder {
     /// Serialize value to pretty JSON
     pub fn serialize_json_pretty<T: Serialize>(&self, value: &T) -> Result<String> {
         let start = Instant::now();
-        debug("format.serialize", "Serializing to pretty JSON");
         let result = self.inner.serialize_json_pretty(value);
         if self.emit_events {
+            debug("format.serialize", "Serializing to pretty JSON");
             record(
                 metric_names::serialize_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
@@ -116,16 +116,16 @@ impl FormatBuilder {
     /// Parse XML content
     pub fn parse_xml(&self, input: &str) -> Result<XmlDocument> {
         let start = Instant::now();
-        debug("format.parse", "Parsing XML content");
         let result = self.inner.parse_xml(input);
         if self.emit_events {
+            debug("format.parse", "Parsing XML content");
             record(
                 metric_names::parse_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            warn("format.parse", "XML parsing failed");
+            if result.is_err() {
+                warn("format.parse", "XML parsing failed");
+            }
         }
         result
     }
@@ -133,9 +133,9 @@ impl FormatBuilder {
     /// Serialize XML document to string
     pub fn serialize_xml(&self, doc: &XmlDocument) -> Result<String> {
         let start = Instant::now();
-        debug("format.serialize", "Serializing to XML");
         let result = self.inner.serialize_xml(doc);
         if self.emit_events {
+            debug("format.serialize", "Serializing to XML");
             record(
                 metric_names::serialize_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
@@ -151,16 +151,16 @@ impl FormatBuilder {
     /// Parse YAML content
     pub fn parse_yaml(&self, input: &str) -> Result<serde_yaml::Value> {
         let start = Instant::now();
-        debug("format.parse", "Parsing YAML content");
         let result = self.inner.parse_yaml(input);
         if self.emit_events {
+            debug("format.parse", "Parsing YAML content");
             record(
                 metric_names::parse_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            warn("format.parse", "YAML parsing failed");
+            if result.is_err() {
+                warn("format.parse", "YAML parsing failed");
+            }
         }
         result
     }
@@ -168,9 +168,9 @@ impl FormatBuilder {
     /// Serialize value to YAML
     pub fn serialize_yaml<T: Serialize>(&self, value: &T) -> Result<String> {
         let start = Instant::now();
-        debug("format.serialize", "Serializing to YAML");
         let result = self.inner.serialize_yaml(value);
         if self.emit_events {
+            debug("format.serialize", "Serializing to YAML");
             record(
                 metric_names::serialize_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
@@ -187,16 +187,16 @@ impl FormatBuilder {
     #[must_use]
     pub fn detect_format(&self, input: &str) -> Option<FormatType> {
         let start = Instant::now();
-        debug("format.detect", "Detecting format from content");
         let format = self.inner.detect_from_content(input);
         if self.emit_events {
+            debug("format.detect", "Detecting format from content");
             record(
                 metric_names::detect_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if format.is_none() {
-            debug("format.detect", "Could not detect format");
+            if format.is_none() {
+                debug("format.detect", "Could not detect format");
+            }
         }
         format
     }

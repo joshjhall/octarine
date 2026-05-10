@@ -68,6 +68,12 @@ impl NetworkBuilder {
         self
     }
 
+    /// Whether observe events are enabled (used by parent builder tests)
+    #[cfg(test)]
+    pub(crate) fn emit_events(&self) -> bool {
+        self.emit_events
+    }
+
     // ========================================================================
     // Detection Methods
     // ========================================================================
