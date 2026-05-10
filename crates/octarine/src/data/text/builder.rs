@@ -12,7 +12,7 @@
 use std::borrow::Cow;
 use std::time::Instant;
 
-use crate::observe::event;
+use crate::observe;
 use crate::observe::metrics::{increment_by, record};
 use crate::primitives::data::text::TextBuilder as PrimitiveTextBuilder;
 use crate::primitives::data::text::TextConfig as PrimitiveTextConfig;
@@ -149,7 +149,7 @@ impl<'a> TextBuilder<'a> {
     pub fn is_control_chars_present(&self) -> bool {
         let result = self.inner.is_control_chars_present();
         if self.emit_events && result {
-            event::debug("text.control_chars_detected");
+            observe::debug("control_chars_detected", "Control characters detected");
         }
         result
     }
@@ -158,7 +158,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_dangerous_control_chars_present(&self) -> bool {
         let result = self.inner.is_dangerous_control_chars_present();
         if self.emit_events && result {
-            event::warn("text.dangerous_control_chars_detected");
+            observe::warn(
+                "dangerous_control_chars_detected",
+                "Dangerous control characters detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -168,7 +171,7 @@ impl<'a> TextBuilder<'a> {
     pub fn is_null_bytes_present(&self) -> bool {
         let result = self.inner.is_null_bytes_present();
         if self.emit_events && result {
-            event::warn("text.null_bytes_detected");
+            observe::warn("null_bytes_detected", "Null bytes detected in text");
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -178,7 +181,7 @@ impl<'a> TextBuilder<'a> {
     pub fn is_ansi_escapes_present(&self) -> bool {
         let result = self.inner.is_ansi_escapes_present();
         if self.emit_events && result {
-            event::debug("text.ansi_escapes_detected");
+            observe::debug("ansi_escapes_detected", "ANSI escape sequences detected");
         }
         result
     }
@@ -205,7 +208,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_cursor_controls_present(&self) -> bool {
         let result = self.inner.is_cursor_controls_present();
         if self.emit_events && result {
-            event::warn("text.cursor_controls_detected");
+            observe::warn(
+                "cursor_controls_detected",
+                "Cursor control sequences detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -215,7 +221,7 @@ impl<'a> TextBuilder<'a> {
     pub fn is_bell_present(&self) -> bool {
         let result = self.inner.is_bell_present();
         if self.emit_events && result {
-            event::debug("text.bell_char_detected");
+            observe::debug("bell_char_detected", "Bell character detected");
         }
         result
     }
@@ -224,7 +230,7 @@ impl<'a> TextBuilder<'a> {
     pub fn is_backspace_present(&self) -> bool {
         let result = self.inner.is_backspace_present();
         if self.emit_events && result {
-            event::debug("text.backspace_detected");
+            observe::debug("backspace_detected", "Backspace character detected");
         }
         result
     }
@@ -233,7 +239,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_zero_width_chars_present(&self) -> bool {
         let result = self.inner.is_zero_width_chars_present();
         if self.emit_events && result {
-            event::warn("text.zero_width_chars_detected");
+            observe::warn(
+                "zero_width_chars_detected",
+                "Zero-width characters detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -243,7 +252,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_bidi_overrides_present(&self) -> bool {
         let result = self.inner.is_bidi_overrides_present();
         if self.emit_events && result {
-            event::warn("text.bidi_overrides_detected");
+            observe::warn(
+                "bidi_overrides_detected",
+                "Bidirectional override characters detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -263,7 +275,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_mixed_script_present(&self) -> bool {
         let result = self.inner.is_mixed_script_present();
         if self.emit_events && result {
-            event::warn("text.mixed_script_detected");
+            observe::warn(
+                "mixed_script_detected",
+                "Mixed-script (homograph) pattern detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -279,7 +294,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_confusable_chars_present(&self) -> bool {
         let result = self.inner.is_confusable_chars_present();
         if self.emit_events && result {
-            event::warn("text.confusable_chars_detected");
+            observe::warn(
+                "confusable_chars_detected",
+                "Confusable characters detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -289,7 +307,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_format_chars_present(&self) -> bool {
         let result = self.inner.is_format_chars_present();
         if self.emit_events && result {
-            event::warn("text.format_chars_detected");
+            observe::warn(
+                "format_chars_detected",
+                "Format control characters detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -299,7 +320,10 @@ impl<'a> TextBuilder<'a> {
     pub fn is_private_use_present(&self) -> bool {
         let result = self.inner.is_private_use_present();
         if self.emit_events && result {
-            event::warn("text.private_use_chars_detected");
+            observe::warn(
+                "private_use_chars_detected",
+                "Private-use area characters detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result

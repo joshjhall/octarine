@@ -12,7 +12,7 @@
 use std::time::Instant;
 
 use crate::observe::metrics::{increment_by, record};
-use crate::observe::{Problem, event};
+use crate::observe::{self, Problem};
 use crate::primitives::security::network::NetworkSecurityBuilder as PrimitiveNetworkSecurityBuilder;
 
 use super::types::{HostType, NetworkSecurityHostnameConfig, NetworkSecurityUrlConfig, PortRange};
@@ -137,7 +137,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_dangerous_scheme(url);
 
         if self.emit_events && result {
-            event::warn(format!("Dangerous scheme detected: {}", url));
+            observe::warn(
+                "dangerous_scheme_detected",
+                format!("Dangerous scheme detected: {url}"),
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
 
@@ -159,7 +162,7 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_localhost(host);
 
         if self.emit_events && result {
-            event::debug(format!("Localhost detected: {}", host));
+            observe::debug("localhost_detected", format!("Localhost detected: {host}"));
         }
 
         result
@@ -170,7 +173,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_internal_domain_pattern(host);
 
         if self.emit_events && result {
-            event::debug(format!("Internal domain pattern detected: {}", host));
+            observe::debug(
+                "internal_domain_detected",
+                format!("Internal domain pattern detected: {host}"),
+            );
         }
 
         result
@@ -181,7 +187,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_private_ipv4_range(ip);
 
         if self.emit_events && result {
-            event::debug(format!("Private IPv4 range detected: {}", ip));
+            observe::debug(
+                "private_ipv4_detected",
+                format!("Private IPv4 range detected: {ip}"),
+            );
         }
 
         result
@@ -192,7 +201,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_loopback_ipv4_range(ip);
 
         if self.emit_events && result {
-            event::debug(format!("Loopback IPv4 range detected: {}", ip));
+            observe::debug(
+                "loopback_ipv4_detected",
+                format!("Loopback IPv4 range detected: {ip}"),
+            );
         }
 
         result
@@ -203,7 +215,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_link_local_ipv4_range(ip);
 
         if self.emit_events && result {
-            event::debug(format!("Link-local IPv4 range detected: {}", ip));
+            observe::debug(
+                "link_local_ipv4_detected",
+                format!("Link-local IPv4 range detected: {ip}"),
+            );
         }
 
         result
@@ -214,7 +229,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_private_ipv6(ip);
 
         if self.emit_events && result {
-            event::debug(format!("Private IPv6 detected: {}", ip));
+            observe::debug(
+                "private_ipv6_detected",
+                format!("Private IPv6 detected: {ip}"),
+            );
         }
 
         result
@@ -225,7 +243,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_internal_host(host);
 
         if self.emit_events && result {
-            event::debug(format!("Internal host detected: {}", host));
+            observe::debug(
+                "internal_host_detected",
+                format!("Internal host detected: {host}"),
+            );
         }
 
         result
@@ -240,7 +261,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_cloud_metadata_endpoint(url);
 
         if self.emit_events && result {
-            event::critical(format!("Cloud metadata access detected: {}", url));
+            observe::critical(
+                "cloud_metadata_endpoint_detected",
+                format!("Cloud metadata access detected: {url}"),
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
 
@@ -252,7 +276,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_metadata_pattern_present(host);
 
         if self.emit_events && result {
-            event::debug(format!("Metadata pattern present: {}", host));
+            observe::debug(
+                "metadata_pattern_detected",
+                format!("Metadata pattern present: {host}"),
+            );
         }
 
         result
@@ -267,7 +294,10 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_url_shortener(url);
 
         if self.emit_events && result {
-            event::debug(format!("URL shortener detected: {}", url));
+            observe::debug(
+                "url_shortener_detected",
+                format!("URL shortener detected: {url}"),
+            );
         }
 
         result
@@ -288,7 +318,7 @@ impl NetworkSecurityBuilder {
         let result = self.inner.is_potential_ssrf(url_or_host);
 
         if self.emit_events && result {
-            event::critical(format!("SSRF detected: {}", url_or_host));
+            observe::critical("ssrf_detected", format!("SSRF detected: {url_or_host}"));
             increment_by(metric_names::threats_detected(), 1);
         }
 
@@ -320,9 +350,15 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::critical(format!("SSRF validation failed: {}", url));
+                observe::critical(
+                    "ssrf_validation_failed",
+                    format!("SSRF validation failed: {url}"),
+                );
             } else {
-                event::debug(format!("SSRF validation passed: {}", url));
+                observe::debug(
+                    "ssrf_validation_passed",
+                    format!("SSRF validation passed: {url}"),
+                );
             }
         }
 
@@ -344,7 +380,10 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::critical(format!("Internal URL blocked: {}", url));
+                observe::critical(
+                    "internal_url_blocked",
+                    format!("Internal URL blocked: {url}"),
+                );
             }
         }
 
@@ -366,7 +405,10 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::critical(format!("Dangerous scheme blocked: {}", url));
+                observe::critical(
+                    "dangerous_scheme_blocked",
+                    format!("Dangerous scheme blocked: {url}"),
+                );
             }
         }
 
@@ -388,7 +430,10 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::critical(format!("Cloud metadata blocked: {}", url));
+                observe::critical(
+                    "cloud_metadata_blocked",
+                    format!("Cloud metadata blocked: {url}"),
+                );
             }
         }
 
@@ -410,7 +455,10 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("URL shortener blocked: {}", url));
+                observe::warn(
+                    "url_shortener_blocked",
+                    format!("URL shortener blocked: {url}"),
+                );
             }
         }
 
@@ -436,7 +484,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("Invalid URL format: {}", url));
+                observe::warn("url_format_invalid", format!("Invalid URL format: {url}"));
             }
         }
 
@@ -459,7 +507,10 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("URL scheme not allowed: {}", url));
+                observe::warn(
+                    "url_scheme_not_allowed",
+                    format!("URL scheme not allowed: {url}"),
+                );
             }
         }
 
@@ -482,7 +533,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("HTTPS required: {}", url));
+                observe::warn("https_required", format!("HTTPS required: {url}"));
             }
         }
 
@@ -508,7 +559,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("Invalid hostname: {}", hostname));
+                observe::warn("hostname_invalid", format!("Invalid hostname: {hostname}"));
             }
         }
 
@@ -533,7 +584,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("Invalid hostname: {}", hostname));
+                observe::warn("hostname_invalid", format!("Invalid hostname: {hostname}"));
             }
         }
 
@@ -559,11 +610,10 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!(
-                    "Hostname too long: {} (max {})",
-                    hostname.len(),
-                    max_length
-                ));
+                observe::warn(
+                    "hostname_too_long",
+                    format!("Hostname too long: {} (max {})", hostname.len(), max_length),
+                );
             }
         }
 
@@ -589,7 +639,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("Invalid port: {}", port));
+                observe::warn("port_invalid", format!("Invalid port: {port}"));
             }
         }
 
@@ -611,7 +661,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("Port {} out of range", port));
+                observe::warn("port_out_of_range", format!("Port {port} out of range"));
             }
         }
 
@@ -633,7 +683,7 @@ impl NetworkSecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn(format!("Invalid port string: {}", s));
+                observe::warn("port_parse_failed", format!("Invalid port string: {s}"));
             }
         }
 

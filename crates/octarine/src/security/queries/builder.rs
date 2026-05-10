@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use crate::observe::event;
+use crate::observe;
 use crate::observe::metrics::{increment_by, record};
 use crate::primitives::security::queries::{
     GraphqlAnalysis, GraphqlConfig, GraphqlSchema, QuerySecurityBuilder as PrimitiveBuilder,
@@ -83,7 +83,7 @@ impl QueryBuilder {
     pub fn is_sql_injection_present(&self, input: &str) -> bool {
         let result = self.inner.is_sql_injection_present(input);
         if self.emit_events && result {
-            event::warn("security: SQL injection pattern detected");
+            observe::warn("sql_injection_detected", "SQL injection pattern detected");
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -100,10 +100,10 @@ impl QueryBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if !threats.is_empty() {
-                event::warn(format!(
-                    "security: Detected {} SQL injection threats",
-                    threats.len()
-                ));
+                observe::warn(
+                    "sql_threats_detected",
+                    format!("Detected {} SQL injection threats", threats.len()),
+                );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
             }
         }
@@ -121,7 +121,10 @@ impl QueryBuilder {
             );
         }
         if result.is_err() {
-            event::warn("security: SQL parameter validation failed");
+            observe::warn(
+                "sql_parameter_validation_failed",
+                "SQL parameter validation failed",
+            );
         }
         result
     }
@@ -147,7 +150,10 @@ impl QueryBuilder {
     pub fn is_nosql_injection_present(&self, input: &str) -> bool {
         let result = self.inner.is_nosql_injection_present(input);
         if self.emit_events && result {
-            event::warn("security: NoSQL injection pattern detected");
+            observe::warn(
+                "nosql_injection_detected",
+                "NoSQL injection pattern detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -164,10 +170,10 @@ impl QueryBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if !threats.is_empty() {
-                event::warn(format!(
-                    "security: Detected {} NoSQL injection threats",
-                    threats.len()
-                ));
+                observe::warn(
+                    "nosql_threats_detected",
+                    format!("Detected {} NoSQL injection threats", threats.len()),
+                );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
             }
         }
@@ -185,7 +191,10 @@ impl QueryBuilder {
             );
         }
         if result.is_err() {
-            event::warn("security: NoSQL value validation failed");
+            observe::warn(
+                "nosql_value_validation_failed",
+                "NoSQL value validation failed",
+            );
         }
         result
     }
@@ -223,7 +232,7 @@ impl QueryBuilder {
     pub fn is_ldap_injection_present(&self, input: &str) -> bool {
         let result = self.inner.is_ldap_injection_present(input);
         if self.emit_events && result {
-            event::warn("security: LDAP injection pattern detected");
+            observe::warn("ldap_injection_detected", "LDAP injection pattern detected");
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -240,10 +249,10 @@ impl QueryBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if !threats.is_empty() {
-                event::warn(format!(
-                    "security: Detected {} LDAP injection threats",
-                    threats.len()
-                ));
+                observe::warn(
+                    "ldap_threats_detected",
+                    format!("Detected {} LDAP injection threats", threats.len()),
+                );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
             }
         }
@@ -261,7 +270,10 @@ impl QueryBuilder {
             );
         }
         if result.is_err() {
-            event::warn("security: LDAP filter validation failed");
+            observe::warn(
+                "ldap_filter_validation_failed",
+                "LDAP filter validation failed",
+            );
         }
         result
     }
@@ -287,7 +299,10 @@ impl QueryBuilder {
     pub fn is_graphql_injection_present(&self, query: &str) -> bool {
         let result = self.inner.is_graphql_injection_present(query);
         if self.emit_events && result {
-            event::warn("security: GraphQL abuse pattern detected");
+            observe::warn(
+                "graphql_injection_detected",
+                "GraphQL abuse pattern detected",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -304,10 +319,10 @@ impl QueryBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if !threats.is_empty() {
-                event::warn(format!(
-                    "security: Detected {} GraphQL threats",
-                    threats.len()
-                ));
+                observe::warn(
+                    "graphql_threats_detected",
+                    format!("Detected {} GraphQL threats", threats.len()),
+                );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
             }
         }
@@ -336,7 +351,10 @@ impl QueryBuilder {
             );
         }
         if result.is_err() {
-            event::warn("security: GraphQL query validation failed");
+            observe::warn(
+                "graphql_query_validation_failed",
+                "GraphQL query validation failed",
+            );
         }
         result
     }
@@ -356,11 +374,10 @@ impl QueryBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if !threats.is_empty() {
-                event::warn(format!(
-                    "security: Detected {} {} threats",
-                    threats.len(),
-                    query_type
-                ));
+                observe::warn(
+                    "query_threats_detected",
+                    format!("Detected {} {} threats", threats.len(), query_type),
+                );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
             }
         }
@@ -372,10 +389,10 @@ impl QueryBuilder {
     pub fn is_injection_present(&self, input: &str, query_type: QueryType) -> bool {
         let result = self.inner.is_injection_present(input, query_type);
         if self.emit_events && result {
-            event::warn(format!(
-                "security: {} injection pattern detected",
-                query_type
-            ));
+            observe::warn(
+                "query_injection_detected",
+                format!("{query_type} injection pattern detected"),
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result

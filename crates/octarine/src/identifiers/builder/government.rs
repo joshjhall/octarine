@@ -16,7 +16,7 @@
 use std::time::Instant;
 
 use crate::observe::metrics::{MetricName, increment_by, record};
-use crate::observe::{Problem, event};
+use crate::observe::{self, Problem};
 use crate::primitives::identifiers::{
     DriverLicenseRedactionStrategy, GovernmentIdentifierBuilder, NationalIdRedactionStrategy,
     PassportRedactionStrategy, SsnRedactionStrategy, TaxIdRedactionStrategy,
@@ -122,7 +122,7 @@ impl GovernmentBuilder {
             if result {
                 increment_by(metric_names::detected(), 1);
                 increment_by(metric_names::government_data_found(), 1);
-                event::debug("SSN pattern detected".to_string());
+                observe::debug("ssn_detected", "SSN pattern detected");
             }
         }
 
@@ -142,7 +142,10 @@ impl GovernmentBuilder {
             );
             if !results.is_empty() {
                 increment_by(metric_names::detected(), results.len() as u64);
-                event::debug(format!("Found {} SSN(s) in text", results.len()));
+                observe::debug(
+                    "ssns_found",
+                    format!("Found {} SSN(s) in text", results.len()),
+                );
             }
         }
 
@@ -164,7 +167,7 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid SSN format".to_string());
+                observe::warn("ssn_validation_failed", "Invalid SSN format");
             }
         }
 
@@ -376,7 +379,10 @@ impl GovernmentBuilder {
         let result = self.inner.validate_passport(passport);
 
         if self.emit_events && result.is_err() {
-            event::warn("Invalid passport number format".to_string());
+            observe::warn(
+                "passport_validation_failed",
+                "Invalid passport number format",
+            );
         }
 
         result
@@ -428,7 +434,10 @@ impl GovernmentBuilder {
         let result = self.inner.validate_national_id(national_id);
 
         if self.emit_events && result.is_err() {
-            event::warn("Invalid national ID format".to_string());
+            observe::warn(
+                "national_id_validation_failed",
+                "Invalid national ID format",
+            );
         }
 
         result
@@ -509,7 +518,10 @@ impl GovernmentBuilder {
             if !results.is_empty() {
                 increment_by(metric_names::detected(), results.len() as u64);
                 increment_by(metric_names::government_data_found(), results.len() as u64);
-                event::debug(format!("Found {} UK NINO(s) in text", results.len()));
+                observe::debug(
+                    "uk_nis_found",
+                    format!("Found {} UK NINO(s) in text", results.len()),
+                );
             }
         }
         results
@@ -651,7 +663,10 @@ impl GovernmentBuilder {
             );
             if result {
                 increment_by(metric_names::government_data_found(), 1);
-                event::debug("Government identifier present in text".to_string());
+                observe::debug(
+                    "government_id_detected",
+                    "Government identifier present in text",
+                );
             }
         }
 
@@ -844,7 +859,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Australia TFN format".to_string());
+                observe::warn(
+                    "australia_tfn_validation_failed",
+                    "Invalid Australia TFN format",
+                );
             }
         }
         result
@@ -883,7 +901,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Australia ABN format".to_string());
+                observe::warn(
+                    "australia_abn_validation_failed",
+                    "Invalid Australia ABN format",
+                );
             }
         }
         result
@@ -926,7 +947,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid India Aadhaar format".to_string());
+                observe::warn(
+                    "india_aadhaar_validation_failed",
+                    "Invalid India Aadhaar format",
+                );
             }
         }
         result
@@ -965,7 +989,7 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid India PAN format".to_string());
+                observe::warn("india_pan_validation_failed", "Invalid India PAN format");
             }
         }
         result
@@ -1003,7 +1027,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Finland HETU format".to_string());
+                observe::warn(
+                    "finland_hetu_validation_failed",
+                    "Invalid Finland HETU format",
+                );
             }
         }
         result
@@ -1046,7 +1073,7 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Spain NIF format".to_string());
+                observe::warn("spain_nif_validation_failed", "Invalid Spain NIF format");
             }
         }
         result
@@ -1085,7 +1112,7 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Spain NIE format".to_string());
+                observe::warn("spain_nie_validation_failed", "Invalid Spain NIE format");
             }
         }
         result
@@ -1128,7 +1155,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Italy Codice Fiscale format".to_string());
+                observe::warn(
+                    "italy_fiscal_code_validation_failed",
+                    "Invalid Italy Codice Fiscale format",
+                );
             }
         }
         result
@@ -1171,7 +1201,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Poland PESEL format".to_string());
+                observe::warn(
+                    "poland_pesel_validation_failed",
+                    "Invalid Poland PESEL format",
+                );
             }
         }
         result
@@ -1214,7 +1247,10 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Singapore NRIC format".to_string());
+                observe::warn(
+                    "singapore_nric_validation_failed",
+                    "Invalid Singapore NRIC format",
+                );
             }
         }
         result
@@ -1257,7 +1293,7 @@ impl GovernmentBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid Korea RRN format".to_string());
+                observe::warn("korea_rrn_validation_failed", "Invalid Korea RRN format");
             }
         }
         result

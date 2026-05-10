@@ -17,7 +17,7 @@ use std::borrow::Cow;
 use std::time::Instant;
 
 use crate::observe::metrics::{MetricName, increment_by, record};
-use crate::observe::{Problem, event};
+use crate::observe::{self, Problem};
 use crate::primitives::identifiers::BiometricIdentifierBuilder;
 
 use super::super::types::{
@@ -124,7 +124,10 @@ impl BiometricBuilder {
             if result.is_some() {
                 increment_by(metric_names::detected(), 1);
                 increment_by(metric_names::biometric_data_found(), 1);
-                event::debug("Biometric identifier detected".to_string());
+                observe::debug(
+                    "biometric_identifier_detected",
+                    "Biometric identifier detected",
+                );
             }
         }
 
@@ -143,7 +146,7 @@ impl BiometricBuilder {
             );
             if result {
                 increment_by(metric_names::biometric_data_found(), 1);
-                event::debug("Biometric data detected".to_string());
+                observe::debug("biometric_data_detected", "Biometric data detected");
             }
         }
 
@@ -155,7 +158,7 @@ impl BiometricBuilder {
         let result = self.inner.is_fingerprint(value);
 
         if self.emit_events && result {
-            event::debug("Fingerprint identifier detected".to_string());
+            observe::debug("fingerprint_detected", "Fingerprint identifier detected");
         }
 
         result
@@ -166,7 +169,10 @@ impl BiometricBuilder {
         let result = self.inner.is_facial_recognition(value);
 
         if self.emit_events && result {
-            event::debug("Facial recognition data detected".to_string());
+            observe::debug(
+                "facial_recognition_detected",
+                "Facial recognition data detected",
+            );
         }
 
         result
@@ -177,7 +183,7 @@ impl BiometricBuilder {
         let result = self.inner.is_iris_scan(value);
 
         if self.emit_events && result {
-            event::debug("Iris scan detected".to_string());
+            observe::debug("iris_scan_detected", "Iris scan detected");
         }
 
         result
@@ -188,7 +194,7 @@ impl BiometricBuilder {
         let result = self.inner.is_voice_print(value);
 
         if self.emit_events && result {
-            event::debug("Voice print detected".to_string());
+            observe::debug("voice_print_detected", "Voice print detected");
         }
 
         result
@@ -199,7 +205,7 @@ impl BiometricBuilder {
         let result = self.inner.is_dna_sequence(value);
 
         if self.emit_events && result {
-            event::debug("DNA sequence detected".to_string());
+            observe::debug("dna_sequence_detected", "DNA sequence detected");
         }
 
         result
@@ -210,7 +216,7 @@ impl BiometricBuilder {
         let result = self.inner.is_biometric_template(value);
 
         if self.emit_events && result {
-            event::debug("Biometric template detected".to_string());
+            observe::debug("biometric_template_detected", "Biometric template detected");
         }
 
         result
@@ -228,7 +234,10 @@ impl BiometricBuilder {
             );
             if result {
                 increment_by(metric_names::biometric_data_found(), 1);
-                event::debug("Biometric data present in text".to_string());
+                observe::debug(
+                    "biometric_present_in_text",
+                    "Biometric data present in text",
+                );
             }
         }
 
@@ -267,7 +276,10 @@ impl BiometricBuilder {
         let results = self.inner.detect_fingerprints_in_text(text);
 
         if self.emit_events && !results.is_empty() {
-            event::debug(format!("Found {} fingerprint(s) in text", results.len()));
+            observe::debug(
+                "fingerprints_found",
+                format!("Found {} fingerprint(s) in text", results.len()),
+            );
         }
 
         results
@@ -279,10 +291,13 @@ impl BiometricBuilder {
         let results = self.inner.detect_facial_data_in_text(text);
 
         if self.emit_events && !results.is_empty() {
-            event::debug(format!(
-                "Found {} facial recognition identifier(s) in text",
-                results.len()
-            ));
+            observe::debug(
+                "facial_data_found",
+                format!(
+                    "Found {} facial recognition identifier(s) in text",
+                    results.len()
+                ),
+            );
         }
 
         results
@@ -294,7 +309,10 @@ impl BiometricBuilder {
         let results = self.inner.detect_iris_scans_in_text(text);
 
         if self.emit_events && !results.is_empty() {
-            event::debug(format!("Found {} iris scan(s) in text", results.len()));
+            observe::debug(
+                "iris_scans_found",
+                format!("Found {} iris scan(s) in text", results.len()),
+            );
         }
 
         results
@@ -306,7 +324,10 @@ impl BiometricBuilder {
         let results = self.inner.detect_voice_prints_in_text(text);
 
         if self.emit_events && !results.is_empty() {
-            event::debug(format!("Found {} voice print(s) in text", results.len()));
+            observe::debug(
+                "voice_prints_found",
+                format!("Found {} voice print(s) in text", results.len()),
+            );
         }
 
         results
@@ -318,7 +339,10 @@ impl BiometricBuilder {
         let results = self.inner.detect_dna_sequences_in_text(text);
 
         if self.emit_events && !results.is_empty() {
-            event::debug(format!("Found {} DNA sequence(s) in text", results.len()));
+            observe::debug(
+                "dna_sequences_found",
+                format!("Found {} DNA sequence(s) in text", results.len()),
+            );
         }
 
         results
@@ -330,10 +354,10 @@ impl BiometricBuilder {
         let results = self.inner.detect_biometric_templates_in_text(text);
 
         if self.emit_events && !results.is_empty() {
-            event::debug(format!(
-                "Found {} biometric template(s) in text",
-                results.len()
-            ));
+            observe::debug(
+                "biometric_templates_found",
+                format!("Found {} biometric template(s) in text", results.len()),
+            );
         }
 
         results
@@ -352,10 +376,10 @@ impl BiometricBuilder {
             );
             if !results.is_empty() {
                 increment_by(metric_names::detected(), results.len() as u64);
-                event::debug(format!(
-                    "Found {} biometric identifier(s) in text",
-                    results.len()
-                ));
+                observe::debug(
+                    "biometric_identifiers_found",
+                    format!("Found {} biometric identifier(s) in text", results.len()),
+                );
             }
         }
 
@@ -381,7 +405,10 @@ impl BiometricBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid fingerprint ID format".to_string());
+                observe::warn(
+                    "fingerprint_id_validation_failed",
+                    "Invalid fingerprint ID format",
+                );
             }
         }
 
@@ -403,7 +430,7 @@ impl BiometricBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid facial ID format".to_string());
+                observe::warn("facial_id_validation_failed", "Invalid facial ID format");
             }
         }
 
@@ -425,7 +452,7 @@ impl BiometricBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid iris ID format".to_string());
+                observe::warn("iris_id_validation_failed", "Invalid iris ID format");
             }
         }
 
@@ -447,7 +474,7 @@ impl BiometricBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                event::warn("Invalid voice ID format".to_string());
+                observe::warn("voice_id_validation_failed", "Invalid voice ID format");
             }
         }
 

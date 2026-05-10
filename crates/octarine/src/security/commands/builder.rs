@@ -81,7 +81,10 @@ impl CommandSecurityBuilder {
     pub fn is_dangerous(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_dangerous(arg);
         if result {
-            observe::event::critical("Command injection detected in argument");
+            observe::critical(
+                "command_injection_detected",
+                "Command injection detected in argument",
+            );
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -94,10 +97,10 @@ impl CommandSecurityBuilder {
 
         if !threats.is_empty() {
             let threat_names: Vec<_> = threats.iter().map(|t| t.description()).collect();
-            observe::event::critical(format!(
-                "Command threats detected: {}",
-                threat_names.join(", ")
-            ));
+            observe::critical(
+                "command_threats_detected",
+                format!("Command threats detected: {}", threat_names.join(", ")),
+            );
             increment_by(metric_names::threats_detected(), threats.len() as u64);
         }
 
@@ -249,7 +252,10 @@ impl CommandSecurityBuilder {
         );
 
         if let Err(ref e) = result {
-            observe::event::critical(format!("Command argument validation failed: {}", e));
+            observe::critical(
+                "command_argument_validation_failed",
+                format!("Command argument validation failed: {e}"),
+            );
         }
 
         result
@@ -266,7 +272,10 @@ impl CommandSecurityBuilder {
             .validate_command_allowed(command, prim_allowlist);
 
         if result.is_err() {
-            observe::event::critical(format!("Command '{}' not in allow-list", command));
+            observe::critical(
+                "command_not_allowed",
+                format!("Command '{command}' not in allow-list"),
+            );
         }
 
         result
@@ -298,7 +307,10 @@ impl CommandSecurityBuilder {
         let result = PrimitiveCommandSecurityBuilder::new().validate_env(name, value);
 
         if result.is_err() {
-            observe::event::critical(format!("Command env validation failed: {}", name));
+            observe::critical(
+                "command_env_validation_failed",
+                format!("Command env validation failed: {name}"),
+            );
         }
 
         result
