@@ -60,16 +60,40 @@ mod metric_names {
 /// Provides comprehensive security detection, validation, and sanitization
 /// for command arguments with full audit trail via observe.
 ///
-/// This builder always emits observe events. For operations without
-/// observability overhead, use the shortcut functions or primitives directly.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct CommandSecurityBuilder;
+/// Use [`CommandSecurityBuilder::silent`] or
+/// [`CommandSecurityBuilder::with_events`] to suppress observe events when
+/// the builder is invoked from contexts where log/metric noise would be
+/// harmful (recursive observe paths, hot loops). Metric recording is gated
+/// alongside event emission.
+#[derive(Debug, Clone, Copy)]
+pub struct CommandSecurityBuilder {
+    emit_events: bool,
+}
+
+impl Default for CommandSecurityBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl CommandSecurityBuilder {
-    /// Create a new command security builder
+    /// Create a new command security builder with observe events enabled
     #[must_use]
     pub fn new() -> Self {
-        Self
+        Self { emit_events: true }
+    }
+
+    /// Create a builder that suppresses all observe events and metrics
+    #[must_use]
+    pub fn silent() -> Self {
+        Self { emit_events: false }
+    }
+
+    /// Toggle observe event/metric emission
+    #[must_use]
+    pub fn with_events(mut self, emit: bool) -> Self {
+        self.emit_events = emit;
+        self
     }
 
     // ========================================================================
@@ -80,7 +104,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_dangerous(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_dangerous(arg);
-        if result {
+        if self.emit_events && result {
             observe::critical(
                 "command_injection_detected",
                 "Command injection detected in argument",
@@ -95,7 +119,7 @@ impl CommandSecurityBuilder {
     pub fn detect_threats(&self, arg: &str) -> Vec<CommandThreat> {
         let threats = PrimitiveCommandSecurityBuilder::new().detect_threats(arg);
 
-        if !threats.is_empty() {
+        if self.emit_events && !threats.is_empty() {
             let threat_names: Vec<_> = threats.iter().map(|t| t.description()).collect();
             observe::critical(
                 "command_threats_detected",
@@ -111,7 +135,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_any_chain_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_any_chain_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn(
                 "command_chain_detected",
                 "Command chaining pattern detected",
@@ -125,7 +149,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_shell_expansion_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_shell_expansion_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::error(
                 "shell_expansion_detected",
                 "Shell expansion pattern detected",
@@ -139,7 +163,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_command_substitution_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_command_substitution_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::error(
                 "command_substitution_detected",
                 "Command substitution pattern detected",
@@ -153,7 +177,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_variable_expansion_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_variable_expansion_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn(
                 "variable_expansion_detected",
                 "Variable expansion in argument",
@@ -167,7 +191,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_indirect_expansion_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_indirect_expansion_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn(
                 "indirect_expansion_detected",
                 "Indirect variable expansion in argument",
@@ -181,7 +205,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_arithmetic_expansion_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_arithmetic_expansion_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn(
                 "arithmetic_expansion_detected",
                 "Arithmetic expansion in argument",
@@ -195,7 +219,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_redirection_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_redirection_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn("redirection_detected", "Redirection pattern in argument");
             increment_by(metric_names::threats_detected(), 1);
         }
@@ -206,7 +230,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_glob_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_glob_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn("glob_detected", "Glob pattern in argument");
             increment_by(metric_names::threats_detected(), 1);
         }
@@ -217,7 +241,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_null_byte_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_null_byte_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::error("null_byte_detected", "Null byte detected in argument");
             increment_by(metric_names::threats_detected(), 1);
         }
@@ -228,7 +252,7 @@ impl CommandSecurityBuilder {
     #[must_use]
     pub fn is_control_character_present(&self, arg: &str) -> bool {
         let result = PrimitiveCommandSecurityBuilder::new().is_control_character_present(arg);
-        if result {
+        if self.emit_events && result {
             observe::warn("control_char_detected", "Control character in argument");
             increment_by(metric_names::threats_detected(), 1);
         }
@@ -246,16 +270,17 @@ impl CommandSecurityBuilder {
         let start = Instant::now();
         let result = PrimitiveCommandSecurityBuilder::new().validate_safe(arg);
 
-        record(
-            metric_names::validate_ms(),
-            start.elapsed().as_micros() as f64 / 1000.0,
-        );
-
-        if let Err(ref e) = result {
-            observe::critical(
-                "command_argument_validation_failed",
-                format!("Command argument validation failed: {e}"),
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
             );
+            if let Err(ref e) = result {
+                observe::critical(
+                    "command_argument_validation_failed",
+                    format!("Command argument validation failed: {e}"),
+                );
+            }
         }
 
         result
@@ -271,7 +296,7 @@ impl CommandSecurityBuilder {
         let result = PrimitiveCommandSecurityBuilder::new()
             .validate_command_allowed(command, prim_allowlist);
 
-        if result.is_err() {
+        if self.emit_events && result.is_err() {
             observe::critical(
                 "command_not_allowed",
                 format!("Command '{command}' not in allow-list"),
@@ -284,7 +309,9 @@ impl CommandSecurityBuilder {
     /// Validate a command name
     pub fn validate_command_name(&self, command: &str) -> Result<(), Problem> {
         let result = PrimitiveCommandSecurityBuilder::new().validate_command_name(command);
-        if let Err(ref e) = result {
+        if self.emit_events
+            && let Err(ref e) = result
+        {
             observe::warn(
                 "command_name_invalid",
                 format!("Invalid command name: {}", e),
@@ -306,7 +333,7 @@ impl CommandSecurityBuilder {
     pub fn validate_env(&self, name: &str, value: &str) -> Result<(), Problem> {
         let result = PrimitiveCommandSecurityBuilder::new().validate_env(name, value);
 
-        if result.is_err() {
+        if self.emit_events && result.is_err() {
             observe::critical(
                 "command_env_validation_failed",
                 format!("Command env validation failed: {name}"),
@@ -325,10 +352,12 @@ impl CommandSecurityBuilder {
         let start = Instant::now();
         let result = PrimitiveCommandSecurityBuilder::new().escape_shell_arg(arg);
 
-        record(
-            metric_names::escape_ms(),
-            start.elapsed().as_micros() as f64 / 1000.0,
-        );
+        if self.emit_events {
+            record(
+                metric_names::escape_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
 
         result
     }
@@ -371,8 +400,36 @@ mod tests {
 
     #[test]
     fn test_builder_creation() {
-        let _builder = CommandSecurityBuilder::new();
-        // Builder is a unit struct, nothing to assert
+        let b = CommandSecurityBuilder::new();
+        assert!(b.emit_events);
+
+        let s = CommandSecurityBuilder::silent();
+        assert!(!s.emit_events);
+    }
+
+    #[test]
+    fn test_with_events_toggle() {
+        let b = CommandSecurityBuilder::new().with_events(false);
+        assert!(!b.emit_events);
+
+        let b = CommandSecurityBuilder::silent().with_events(true);
+        assert!(b.emit_events);
+    }
+
+    #[test]
+    fn test_silent_mode_does_not_panic() {
+        // Structural test: `silent()` returns a builder with emit_events=false,
+        // and every observe/metric call site in this module is gated by
+        // `if self.emit_events`. A behavioral delta-assertion would race with
+        // concurrent tests across the workspace that hit these same global
+        // metric names.
+        let s = CommandSecurityBuilder::silent();
+        assert!(!s.emit_events);
+
+        // Functional sanity: silent builder still detects threats correctly.
+        assert!(s.is_dangerous("$(whoami)"));
+        assert!(s.validate_safe("$(rm -rf /)").is_err());
+        let _ = s.detect_threats("; rm -rf /");
     }
 
     #[test]

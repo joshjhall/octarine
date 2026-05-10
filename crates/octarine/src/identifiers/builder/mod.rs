@@ -140,6 +140,12 @@ mod metric_names {
 /// Provides a single entry point for all identifier operations, delegating to
 /// specialized builders internally.
 ///
+/// Use [`IdentifierBuilder::silent`] or [`IdentifierBuilder::with_events`] to
+/// suppress all observe events and metrics. The silent flag propagates through
+/// the domain accessors (`personal()`, `financial()`, etc.) so that
+/// `IdentifierBuilder::silent().personal()` returns a silent
+/// `PersonalBuilder`.
+///
 /// # Examples
 ///
 /// ```
@@ -157,14 +163,35 @@ mod metric_names {
 /// // Scan text for all identifiers
 /// let matches = builder.scan_text("Email: user@example.com, SSN: 123-45-6789");
 /// ```
-#[derive(Debug, Clone, Copy, Default)]
-pub struct IdentifierBuilder;
+#[derive(Debug, Clone, Copy)]
+pub struct IdentifierBuilder {
+    emit_events: bool,
+}
+
+impl Default for IdentifierBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IdentifierBuilder {
-    /// Create a new IdentifierBuilder
+    /// Create a new IdentifierBuilder with observe events enabled
     #[must_use]
     pub fn new() -> Self {
-        Self
+        Self { emit_events: true }
+    }
+
+    /// Create an IdentifierBuilder that suppresses all observe events and metrics
+    #[must_use]
+    pub fn silent() -> Self {
+        Self { emit_events: false }
+    }
+
+    /// Toggle observe event/metric emission
+    #[must_use]
+    pub fn with_events(mut self, emit: bool) -> Self {
+        self.emit_events = emit;
+        self
     }
 
     // ========================================================================
@@ -174,110 +201,110 @@ impl IdentifierBuilder {
     /// Get personal identifier builder (emails, phones, names, birthdates)
     #[must_use]
     pub fn personal(&self) -> PersonalBuilder {
-        PersonalBuilder::new()
+        PersonalBuilder::new().with_events(self.emit_events)
     }
 
     /// Get financial identifier builder (credit cards, bank accounts)
     #[must_use]
     pub fn financial(&self) -> FinancialBuilder {
-        FinancialBuilder::new()
+        FinancialBuilder::new().with_events(self.emit_events)
     }
 
     /// Get government identifier builder (SSNs, driver licenses, passports)
     #[must_use]
     pub fn government(&self) -> GovernmentBuilder {
-        GovernmentBuilder::new()
+        GovernmentBuilder::new().with_events(self.emit_events)
     }
 
     /// Get network identifier builder (IPs, MACs, URLs, UUIDs)
     #[must_use]
     pub fn network(&self) -> NetworkBuilder {
-        NetworkBuilder::new()
+        NetworkBuilder::new().with_events(self.emit_events)
     }
 
     /// Get credentials identifier builder (API keys, passwords, tokens)
     #[must_use]
     pub fn credentials(&self) -> CredentialsBuilder {
-        CredentialsBuilder::new()
+        CredentialsBuilder::new().with_events(self.emit_events)
     }
 
     /// Get location identifier builder (addresses, GPS coordinates)
     #[must_use]
     pub fn location(&self) -> LocationBuilder {
-        LocationBuilder::new()
+        LocationBuilder::new().with_events(self.emit_events)
     }
 
     /// Get token identifier builder (JWTs, OAuth tokens)
     #[must_use]
     pub fn token(&self) -> TokenBuilder {
-        TokenBuilder::new()
+        TokenBuilder::new().with_events(self.emit_events)
     }
 
     /// Get medical identifier builder (MRNs, health insurance)
     #[must_use]
     pub fn medical(&self) -> MedicalBuilder {
-        MedicalBuilder::new()
+        MedicalBuilder::new().with_events(self.emit_events)
     }
 
     /// Get biometric identifier builder (fingerprints, facial recognition)
     #[must_use]
     pub fn biometric(&self) -> BiometricBuilder {
-        BiometricBuilder::new()
+        BiometricBuilder::new().with_events(self.emit_events)
     }
 
     /// Get organizational identifier builder (employee IDs, badge numbers)
     #[must_use]
     pub fn organizational(&self) -> OrganizationalBuilder {
-        OrganizationalBuilder::new()
+        OrganizationalBuilder::new().with_events(self.emit_events)
     }
 
     /// Get database identifier builder (connection strings)
     #[must_use]
     pub fn database(&self) -> DatabaseBuilder {
-        DatabaseBuilder::new()
+        DatabaseBuilder::new().with_events(self.emit_events)
     }
 
     /// Get environment identifier builder (env vars)
     #[must_use]
     pub fn environment(&self) -> EnvironmentBuilder {
-        EnvironmentBuilder::new()
+        EnvironmentBuilder::new().with_events(self.emit_events)
     }
 
     /// Get generic identifier builder
     #[must_use]
     pub fn generic(&self) -> GenericBuilder {
-        GenericBuilder::new()
+        GenericBuilder::new().with_events(self.emit_events)
     }
 
     /// Get metrics identifier builder
     #[must_use]
     pub fn metrics(&self) -> MetricsBuilder {
-        MetricsBuilder::new()
+        MetricsBuilder::new().with_events(self.emit_events)
     }
 
     /// Get crypto identifier builder (keys, certificates, signatures)
     #[cfg(feature = "crypto-validation")]
     #[must_use]
     pub fn crypto(&self) -> CryptoBuilder {
-        CryptoBuilder::new()
+        CryptoBuilder::new().with_events(self.emit_events)
     }
 
     /// Get entropy identifier builder (high-entropy string detection)
     #[must_use]
     pub fn entropy(&self) -> EntropyBuilder {
-        EntropyBuilder::new()
+        EntropyBuilder::new().with_events(self.emit_events)
     }
 
     /// Get confidence scoring builder (context-aware confidence boosting)
     #[must_use]
     pub fn confidence(&self) -> ConfidenceBuilder {
-        ConfidenceBuilder::new()
+        ConfidenceBuilder::new().with_events(self.emit_events)
     }
 
     /// Get credential pair correlation builder
     #[must_use]
     pub fn correlation(&self) -> CorrelationBuilder {
-        CorrelationBuilder::new()
+        CorrelationBuilder::new().with_events(self.emit_events)
     }
 
     // ========================================================================
@@ -311,10 +338,12 @@ impl IdentifierBuilder {
         // Note: government and credentials builders don't have detect() methods
         // They use specific detection methods like is_ssn(), contains_passwords(), etc.
 
-        record(
-            metric_names::detect_ms(),
-            start.elapsed().as_micros() as f64 / 1000.0,
-        );
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
         None
     }
 
@@ -329,13 +358,14 @@ impl IdentifierBuilder {
         let scanner = StreamingScanner::new(1000);
         let count = scanner.scan_all_identifiers(text);
 
-        record(
-            metric_names::scan_ms(),
-            start.elapsed().as_micros() as f64 / 1000.0,
-        );
-
-        if count > 0 {
-            increment_by(metric_names::detected(), count as u64);
+        if self.emit_events {
+            record(
+                metric_names::scan_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if count > 0 {
+                increment_by(metric_names::detected(), count as u64);
+            }
         }
 
         // Drain and convert matches from primitive to local types
@@ -352,7 +382,7 @@ impl IdentifierBuilder {
             }
         }
 
-        if !matches.is_empty() {
+        if self.emit_events && !matches.is_empty() {
             // Check for sensitive types
             let has_pii = matches.iter().any(|m| is_pii_type(&m.identifier_type));
             if has_pii {
@@ -389,18 +419,20 @@ impl IdentifierBuilder {
     // ========================================================================
 
     fn emit_detection_metrics(&self, start: Instant, id_type: &IdentifierType) {
-        record(
-            metric_names::detect_ms(),
-            start.elapsed().as_micros() as f64 / 1000.0,
-        );
-        increment_by(metric_names::detected(), 1);
-
-        if is_pii_type(id_type) {
-            increment_by(metric_names::pii_found(), 1);
-            observe::debug(
-                "identifier_detected",
-                format!("Identifier type detected: {:?}", id_type),
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
             );
+            increment_by(metric_names::detected(), 1);
+
+            if is_pii_type(id_type) {
+                increment_by(metric_names::pii_found(), 1);
+                observe::debug(
+                    "identifier_detected",
+                    format!("Identifier type detected: {:?}", id_type),
+                );
+            }
         }
     }
 }
@@ -433,7 +465,46 @@ mod tests {
     #[test]
     fn test_identifier_builder_creation() {
         let builder = IdentifierBuilder::new();
+        assert!(builder.emit_events);
         assert!(builder.detect("user@example.com").is_some());
+
+        let silent = IdentifierBuilder::silent();
+        assert!(!silent.emit_events);
+    }
+
+    #[test]
+    fn test_with_events_toggle() {
+        let b = IdentifierBuilder::new().with_events(false);
+        assert!(!b.emit_events);
+
+        let b = IdentifierBuilder::silent().with_events(true);
+        assert!(b.emit_events);
+    }
+
+    #[test]
+    fn test_silent_propagates_to_domain_accessors() {
+        let s = IdentifierBuilder::silent();
+        assert!(!s.personal().emit_events());
+        assert!(!s.financial().emit_events());
+        assert!(!s.network().emit_events());
+
+        let n = IdentifierBuilder::new();
+        assert!(n.personal().emit_events());
+        assert!(n.financial().emit_events());
+        assert!(n.network().emit_events());
+    }
+
+    #[test]
+    fn test_silent_mode_does_not_panic() {
+        // Structural test only — behavioral delta-assertions race with
+        // concurrent tests across the workspace.
+        let s = IdentifierBuilder::silent();
+        assert!(!s.emit_events);
+
+        // Functional sanity: silent builder still detects identifiers.
+        assert_eq!(s.detect("user@example.com"), Some(IdentifierType::Email));
+        let _ = s.scan_text("Email: user@example.com");
+        assert!(s.is_pii_present("Email: user@example.com"));
     }
 
     #[test]

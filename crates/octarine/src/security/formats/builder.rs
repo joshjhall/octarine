@@ -127,16 +127,16 @@ impl FormatSecurityBuilder {
     /// Validate XML input against policy
     pub fn validate_xml(&self, input: &str, policy: &XmlPolicy) -> Result<()> {
         let start = Instant::now();
-        debug("security.format", "Validating XML against policy");
         let result = self.inner.validate_xml(input, policy);
         if self.emit_events {
+            debug("security.format", "Validating XML against policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            warn("security.format", "XML validation failed");
+            if result.is_err() {
+                warn("security.format", "XML validation failed");
+            }
         }
         result
     }
@@ -197,16 +197,16 @@ impl FormatSecurityBuilder {
     /// Validate JSON input against policy
     pub fn validate_json(&self, input: &str, policy: &JsonPolicy) -> Result<()> {
         let start = Instant::now();
-        debug("security.format", "Validating JSON against policy");
         let result = self.inner.validate_json(input, policy);
         if self.emit_events {
+            debug("security.format", "Validating JSON against policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            warn("security.format", "JSON validation failed");
+            if result.is_err() {
+                warn("security.format", "JSON validation failed");
+            }
         }
         result
     }
@@ -282,16 +282,16 @@ impl FormatSecurityBuilder {
     /// Validate YAML input against policy
     pub fn validate_yaml(&self, input: &str, policy: &YamlPolicy) -> Result<()> {
         let start = Instant::now();
-        debug("security.format", "Validating YAML against policy");
         let result = self.inner.validate_yaml(input, policy);
         if self.emit_events {
+            debug("security.format", "Validating YAML against policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            warn("security.format", "YAML validation failed");
+            if result.is_err() {
+                warn("security.format", "YAML validation failed");
+            }
         }
         result
     }
@@ -304,9 +304,9 @@ impl FormatSecurityBuilder {
     #[must_use]
     pub fn detect_threats(&self, input: &str, format: FormatType) -> Vec<FormatThreat> {
         let start = Instant::now();
-        debug("security.format", "Detecting format threats");
         let threats = self.inner.detect_threats(input, format);
         if self.emit_events {
+            debug("security.format", "Detecting format threats");
             record(
                 metric_names::detect_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
@@ -332,9 +332,9 @@ impl FormatSecurityBuilder {
     /// Validate input with default strict policies
     pub fn validate_strict(&self, input: &str, format: FormatType) -> Result<()> {
         let start = Instant::now();
-        debug("security.format", "Validating with strict policy");
         let result = self.inner.validate_strict(input, format);
         if self.emit_events {
+            debug("security.format", "Validating with strict policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,

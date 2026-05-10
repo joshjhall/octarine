@@ -119,12 +119,12 @@ impl QueryBuilder {
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            observe::warn(
-                "sql_parameter_validation_failed",
-                "SQL parameter validation failed",
-            );
+            if result.is_err() {
+                observe::warn(
+                    "sql_parameter_validation_failed",
+                    "SQL parameter validation failed",
+                );
+            }
         }
         result
     }
@@ -189,12 +189,12 @@ impl QueryBuilder {
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            observe::warn(
-                "nosql_value_validation_failed",
-                "NoSQL value validation failed",
-            );
+            if result.is_err() {
+                observe::warn(
+                    "nosql_value_validation_failed",
+                    "NoSQL value validation failed",
+                );
+            }
         }
         result
     }
@@ -268,12 +268,12 @@ impl QueryBuilder {
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            observe::warn(
-                "ldap_filter_validation_failed",
-                "LDAP filter validation failed",
-            );
+            if result.is_err() {
+                observe::warn(
+                    "ldap_filter_validation_failed",
+                    "LDAP filter validation failed",
+                );
+            }
         }
         result
     }
@@ -349,12 +349,12 @@ impl QueryBuilder {
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
-        }
-        if result.is_err() {
-            observe::warn(
-                "graphql_query_validation_failed",
-                "GraphQL query validation failed",
-            );
+            if result.is_err() {
+                observe::warn(
+                    "graphql_query_validation_failed",
+                    "GraphQL query validation failed",
+                );
+            }
         }
         result
     }
