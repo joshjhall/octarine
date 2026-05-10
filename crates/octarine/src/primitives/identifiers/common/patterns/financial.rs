@@ -9,7 +9,7 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-pub mod credit_card {
+pub(crate) mod credit_card {
     use super::*;
 
     /// Credit card with spaces (4 groups of 4)
@@ -73,7 +73,7 @@ pub mod credit_card {
     }
 
     /// Card brand validation patterns (for strict validation)
-    pub mod brand {
+    pub(crate) mod brand {
         use super::*;
 
         /// Visa: Starts with 4, 13 or 16 digits
@@ -111,7 +111,7 @@ pub mod credit_card {
 }
 
 /// Payment token patterns (Stripe, PayPal, etc.)
-pub mod payment_token {
+pub(crate) mod payment_token {
     use super::*;
 
     /// Stripe tokens (various types)
@@ -132,7 +132,7 @@ pub mod payment_token {
 }
 
 /// Routing number patterns
-pub mod routing_number {
+pub(crate) mod routing_number {
     use super::*;
 
     /// Standalone routing number (9 digits with word boundary)
@@ -152,7 +152,7 @@ pub mod routing_number {
 }
 
 /// Bank account patterns
-pub mod bank_account {
+pub(crate) mod bank_account {
     use super::*;
 
     /// IBAN format: 2 letters + 2 check digits + 11-30 alphanumeric BBAN
@@ -184,7 +184,7 @@ pub mod bank_account {
 }
 
 /// Cryptocurrency wallet address patterns
-pub mod crypto {
+pub(crate) mod crypto {
     use super::*;
 
     /// Bitcoin P2PKH (Legacy) address: starts with '1', Base58Check

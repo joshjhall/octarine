@@ -9,7 +9,7 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-pub mod email {
+pub(crate) mod email {
     use super::*;
 
     /// Standard email pattern (for text scanning)
@@ -38,7 +38,7 @@ pub mod email {
         vec![&*STANDARD, &*IP_LITERAL]
     }
 }
-pub mod phone {
+pub(crate) mod phone {
     use super::*;
 
     /// US phone with country code
@@ -159,7 +159,7 @@ pub mod phone {
     }
 }
 
-pub mod username {
+pub(crate) mod username {
     use super::*;
 
     /// Standard username pattern (alphanumeric with underscore, dot, dash)
