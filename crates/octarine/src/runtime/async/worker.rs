@@ -387,8 +387,17 @@ mod tests {
         })
         .expect("spawn should succeed");
 
-        // Give worker time to process
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        // Poll until the worker processes the task.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while counter.load(Ordering::SeqCst) < 1 {
+            if std::time::Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for task (counter={})",
+                    counter.load(Ordering::SeqCst)
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         assert_eq!(counter.load(Ordering::SeqCst), 1);
         pool.shutdown().await;
@@ -407,8 +416,17 @@ mod tests {
             .expect("spawn should succeed");
         }
 
-        // Wait for completion
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // Poll until all 10 tasks complete.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while counter.load(Ordering::SeqCst) < 10 {
+            if std::time::Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for 10 tasks (counter={})",
+                    counter.load(Ordering::SeqCst)
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         assert_eq!(counter.load(Ordering::SeqCst), 10);
         pool.shutdown().await;

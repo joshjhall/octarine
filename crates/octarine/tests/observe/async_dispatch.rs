@@ -13,7 +13,7 @@ use octarine::observe::writers::{
     dispatcher_overflow_strategy, dispatcher_stats, dispatcher_stats_extended,
 };
 use octarine::{debug, error, info, warn};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::time::timeout;
 
 /// Per-test executor timeout. Prevents a stalled runtime or held lock from
@@ -90,8 +90,19 @@ fn test_logging_shortcuts_queue_events() {
     debug("dispatch_test", "Test debug message");
     error("dispatch_test", "Test error message");
 
-    // Give a moment for queuing (should be nearly instant)
-    std::thread::sleep(Duration::from_millis(10));
+    // Poll until at least 4 new events have been queued. CI under coverage
+    // can stretch the queueing window past any fixed sleep.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let queued = dispatcher_stats().total_written - stats_before.total_written;
+        if queued >= 4 {
+            break;
+        }
+        if Instant::now() > deadline {
+            panic!("Timed out waiting for 4 events to queue (got {})", queued);
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 
     let stats_after = dispatcher_stats();
 
@@ -116,8 +127,23 @@ fn test_many_events_queued_successfully() {
         info("bulk_test", format!("Event {}", i));
     }
 
-    // Brief pause to let queue accept events
-    std::thread::sleep(Duration::from_millis(50));
+    // Poll until at least 90 of the 100 events are queued. The 100-event
+    // burst dominates dispatcher work under coverage instrumentation, so
+    // use a 10s deadline rather than the default 5s.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let queued = dispatcher_stats().total_written - stats_before.total_written;
+        if queued >= 90 {
+            break;
+        }
+        if Instant::now() > deadline {
+            panic!(
+                "Timed out waiting for 90 of 100 events to queue (got {})",
+                queued
+            );
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 
     let stats_after = dispatcher_stats();
 
@@ -205,8 +231,21 @@ async fn test_dispatch_from_async_context() {
             info("async_test", format!("Async event {}", i));
         }
 
-        // Brief pause
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // Poll until 10 events are queued.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let queued = dispatcher_stats().total_written - stats_before.total_written;
+            if queued >= 10 {
+                break;
+            }
+            if Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for 10 events from async context (got {})",
+                    queued
+                );
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
 
         let stats_after = dispatcher_stats();
 
@@ -244,8 +283,22 @@ async fn test_concurrent_dispatch_from_tasks() {
             handle.await.expect("Task should complete");
         }
 
-        // Brief pause for queuing
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // Poll until at least 45 of 50 events are queued. The dispatcher
+        // tolerates a small number of drops under burst load.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let queued = dispatcher_stats().total_written - stats_before.total_written;
+            if queued >= 45 {
+                break;
+            }
+            if Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for 45 of 50 concurrent events (got {})",
+                    queued
+                );
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
 
         let stats_after = dispatcher_stats();
 

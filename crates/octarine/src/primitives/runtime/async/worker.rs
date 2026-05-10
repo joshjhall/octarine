@@ -630,8 +630,18 @@ mod tests {
         .await
         .expect("execute should succeed");
 
-        // Wait for task to complete
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        // Poll until the task completes (per pool.stats accounting).
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while pool.stats().tasks_completed < 1 {
+            if std::time::Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for task to complete (counter={}, completed={})",
+                    counter.load(Ordering::Relaxed),
+                    pool.stats().tasks_completed
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         assert_eq!(counter.load(Ordering::Relaxed), 1);
         pool.shutdown().await;
@@ -649,8 +659,18 @@ mod tests {
         })
         .expect("spawn should succeed");
 
-        // Wait for task to complete
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        // Poll until the task completes.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while pool.stats().tasks_completed < 1 {
+            if std::time::Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for task to complete (counter={}, completed={})",
+                    counter.load(Ordering::Relaxed),
+                    pool.stats().tasks_completed
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         assert_eq!(counter.load(Ordering::Relaxed), 1);
         pool.shutdown().await;
@@ -670,8 +690,18 @@ mod tests {
             .expect("spawn should succeed");
         }
 
-        // Wait for tasks to complete
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // Poll until all 10 tasks complete.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while pool.stats().tasks_completed < 10 {
+            if std::time::Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for 10 tasks to complete (counter={}, completed={})",
+                    counter.load(Ordering::Relaxed),
+                    pool.stats().tasks_completed
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         assert_eq!(counter.load(Ordering::Relaxed), 10);
         pool.shutdown().await;
@@ -690,8 +720,17 @@ mod tests {
         .await
         .expect("execute should succeed");
 
-        // Wait for task
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        // Poll until the task completes.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while pool.stats().tasks_completed < 1 {
+            if std::time::Instant::now() > deadline {
+                panic!(
+                    "Timed out waiting for task to complete (stats: {:?})",
+                    pool.stats()
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         let stats = pool.stats();
         assert_eq!(stats.name, "test");
