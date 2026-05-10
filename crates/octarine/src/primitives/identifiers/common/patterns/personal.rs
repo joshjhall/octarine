@@ -32,7 +32,7 @@ use regex::Regex;
 use std::collections::HashMap;
 
 /// SSN (Social Security Number) patterns
-pub mod ssn {
+pub(crate) mod ssn {
     use super::*;
 
     /// SSN with explicit label (highest confidence)
@@ -65,7 +65,7 @@ pub mod ssn {
 }
 
 /// Tax ID patterns (EIN, TIN, ITIN)
-pub mod tax_id {
+pub(crate) mod tax_id {
     use super::*;
 
     /// Tax ID with explicit label (highest confidence)
@@ -109,7 +109,7 @@ pub mod tax_id {
 }
 
 /// Driver's license patterns
-pub mod driver_license {
+pub(crate) mod driver_license {
     use super::*;
 
     /// Generic driver's license pattern with context
@@ -144,7 +144,7 @@ pub mod driver_license {
 }
 
 /// Passport patterns
-pub mod passport {
+pub(crate) mod passport {
     use super::*;
 
     /// Explicit passport mention (highest confidence)
@@ -173,7 +173,7 @@ pub mod passport {
 }
 
 /// Employee ID patterns
-pub mod employee_id {
+pub(crate) mod employee_id {
     use super::*;
 
     /// Employee ID with explicit prefix
@@ -200,7 +200,7 @@ pub mod employee_id {
 }
 
 /// Student ID patterns
-pub mod student_id {
+pub(crate) mod student_id {
     use super::*;
 
     /// Student ID with explicit prefix
@@ -227,7 +227,7 @@ pub mod student_id {
 }
 
 /// National ID patterns (international)
-pub mod national_id {
+pub(crate) mod national_id {
     use super::*;
 
     /// UK National Insurance Number
@@ -253,7 +253,7 @@ pub mod national_id {
     }
 }
 /// South Korea Resident Registration Number patterns
-pub mod korea_rrn {
+pub(crate) mod korea_rrn {
     use super::*;
 
     /// Korea RRN with dash: YYMMDD-GNNNNNN (13 digits total)
@@ -275,7 +275,7 @@ pub mod korea_rrn {
 }
 
 /// Australian Tax File Number patterns
-pub mod australia_tfn {
+pub(crate) mod australia_tfn {
     use super::*;
 
     /// TFN with spaces: NNN NNN NNN (9 digits)
@@ -294,7 +294,7 @@ pub mod australia_tfn {
 }
 
 /// Australian Business Number patterns
-pub mod australia_abn {
+pub(crate) mod australia_abn {
     use super::*;
 
     /// ABN with spaces: NN NNN NNN NNN (11 digits)
@@ -316,7 +316,7 @@ pub mod australia_abn {
 }
 
 /// India Aadhaar number patterns (12 digits, starts with 2-9)
-pub mod india_aadhaar {
+pub(crate) mod india_aadhaar {
     use super::*;
 
     /// Aadhaar with spaces: NNNN NNNN NNNN (starts with 2-9)
@@ -336,7 +336,7 @@ pub mod india_aadhaar {
 }
 
 /// India PAN (Permanent Account Number) patterns
-pub mod india_pan {
+pub(crate) mod india_pan {
     use super::*;
 
     /// PAN format: AAAAA9999A (5 letters + 4 digits + 1 letter)
@@ -357,7 +357,7 @@ pub mod india_pan {
 }
 
 /// Singapore NRIC/FIN patterns
-pub mod singapore_nric {
+pub(crate) mod singapore_nric {
     use super::*;
 
     /// NRIC/FIN format: [STFGM] + 7 digits + check letter
@@ -376,7 +376,7 @@ pub mod singapore_nric {
 }
 
 /// Finland HETU (personal identity code) patterns
-pub mod finland_hetu {
+pub(crate) mod finland_hetu {
     use super::*;
 
     /// HETU format: DDMMYY[+-A]NNNC (6 digits + century + 3 digits + check)
@@ -403,7 +403,7 @@ pub mod finland_hetu {
 /// The `is_uk_ni` / `find_uk_nis_in_text` detection functions apply HMRC
 /// prefix/suffix validation (BG, GB, NK, KN, TN, NT, ZZ excluded; suffix
 /// must be A-D) on top of these shape-only patterns.
-pub mod uk_ni {
+pub(crate) mod uk_ni {
     use super::*;
 
     /// Bare UK NINO shape: 2 letters + 6 digits + 1 letter
@@ -427,7 +427,7 @@ pub mod uk_ni {
 }
 
 /// Spain NIF (Numero de Identificacion Fiscal) patterns
-pub mod spain_nif {
+pub(crate) mod spain_nif {
     use super::*;
 
     /// NIF format: 8 digits + 1 check letter
@@ -446,7 +446,7 @@ pub mod spain_nif {
 }
 
 /// Spain NIE (Numero de Identidad de Extranjero) patterns
-pub mod spain_nie {
+pub(crate) mod spain_nie {
     use super::*;
 
     /// NIE format: X/Y/Z + 7 digits + 1 check letter
@@ -465,7 +465,7 @@ pub mod spain_nie {
 }
 
 /// Italy Codice Fiscale (fiscal code) patterns
-pub mod italy_fiscal_code {
+pub(crate) mod italy_fiscal_code {
     use super::*;
 
     /// Codice Fiscale format: 6 letters + 2 digits + 1 letter + 2 digits + 1 letter + 3 digits + 1 letter
@@ -488,7 +488,7 @@ pub mod italy_fiscal_code {
 }
 
 /// Poland PESEL (personal identity number) patterns
-pub mod poland_pesel {
+pub(crate) mod poland_pesel {
     use super::*;
 
     /// PESEL format: 11 consecutive digits (YYMMDDNNNCC)
@@ -508,7 +508,7 @@ pub mod poland_pesel {
     }
 }
 
-pub mod personal_name {
+pub(crate) mod personal_name {
     use super::*;
 
     /// First Last (with optional middle initial/name)
@@ -541,7 +541,7 @@ pub mod personal_name {
 /// Birthdate and date patterns
 ///
 /// Supports multiple date formats commonly used for birthdates.
-pub mod birthdate {
+pub(crate) mod birthdate {
     use super::*;
 
     /// ISO format: YYYY-MM-DD

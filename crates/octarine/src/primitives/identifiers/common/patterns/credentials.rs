@@ -30,7 +30,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 /// Password field patterns
-pub mod password {
+pub(crate) mod password {
     use super::*;
 
     /// Password field pattern (key=value or key: value format)
@@ -63,7 +63,7 @@ pub mod password {
 }
 
 /// PIN field patterns
-pub mod pin {
+pub(crate) mod pin {
     use super::*;
 
     /// PIN field pattern (key=value or key: value format)
@@ -89,7 +89,7 @@ pub mod pin {
 }
 
 /// Security question/answer patterns
-pub mod security_answer {
+pub(crate) mod security_answer {
     use super::*;
 
     /// Security answer field pattern
@@ -116,7 +116,7 @@ pub mod security_answer {
 }
 
 /// Passphrase field patterns
-pub mod passphrase {
+pub(crate) mod passphrase {
     use super::*;
 
     /// Passphrase field pattern

@@ -34,9 +34,9 @@ pub(crate) mod personal;
 pub(crate) mod vehicle_id;
 
 // Re-export all pattern modules for backward compatibility
-pub use financial::{bank_account, credit_card, payment_token, routing_number};
-pub use network::{email, phone, username};
-pub use personal::{
+pub(crate) use financial::{bank_account, credit_card, payment_token, routing_number};
+pub(crate) use network::{email, phone, username};
+pub(crate) use personal::{
     australia_abn, australia_tfn, birthdate, driver_license, employee_id, finland_hetu,
     india_aadhaar, india_pan, italy_fiscal_code, korea_rrn, national_id, passport, personal_name,
     poland_pesel, singapore_nric, spain_nie, spain_nif, ssn, student_id, tax_id, uk_ni,

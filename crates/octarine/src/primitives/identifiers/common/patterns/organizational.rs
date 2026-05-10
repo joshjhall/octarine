@@ -15,7 +15,7 @@ use regex::Regex;
 // Employee ID Patterns
 // ============================================================================
 
-pub mod employee_id {
+pub(crate) mod employee_id {
     use super::*;
 
     /// Employee ID with explicit prefix
@@ -40,7 +40,7 @@ pub mod employee_id {
 // Student ID Patterns
 // ============================================================================
 
-pub mod student_id {
+pub(crate) mod student_id {
     use super::*;
 
     /// Student ID with explicit prefix
@@ -71,7 +71,7 @@ pub mod student_id {
 // Badge Number Patterns
 // ============================================================================
 
-pub mod badge_number {
+pub(crate) mod badge_number {
     use super::*;
 
     /// Badge number with explicit prefix
