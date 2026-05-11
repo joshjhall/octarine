@@ -12,6 +12,20 @@ All notable changes to octarine will be documented in this file.
   - `find_postal_codes_in_text` now gates short-numeric matches (DE/FR/AU/IN) on a ±50-char address-context keyword window (`zip`, `postal code`, `PLZ`, `CEP`, `PIN code`, `code postal`) to suppress false positives on phone numbers, prices, and years
   - `normalize_postal_code` accepts bare-digit Japanese (NNNNNNN) and Brazilian (NNNNNNNN) forms and inserts canonical hyphens; Dutch codes are normalized to a single space between digits and letters
 
+### Changed
+
+- refactor(naming): rename internal `pub fn` violations of prohibited-prefix naming convention (slice of #193)
+  - `primitives/crypto/auth/hmac`: `verify_hmac{,_strict,_hex,_with_domain,_multipart}` → `is_hmac_valid` / `validate_hmac_strict` / `is_hmac_hex_valid` / `is_hmac_with_domain_valid` / `is_hmac_multipart_valid`
+  - `primitives/crypto/builder::HmacBuilder`: `verify_strict` / `verify_hex` / `verify_with_domain` / `verify_multipart` → `validate_strict` / `is_hex_valid` / `is_with_domain_valid` / `is_multipart_valid`
+  - `primitives/crypto/keys/password`: `verify_password{,_sync}` → `validate_password{,_sync}`
+  - `primitives/io/file/permissions::ensure_directory_mode` → `with_directory_mode`
+  - `primitives/data/paths` (4 sites): `ensure_trailing_separator` → `with_trailing_separator`
+  - `primitives/security/paths/sanitization::remove_traversal_sequences` → `strip_traversal_sequences`
+  - `observe/metrics/thresholds::check_threshold` → `evaluate_threshold`
+  - `observe/writers::ensure_registry` → `init_registry_if_missing`
+  - Layer 3 public surface (`crypto::auth::hmac::verify_*`, `crypto::keys::password::verify_*`, `data::paths::FormatBuilder::ensure_trailing_separator`, `SeparatorStyle::has_separators`, `primitives::io::net::HealthCheck::check_health`) is unchanged in this PR — those require a deprecation cycle and will be done with the next minor bump (#314)
+  - `scripts/arch_check/checks/naming_prefix.py` scope extended to cover `primitives/crypto`, `primitives/data`, `primitives/io`, and `observe`
+
 ## [0.3.0-beta.3] - 2026-04-28
 
 ### Fixed

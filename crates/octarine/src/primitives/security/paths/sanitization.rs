@@ -180,8 +180,8 @@ pub fn sanitize_clean(path: &str) -> SanitizationResult {
     // Remove control characters (except keeping spaces)
     result = result.chars().filter(|c| !c.is_control()).collect();
 
-    // Remove traversal sequences
-    result = remove_traversal_sequences(&result);
+    // Strip traversal sequences
+    result = strip_traversal_sequences(&result);
 
     // Normalize separators
     result = normalize_separators(&result);
@@ -273,7 +273,7 @@ pub fn sanitize_escape(path: &str) -> SanitizationResult {
 /// ```
 #[must_use]
 pub fn strip_traversal(path: &str) -> String {
-    remove_traversal_sequences(path)
+    strip_traversal_sequences(path)
 }
 
 /// Strip null bytes from path
@@ -328,8 +328,8 @@ pub fn normalize_path_separators(path: &str) -> String {
 // Helper Functions (Internal)
 // ============================================================================
 
-/// Remove `..` path components
-fn remove_traversal_sequences(path: &str) -> String {
+/// Strip `..` path components
+fn strip_traversal_sequences(path: &str) -> String {
     // Split by separators, filter out .., rejoin
     let parts: Vec<&str> = path
         .split(['/', '\\'])
@@ -393,7 +393,7 @@ fn normalize_separators(path: &str) -> String {
 #[must_use]
 pub fn strip_traversal_cow(path: &str) -> Cow<'_, str> {
     if detection::is_traversal_present(path) {
-        Cow::Owned(remove_traversal_sequences(path))
+        Cow::Owned(strip_traversal_sequences(path))
     } else {
         Cow::Borrowed(path)
     }

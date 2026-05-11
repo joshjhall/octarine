@@ -124,7 +124,7 @@ pub use locking::{
 #[allow(unused_imports)]
 pub use options::{SyncMode, TempStrategy, WriteOptions};
 #[allow(unused_imports)]
-pub use permissions::{FileMode, ensure_directory_mode, set_file_mode, set_mode};
+pub use permissions::{FileMode, set_file_mode, set_mode, with_directory_mode};
 
 // Magic byte detection
 #[allow(unused_imports)]

@@ -51,13 +51,13 @@ pub use password::{
     PasswordCharset, PasswordError, PasswordProfile, PasswordStrength, derive_key_from_password,
     derive_key_from_password_with_profile, derive_multiple_keys_from_password,
     derive_multiple_keys_with_profile, estimate_password_strength, generate_password,
-    hash_password, hash_password_with_profile, verify_password,
+    hash_password, hash_password_with_profile, validate_password,
 };
 // Sync functions (legacy/blocking contexts)
 pub use password::{
     derive_key_from_password_sync, derive_key_from_password_with_profile_sync,
     derive_multiple_keys_from_password_sync, derive_multiple_keys_with_profile_sync,
-    hash_password_sync, hash_password_with_profile_sync, verify_password_sync,
+    hash_password_sync, hash_password_with_profile_sync, validate_password_sync,
 };
 
 // Re-export random functions

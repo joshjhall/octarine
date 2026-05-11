@@ -446,7 +446,7 @@ pub fn find_postal_codes_in_text(text: &str) -> Vec<IdentifierMatch> {
         for capture in pattern.captures_iter(text) {
             let full_match = capture.get(0).expect("BUG: capture group 0 always exists");
             let matched = full_match.as_str();
-            if !has_address_context(text, full_match.start(), full_match.end()) {
+            if !is_address_context_present(text, full_match.start(), full_match.end()) {
                 continue;
             }
             // Range re-validation for short numerics. Regex already enforces
@@ -480,7 +480,7 @@ const POSTAL_CONTEXT_WINDOW: usize = 50;
 ///
 /// Slicing uses [`str::get`] (saturating bounds), so non-ASCII boundary
 /// failures degrade to "no context found" rather than panic.
-fn has_address_context(text: &str, match_start: usize, match_end: usize) -> bool {
+fn is_address_context_present(text: &str, match_start: usize, match_end: usize) -> bool {
     let before_start = match_start.saturating_sub(POSTAL_CONTEXT_WINDOW);
     let after_end = match_end
         .saturating_add(POSTAL_CONTEXT_WINDOW)

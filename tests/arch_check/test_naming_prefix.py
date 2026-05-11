@@ -55,3 +55,28 @@ def test_subdir_order_primitives_first(write_rs, tmp_repo: Path):
     paths = [f.rel_path for f in findings]
     assert paths[0].startswith("crates/octarine/src/primitives/")
     assert paths[1].startswith("crates/octarine/src/identifiers/")
+
+
+def test_extended_scope_covers_primitives_crypto_data_io_and_observe(
+    write_rs, tmp_repo: Path
+):
+    write_rs("primitives/crypto/x.rs", "pub fn verify_x() {}\n")
+    write_rs("primitives/data/y.rs", "pub fn ensure_y() {}\n")
+    write_rs("primitives/io/z.rs", "pub fn check_z() {}\n")
+    write_rs("observe/w.rs", "pub fn has_w() {}\n")
+    findings = list(naming_prefix.run(staged_only=False, root=tmp_repo))
+    assert {f.rel_path for f in findings} == {
+        "crates/octarine/src/primitives/crypto/x.rs",
+        "crates/octarine/src/primitives/data/y.rs",
+        "crates/octarine/src/primitives/io/z.rs",
+        "crates/octarine/src/observe/w.rs",
+    }
+
+
+def test_layer3_crypto_and_data_not_in_scope(write_rs, tmp_repo: Path):
+    # Layer 3 `crypto/` and `data/` retain deprecated public-surface names
+    # pending a SemVer-bumped follow-up; the scanner deliberately skips them.
+    write_rs("crypto/auth/legacy.rs", "pub fn verify_legacy() {}\n")
+    write_rs("data/paths/legacy.rs", "pub fn ensure_legacy() {}\n")
+    findings = list(naming_prefix.run(staged_only=False, root=tmp_repo))
+    assert findings == []

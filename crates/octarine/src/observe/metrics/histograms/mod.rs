@@ -39,7 +39,7 @@ impl Histogram {
         let _ = self.values.push(value);
 
         // Check thresholds (e.g., for response time SLOs)
-        super::thresholds::check_threshold(&self.name, value);
+        super::thresholds::evaluate_threshold(&self.name, value);
     }
 
     /// Get a snapshot of the histogram

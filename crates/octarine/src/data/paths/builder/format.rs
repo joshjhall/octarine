@@ -232,7 +232,7 @@ impl FormatBuilder {
     /// Ensure path has trailing separator
     #[must_use]
     pub fn ensure_trailing_separator<'a>(&self, path: &'a str) -> Cow<'a, str> {
-        PrimitiveFormatBuilder::new().ensure_trailing_separator(path)
+        PrimitiveFormatBuilder::new().with_trailing_separator(path)
     }
 
     /// Strip leading dot-slash (./) from path

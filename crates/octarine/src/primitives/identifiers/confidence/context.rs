@@ -96,7 +96,7 @@ impl ContextAnalyzer {
         match_end: usize,
         entity_type: &IdentifierType,
     ) -> f64 {
-        if self.has_keyword_in_window(text, match_start, match_end, entity_type) {
+        if self.is_keyword_in_window_present(text, match_start, match_end, entity_type) {
             // Boost and cap
             let boosted = BASE_CONFIDENCE + self.config.boost_factor;
             if boosted > self.config.max_confidence {
@@ -121,11 +121,11 @@ impl ContextAnalyzer {
         match_end: usize,
         entity_type: &IdentifierType,
     ) -> bool {
-        self.has_keyword_in_window(text, match_start, match_end, entity_type)
+        self.is_keyword_in_window_present(text, match_start, match_end, entity_type)
     }
 
     /// Internal: check if any keyword appears in the window around the match.
-    fn has_keyword_in_window(
+    fn is_keyword_in_window_present(
         &self,
         text: &str,
         match_start: usize,

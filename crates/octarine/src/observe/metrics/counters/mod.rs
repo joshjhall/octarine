@@ -40,7 +40,7 @@ impl Counter {
     /// Increment the counter by 1
     pub(crate) fn increment(&self) {
         let new_value = self.value.fetch_add(1, Ordering::Relaxed).saturating_add(1);
-        super::thresholds::check_threshold(&self.name, new_value as f64);
+        super::thresholds::evaluate_threshold(&self.name, new_value as f64);
     }
 
     /// Increment the counter by a specific amount
@@ -49,7 +49,7 @@ impl Counter {
             .value
             .fetch_add(amount, Ordering::Relaxed)
             .saturating_add(amount);
-        super::thresholds::check_threshold(&self.name, new_value as f64);
+        super::thresholds::evaluate_threshold(&self.name, new_value as f64);
     }
 
     /// Get the current value

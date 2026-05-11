@@ -10,7 +10,7 @@
 //! attacks. This module provides async-first APIs that offload CPU-intensive
 //! work to a blocking thread pool:
 //!
-//! - Primary API is async (`hash_password()`, `verify_password()`, etc.)
+//! - Primary API is async (`hash_password()`, `validate_password()`, etc.)
 //! - Sync variants available with `*_sync()` suffix
 //!
 //! ## Why Argon2id?
@@ -32,21 +32,21 @@
 //! ## Example (Async)
 //!
 //! ```ignore
-//! use crate::primitives::crypto::keys::password::{hash_password, verify_password};
+//! use crate::primitives::crypto::keys::password::{hash_password, validate_password};
 //!
 //! // Hash a password for storage (runs on blocking thread pool)
 //! let hash = hash_password("user_password").await?;
-//! assert!(verify_password("user_password", &hash).await?);
+//! assert!(validate_password("user_password", &hash).await?);
 //! ```
 //!
 //! ## Example (Sync)
 //!
 //! ```ignore
-//! use crate::primitives::crypto::keys::password::{hash_password_sync, verify_password_sync};
+//! use crate::primitives::crypto::keys::password::{hash_password_sync, validate_password_sync};
 //!
 //! // Hash synchronously (blocks current thread)
 //! let hash = hash_password_sync("user_password")?;
-//! assert!(verify_password_sync("user_password", &hash)?);
+//! assert!(validate_password_sync("user_password", &hash)?);
 //! ```
 //!
 //! ## IMPORTANT: HKDF vs Argon2
@@ -209,14 +209,14 @@ pub async fn hash_password_with_profile(
 /// # Example
 ///
 /// ```ignore
-/// if verify_password("user_input", &stored_hash).await? {
+/// if validate_password("user_input", &stored_hash).await? {
 ///     // Login successful
 /// }
 /// ```
-pub async fn verify_password(password: &str, hash: &str) -> Result<bool, PasswordError> {
+pub async fn validate_password(password: &str, hash: &str) -> Result<bool, PasswordError> {
     let password = password.to_owned();
     let hash = hash.to_owned();
-    let result = spawn_blocking(move || verify_password_sync(&password, &hash)).await?;
+    let result = spawn_blocking(move || validate_password_sync(&password, &hash)).await?;
     Ok(result?)
 }
 
@@ -255,10 +255,10 @@ pub fn hash_password_with_profile_sync(
 
 /// Verify a password against a stored hash (sync).
 ///
-/// **Warning**: Blocks the current thread. In async contexts, use `verify_password()`.
+/// **Warning**: Blocks the current thread. In async contexts, use `validate_password()`.
 ///
 /// Performs constant-time comparison to prevent timing attacks.
-pub fn verify_password_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
+pub fn validate_password_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
     let parsed_hash = PasswordHash::new(hash)
         .map_err(|e| CryptoError::key_derivation(format!("Invalid hash format: {e}")))?;
 
@@ -685,8 +685,8 @@ mod tests {
         let hash = hash_password_sync("test_password").expect("Failed to hash");
         assert!(hash.starts_with("$argon2id$"));
 
-        assert!(verify_password_sync("test_password", &hash).expect("Verify failed"));
-        assert!(!verify_password_sync("wrong_password", &hash).expect("Verify failed"));
+        assert!(validate_password_sync("test_password", &hash).expect("Verify failed"));
+        assert!(!validate_password_sync("wrong_password", &hash).expect("Verify failed"));
     }
 
     #[test]
@@ -698,8 +698,8 @@ mod tests {
             hash_password_with_profile_sync("test", PasswordProfile::Moderate).expect("Failed");
 
         // Both should verify correctly
-        assert!(verify_password_sync("test", &hash_interactive).expect("Verify failed"));
-        assert!(verify_password_sync("test", &hash_moderate).expect("Verify failed"));
+        assert!(validate_password_sync("test", &hash_interactive).expect("Verify failed"));
+        assert!(validate_password_sync("test", &hash_moderate).expect("Verify failed"));
 
         // Different parameters produce different hashes
         assert_ne!(hash_interactive, hash_moderate);
@@ -833,7 +833,7 @@ mod tests {
         };
 
         let hash = hash_password_with_profile_sync("test", profile).expect("Failed");
-        assert!(verify_password_sync("test", &hash).expect("Verify failed"));
+        assert!(validate_password_sync("test", &hash).expect("Verify failed"));
     }
 
     #[test]
@@ -847,16 +847,16 @@ mod tests {
     fn test_empty_password() {
         // Empty password should still work (though not recommended)
         let hash = hash_password_sync("").expect("Failed to hash");
-        assert!(verify_password_sync("", &hash).expect("Verify failed"));
-        assert!(!verify_password_sync("x", &hash).expect("Verify failed"));
+        assert!(validate_password_sync("", &hash).expect("Verify failed"));
+        assert!(!validate_password_sync("x", &hash).expect("Verify failed"));
     }
 
     #[test]
     fn test_unicode_password() {
         let password = "пароль密码🔐";
         let hash = hash_password_sync(password).expect("Failed to hash");
-        assert!(verify_password_sync(password, &hash).expect("Verify failed"));
-        assert!(!verify_password_sync("wrong", &hash).expect("Verify failed"));
+        assert!(validate_password_sync(password, &hash).expect("Verify failed"));
+        assert!(!validate_password_sync("wrong", &hash).expect("Verify failed"));
     }
 
     // ========================================================================
@@ -871,12 +871,12 @@ mod tests {
         assert!(hash.starts_with("$argon2id$"));
 
         assert!(
-            verify_password("test_password", &hash)
+            validate_password("test_password", &hash)
                 .await
                 .expect("Verify failed")
         );
         assert!(
-            !verify_password("wrong_password", &hash)
+            !validate_password("wrong_password", &hash)
                 .await
                 .expect("Verify failed")
         );

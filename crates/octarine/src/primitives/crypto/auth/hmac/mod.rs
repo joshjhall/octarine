@@ -26,7 +26,7 @@
 //! ## Example
 //!
 //! ```ignore
-//! use crate::primitives::crypto::hmac::{hmac_sha3_256, verify_hmac};
+//! use crate::primitives::crypto::hmac::{hmac_sha3_256, is_hmac_valid};
 //!
 //! let key = b"shared-secret-key";
 //! let message = b"important data to authenticate";
@@ -35,7 +35,7 @@
 //! let mac = hmac_sha3_256(key, message);
 //!
 //! // Verify MAC (constant-time comparison)
-//! assert!(verify_hmac(key, message, &mac));
+//! assert!(is_hmac_valid(key, message, &mac));
 //! ```
 
 // Allow dead_code: Layer 1 primitives used by Layer 2/3 modules
@@ -45,7 +45,7 @@ mod helpers;
 mod streaming;
 
 pub use helpers::{
-    hmac_multipart, hmac_with_domain, verify_hmac_multipart, verify_hmac_with_domain,
+    hmac_multipart, hmac_with_domain, is_hmac_multipart_valid, is_hmac_with_domain_valid,
 };
 pub use streaming::HmacSha3_256;
 
@@ -143,17 +143,17 @@ pub fn hmac_sha3_256_hex(key: &[u8], message: &[u8]) -> String {
 /// # Example
 ///
 /// ```ignore
-/// use crate::primitives::crypto::hmac::{hmac_sha3_256, verify_hmac};
+/// use crate::primitives::crypto::hmac::{hmac_sha3_256, is_hmac_valid};
 ///
 /// let key = b"secret";
 /// let message = b"data";
 /// let valid_mac = hmac_sha3_256(key, message);
 ///
-/// assert!(verify_hmac(key, message, &valid_mac));
-/// assert!(!verify_hmac(key, b"wrong", &valid_mac));
+/// assert!(is_hmac_valid(key, message, &valid_mac));
+/// assert!(!is_hmac_valid(key, b"wrong", &valid_mac));
 /// ```
 #[must_use]
-pub fn verify_hmac(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
+pub fn is_hmac_valid(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
     // Constant-time length check
     if expected_mac.len() != MAC_LENGTH {
         return false;
@@ -165,7 +165,7 @@ pub fn verify_hmac(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
 
 /// Verify an HMAC-SHA3-256 tag, returning a Result.
 ///
-/// Like [`verify_hmac`] but returns a `Result` for use in error handling
+/// Like [`is_hmac_valid`] but returns a `Result` for use in error handling
 /// chains. Useful when MAC verification failure should propagate as an error.
 ///
 /// # Errors
@@ -175,21 +175,21 @@ pub fn verify_hmac(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
 /// # Example
 ///
 /// ```ignore
-/// use crate::primitives::crypto::hmac::{hmac_sha3_256, verify_hmac_strict};
+/// use crate::primitives::crypto::hmac::{hmac_sha3_256, validate_hmac_strict};
 ///
 /// let key = b"secret";
 /// let message = b"data";
 /// let mac = hmac_sha3_256(key, message);
 ///
-/// verify_hmac_strict(key, message, &mac)?;
+/// validate_hmac_strict(key, message, &mac)?;
 /// // Continues if valid, returns error if invalid
 /// ```
-pub fn verify_hmac_strict(
+pub fn validate_hmac_strict(
     key: &[u8],
     message: &[u8],
     expected_mac: &[u8],
 ) -> Result<(), CryptoError> {
-    if verify_hmac(key, message, expected_mac) {
+    if is_hmac_valid(key, message, expected_mac) {
         Ok(())
     } else {
         Err(CryptoError::mac_verification("HMAC verification failed"))
@@ -211,9 +211,9 @@ pub fn verify_hmac_strict(
 ///
 /// `true` if valid, `false` if invalid or malformed hex.
 #[must_use]
-pub fn verify_hmac_hex(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
+pub fn is_hmac_hex_valid(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
     match hex_decode(hex_mac) {
-        Some(mac_bytes) => verify_hmac(key, message, &mac_bytes),
+        Some(mac_bytes) => is_hmac_valid(key, message, &mac_bytes),
         None => false,
     }
 }
@@ -422,71 +422,71 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn test_verify_hmac_valid() {
+    fn test_is_hmac_valid() {
         let key = b"secret";
         let message = b"data";
         let mac = hmac_sha3_256(key, message);
 
-        assert!(verify_hmac(key, message, &mac));
+        assert!(is_hmac_valid(key, message, &mac));
     }
 
     #[test]
-    fn test_verify_hmac_wrong_message() {
+    fn test_is_hmac_valid_wrong_message() {
         let key = b"secret";
         let mac = hmac_sha3_256(key, b"original");
 
-        assert!(!verify_hmac(key, b"modified", &mac));
+        assert!(!is_hmac_valid(key, b"modified", &mac));
     }
 
     #[test]
-    fn test_verify_hmac_wrong_key() {
+    fn test_is_hmac_valid_wrong_key() {
         let message = b"data";
         let mac = hmac_sha3_256(b"key1", message);
 
-        assert!(!verify_hmac(b"key2", message, &mac));
+        assert!(!is_hmac_valid(b"key2", message, &mac));
     }
 
     #[test]
-    fn test_verify_hmac_wrong_length() {
+    fn test_is_hmac_valid_wrong_length() {
         let key = b"secret";
         let message = b"data";
 
         // Too short
-        assert!(!verify_hmac(key, message, &[0u8; 16]));
+        assert!(!is_hmac_valid(key, message, &[0u8; 16]));
         // Too long
-        assert!(!verify_hmac(key, message, &[0u8; 64]));
+        assert!(!is_hmac_valid(key, message, &[0u8; 64]));
     }
 
     #[test]
-    fn test_verify_hmac_modified_mac() {
+    fn test_is_hmac_valid_modified_mac() {
         let key = b"secret";
         let message = b"data";
         let mut mac = hmac_sha3_256(key, message);
 
         // Flip one bit
         mac[0] ^= 1;
-        assert!(!verify_hmac(key, message, &mac));
+        assert!(!is_hmac_valid(key, message, &mac));
     }
 
     #[test]
-    fn test_verify_hmac_strict() {
+    fn test_validate_hmac_strict() {
         let key = b"secret";
         let message = b"data";
         let mac = hmac_sha3_256(key, message);
 
-        assert!(verify_hmac_strict(key, message, &mac).is_ok());
-        assert!(verify_hmac_strict(key, b"wrong", &mac).is_err());
+        assert!(validate_hmac_strict(key, message, &mac).is_ok());
+        assert!(validate_hmac_strict(key, b"wrong", &mac).is_err());
     }
 
     #[test]
-    fn test_verify_hmac_hex() {
+    fn test_is_hmac_hex_valid() {
         let key = b"secret";
         let message = b"data";
         let mac_hex = hmac_sha3_256_hex(key, message);
 
-        assert!(verify_hmac_hex(key, message, &mac_hex));
-        assert!(!verify_hmac_hex(key, b"wrong", &mac_hex));
-        assert!(!verify_hmac_hex(key, message, "invalid-hex"));
+        assert!(is_hmac_hex_valid(key, message, &mac_hex));
+        assert!(!is_hmac_hex_valid(key, b"wrong", &mac_hex));
+        assert!(!is_hmac_hex_valid(key, message, "invalid-hex"));
     }
 
     // =========================================================================

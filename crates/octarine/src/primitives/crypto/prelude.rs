@@ -94,8 +94,8 @@ pub use super::auth::{
 // HMAC-SHA3-256 functions
 pub use super::auth::{
     HmacSha3_256, MAC_LENGTH, hmac_multipart, hmac_sha3_256, hmac_sha3_256_hex, hmac_with_domain,
-    verify_hmac, verify_hmac_hex, verify_hmac_multipart, verify_hmac_strict,
-    verify_hmac_with_domain,
+    is_hmac_hex_valid, is_hmac_multipart_valid, is_hmac_valid, is_hmac_with_domain_valid,
+    validate_hmac_strict,
 };
 
 // ============================================================================
@@ -112,7 +112,7 @@ pub use super::keys::{
     PasswordCharset, PasswordProfile, PasswordStrength, derive_key_from_password,
     derive_key_from_password_with_profile, derive_multiple_keys_from_password,
     derive_multiple_keys_with_profile, estimate_password_strength, generate_password,
-    hash_password, hash_password_with_profile, verify_password,
+    hash_password, hash_password_with_profile, validate_password,
 };
 
 // Random generation

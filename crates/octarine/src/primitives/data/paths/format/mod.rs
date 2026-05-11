@@ -134,7 +134,6 @@ pub use detection::{
 // Re-export conversion functions
 pub use conversion::{
     convert_to_format,
-    ensure_trailing_separator,
     normalize_separators,
     // Separator cleanup
     strip_leading_dot_slash,
@@ -149,5 +148,6 @@ pub use conversion::{
     windows_drive_to_unix,
     // Cross-platform conversion
     windows_drive_to_wsl,
+    with_trailing_separator,
     wsl_to_windows_drive,
 };

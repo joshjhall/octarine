@@ -424,7 +424,7 @@ pub fn validate_password(
         let history_to_check = password_history.iter().take(policy.history_count);
 
         for (index, &old_hash) in history_to_check.enumerate() {
-            // Note: In production, this would use verify_password from crypto module
+            // Note: In production, this would use validate_password from crypto module
             // For now, we do a simple comparison (caller should pass hashes)
             if password == old_hash {
                 return Err(Problem::Validation(

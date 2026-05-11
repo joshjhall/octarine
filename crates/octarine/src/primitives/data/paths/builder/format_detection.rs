@@ -129,10 +129,10 @@ impl PathBuilder {
 
     /// Ensure path has trailing separator
     ///
-    /// Delegates to [`format::ensure_trailing_separator`].
+    /// Delegates to [`format::with_trailing_separator`].
     #[must_use]
-    pub fn ensure_trailing_separator<'a>(&self, path: &'a str) -> Cow<'a, str> {
-        format::ensure_trailing_separator(path)
+    pub fn with_trailing_separator<'a>(&self, path: &'a str) -> Cow<'a, str> {
+        format::with_trailing_separator(path)
     }
 
     /// Strip leading dot-slash from path
@@ -263,7 +263,7 @@ mod tests {
             "path/to/dir"
         );
         assert_eq!(
-            builder.ensure_trailing_separator("path/to/dir").as_ref(),
+            builder.with_trailing_separator("path/to/dir").as_ref(),
             "path/to/dir/"
         );
 
