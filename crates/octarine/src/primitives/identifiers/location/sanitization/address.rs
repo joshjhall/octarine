@@ -169,8 +169,9 @@ fn sanitize_for_token(text: &str) -> String {
 /// # Note
 ///
 /// Casing and abbreviation normalization (e.g., `"St"` → `"Street"`) are
-/// intentionally not performed — address formats vary by country and full
-/// normalization belongs in a locale-aware higher-level module.
+/// out of scope here — they're a locale-aware conversion concern. For US
+/// addresses, see
+/// [`super::super::conversion::normalize_us_street_address`].
 ///
 /// # Examples
 ///

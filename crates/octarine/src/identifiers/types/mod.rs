@@ -23,7 +23,9 @@ pub use cache::CacheStats;
 pub use core::{DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType};
 pub use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
 pub use financial::{CreditCardType, FinancialTextPolicy};
-pub use location::{GpsFormat, LocationTextPolicy, PostalCodeNormalization, PostalCodeType};
+pub use location::{
+    AddressNormalization, GpsFormat, LocationTextPolicy, PostalCodeNormalization, PostalCodeType,
+};
 pub use network::{ApiKeyProvider, UuidVersion};
 pub use personal::{CredentialMatch, CredentialType, PhoneRegion};
 pub use policies::{

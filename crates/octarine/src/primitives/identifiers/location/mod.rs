@@ -110,6 +110,9 @@ pub use builder::LocationIdentifierBuilder;
 // Re-export types from builder (for return types)
 pub use builder::{GpsFormat, PostalCodeNormalization, PostalCodeType};
 
+// Re-export conversion functions and types
+pub use conversion::{AddressNormalization, normalize_us_street_address};
+
 // Re-export redaction strategies for convenience
 pub use redaction::{
     AddressRedactionStrategy, CountryRedactionStrategy, GpsRedactionStrategy,

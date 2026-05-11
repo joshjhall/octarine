@@ -15,6 +15,9 @@
 //! - **UK Postcode**: Normalize to standard format with space
 //! - **Canada**: Normalize to standard A1A 1B1 format
 //!
+//! ## Street Addresses
+//! - **US**: Normalize case and abbreviations (USPS Publication 28)
+//!
 //! # Design Principles
 //!
 //! - **No logging**: Pure conversion functions (privacy protection)
@@ -22,8 +25,12 @@
 //! - **Idempotent**: Converting twice produces same result
 //! - **Preserves validity**: Invalid input → Error, not silent corruption
 
+mod address;
 mod gps;
 mod postal;
+
+// Re-export address functions
+pub use address::{AddressNormalization, normalize_us_street_address};
 
 // Re-export GPS functions
 pub use gps::{
