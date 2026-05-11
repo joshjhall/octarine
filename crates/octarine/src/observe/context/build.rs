@@ -61,6 +61,7 @@ pub(super) fn build_context(config: ContextConfig) -> EventContext {
             source_ip_chain: Vec::new(),
             correlation_id: Uuid::new_v4(),
             parent_span_id: None,
+            environment: None,
             contains_pii: false,
             contains_phi: false,
             security_relevant: true,

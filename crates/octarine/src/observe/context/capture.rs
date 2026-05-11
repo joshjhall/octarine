@@ -56,8 +56,8 @@ static CACHED_CONTEXT: Lazy<CachedContext> = Lazy::new(|| CachedContext {
 /// Checks thread-local and task-local storage first, then falls back
 /// to environment variables for any missing values.
 pub(in crate::observe) fn capture_context() -> EventContext {
-    // Get environment context (static) - TODO: use this when EventContext includes environment
-    let _env = get_environment();
+    // Capture deployment environment (static, captured once at startup)
+    let env = get_environment();
 
     // Get tenant context from observe module's thread-local (for TenantContext struct)
     let tenant = get_tenant_context();
@@ -89,6 +89,9 @@ pub(in crate::observe) fn capture_context() -> EventContext {
         // Correlation
         correlation_id: capture_correlation_id(),
         parent_span_id: None,
+
+        // Deployment context
+        environment: Some(env.environment.clone()),
 
         // Compliance flags (conservative defaults)
         contains_pii: false,
@@ -330,4 +333,24 @@ macro_rules! capture_location {
         ctx.line = line!();
         ctx
     }};
+}
+
+#[cfg(test)]
+#[allow(clippy::panic, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_capture_context_populates_environment() {
+        // ENVIRONMENT defaults to "development" when no env vars are set.
+        // The exact value depends on the test runner's environment, but
+        // capture_context() must populate Some(_), never None.
+        let ctx = capture_context();
+        assert!(
+            ctx.environment.is_some(),
+            "capture_context should populate environment from get_environment()"
+        );
+        let env = ctx.environment.expect("checked is_some above");
+        assert!(!env.is_empty(), "environment value should never be empty");
+    }
 }

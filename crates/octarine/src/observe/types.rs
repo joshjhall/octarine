@@ -331,6 +331,14 @@ pub struct EventContext {
     /// Parent span ID for distributed tracing
     pub parent_span_id: Option<Uuid>,
 
+    /// Deployment environment name (e.g., "production", "development", "staging")
+    ///
+    /// Captured once at startup from `ENVIRONMENT` or `ENV` env vars.
+    /// Omitted from serialized output when `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub environment: Option<String>,
+
     // Compliance flags
     /// Whether this event contains PII (personally identifiable information)
     pub contains_pii: bool,
@@ -373,6 +381,7 @@ impl Default for EventContext {
             source_ip_chain: Vec::new(),
             correlation_id: Uuid::new_v4(),
             parent_span_id: None,
+            environment: None,
             contains_pii: false,
             contains_phi: false,
             security_relevant: false,

@@ -271,6 +271,7 @@ impl PostgresBackend {
             local_ip: None,
             source_ip: None,
             source_ip_chain: Vec::new(),
+            environment: None,
             contains_pii,
             contains_phi,
             security_relevant,
