@@ -73,7 +73,7 @@ pub fn compute_hex(key: &[u8], message: &[u8]) -> String {
 /// - Returns `false` for incorrect length MACs (timing-safe)
 #[must_use]
 pub fn verify(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
-    let valid = prim::verify_hmac(key, message, expected_mac);
+    let valid = prim::is_hmac_valid(key, message, expected_mac);
 
     if valid {
         observe::info(
@@ -98,7 +98,7 @@ pub fn verify(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
 ///
 /// Returns `CryptoError::MacVerification` if verification fails.
 pub fn verify_strict(key: &[u8], message: &[u8], expected_mac: &[u8]) -> Result<(), CryptoError> {
-    let result = prim::verify_hmac_strict(key, message, expected_mac);
+    let result = prim::validate_hmac_strict(key, message, expected_mac);
 
     match &result {
         Ok(()) => {
@@ -121,7 +121,7 @@ pub fn verify_strict(key: &[u8], message: &[u8], expected_mac: &[u8]) -> Result<
 /// Verify an HMAC from a hex-encoded string with audit trail.
 #[must_use]
 pub fn verify_hex(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
-    let valid = prim::verify_hmac_hex(key, message, hex_mac);
+    let valid = prim::is_hmac_hex_valid(key, message, hex_mac);
 
     if valid {
         observe::info(
@@ -179,7 +179,7 @@ pub fn with_domain(key: &[u8], domain: &str, message: &[u8]) -> [u8; 32] {
 /// Verify an HMAC created with domain separation with audit trail.
 #[must_use]
 pub fn verify_with_domain(key: &[u8], domain: &str, message: &[u8], mac: &[u8]) -> bool {
-    let valid = prim::verify_hmac_with_domain(key, domain, message, mac);
+    let valid = prim::is_hmac_with_domain_valid(key, domain, message, mac);
 
     if valid {
         observe::info(
@@ -241,7 +241,7 @@ pub fn multipart(key: &[u8], parts: &[&[u8]]) -> [u8; 32] {
 /// Verify a multipart HMAC with audit trail.
 #[must_use]
 pub fn verify_multipart(key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
-    let valid = prim::verify_hmac_multipart(key, parts, mac);
+    let valid = prim::is_hmac_multipart_valid(key, parts, mac);
 
     let total_len: usize = parts.iter().map(|p| p.len()).sum();
     if valid {

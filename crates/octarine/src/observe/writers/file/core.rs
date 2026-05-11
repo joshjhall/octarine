@@ -9,9 +9,9 @@ use crate::observe::types::{Event, Severity};
 use crate::observe::writers::builder::FileWriterBuilder;
 use crate::observe::writers::sanitize_for_writing;
 use crate::observe::writers::types::LogFormat;
-use crate::primitives::io::file::ensure_directory_mode;
 #[cfg(unix)]
 use crate::primitives::io::file::set_mode;
+use crate::primitives::io::file::with_directory_mode;
 use crate::primitives::runtime::r#async::{
     CircuitBreaker, CircuitBreakerConfig, RetryPolicy, sleep_ms,
 };
@@ -34,7 +34,7 @@ pub(super) async fn from_builder(builder: FileWriterBuilder) -> Result<FileWrite
     // Type system guarantees log_dir is valid and absolute
     let dir_path = log_dir.as_path().to_path_buf();
     crate::primitives::runtime::r#async::spawn_blocking(move || {
-        ensure_directory_mode(&dir_path, dir_mode)
+        with_directory_mode(&dir_path, dir_mode)
     })
     .await
     .map_err(|e| Problem::operation_failed(format!("Directory setup task failed: {}", e)))?

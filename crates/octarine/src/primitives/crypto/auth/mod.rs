@@ -12,19 +12,19 @@
 //! | Function | Use Case |
 //! |----------|----------|
 //! | `hmac_sha3_256` | Generate authentication tag for data |
-//! | `verify_hmac` | Verify data hasn't been tampered with |
+//! | `is_hmac_valid` | Verify data hasn't been tampered with |
 //! | `ct_eq` | Compare secrets without timing leaks |
 //!
 //! ## Example
 //!
 //! ```ignore
-//! use crate::primitives::crypto::auth::{hmac_sha3_256, verify_hmac, ct_eq};
+//! use crate::primitives::crypto::auth::{hmac_sha3_256, is_hmac_valid, ct_eq};
 //!
 //! // Generate HMAC for data
 //! let mac = hmac_sha3_256(&key, b"message");
 //!
 //! // Verify HMAC (constant-time)
-//! let valid = verify_hmac(&key, b"message", &mac);
+//! let valid = is_hmac_valid(&key, b"message", &mac);
 //!
 //! // Compare two secrets (constant-time)
 //! let equal = ct_eq(&secret1, &secret2);
@@ -39,8 +39,8 @@ mod timing;
 // Re-export HMAC functions
 pub use hmac::{
     HmacSha3_256, MAC_LENGTH, hmac_multipart, hmac_sha3_256, hmac_sha3_256_hex, hmac_with_domain,
-    verify_hmac, verify_hmac_hex, verify_hmac_multipart, verify_hmac_strict,
-    verify_hmac_with_domain,
+    is_hmac_hex_valid, is_hmac_multipart_valid, is_hmac_valid, is_hmac_with_domain_valid,
+    validate_hmac_strict,
 };
 
 // Re-export timing functions

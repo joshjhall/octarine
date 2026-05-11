@@ -61,7 +61,7 @@ impl Gauge {
         watermarks.last_updated = Instant::now();
 
         // Check thresholds
-        super::thresholds::check_threshold(&self.name, value as f64);
+        super::thresholds::evaluate_threshold(&self.name, value as f64);
     }
 
     /// Increment the gauge

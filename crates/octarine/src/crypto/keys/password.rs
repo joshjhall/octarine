@@ -127,7 +127,7 @@ pub async fn verify(password: &str, hash: &str) -> Result<bool, PasswordError> {
     let start = Instant::now();
     observe::debug("password_verify", "Starting password verification");
 
-    let result = prim::verify_password(password, hash).await;
+    let result = prim::validate_password(password, hash).await;
 
     let elapsed = start.elapsed();
     match &result {
@@ -298,7 +298,7 @@ pub fn hash_with_profile_sync(
 ///
 /// **Warning**: Blocks the current thread. Use `verify()` in async contexts.
 pub fn verify_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
-    let result = prim::verify_password_sync(password, hash);
+    let result = prim::validate_password_sync(password, hash);
 
     match &result {
         Ok(true) => observe::info("password_verify", "Password verification succeeded"),

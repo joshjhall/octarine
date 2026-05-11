@@ -363,13 +363,13 @@ pub fn set_file_mode(_file: &std::fs::File, _mode: FileMode) -> Result<(), Probl
 /// # Examples
 ///
 /// ```rust,ignore
-/// use crate::primitives::io::{ensure_directory_mode, FileMode};
+/// use crate::primitives::io::{with_directory_mode, FileMode};
 ///
 /// // Creates /var/log/myapp with 0750 if it doesn't exist
 /// // If it exists, attempts to set permissions (may silently skip if not owned)
-/// ensure_directory_mode("/var/log/myapp", FileMode::LOG_DIR)?;
+/// with_directory_mode("/var/log/myapp", FileMode::LOG_DIR)?;
 /// ```
-pub fn ensure_directory_mode(path: impl AsRef<Path>, mode: FileMode) -> Result<(), Problem> {
+pub fn with_directory_mode(path: impl AsRef<Path>, mode: FileMode) -> Result<(), Problem> {
     let path = path.as_ref();
 
     // Create directory if needed
@@ -590,7 +590,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode() {
+    fn test_with_directory_mode() {
         use std::os::unix::fs::PermissionsExt;
         use tempfile::tempdir;
 
@@ -598,7 +598,7 @@ mod tests {
         let new_dir = dir.path().join("subdir");
 
         // Create and set mode
-        ensure_directory_mode(&new_dir, FileMode::LOG_DIR).expect("ensure dir");
+        with_directory_mode(&new_dir, FileMode::LOG_DIR).expect("ensure dir");
 
         // Verify
         assert!(new_dir.is_dir());
@@ -609,7 +609,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode_creates_nested_dirs() {
+    fn test_with_directory_mode_creates_nested_dirs() {
         use std::os::unix::fs::PermissionsExt;
         use tempfile::tempdir;
 
@@ -617,7 +617,7 @@ mod tests {
         let nested_dir = dir.path().join("a").join("b").join("c");
 
         // Create nested directories
-        ensure_directory_mode(&nested_dir, FileMode::LOG_DIR).expect("ensure nested dir");
+        with_directory_mode(&nested_dir, FileMode::LOG_DIR).expect("ensure nested dir");
 
         // Verify leaf directory exists with correct permissions
         assert!(nested_dir.is_dir());
@@ -628,7 +628,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode_updates_owned_existing_dir() {
+    fn test_with_directory_mode_updates_owned_existing_dir() {
         use std::os::unix::fs::PermissionsExt;
         use tempfile::tempdir;
 
@@ -640,8 +640,8 @@ mod tests {
         std::fs::set_permissions(&subdir, std::fs::Permissions::from_mode(0o777))
             .expect("set initial permissions");
 
-        // Now ensure_directory_mode should update it (we own it)
-        ensure_directory_mode(&subdir, FileMode::LOG_DIR).expect("ensure dir");
+        // Now with_directory_mode should update it (we own it)
+        with_directory_mode(&subdir, FileMode::LOG_DIR).expect("ensure dir");
 
         // Verify permissions were updated
         let metadata = std::fs::metadata(&subdir).expect("get metadata");
@@ -651,10 +651,10 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode_on_tmp_succeeds() {
+    fn test_with_directory_mode_on_tmp_succeeds() {
         // /tmp exists and is owned by root, but we should NOT fail
         // This tests the "don't fail on directories we don't own" behavior
-        let result = ensure_directory_mode("/tmp", FileMode::LOG_DIR);
+        let result = with_directory_mode("/tmp", FileMode::LOG_DIR);
 
         // Should succeed (not try to change permissions on /tmp)
         assert!(result.is_ok(), "Should not fail on /tmp: {:?}", result);
@@ -662,17 +662,17 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode_on_var_tmp_succeeds() {
+    fn test_with_directory_mode_on_var_tmp_succeeds() {
         // /var/tmp is another common shared directory
         if std::path::Path::new("/var/tmp").exists() {
-            let result = ensure_directory_mode("/var/tmp", FileMode::LOG_DIR);
+            let result = with_directory_mode("/var/tmp", FileMode::LOG_DIR);
             assert!(result.is_ok(), "Should not fail on /var/tmp: {:?}", result);
         }
     }
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode_creates_subdir_in_tmp() {
+    fn test_with_directory_mode_creates_subdir_in_tmp() {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         // Create a unique subdirectory in /tmp
@@ -684,7 +684,7 @@ mod tests {
         let path = std::path::PathBuf::from(&subdir);
 
         // Should create the subdirectory with correct permissions
-        let result = ensure_directory_mode(&path, FileMode::LOG_DIR);
+        let result = with_directory_mode(&path, FileMode::LOG_DIR);
 
         // Cleanup before assertions (so cleanup happens even if assertions fail)
         #[allow(clippy::disallowed_methods)]
@@ -701,7 +701,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_ensure_directory_mode_creates_subdir_with_correct_perms() {
+    fn test_with_directory_mode_creates_subdir_with_correct_perms() {
         use std::os::unix::fs::PermissionsExt;
         use tempfile::tempdir;
 
@@ -710,7 +710,7 @@ mod tests {
         let subdir = parent.path().join("myapp_logs");
 
         // Should create the subdirectory with correct permissions
-        ensure_directory_mode(&subdir, FileMode::LOG_DIR).expect("ensure subdir");
+        with_directory_mode(&subdir, FileMode::LOG_DIR).expect("ensure subdir");
 
         assert!(subdir.is_dir());
         let metadata = std::fs::metadata(&subdir).expect("get metadata");

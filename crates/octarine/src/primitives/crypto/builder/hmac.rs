@@ -2,8 +2,9 @@
 
 use crate::primitives::crypto::CryptoError;
 use crate::primitives::crypto::auth::{
-    HmacSha3_256, hmac_multipart, hmac_sha3_256, hmac_sha3_256_hex, hmac_with_domain, verify_hmac,
-    verify_hmac_hex, verify_hmac_multipart, verify_hmac_strict, verify_hmac_with_domain,
+    HmacSha3_256, hmac_multipart, hmac_sha3_256, hmac_sha3_256_hex, hmac_with_domain,
+    is_hmac_hex_valid, is_hmac_multipart_valid, is_hmac_valid, is_hmac_with_domain_valid,
+    validate_hmac_strict,
 };
 
 /// Builder for HMAC-SHA3-256 message authentication operations
@@ -56,20 +57,25 @@ impl HmacBuilder {
     /// Returns `true` if the MAC is valid.
     #[must_use]
     pub fn verify(&self, key: &[u8], message: &[u8], mac: &[u8]) -> bool {
-        verify_hmac(key, message, mac)
+        is_hmac_valid(key, message, mac)
     }
 
     /// Verify an HMAC tag, returning a Result
     ///
     /// Useful for error handling chains.
-    pub fn verify_strict(&self, key: &[u8], message: &[u8], mac: &[u8]) -> Result<(), CryptoError> {
-        verify_hmac_strict(key, message, mac)
+    pub fn validate_strict(
+        &self,
+        key: &[u8],
+        message: &[u8],
+        mac: &[u8],
+    ) -> Result<(), CryptoError> {
+        validate_hmac_strict(key, message, mac)
     }
 
     /// Verify an HMAC from a hex string
     #[must_use]
-    pub fn verify_hex(&self, key: &[u8], message: &[u8], hex_mac: &str) -> bool {
-        verify_hmac_hex(key, message, hex_mac)
+    pub fn is_hex_valid(&self, key: &[u8], message: &[u8], hex_mac: &str) -> bool {
+        is_hmac_hex_valid(key, message, hex_mac)
     }
 
     /// Create an incremental HMAC for streaming data
@@ -100,8 +106,14 @@ impl HmacBuilder {
 
     /// Verify an HMAC created with domain separation
     #[must_use]
-    pub fn verify_with_domain(&self, key: &[u8], domain: &str, message: &[u8], mac: &[u8]) -> bool {
-        verify_hmac_with_domain(key, domain, message, mac)
+    pub fn is_with_domain_valid(
+        &self,
+        key: &[u8],
+        domain: &str,
+        message: &[u8],
+        mac: &[u8],
+    ) -> bool {
+        is_hmac_with_domain_valid(key, domain, message, mac)
     }
 
     /// Compute HMAC for multiple message parts
@@ -115,8 +127,8 @@ impl HmacBuilder {
 
     /// Verify a multipart HMAC
     #[must_use]
-    pub fn verify_multipart(&self, key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
-        verify_hmac_multipart(key, parts, mac)
+    pub fn is_multipart_valid(&self, key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
+        is_hmac_multipart_valid(key, parts, mac)
     }
 }
 

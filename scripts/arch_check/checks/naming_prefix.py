@@ -11,10 +11,23 @@ from scripts.arch_check.core import Finding, iter_files, rel
 _TRIGGER = re.compile(r"pub fn (has_|contains_|check_|verify_|ensure_|remove_)")
 _EXTRACT = re.compile(r"(has_|contains_|check_|verify_|ensure_|remove_)[a-z_]*")
 
+# Subdirs to scan. Order matches the historical bash recipe: identifier
+# subdirs first, then the broader primitives/observe domains added in #193.
+# Layer 3 paths (`crypto/`, `data/`) are deliberately excluded — their few
+# remaining violations are `pub fn` public-API renames that require a
+# deprecation cycle paired with the next minor bump.
+_SUBDIRS: tuple[str, ...] = (
+    "primitives/identifiers",
+    "identifiers",
+    "primitives/crypto",
+    "primitives/data",
+    "primitives/io",
+    "observe",
+)
+
 
 def run(*, staged_only: bool, root: Path) -> Iterator[Finding]:
-    # Subdir order matches bash: primitives/identifiers first, then identifiers.
-    for subdir in ("primitives/identifiers", "identifiers"):
+    for subdir in _SUBDIRS:
         for path in iter_files(subdir=subdir, staged_only=staged_only, root=root):
             try:
                 text = path.read_text(encoding="utf-8", errors="replace")

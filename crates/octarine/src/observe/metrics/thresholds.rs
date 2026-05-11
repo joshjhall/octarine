@@ -461,10 +461,10 @@ pub fn list_thresholds() -> Vec<String> {
     global_monitor().list()
 }
 
-/// Check a metric value against its threshold (internal use)
+/// Evaluate a metric value against its threshold (internal use)
 ///
 /// Called automatically by metric operations when thresholds are registered.
-pub(crate) fn check_threshold(metric_name: &str, value: f64) {
+pub(crate) fn evaluate_threshold(metric_name: &str, value: f64) {
     global_monitor().check(metric_name, value);
 }
 

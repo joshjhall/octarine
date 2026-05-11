@@ -233,11 +233,11 @@ pub fn strip_trailing_separator(path: &str) -> &str {
 /// ```ignore
 /// use octarine::primitives::paths::format::conversion;
 ///
-/// assert_eq!(conversion::ensure_trailing_separator("path/to/dir"), "path/to/dir/");
-/// assert_eq!(conversion::ensure_trailing_separator("path\\to\\dir"), "path\\to\\dir\\");
+/// assert_eq!(conversion::with_trailing_separator("path/to/dir"), "path/to/dir/");
+/// assert_eq!(conversion::with_trailing_separator("path\\to\\dir"), "path\\to\\dir\\");
 /// ```
 #[must_use]
-pub fn ensure_trailing_separator(path: &str) -> Cow<'_, str> {
+pub fn with_trailing_separator(path: &str) -> Cow<'_, str> {
     if path.ends_with('/') || path.ends_with('\\') {
         Cow::Borrowed(path)
     } else if path.contains('\\') && !path.contains('/') {
@@ -627,17 +627,17 @@ mod tests {
     }
 
     #[test]
-    fn test_ensure_trailing_separator() {
+    fn test_with_trailing_separator() {
         assert_eq!(
-            ensure_trailing_separator("path/to/dir").as_ref(),
+            with_trailing_separator("path/to/dir").as_ref(),
             "path/to/dir/"
         );
         assert_eq!(
-            ensure_trailing_separator("path\\to\\dir").as_ref(),
+            with_trailing_separator("path\\to\\dir").as_ref(),
             "path\\to\\dir\\"
         );
         // Already has trailing
-        let result = ensure_trailing_separator("path/to/dir/");
+        let result = with_trailing_separator("path/to/dir/");
         assert!(matches!(result, Cow::Borrowed(_)));
     }
 

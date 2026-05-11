@@ -39,7 +39,7 @@ pub fn hmac_with_domain(key: &[u8], domain: &str, message: &[u8]) -> [u8; MAC_LE
 
 /// Verify a MAC that was created with domain separation.
 #[must_use]
-pub fn verify_hmac_with_domain(
+pub fn is_hmac_with_domain_valid(
     key: &[u8],
     domain: &str,
     message: &[u8],
@@ -88,7 +88,7 @@ pub fn hmac_multipart(key: &[u8], parts: &[&[u8]]) -> [u8; MAC_LENGTH] {
 
 /// Verify a multipart MAC.
 #[must_use]
-pub fn verify_hmac_multipart(key: &[u8], parts: &[&[u8]], expected_mac: &[u8]) -> bool {
+pub fn is_hmac_multipart_valid(key: &[u8], parts: &[&[u8]], expected_mac: &[u8]) -> bool {
     let computed = hmac_multipart(key, parts);
     super::super::ct_eq(&computed, expected_mac)
 }
@@ -118,16 +118,16 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_hmac_with_domain() {
+    fn test_is_hmac_with_domain_valid() {
         let key = b"key";
         let domain = "my-domain";
         let message = b"data";
 
         let mac = hmac_with_domain(key, domain, message);
 
-        assert!(verify_hmac_with_domain(key, domain, message, &mac));
-        assert!(!verify_hmac_with_domain(key, "other", message, &mac));
-        assert!(!verify_hmac_with_domain(key, domain, b"wrong", &mac));
+        assert!(is_hmac_with_domain_valid(key, domain, message, &mac));
+        assert!(!is_hmac_with_domain_valid(key, "other", message, &mac));
+        assert!(!is_hmac_with_domain_valid(key, domain, b"wrong", &mac));
     }
 
     // =========================================================================
@@ -181,13 +181,13 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_hmac_multipart() {
+    fn test_is_hmac_multipart_valid() {
         let key = b"key";
         let parts: &[&[u8]] = &[b"header", b"body"];
 
         let mac = hmac_multipart(key, parts);
 
-        assert!(verify_hmac_multipart(key, parts, &mac));
-        assert!(!verify_hmac_multipart(key, &[b"wrong"], &mac));
+        assert!(is_hmac_multipart_valid(key, parts, &mac));
+        assert!(!is_hmac_multipart_valid(key, &[b"wrong"], &mac));
     }
 }

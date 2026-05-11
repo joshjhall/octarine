@@ -216,7 +216,7 @@ struct RegisteredWriter {
 static WRITER_REGISTRY: RwLock<Option<HashMap<&'static str, RegisteredWriter>>> = RwLock::new(None);
 
 /// Initialize the registry if needed
-fn ensure_registry() {
+fn init_registry_if_missing() {
     let mut registry = WRITER_REGISTRY.write().unwrap_or_else(|e| e.into_inner());
     if registry.is_none() {
         *registry = Some(HashMap::new());
@@ -247,7 +247,7 @@ fn ensure_registry() {
 /// register_writer(Box::new(MyWriter));
 /// ```
 pub fn register_writer(writer: Box<dyn Writer>) {
-    ensure_registry();
+    init_registry_if_missing();
     let name = writer.name();
     // Store as Arc so we can clone handles out of the registry and drop the
     // lock guard before awaiting `Writer::write` in `dispatch_to_writers`.

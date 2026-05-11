@@ -5,7 +5,7 @@ use crate::primitives::crypto::keys::{
     PasswordCharset, PasswordProfile, PasswordStrength, derive_key_from_password_sync,
     derive_key_from_password_with_profile_sync, derive_multiple_keys_from_password_sync,
     estimate_password_strength, generate_password, hash_password_sync,
-    hash_password_with_profile_sync, verify_password_sync,
+    hash_password_with_profile_sync, validate_password_sync,
 };
 
 /// Builder for password operations
@@ -76,7 +76,7 @@ impl PasswordBuilder {
     /// assert!(!crypto.password().verify("wrong", &hash)?);
     /// ```
     pub fn verify(&self, password: &str, hash: &str) -> Result<bool, CryptoError> {
-        verify_password_sync(password, hash)
+        validate_password_sync(password, hash)
     }
 
     /// Derive an encryption key from a password
