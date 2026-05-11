@@ -2,6 +2,16 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- feat(identifiers): add international postal codes (DE, FR, AU, JP, IN, NL, BR) (#37)
+  - Per-country detection functions: `is_german_postal_code`, `is_french_postal_code`, `is_australian_postal_code`, `is_japanese_postal_code`, `is_indian_postal_code`, `is_dutch_postal_code`, `is_brazilian_postal_code`
+  - `PostalCodeType` gains `GermanPostal`, `FrenchPostal`, `AustralianPostal`, `JapanesePostal`, `IndianPostal`, `DutchPostal`, `BrazilianPostal` variants
+  - `find_postal_codes_in_text` now gates short-numeric matches (DE/FR/AU/IN) on a ±50-char address-context keyword window (`zip`, `postal code`, `PLZ`, `CEP`, `PIN code`, `code postal`) to suppress false positives on phone numbers, prices, and years
+  - `normalize_postal_code` accepts bare-digit Japanese (NNNNNNN) and Brazilian (NNNNNNNN) forms and inserts canonical hyphens; Dutch codes are normalized to a single space between digits and letters
+
 ## [0.3.0-beta.3] - 2026-04-28
 
 ### Fixed

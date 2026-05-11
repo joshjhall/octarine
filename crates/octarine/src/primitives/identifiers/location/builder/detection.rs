@@ -44,6 +44,48 @@ impl LocationIdentifierBuilder {
         detection::is_postal_code(value)
     }
 
+    /// Check if value is a German postal code (5 digits)
+    #[must_use]
+    pub fn is_german_postal_code(&self, value: &str) -> bool {
+        detection::is_german_postal_code(value)
+    }
+
+    /// Check if value is a French postal code (5 digits, dept 01-98)
+    #[must_use]
+    pub fn is_french_postal_code(&self, value: &str) -> bool {
+        detection::is_french_postal_code(value)
+    }
+
+    /// Check if value is an Australian postal code (4 digits, 0200-9999)
+    #[must_use]
+    pub fn is_australian_postal_code(&self, value: &str) -> bool {
+        detection::is_australian_postal_code(value)
+    }
+
+    /// Check if value is a Japanese postal code (NNN-NNNN)
+    #[must_use]
+    pub fn is_japanese_postal_code(&self, value: &str) -> bool {
+        detection::is_japanese_postal_code(value)
+    }
+
+    /// Check if value is an Indian PIN code (6 digits, first digit 1-8)
+    #[must_use]
+    pub fn is_indian_postal_code(&self, value: &str) -> bool {
+        detection::is_indian_postal_code(value)
+    }
+
+    /// Check if value is a Dutch postal code (NNNN AA)
+    #[must_use]
+    pub fn is_dutch_postal_code(&self, value: &str) -> bool {
+        detection::is_dutch_postal_code(value)
+    }
+
+    /// Check if value is a Brazilian CEP (NNNNN-NNN)
+    #[must_use]
+    pub fn is_brazilian_postal_code(&self, value: &str) -> bool {
+        detection::is_brazilian_postal_code(value)
+    }
+
     /// Find all GPS coordinates in text
     #[must_use]
     pub fn find_gps_coordinates_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
