@@ -4,3 +4,4 @@
 - [GitHub status labels](feedback_github_labels.md) — verify all four `status/*` labels exist before `/next-issue-ship` (pr-pending was missing)
 - [audit-ai-config scans gitignored file](project_audit_ai_config_gitignored.md) — findings against .claude/settings.local.json can't be PR'd; fix locally and close with comment
 - [LOC excludes docs and tests](feedback_loc_excludes_docs_tests.md) — size limits (300/500/800) measure production code only, not doc comments or test modules
+- [PR auto-merge on green](feedback_pr_auto_merge.md) — for /next-issue-ship PRs, squash-merge + delete-branch + prune as soon as CI is green; don't ask
