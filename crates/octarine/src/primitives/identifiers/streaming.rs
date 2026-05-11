@@ -440,6 +440,34 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::IndiaGstin => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_india_gstins_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::IndiaVehicleReg => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_india_vehicle_registrations_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::IndiaVoterId => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_india_voter_ids_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::IndiaPassport => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_india_passports_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::FinlandHetu => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_finland_hetus_in_text(text) {

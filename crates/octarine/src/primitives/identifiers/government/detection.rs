@@ -404,6 +404,151 @@ pub fn find_india_pans_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Check if a value matches India GSTIN format (15 chars: state + PAN + entity + Z + check)
+#[must_use]
+pub fn is_india_gstin(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::india_gstin::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all India GSTIN patterns in text
+#[must_use]
+pub fn find_india_gstins_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::india_gstin::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::IndiaGstin,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches India vehicle registration format
+#[must_use]
+pub fn is_india_vehicle_registration(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::india_vehicle_reg::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all India vehicle registration patterns in text
+#[must_use]
+pub fn find_india_vehicle_registrations_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::india_vehicle_reg::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::IndiaVehicleReg,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches India Voter ID (EPIC) format (3 letters + 7 digits)
+#[must_use]
+pub fn is_india_voter_id(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::india_voter_id::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all India Voter ID patterns in text
+#[must_use]
+pub fn find_india_voter_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::india_voter_id::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::IndiaVoterId,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches Indian passport format (letter + 7 digits)
+///
+/// Accepts STANDARD pattern `[A-Z]\d{7}` for direct value checks — text scans
+/// use LABELED only (see `find_india_passports_in_text`).
+#[must_use]
+pub fn is_india_passport(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::india_passport::STANDARD.is_match(value)
+        || patterns::india_passport::LABELED.is_match(value)
+}
+
+/// Find all Indian passport patterns in text
+///
+/// Uses LABELED patterns only — the STANDARD format `[A-Z]\d{7}` is too short
+/// to scan safely (high false-positive rate against arbitrary strings).
+#[must_use]
+pub fn find_india_passports_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::india_passport::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::IndiaPassport,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Check if a value matches Singapore NRIC/FIN format
 #[must_use]
 pub fn is_singapore_nric(value: &str) -> bool {
@@ -1182,6 +1327,10 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_australia_abns_in_text(text));
     all_matches.extend(find_india_aadhaars_in_text(text));
     all_matches.extend(find_india_pans_in_text(text));
+    all_matches.extend(find_india_gstins_in_text(text));
+    all_matches.extend(find_india_vehicle_registrations_in_text(text));
+    all_matches.extend(find_india_voter_ids_in_text(text));
+    all_matches.extend(find_india_passports_in_text(text));
     all_matches.extend(find_singapore_nrics_in_text(text));
     all_matches.extend(find_finland_hetus_in_text(text));
     all_matches.extend(find_poland_pesels_in_text(text));

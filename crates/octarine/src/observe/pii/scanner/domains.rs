@@ -102,6 +102,21 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     if !government.find_india_pans_in_text(text).is_empty() {
         pii_types.push(PiiType::IndiaPan);
     }
+    if !government.find_india_gstins_in_text(text).is_empty() {
+        pii_types.push(PiiType::IndiaGstin);
+    }
+    if !government
+        .find_india_vehicle_registrations_in_text(text)
+        .is_empty()
+    {
+        pii_types.push(PiiType::IndiaVehicleReg);
+    }
+    if !government.find_india_voter_ids_in_text(text).is_empty() {
+        pii_types.push(PiiType::IndiaVoterId);
+    }
+    if !government.find_india_passports_in_text(text).is_empty() {
+        pii_types.push(PiiType::IndiaPassport);
+    }
     if !government.find_singapore_nrics_in_text(text).is_empty() {
         pii_types.push(PiiType::SingaporeNric);
     }
