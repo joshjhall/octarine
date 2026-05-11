@@ -160,16 +160,17 @@ fn sanitize_for_token(text: &str) -> String {
     text.chars().filter(|c| c.is_alphanumeric()).collect()
 }
 
-/// Sanitize street address strict (normalize format + validate)
+/// Sanitize street address strict (normalize whitespace + validate)
 ///
-/// Normalizes street address casing and spacing, and validates format.
-/// Returns normalized address if valid, error otherwise.
+/// Collapses interior whitespace runs to single spaces, trims surrounding
+/// whitespace, and validates that the result still parses as a street
+/// address.
 ///
 /// # Note
 ///
-/// Current implementation validates format but does not normalize casing/spacing
-/// as address normalization is complex and varies by country.
-/// Future enhancement: Implement full address normalization.
+/// Casing and abbreviation normalization (e.g., `"St"` → `"Street"`) are
+/// intentionally not performed — address formats vary by country and full
+/// normalization belongs in a locale-aware higher-level module.
 ///
 /// # Examples
 ///
@@ -180,20 +181,21 @@ fn sanitize_for_token(text: &str) -> String {
 /// let sanitized = sanitization::sanitize_street_address_strict("123 Main Street")?;
 /// assert_eq!(sanitized, "123 Main Street");
 ///
+/// // Whitespace collapse
+/// let sanitized = sanitization::sanitize_street_address_strict("  123  Main   Street  ")?;
+/// assert_eq!(sanitized, "123 Main Street");
+///
 /// // Invalid address
 /// assert!(sanitization::sanitize_street_address_strict("").is_err());
 /// ```
 pub fn sanitize_street_address_strict(address: &str) -> Result<String, Problem> {
-    let trimmed = address.trim();
+    let normalized = address.split_whitespace().collect::<Vec<_>>().join(" ");
 
-    // Validate format using detection
-    if !detection::is_street_address(trimmed) {
+    if !detection::is_street_address(&normalized) {
         return Err(Problem::Validation("Invalid street address format".into()));
     }
 
-    // TODO: Implement full address normalization (casing, spacing, abbreviations)
-    // For now, just return trimmed
-    Ok(trimmed.to_string())
+    Ok(normalized)
 }
 
 #[cfg(test)]
@@ -311,10 +313,34 @@ mod tests {
     fn test_sanitize_street_address_strict() {
         // Valid address
         let result = sanitize_street_address_strict("123 Main Street");
-        assert!(result.is_ok());
+        assert_eq!(result.expect("valid address"), "123 Main Street");
 
         // Empty address
         let result = sanitize_street_address_strict("");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sanitize_street_address_strict_collapses_whitespace() {
+        // Double internal spaces
+        assert_eq!(
+            sanitize_street_address_strict("123  Main  Street").expect("valid"),
+            "123 Main Street"
+        );
+        // Leading and trailing whitespace
+        assert_eq!(
+            sanitize_street_address_strict("  123 Main Street  ").expect("valid"),
+            "123 Main Street"
+        );
+        // Tabs and mixed whitespace
+        assert_eq!(
+            sanitize_street_address_strict("123\tMain\t\tStreet").expect("valid"),
+            "123 Main Street"
+        );
+        // Combination of leading, trailing, and internal
+        assert_eq!(
+            sanitize_street_address_strict("\t  123   Main\t Street \n").expect("valid"),
+            "123 Main Street"
+        );
     }
 }

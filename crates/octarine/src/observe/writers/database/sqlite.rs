@@ -301,6 +301,7 @@ impl SqliteBackend {
             local_ip: None,
             source_ip: None,
             source_ip_chain: Vec::new(),
+            environment: None,
             contains_pii: contains_pii != 0,
             contains_phi: contains_phi != 0,
             security_relevant: security_relevant != 0,

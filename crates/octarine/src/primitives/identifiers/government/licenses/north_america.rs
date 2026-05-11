@@ -228,33 +228,15 @@ impl LicenseValidator for NebraskaValidator {
         false
     }
 
-    #[allow(clippy::arithmetic_side_effects)] // Validated format ensures safe arithmetic
     fn is_checksum_valid(&self, license: &str) -> Option<bool> {
         if !self.is_format_valid(license) {
             return None;
         }
 
-        let chars: Vec<char> = license.to_uppercase().chars().collect();
-
-        // Nebraska check digit algorithm (simplified):
-        // This is a basic weighted sum - actual NE algorithm may vary
-        let mut sum: u32 = 0;
-        let mut weight = 1u32;
-
-        for &c in &chars {
-            let value = if c.is_ascii_alphabetic() {
-                u32::from(c).saturating_sub(u32::from('A')) + 1
-            } else {
-                c.to_digit(10)?
-            };
-            sum = sum.saturating_add(value.saturating_mul(weight));
-            weight = weight.saturating_add(1);
-        }
-
-        // For Nebraska, we validate format but checksum verification
-        // requires more research on the exact algorithm
-        // For now, return true if format is valid (checksum not verified)
-        Some(true) // TODO: Implement actual NE checksum when algorithm is documented
+        // Nebraska does not publish its driver's license check-digit
+        // algorithm. Returning None signals format-only validation, the
+        // same pattern used by the Washington validator below.
+        None
     }
 
     fn format_description(&self) -> &'static str {
@@ -420,6 +402,19 @@ mod tests {
         assert!(!v.is_format_valid("1234567")); // 7 digits (not 8)
         assert!(!v.is_format_valid("123456789")); // 9 digits
         assert!(!v.is_format_valid("AB12345")); // Two letters
+    }
+
+    #[test]
+    fn test_nebraska_checksum_is_format_only() {
+        // Nebraska's check-digit algorithm is not publicly documented, so
+        // is_checksum_valid returns None for any input — including
+        // format-valid ones — to signal format-only validation.
+        let v = NebraskaValidator;
+        assert_eq!(v.is_checksum_valid("A12345"), None);
+        assert_eq!(v.is_checksum_valid("12345678"), None);
+        // Format-invalid inputs also return None
+        assert_eq!(v.is_checksum_valid("A12"), None);
+        assert_eq!(v.is_checksum_valid("AB12345"), None);
     }
 
     // ===== Washington Tests =====
