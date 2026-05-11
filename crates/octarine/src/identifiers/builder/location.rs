@@ -16,8 +16,8 @@ use crate::primitives::identifiers::{
 };
 
 use super::super::types::{
-    GpsFormat, IdentifierMatch, IdentifierType, LocationTextPolicy, PostalCodeNormalization,
-    PostalCodeType,
+    AddressNormalization, GpsFormat, IdentifierMatch, IdentifierType, LocationTextPolicy,
+    PostalCodeNormalization, PostalCodeType,
 };
 
 #[allow(clippy::expect_used)]
@@ -480,6 +480,24 @@ impl LocationBuilder {
     pub fn detect_postal_code_type(&self, postal_code: &str) -> Option<PostalCodeType> {
         self.inner.detect_postal_code_type(postal_code)
     }
+
+    /// Normalize a US street address (USPS Publication 28 conventions)
+    ///
+    /// Applies case and abbreviation normalization to US-format street
+    /// addresses. Pure conversion — no observe events.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem::Validation` when the input is empty or the
+    /// normalized output does not match a recognized US street-address
+    /// shape.
+    pub fn normalize_us_street_address(
+        &self,
+        address: &str,
+        mode: AddressNormalization,
+    ) -> Result<String, Problem> {
+        self.inner.normalize_us_street_address(address, mode)
+    }
 }
 
 #[cfg(test)]
@@ -506,5 +524,26 @@ mod tests {
     fn test_gps_detection() {
         let builder = LocationBuilder::silent();
         assert!(builder.is_gps_coordinate("40.7128, -74.0060"));
+    }
+
+    #[test]
+    fn test_normalize_us_street_address() {
+        let builder = LocationBuilder::silent();
+
+        let result = builder
+            .normalize_us_street_address("123 main st", AddressNormalization::Expand)
+            .expect("valid address");
+        assert_eq!(result, "123 Main Street");
+
+        let result = builder
+            .normalize_us_street_address("456 Oak Avenue", AddressNormalization::Abbreviate)
+            .expect("valid address");
+        assert_eq!(result, "456 Oak Ave");
+
+        assert!(
+            builder
+                .normalize_us_street_address("", AddressNormalization::Expand)
+                .is_err()
+        );
     }
 }

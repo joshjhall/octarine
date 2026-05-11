@@ -2,7 +2,9 @@
 //!
 //! Implements conversion and normalization methods that delegate to the conversion module.
 
-use super::super::conversion::{self, GpsFormat, PostalCodeNormalization, PostalCodeType};
+use super::super::conversion::{
+    self, AddressNormalization, GpsFormat, PostalCodeNormalization, PostalCodeType,
+};
 use crate::primitives::Problem;
 
 use super::LocationIdentifierBuilder;
@@ -117,6 +119,46 @@ impl LocationIdentifierBuilder {
     #[must_use]
     pub fn detect_postal_code_type(&self, postal_code: &str) -> Option<PostalCodeType> {
         conversion::detect_postal_code_type(postal_code)
+    }
+
+    /// Normalize a US street address (USPS Publication 28 conventions)
+    ///
+    /// Applies case and abbreviation normalization to US-format street
+    /// addresses in a single token-level pass. Whitespace collapses;
+    /// commas, state codes, and ZIP codes pass through.
+    ///
+    /// Use [`AddressNormalization::Expand`] for human-readable output
+    /// (`"St"` → `"Street"`) and [`AddressNormalization::Abbreviate`] for
+    /// USPS mailing form (`"Street"` → `"St"`).
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use crate::primitives::identifiers::location::{
+    ///     LocationIdentifierBuilder, AddressNormalization,
+    /// };
+    ///
+    /// let builder = LocationIdentifierBuilder::new();
+    ///
+    /// assert_eq!(
+    ///     builder
+    ///         .normalize_us_street_address("123 main st", AddressNormalization::Expand)
+    ///         .unwrap(),
+    ///     "123 Main Street"
+    /// );
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem::Validation` when the input is empty or the
+    /// normalized output does not match a recognized US street-address
+    /// shape.
+    pub fn normalize_us_street_address(
+        &self,
+        address: &str,
+        mode: AddressNormalization,
+    ) -> Result<String, Problem> {
+        conversion::normalize_us_street_address(address, mode)
     }
 }
 
@@ -277,5 +319,29 @@ mod tests {
         assert_eq!(builder.detect_postal_code_type("12"), None);
         assert_eq!(builder.detect_postal_code_type("ABCDE"), None);
         assert_eq!(builder.detect_postal_code_type(""), None);
+    }
+
+    #[test]
+    fn test_normalize_us_street_address() {
+        let builder = LocationIdentifierBuilder::new();
+
+        assert_eq!(
+            builder
+                .normalize_us_street_address("123 main st", AddressNormalization::Expand)
+                .unwrap(),
+            "123 Main Street"
+        );
+        assert_eq!(
+            builder
+                .normalize_us_street_address("456 Oak Avenue NW", AddressNormalization::Abbreviate)
+                .unwrap(),
+            "456 Oak Ave NW"
+        );
+
+        assert!(
+            builder
+                .normalize_us_street_address("", AddressNormalization::Expand)
+                .is_err()
+        );
     }
 }

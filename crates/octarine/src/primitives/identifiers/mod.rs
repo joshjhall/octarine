@@ -174,10 +174,10 @@ pub(crate) use medical::{
 };
 
 // Re-export location builder types for data layer
+pub use location::{AddressNormalization, GpsFormat, PostalCodeNormalization, PostalCodeType};
 pub(crate) use location::{
     AddressRedactionStrategy, GpsRedactionStrategy, PostalCodeRedactionStrategy,
 };
-pub use location::{GpsFormat, PostalCodeNormalization, PostalCodeType};
 
 // Re-export token builder types for data layer
 pub use token::ApiKeyProvider;
