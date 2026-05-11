@@ -117,6 +117,21 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
     if !government.find_india_passports_in_text(text).is_empty() {
         pii_types.push(PiiType::IndiaPassport);
     }
+    if !government.find_brazil_cpfs_in_text(text).is_empty() {
+        pii_types.push(PiiType::BrazilCpf);
+    }
+    if !government.find_brazil_cnpjs_in_text(text).is_empty() {
+        pii_types.push(PiiType::BrazilCnpj);
+    }
+    if !government.find_mexico_curps_in_text(text).is_empty() {
+        pii_types.push(PiiType::MexicoCurp);
+    }
+    if !government.find_nigeria_nins_in_text(text).is_empty() {
+        pii_types.push(PiiType::NigeriaNin);
+    }
+    if !government.find_thailand_tnins_in_text(text).is_empty() {
+        pii_types.push(PiiType::ThailandTnin);
+    }
     if !government.find_singapore_nrics_in_text(text).is_empty() {
         pii_types.push(PiiType::SingaporeNric);
     }

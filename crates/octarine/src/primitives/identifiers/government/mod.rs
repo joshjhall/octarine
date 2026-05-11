@@ -117,11 +117,13 @@ pub use validation::{clear_government_caches, ssn_cache_stats, vin_cache_stats};
 
 // Export test pattern detection functions (observe module testing)
 pub use validation::{
-    is_test_australia_abn, is_test_australia_tfn, is_test_driver_license, is_test_ein,
-    is_test_finland_hetu, is_test_india_aadhaar, is_test_india_gstin, is_test_india_pan,
-    is_test_india_passport, is_test_india_vehicle_registration, is_test_india_voter_id,
-    is_test_italy_fiscal_code, is_test_korea_rrn, is_test_poland_pesel, is_test_singapore_nric,
-    is_test_spain_nie, is_test_spain_nif, is_test_vin,
+    is_test_australia_abn, is_test_australia_tfn, is_test_brazil_cnpj, is_test_brazil_cpf,
+    is_test_driver_license, is_test_ein, is_test_finland_hetu, is_test_india_aadhaar,
+    is_test_india_gstin, is_test_india_pan, is_test_india_passport,
+    is_test_india_vehicle_registration, is_test_india_voter_id, is_test_italy_fiscal_code,
+    is_test_korea_rrn, is_test_mexico_curp, is_test_nigeria_nin, is_test_poland_pesel,
+    is_test_singapore_nric, is_test_spain_nie, is_test_spain_nif, is_test_thailand_tnin,
+    is_test_vin,
 };
 
 // Export Australia validation functions
@@ -157,6 +159,21 @@ pub use validation::{validate_singapore_nric, validate_singapore_nric_with_check
 
 // Export Korea RRN validation functions
 pub use validation::{validate_korea_rrn, validate_korea_rrn_with_checksum};
+
+// Export Brazil validation functions (CPF + CNPJ)
+pub use validation::{
+    validate_brazil_cnpj, validate_brazil_cnpj_with_checksum, validate_brazil_cpf,
+    validate_brazil_cpf_with_checksum,
+};
+
+// Export Mexico validation functions
+pub use validation::{validate_mexico_curp, validate_mexico_curp_with_checksum};
+
+// Export Nigeria validation functions
+pub use validation::validate_nigeria_nin;
+
+// Export Thailand validation functions
+pub use validation::{validate_thailand_tnin, validate_thailand_tnin_with_checksum};
 
 // Export strategy types for explicit redaction control
 pub use sanitization::{

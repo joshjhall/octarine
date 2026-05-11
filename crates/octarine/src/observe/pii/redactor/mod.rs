@@ -169,6 +169,11 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::IndiaVehicleReg
             | PiiType::IndiaVoterId
             | PiiType::IndiaPassport
+            | PiiType::BrazilCpf
+            | PiiType::BrazilCnpj
+            | PiiType::MexicoCurp
+            | PiiType::NigeriaNin
+            | PiiType::ThailandTnin
             | PiiType::SingaporeNric
             | PiiType::FinlandHetu
             | PiiType::PolandPesel

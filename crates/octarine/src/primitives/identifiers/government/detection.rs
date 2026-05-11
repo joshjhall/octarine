@@ -549,6 +549,232 @@ pub fn find_india_passports_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+// ============================================================================
+// Brazil CPF
+// ============================================================================
+
+/// Check if a value matches Brazil CPF format
+#[must_use]
+pub fn is_brazil_cpf(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    // Accept plain 11-digit form for direct checks (only text scanning is
+    // restricted to labeled/formatted to avoid false positives).
+    if value.chars().filter(|c| c.is_ascii_digit()).count() == 11
+        && value
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | ' '))
+    {
+        return true;
+    }
+    patterns::brazil_cpf::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Brazil CPF patterns in text
+#[must_use]
+pub fn find_brazil_cpfs_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::brazil_cpf::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::BrazilCpf,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+// ============================================================================
+// Brazil CNPJ
+// ============================================================================
+
+/// Check if a value matches Brazil CNPJ format
+#[must_use]
+pub fn is_brazil_cnpj(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    if value.chars().filter(|c| c.is_ascii_digit()).count() == 14
+        && value
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '/' | ' '))
+    {
+        return true;
+    }
+    patterns::brazil_cnpj::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Brazil CNPJ patterns in text
+#[must_use]
+pub fn find_brazil_cnpjs_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::brazil_cnpj::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::BrazilCnpj,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+// ============================================================================
+// Mexico CURP
+// ============================================================================
+
+/// Check if a value matches Mexico CURP format
+#[must_use]
+pub fn is_mexico_curp(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::mexico_curp::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Mexico CURP patterns in text
+#[must_use]
+pub fn find_mexico_curps_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::mexico_curp::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::MexicoCurp,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+// ============================================================================
+// Nigeria NIN
+// ============================================================================
+
+/// Check if a value matches Nigeria NIN format (11 digits)
+#[must_use]
+pub fn is_nigeria_nin(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    // Direct value check: 11 digits with optional separators
+    if value.chars().filter(|c| c.is_ascii_digit()).count() == 11
+        && value
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '-' | ' '))
+    {
+        return true;
+    }
+    patterns::nigeria_nin::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Nigeria NIN patterns in text (LABELED only — see pattern docs)
+#[must_use]
+pub fn find_nigeria_nins_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::nigeria_nin::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::NigeriaNin,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+// ============================================================================
+// Thailand TNIN
+// ============================================================================
+
+/// Check if a value matches Thailand TNIN format
+#[must_use]
+pub fn is_thailand_tnin(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    if value.chars().filter(|c| c.is_ascii_digit()).count() == 13
+        && value
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '-' | ' '))
+    {
+        return true;
+    }
+    patterns::thailand_tnin::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Thailand TNIN patterns in text
+#[must_use]
+pub fn find_thailand_tnins_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::thailand_tnin::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::ThailandTnin,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Check if a value matches Singapore NRIC/FIN format
 #[must_use]
 pub fn is_singapore_nric(value: &str) -> bool {
@@ -865,6 +1091,16 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::IndiaAadhaar)
     } else if is_india_pan(value) {
         Some(IdentifierType::IndiaPan)
+    } else if is_brazil_cpf(value) {
+        Some(IdentifierType::BrazilCpf)
+    } else if is_brazil_cnpj(value) {
+        Some(IdentifierType::BrazilCnpj)
+    } else if is_mexico_curp(value) {
+        Some(IdentifierType::MexicoCurp)
+    } else if is_thailand_tnin(value) {
+        Some(IdentifierType::ThailandTnin)
+    } else if is_nigeria_nin(value) {
+        Some(IdentifierType::NigeriaNin)
     } else if is_singapore_nric(value) {
         Some(IdentifierType::SingaporeNric)
     } else if is_finland_hetu(value) {
@@ -1331,6 +1567,11 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_india_vehicle_registrations_in_text(text));
     all_matches.extend(find_india_voter_ids_in_text(text));
     all_matches.extend(find_india_passports_in_text(text));
+    all_matches.extend(find_brazil_cpfs_in_text(text));
+    all_matches.extend(find_brazil_cnpjs_in_text(text));
+    all_matches.extend(find_mexico_curps_in_text(text));
+    all_matches.extend(find_nigeria_nins_in_text(text));
+    all_matches.extend(find_thailand_tnins_in_text(text));
     all_matches.extend(find_singapore_nrics_in_text(text));
     all_matches.extend(find_finland_hetus_in_text(text));
     all_matches.extend(find_poland_pesels_in_text(text));
