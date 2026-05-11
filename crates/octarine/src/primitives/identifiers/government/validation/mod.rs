@@ -37,6 +37,7 @@
 //! | EIN | Input Validation | Best Practice | N/A |
 
 mod australia;
+mod brazil;
 mod cache;
 mod driver_license;
 mod ein;
@@ -44,12 +45,15 @@ mod finland;
 mod india;
 mod italy;
 mod korea_rrn;
+mod mexico;
 mod national_id;
+mod nigeria;
 mod passport;
 mod poland;
 mod singapore;
 mod spain;
 mod ssn;
+mod thailand;
 mod vin;
 
 // Re-export cache utilities
@@ -116,6 +120,23 @@ pub use singapore::{
 
 // Re-export Korea RRN functions
 pub use korea_rrn::{is_test_korea_rrn, validate_korea_rrn, validate_korea_rrn_with_checksum};
+
+// Re-export Brazil functions
+pub use brazil::{
+    is_test_brazil_cnpj, is_test_brazil_cpf, validate_brazil_cnpj,
+    validate_brazil_cnpj_with_checksum, validate_brazil_cpf, validate_brazil_cpf_with_checksum,
+};
+
+// Re-export Mexico functions
+pub use mexico::{is_test_mexico_curp, validate_mexico_curp, validate_mexico_curp_with_checksum};
+
+// Re-export Nigeria functions
+pub use nigeria::{is_test_nigeria_nin, validate_nigeria_nin};
+
+// Re-export Thailand functions
+pub use thailand::{
+    is_test_thailand_tnin, validate_thailand_tnin, validate_thailand_tnin_with_checksum,
+};
 
 // Re-export VIN functions
 pub use vin::{is_test_vin, validate_vin, validate_vin_with_checksum};

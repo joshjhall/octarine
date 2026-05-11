@@ -73,6 +73,11 @@ pub enum IdentifierType {
     IndiaVehicleReg, // Indian vehicle registration (license plate)
     IndiaVoterId,    // Indian Voter ID (EPIC - Electors Photo Identity Card)
     IndiaPassport,   // Indian passport (P/S/D type indicator + 7 digits)
+    BrazilCpf,       // Brazilian Cadastro de Pessoas Físicas (mod-11 dual check digits)
+    BrazilCnpj,      // Brazilian Cadastro Nacional da Pessoa Jurídica (mod-11 dual check digits)
+    MexicoCurp,      // Mexican Clave Única de Registro de Población (18 chars + check)
+    NigeriaNin,      // Nigerian National Identification Number (11 digits)
+    ThailandTnin,    // Thai National Identification Number (13 digits, mod-11 check)
     SingaporeNric,   // Singapore NRIC/FIN
     FinlandHetu,     // Finnish personal identity code
     PolandPesel,     // Polish personal identity number (PESEL)

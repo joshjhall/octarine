@@ -468,6 +468,41 @@ impl StreamingScanner {
                         total = total.saturating_add(1);
                     }
                 }
+                IdentifierType::BrazilCpf => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_brazil_cpfs_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::BrazilCnpj => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_brazil_cnpjs_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::MexicoCurp => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_mexico_curps_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::NigeriaNin => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_nigeria_nins_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
+                IdentifierType::ThailandTnin => {
+                    let government = GovernmentIdentifierBuilder::new();
+                    for m in government.find_thailand_tnins_in_text(text) {
+                        let _ = self.buffer.push(m);
+                        total = total.saturating_add(1);
+                    }
+                }
                 IdentifierType::FinlandHetu => {
                     let government = GovernmentIdentifierBuilder::new();
                     for m in government.find_finland_hetus_in_text(text) {

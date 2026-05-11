@@ -803,6 +803,197 @@ impl GovernmentIdentifierBuilder {
     }
 
     // ========================================================================
+    // Brazil CPF Operations
+    // ========================================================================
+
+    /// Check if value matches Brazil CPF format
+    #[must_use]
+    pub fn is_brazil_cpf(&self, value: &str) -> bool {
+        detection::is_brazil_cpf(value)
+    }
+
+    /// Find all Brazil CPF numbers in text
+    #[must_use]
+    pub fn find_brazil_cpfs_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_brazil_cpfs_in_text(text)
+    }
+
+    /// Validate Brazil CPF format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CPF format is invalid
+    pub fn validate_brazil_cpf(&self, cpf: &str) -> Result<(), Problem> {
+        validation::validate_brazil_cpf(cpf)
+    }
+
+    /// Validate Brazil CPF with mod-11 dual check digit verification
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CPF format or checksum is invalid
+    pub fn validate_brazil_cpf_with_checksum(&self, cpf: &str) -> Result<(), Problem> {
+        validation::validate_brazil_cpf_with_checksum(cpf)
+    }
+
+    /// Check if a Brazil CPF is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_brazil_cpf(&self, cpf: &str) -> bool {
+        validation::is_test_brazil_cpf(cpf)
+    }
+
+    // ========================================================================
+    // Brazil CNPJ Operations
+    // ========================================================================
+
+    /// Check if value matches Brazil CNPJ format
+    #[must_use]
+    pub fn is_brazil_cnpj(&self, value: &str) -> bool {
+        detection::is_brazil_cnpj(value)
+    }
+
+    /// Find all Brazil CNPJ numbers in text
+    #[must_use]
+    pub fn find_brazil_cnpjs_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_brazil_cnpjs_in_text(text)
+    }
+
+    /// Validate Brazil CNPJ format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CNPJ format is invalid
+    pub fn validate_brazil_cnpj(&self, cnpj: &str) -> Result<(), Problem> {
+        validation::validate_brazil_cnpj(cnpj)
+    }
+
+    /// Validate Brazil CNPJ with mod-11 dual check digit verification
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CNPJ format or checksum is invalid
+    pub fn validate_brazil_cnpj_with_checksum(&self, cnpj: &str) -> Result<(), Problem> {
+        validation::validate_brazil_cnpj_with_checksum(cnpj)
+    }
+
+    /// Check if a Brazil CNPJ is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_brazil_cnpj(&self, cnpj: &str) -> bool {
+        validation::is_test_brazil_cnpj(cnpj)
+    }
+
+    // ========================================================================
+    // Mexico CURP Operations
+    // ========================================================================
+
+    /// Check if value matches Mexico CURP format
+    #[must_use]
+    pub fn is_mexico_curp(&self, value: &str) -> bool {
+        detection::is_mexico_curp(value)
+    }
+
+    /// Find all Mexico CURPs in text
+    #[must_use]
+    pub fn find_mexico_curps_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_mexico_curps_in_text(text)
+    }
+
+    /// Validate Mexico CURP format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CURP format is invalid
+    pub fn validate_mexico_curp(&self, curp: &str) -> Result<(), Problem> {
+        validation::validate_mexico_curp(curp)
+    }
+
+    /// Validate Mexico CURP with check digit verification
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CURP format or checksum is invalid
+    pub fn validate_mexico_curp_with_checksum(&self, curp: &str) -> Result<(), Problem> {
+        validation::validate_mexico_curp_with_checksum(curp)
+    }
+
+    /// Check if a Mexico CURP is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_mexico_curp(&self, curp: &str) -> bool {
+        validation::is_test_mexico_curp(curp)
+    }
+
+    // ========================================================================
+    // Nigeria NIN Operations
+    // ========================================================================
+
+    /// Check if value matches Nigeria NIN format
+    #[must_use]
+    pub fn is_nigeria_nin(&self, value: &str) -> bool {
+        detection::is_nigeria_nin(value)
+    }
+
+    /// Find all Nigeria NINs in text (labeled occurrences only — see pattern docs)
+    #[must_use]
+    pub fn find_nigeria_nins_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_nigeria_nins_in_text(text)
+    }
+
+    /// Validate Nigeria NIN format (no checksum algorithm exists)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the NIN format is invalid
+    pub fn validate_nigeria_nin(&self, nin: &str) -> Result<(), Problem> {
+        validation::validate_nigeria_nin(nin)
+    }
+
+    /// Check if a Nigeria NIN is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_nigeria_nin(&self, nin: &str) -> bool {
+        validation::is_test_nigeria_nin(nin)
+    }
+
+    // ========================================================================
+    // Thailand TNIN Operations
+    // ========================================================================
+
+    /// Check if value matches Thailand TNIN format
+    #[must_use]
+    pub fn is_thailand_tnin(&self, value: &str) -> bool {
+        detection::is_thailand_tnin(value)
+    }
+
+    /// Find all Thailand TNINs in text
+    #[must_use]
+    pub fn find_thailand_tnins_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_thailand_tnins_in_text(text)
+    }
+
+    /// Validate Thailand TNIN format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the TNIN format is invalid
+    pub fn validate_thailand_tnin(&self, tnin: &str) -> Result<(), Problem> {
+        validation::validate_thailand_tnin(tnin)
+    }
+
+    /// Validate Thailand TNIN with mod-11 check digit verification
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the TNIN format or checksum is invalid
+    pub fn validate_thailand_tnin_with_checksum(&self, tnin: &str) -> Result<(), Problem> {
+        validation::validate_thailand_tnin_with_checksum(tnin)
+    }
+
+    /// Check if a Thailand TNIN is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_thailand_tnin(&self, tnin: &str) -> bool {
+        validation::is_test_thailand_tnin(tnin)
+    }
+
+    // ========================================================================
     // Finland HETU Operations
     // ========================================================================
 

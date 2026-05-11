@@ -86,6 +86,16 @@ pub enum PiiType {
     IndiaVoterId,
     /// Indian passport (P/S/D type indicator + 7 digits)
     IndiaPassport,
+    /// Brazilian Cadastro de Pessoas Físicas (CPF, mod-11 dual check digits)
+    BrazilCpf,
+    /// Brazilian Cadastro Nacional da Pessoa Jurídica (CNPJ, mod-11 dual check digits)
+    BrazilCnpj,
+    /// Mexican Clave Única de Registro de Población (CURP)
+    MexicoCurp,
+    /// Nigerian National Identification Number (NIN)
+    NigeriaNin,
+    /// Thai National Identification Number (TNIN, mod-11 check digit)
+    ThailandTnin,
     /// Singapore NRIC / FIN
     SingaporeNric,
     /// Finnish personal identity code (HETU)
@@ -310,6 +320,11 @@ impl PiiType {
             Self::IndiaVehicleReg => "india_vehicle_reg",
             Self::IndiaVoterId => "india_voter_id",
             Self::IndiaPassport => "india_passport",
+            Self::BrazilCpf => "brazil_cpf",
+            Self::BrazilCnpj => "brazil_cnpj",
+            Self::MexicoCurp => "mexico_curp",
+            Self::NigeriaNin => "nigeria_nin",
+            Self::ThailandTnin => "thailand_tnin",
             Self::SingaporeNric => "singapore_nric",
             Self::FinlandHetu => "finland_hetu",
             Self::PolandPesel => "poland_pesel",
@@ -424,6 +439,11 @@ impl PiiType {
             | Self::IndiaVehicleReg
             | Self::IndiaVoterId
             | Self::IndiaPassport
+            | Self::BrazilCpf
+            | Self::BrazilCnpj
+            | Self::MexicoCurp
+            | Self::NigeriaNin
+            | Self::ThailandTnin
             | Self::SingaporeNric
             | Self::FinlandHetu
             | Self::PolandPesel
@@ -510,6 +530,7 @@ impl PiiType {
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
             Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
+            Self::BrazilCpf | Self::BrazilCnpj | Self::MexicoCurp | Self::NigeriaNin | Self::ThailandTnin |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Medical (HIPAA)
@@ -722,6 +743,11 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::IndiaVehicleReg => Self::IndiaVehicleReg,
             IdentifierType::IndiaVoterId => Self::IndiaVoterId,
             IdentifierType::IndiaPassport => Self::IndiaPassport,
+            IdentifierType::BrazilCpf => Self::BrazilCpf,
+            IdentifierType::BrazilCnpj => Self::BrazilCnpj,
+            IdentifierType::MexicoCurp => Self::MexicoCurp,
+            IdentifierType::NigeriaNin => Self::NigeriaNin,
+            IdentifierType::ThailandTnin => Self::ThailandTnin,
             IdentifierType::SingaporeNric => Self::SingaporeNric,
             IdentifierType::FinlandHetu => Self::FinlandHetu,
             IdentifierType::PolandPesel => Self::PolandPesel,
@@ -973,6 +999,11 @@ mod tests {
             PiiType::IndiaVehicleReg,
             PiiType::IndiaVoterId,
             PiiType::IndiaPassport,
+            PiiType::BrazilCpf,
+            PiiType::BrazilCnpj,
+            PiiType::MexicoCurp,
+            PiiType::NigeriaNin,
+            PiiType::ThailandTnin,
             PiiType::SingaporeNric,
         ] {
             assert_eq!(pii.domain(), "government", "{pii:?} domain");
@@ -1180,6 +1211,23 @@ mod tests {
             PiiType::IndiaAadhaar
         );
         assert_eq!(PiiType::from(IdentifierType::IndiaPan), PiiType::IndiaPan);
+        assert_eq!(PiiType::from(IdentifierType::BrazilCpf), PiiType::BrazilCpf);
+        assert_eq!(
+            PiiType::from(IdentifierType::BrazilCnpj),
+            PiiType::BrazilCnpj
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::MexicoCurp),
+            PiiType::MexicoCurp
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::NigeriaNin),
+            PiiType::NigeriaNin
+        );
+        assert_eq!(
+            PiiType::from(IdentifierType::ThailandTnin),
+            PiiType::ThailandTnin
+        );
         assert_eq!(
             PiiType::from(IdentifierType::SingaporeNric),
             PiiType::SingaporeNric

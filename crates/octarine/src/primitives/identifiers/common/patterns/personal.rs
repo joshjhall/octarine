@@ -463,6 +463,133 @@ pub(crate) mod india_passport {
     }
 }
 
+/// Brazil CPF (Cadastro de Pessoas Físicas) patterns
+///
+/// Format: `NNN.NNN.NNN-NN` or 11 plain digits.
+pub(crate) mod brazil_cpf {
+    use super::*;
+
+    /// Formatted CPF: NNN.NNN.NNN-NN
+    pub static FORMATTED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// CPF with explicit label (accepts formatted or unformatted)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:CPF|cadastro[\s-]?de[\s-]?pessoas[\s-]?f[ií]sicas)[\s:#-]*(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Scanning patterns. Plain 11-digit form is too ambiguous (matches phone
+    /// numbers, IDs, etc.) so we only scan formatted or labeled occurrences.
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*FORMATTED]
+    }
+}
+
+/// Brazil CNPJ (Cadastro Nacional da Pessoa Jurídica) patterns
+///
+/// Format: `NN.NNN.NNN/NNNN-NN` or 14 plain digits.
+pub(crate) mod brazil_cnpj {
+    use super::*;
+
+    /// Formatted CNPJ: NN.NNN.NNN/NNNN-NN
+    pub static FORMATTED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// CNPJ with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:CNPJ|cadastro[\s-]?nacional)[\s:#-]*(\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*FORMATTED]
+    }
+}
+
+/// Mexico CURP (Clave Única de Registro de Población) patterns
+///
+/// Format: 4 letters + 6 digits (YYMMDD) + gender (H/M) + 2 letters (state) +
+/// 3 letters + alphanumeric + digit.
+pub(crate) mod mexico_curp {
+    use super::*;
+
+    /// CURP standard format (18 characters)
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]\d\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// CURP with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:CURP|clave[\s-]?[uú]nica[\s-]?de[\s-]?registro)[\s:#-]*([A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]\d)\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
+/// Nigeria NIN (National Identification Number) patterns
+///
+/// Format: 11 plain digits. The unlabeled form is identical to phone numbers
+/// and many other identifiers, so scanning uses LABELED only — analogous to
+/// `india_passport`. Direct `is_nigeria_nin()` checks still accept the bare
+/// 11-digit form.
+pub(crate) mod nigeria_nin {
+    use super::*;
+
+    /// NIN standard format (11 digits, no separators)
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{11}\b").expect("BUG: Invalid regex pattern"));
+
+    /// NIN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b(?:NIN|national[\s-]?identification[\s-]?number|NIMC)[\s:#-]*(\d{11})\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Returns patterns used for text scanning (LABELED only — STANDARD is
+    /// `\d{11}` which matches phone numbers and many other 11-digit strings).
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Thailand TNIN (National Identification Number) patterns
+///
+/// Format: 13 digits. Display form `N-NNNN-NNNNN-NN-N`.
+pub(crate) mod thailand_tnin {
+    use super::*;
+
+    /// Formatted TNIN: N-NNNN-NNNNN-NN-N
+    pub static FORMATTED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d-\d{4}-\d{5}-\d{2}-\d\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// TNIN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:TNIN|Thai[\s-]?national[\s-]?ID|TID)[\s:#-]*(\d-?\d{4}-?\d{5}-?\d{2}-?\d)\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Scanning patterns. Plain 13-digit form is too ambiguous, so only
+    /// formatted or labeled occurrences are scanned.
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*FORMATTED]
+    }
+}
+
 /// Singapore NRIC/FIN patterns
 pub(crate) mod singapore_nric {
     use super::*;

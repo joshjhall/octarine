@@ -37,10 +37,11 @@ pub(crate) mod vehicle_id;
 pub(crate) use financial::{bank_account, credit_card, payment_token, routing_number};
 pub(crate) use network::{email, phone, username};
 pub(crate) use personal::{
-    australia_abn, australia_tfn, birthdate, driver_license, employee_id, finland_hetu,
-    india_aadhaar, india_gstin, india_pan, india_passport, india_vehicle_reg, india_voter_id,
-    italy_fiscal_code, korea_rrn, national_id, passport, personal_name, poland_pesel,
-    singapore_nric, spain_nie, spain_nif, ssn, student_id, tax_id, uk_ni,
+    australia_abn, australia_tfn, birthdate, brazil_cnpj, brazil_cpf, driver_license, employee_id,
+    finland_hetu, india_aadhaar, india_gstin, india_pan, india_passport, india_vehicle_reg,
+    india_voter_id, italy_fiscal_code, korea_rrn, mexico_curp, national_id, nigeria_nin, passport,
+    personal_name, poland_pesel, singapore_nric, spain_nie, spain_nif, ssn, student_id, tax_id,
+    thailand_tnin, uk_ni,
 };
 
 // medical, biometric, location, and vehicle modules are already accessible via pub mod declarations
