@@ -111,9 +111,9 @@ sqlx = { version = "0.8", optional = true, default-features = false, features = 
 ] }
 
 # OpenTelemetry (optional)
-opentelemetry = { version = "0.31", optional = true }
-opentelemetry_sdk = { version = "0.31", optional = true }
-opentelemetry-otlp = { version = "0.31", optional = true, features = ["grpc-tonic", "trace"] }
+opentelemetry = { version = "0.32", optional = true }
+opentelemetry_sdk = { version = "0.32", optional = true }
+opentelemetry-otlp = { version = "0.32", optional = true, features = ["grpc-tonic", "trace"] }
 
 # HTTP server middleware (optional)
 axum = { version = "0.8", optional = true }
