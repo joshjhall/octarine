@@ -374,7 +374,7 @@ fn validate_postal_code_impl(trimmed: &str) -> Result<PostalCodeType, Problem> {
     // Uses conversion layer's detect_postal_code_type() which is case-insensitive
     let postal_type = detect_postal_code_type(trimmed).ok_or_else(|| {
         Problem::Validation(
-            "Postal code does not match known format (US ZIP, UK, or Canada)".into(),
+            "Postal code does not match a known format (supported: US ZIP, UK, Canada, Japan, Netherlands, Brazil, India, Australia)".into(),
         )
     })?;
 
@@ -889,6 +889,50 @@ mod tests {
             #[test]
             fn prop_postal_whitespace_fails(ws in "[ \t\n\r]{1,10}") {
                 prop_assert!(validate_postal_code(&ws).is_err());
+            }
+
+            /// Property: Japanese postal codes (NNN-NNNN) should pass validation.
+            #[test]
+            fn prop_postal_japanese_passes(prefix in 0_u32..=999, suffix in 0_u32..=9999) {
+                let postal = format!("{:03}-{:04}", prefix, suffix);
+                prop_assert!(validate_postal_code(&postal).is_ok());
+            }
+
+            /// Property: Brazilian CEPs (NNNNN-NNN) should pass validation.
+            #[test]
+            fn prop_postal_brazilian_passes(prefix in 0_u32..=99_999, suffix in 0_u32..=999) {
+                let postal = format!("{:05}-{:03}", prefix, suffix);
+                prop_assert!(validate_postal_code(&postal).is_ok());
+            }
+
+            /// Property: Dutch postal codes (NNNN AA, first digit 1-9) should pass validation.
+            #[test]
+            fn prop_postal_dutch_passes(
+                first in 1_u32..=9,
+                rest in 0_u32..=999,
+                a in 0_u8..=25,
+                b in 0_u8..=25,
+            ) {
+                // Map 0..=25 to 'A'..='Z' via saturating_add to satisfy clippy::arithmetic_side_effects.
+                let a_ch = char::from(b'A'.saturating_add(a));
+                let b_ch = char::from(b'A'.saturating_add(b));
+                let postal = format!("{}{:03} {}{}", first, rest, a_ch, b_ch);
+                prop_assert!(validate_postal_code(&postal).is_ok());
+            }
+
+            /// Property: Indian PIN codes (6 digits, first digit 1-8) should pass validation.
+            #[test]
+            fn prop_postal_indian_passes(first in 1_u32..=8, rest in 0_u32..=99_999) {
+                let postal = format!("{}{:05}", first, rest);
+                prop_assert!(validate_postal_code(&postal).is_ok());
+            }
+
+            /// Property: Australian postal codes (0200-9999) should pass validation.
+            /// Note: 5-digit shape conflicts with US ZIP shape — 4 digits are tested here.
+            #[test]
+            fn prop_postal_australian_passes(code in 200_u32..=9999) {
+                let postal = format!("{:04}", code);
+                prop_assert!(validate_postal_code(&postal).is_ok());
             }
         }
     }

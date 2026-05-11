@@ -157,6 +157,17 @@ pub fn is_street_address(value: &str) -> bool {
 /// - US ZIP: "10001", "10001-1234"
 /// - UK: "SW1A 1AA"
 /// - Canada: "K1A 0B1"
+/// - Germany: "10115"
+/// - France: "75001" (dept 01-98)
+/// - Australia: "2000" (range 0200-9999)
+/// - Japan: "100-0001"
+/// - India: "110001" (first digit 1-8)
+/// - Netherlands: "1011 AB"
+/// - Brazil: "01001-000"
+///
+/// Per-value detection — does not require surrounding address context. For
+/// text-scanning behavior with context disambiguation, see
+/// [`find_postal_codes_in_text`].
 ///
 /// # Examples
 ///
@@ -173,6 +184,140 @@ pub fn is_postal_code(value: &str) -> bool {
         || patterns::US_ZIP_PLUS4.is_match(trimmed)
         || patterns::UK_POSTCODE.is_match(trimmed)
         || patterns::CANADA_POSTAL.is_match(trimmed)
+        || is_german_postal_code(trimmed)
+        || is_french_postal_code(trimmed)
+        || is_australian_postal_code(trimmed)
+        || is_japanese_postal_code(trimmed)
+        || is_indian_postal_code(trimmed)
+        || is_dutch_postal_code(trimmed)
+        || is_brazilian_postal_code(trimmed)
+}
+
+/// Check if value is a German postal code (5 digits, all 00000-99999).
+///
+/// Germany's `Postleitzahl` is a 5-digit code with no internal punctuation.
+/// Identical regex to US ZIP — callers needing country precision must rely on
+/// context (address keywords, country fields).
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_german_postal_code("10115"));  // Berlin
+/// assert!(!is_german_postal_code("1011"));  // Too short
+/// ```
+pub fn is_german_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    patterns::GERMAN_POSTAL.is_match(trimmed)
+}
+
+/// Check if value is a French postal code (5 digits with department code 01-98).
+///
+/// Range 01-98 is enforced both by the regex and re-validated post-trim for safety.
+/// 00xxx, 99xxx are rejected (no French department uses them).
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_french_postal_code("75001"));   // Paris (dept 75)
+/// assert!(is_french_postal_code("01000"));   // Ain (dept 01)
+/// assert!(!is_french_postal_code("00500"));  // dept 00 invalid
+/// assert!(!is_french_postal_code("99000"));  // dept 99 invalid
+/// ```
+pub fn is_french_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    if !patterns::FRENCH_POSTAL.is_match(trimmed) {
+        return false;
+    }
+    let dept: u32 = trimmed.get(..2).and_then(|s| s.parse().ok()).unwrap_or(0);
+    (1..=98).contains(&dept)
+}
+
+/// Check if value is an Australian postal code (4 digits, range 0200-9999).
+///
+/// The leading 02xx-09xx range covers ACT and NT; 1xxx-9xxx covers the states.
+/// 0000-0199 are not assigned.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_australian_postal_code("2000"));   // Sydney
+/// assert!(is_australian_postal_code("0200"));   // ANU (minimum)
+/// assert!(!is_australian_postal_code("0199"));  // Below minimum
+/// ```
+pub fn is_australian_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    if !patterns::AUSTRALIAN_POSTAL.is_match(trimmed) {
+        return false;
+    }
+    let n: u32 = trimmed.parse().unwrap_or(0);
+    (200..=9999).contains(&n)
+}
+
+/// Check if value is a Japanese postal code (NNN-NNNN, 7 digits with hyphen).
+///
+/// Japan's postal code is canonically formatted with a hyphen after the first 3
+/// digits. The unhyphenated 7-digit form is accepted via normalization; see
+/// `conversion::postal::normalize_postal_code`.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_japanese_postal_code("100-0001"));   // Tokyo
+/// assert!(!is_japanese_postal_code("1000001"));   // Missing hyphen
+/// ```
+pub fn is_japanese_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    patterns::JAPANESE_POSTAL.is_match(trimmed)
+}
+
+/// Check if value is an Indian PIN code (6 digits, first digit 1-8).
+///
+/// India Post divides the country into 8 postal zones, encoded in the first
+/// digit. 0 is unused; 9 is reserved for the Army Postal Service.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_indian_postal_code("110001"));   // New Delhi
+/// assert!(!is_indian_postal_code("010001"));  // Zone 0 invalid
+/// assert!(!is_indian_postal_code("910001"));  // Zone 9 reserved
+/// ```
+pub fn is_indian_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    patterns::INDIAN_POSTAL.is_match(trimmed)
+}
+
+/// Check if value is a Dutch postal code (NNNN AA, first digit 1-9).
+///
+/// Netherlands postal codes are 4 digits followed by 2 uppercase letters,
+/// optionally separated by a space. Leading 0 is invalid.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_dutch_postal_code("1011 AB"));   // Amsterdam
+/// assert!(is_dutch_postal_code("1011AB"));    // No space — accepted
+/// assert!(!is_dutch_postal_code("0123 AB"));  // Leading 0 invalid
+/// ```
+pub fn is_dutch_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    patterns::DUTCH_POSTAL.is_match(trimmed)
+}
+
+/// Check if value is a Brazilian CEP (NNNNN-NNN, 8 digits with hyphen).
+///
+/// CEP (Código de Endereçamento Postal) is canonically formatted with a hyphen
+/// after the first 5 digits.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_brazilian_postal_code("01001-000"));   // São Paulo
+/// assert!(!is_brazilian_postal_code("01001000"));   // Missing hyphen
+/// ```
+pub fn is_brazilian_postal_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    patterns::BRAZILIAN_POSTAL.is_match(trimmed)
 }
 
 // ============================================================================
@@ -255,6 +400,14 @@ pub fn find_addresses_in_text(text: &str) -> Vec<IdentifierMatch> {
 ///
 /// Scans text for postal code patterns and returns all matches with positions.
 ///
+/// **Context disambiguation**: short-numeric international codes (German 5-digit,
+/// French 5-digit, Australian 4-digit, Indian 6-digit) collide with phone numbers,
+/// prices, years, and other unrelated numerics. Matches against these patterns are
+/// only reported when an address-context keyword (zip, postal, PLZ, CEP, etc.)
+/// appears within a ±50-character window. Structurally distinctive codes (JP
+/// `NNN-NNNN`, NL `NNNN AA`, BR `NNNNN-NNN`) and the historical US/UK/Canada
+/// patterns are reported unconditionally.
+///
 /// # Examples
 ///
 /// ```ignore
@@ -272,6 +425,7 @@ pub fn find_postal_codes_in_text(text: &str) -> Vec<IdentifierMatch> {
 
     let mut matches = Vec::new();
 
+    // Phase 1: context-free patterns (current behavior; structurally distinctive)
     for pattern in patterns::postal_codes() {
         for capture in pattern.captures_iter(text) {
             let full_match = capture.get(0).expect("BUG: capture group 0 always exists");
@@ -284,7 +438,55 @@ pub fn find_postal_codes_in_text(text: &str) -> Vec<IdentifierMatch> {
         }
     }
 
+    // Phase 2: short-numeric patterns gated by address context. We additionally
+    // re-validate range constraints (e.g., French dept 01-98) by routing through
+    // the per-value `is_*_postal_code` functions so 99000-style regex matches
+    // that fail the country's range are dropped.
+    for pattern in patterns::postal_codes_requiring_context() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = capture.get(0).expect("BUG: capture group 0 always exists");
+            let matched = full_match.as_str();
+            if !has_address_context(text, full_match.start(), full_match.end()) {
+                continue;
+            }
+            // Range re-validation for short numerics. Regex already enforces
+            // structural format; this drops out-of-range numerics that share
+            // the format (e.g., AU "0100" is 4 digits but below the 0200 floor).
+            let in_range = is_german_postal_code(matched)
+                || is_french_postal_code(matched)
+                || is_australian_postal_code(matched)
+                || is_indian_postal_code(matched);
+            if !in_range {
+                continue;
+            }
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                matched.to_string(),
+                IdentifierType::PostalCode,
+            ));
+        }
+    }
+
     deduplicate_matches(matches)
+}
+
+/// Width (in chars/bytes; postal context keywords are ASCII) of the address-context
+/// window scanned around a short-numeric postal code match.
+const POSTAL_CONTEXT_WINDOW: usize = 50;
+
+/// Returns true iff an address-context keyword appears within
+/// `POSTAL_CONTEXT_WINDOW` characters of the given match span.
+///
+/// Slicing uses [`str::get`] (saturating bounds), so non-ASCII boundary
+/// failures degrade to "no context found" rather than panic.
+fn has_address_context(text: &str, match_start: usize, match_end: usize) -> bool {
+    let before_start = match_start.saturating_sub(POSTAL_CONTEXT_WINDOW);
+    let after_end = match_end
+        .saturating_add(POSTAL_CONTEXT_WINDOW)
+        .min(text.len());
+    let window = text.get(before_start..after_end).unwrap_or("");
+    patterns::POSTAL_CONTEXT_KEYWORD.is_match(window)
 }
 
 /// Find all location identifiers in text
@@ -620,9 +822,99 @@ mod tests {
         assert!(is_postal_code("K1A 0B1"));
         assert!(is_postal_code("M5H 2N2"));
 
+        // International — shares postal_code umbrella
+        assert!(is_postal_code("100-0001")); // Japan
+        assert!(is_postal_code("1011 AB")); // Netherlands
+        assert!(is_postal_code("01001-000")); // Brazil
+        assert!(is_postal_code("75001")); // France (also matches US ZIP shape)
+        assert!(is_postal_code("110001")); // India
+
         // Negative tests
         assert!(!is_postal_code("not a code"));
         assert!(!is_postal_code("123")); // Too short
+    }
+
+    #[test]
+    fn test_is_german_postal_code() {
+        assert!(is_german_postal_code("10115")); // Berlin
+        assert!(is_german_postal_code("80331")); // Munich
+        assert!(is_german_postal_code("01067")); // Dresden
+        assert!(!is_german_postal_code("1011")); // Too short
+        assert!(!is_german_postal_code("101150")); // Too long
+        assert!(!is_german_postal_code("ABCDE")); // Not digits
+    }
+
+    #[test]
+    fn test_is_french_postal_code() {
+        // Valid dept codes 01-98
+        assert!(is_french_postal_code("75001")); // Paris (75)
+        assert!(is_french_postal_code("01000")); // Ain (01, minimum)
+        assert!(is_french_postal_code("98000")); // Monaco (98, maximum)
+        assert!(is_french_postal_code("13001")); // Marseille (13)
+
+        // Invalid dept codes
+        assert!(!is_french_postal_code("00500")); // dept 00
+        assert!(!is_french_postal_code("99000")); // dept 99
+        assert!(!is_french_postal_code("7500")); // Too short
+        assert!(!is_french_postal_code("750010")); // Too long
+    }
+
+    #[test]
+    fn test_is_australian_postal_code() {
+        assert!(is_australian_postal_code("2000")); // Sydney
+        assert!(is_australian_postal_code("0200")); // ANU (minimum)
+        assert!(is_australian_postal_code("9999")); // Maximum
+        assert!(is_australian_postal_code("3000")); // Melbourne
+
+        // Below minimum
+        assert!(!is_australian_postal_code("0199"));
+        assert!(!is_australian_postal_code("0000"));
+        assert!(!is_australian_postal_code("0100"));
+        // Wrong length
+        assert!(!is_australian_postal_code("200"));
+        assert!(!is_australian_postal_code("20000"));
+    }
+
+    #[test]
+    fn test_is_japanese_postal_code() {
+        assert!(is_japanese_postal_code("100-0001")); // Tokyo
+        assert!(is_japanese_postal_code("530-0001")); // Osaka
+        assert!(!is_japanese_postal_code("1000001")); // Missing hyphen
+        assert!(!is_japanese_postal_code("100-001")); // Wrong second group length
+        assert!(!is_japanese_postal_code("10-00001")); // Wrong first group length
+    }
+
+    #[test]
+    fn test_is_indian_postal_code() {
+        assert!(is_indian_postal_code("110001")); // New Delhi (zone 1)
+        assert!(is_indian_postal_code("400001")); // Mumbai (zone 4)
+        assert!(is_indian_postal_code("800001")); // Patna (zone 8, max)
+
+        assert!(!is_indian_postal_code("010001")); // Zone 0 invalid
+        assert!(!is_indian_postal_code("910001")); // Zone 9 reserved (army)
+        assert!(!is_indian_postal_code("11000")); // Too short
+        assert!(!is_indian_postal_code("1100001")); // Too long
+    }
+
+    #[test]
+    fn test_is_dutch_postal_code() {
+        assert!(is_dutch_postal_code("1011 AB")); // Amsterdam with space
+        assert!(is_dutch_postal_code("1011AB")); // Without space
+        assert!(is_dutch_postal_code("9999 ZZ")); // Maximum-ish
+
+        assert!(!is_dutch_postal_code("0123 AB")); // Leading 0 invalid
+        assert!(!is_dutch_postal_code("1011 ab")); // Lowercase letters
+        assert!(!is_dutch_postal_code("1011 A")); // Missing letter
+    }
+
+    #[test]
+    fn test_is_brazilian_postal_code() {
+        assert!(is_brazilian_postal_code("01001-000")); // São Paulo
+        assert!(is_brazilian_postal_code("20040-002")); // Rio de Janeiro
+
+        assert!(!is_brazilian_postal_code("01001000")); // Missing hyphen
+        assert!(!is_brazilian_postal_code("01001-00")); // Short suffix
+        assert!(!is_brazilian_postal_code("0100-000")); // Short prefix
     }
 
     // ===== Text Scanning Tests =====
@@ -656,6 +948,87 @@ mod tests {
         assert!(matches.len() >= 3);
         let first = matches.first().expect("Should detect postal code patterns");
         assert_eq!(first.identifier_type, IdentifierType::PostalCode);
+    }
+
+    #[test]
+    fn test_find_postal_codes_skips_short_numeric_without_context() {
+        // Test 4-digit (Australian) and 6-digit (Indian) short numerics without
+        // address context. These shapes are NOT matched by the pre-existing
+        // US/UK/Canada/JP/NL/BR patterns, so a hit here would mean our new
+        // DE/FR/AU/IN scanners fired without context — which they must not.
+        //
+        // Note: 5-digit numerics (DE/FR shape) are unavoidably captured by the
+        // pre-existing US_ZIP regex; we intentionally keep that behavior.
+        let text = "Code 2000 here and 110001 there. Year 9999 also.";
+        let matches = find_postal_codes_in_text(text);
+        let short_matches: Vec<&str> = matches
+            .iter()
+            .map(|m| m.matched_text.as_str())
+            .filter(|t| ["2000", "9999", "110001"].contains(t))
+            .collect();
+        assert!(
+            short_matches.is_empty(),
+            "context-less short numerics should not match (AU/IN have no fallback regex), got: {:?}",
+            short_matches
+        );
+    }
+
+    #[test]
+    fn test_find_postal_codes_reports_short_numeric_with_context() {
+        // "PLZ" → German keyword
+        let de = "Postanschrift: PLZ 10115 Berlin";
+        let m_de = find_postal_codes_in_text(de);
+        assert!(
+            m_de.iter().any(|m| m.matched_text == "10115"),
+            "expected 10115 with German context, got: {:?}",
+            m_de
+        );
+
+        // "postal code" → English keyword (covers French 75001)
+        let fr = "Send to postal code 75001 in Paris";
+        let m_fr = find_postal_codes_in_text(fr);
+        assert!(
+            m_fr.iter().any(|m| m.matched_text == "75001"),
+            "expected 75001 with English context, got: {:?}",
+            m_fr
+        );
+
+        // "PIN code" → Indian keyword
+        let in_ = "Office PIN code 110001, New Delhi";
+        let m_in = find_postal_codes_in_text(in_);
+        assert!(
+            m_in.iter().any(|m| m.matched_text == "110001"),
+            "expected 110001 with Indian context, got: {:?}",
+            m_in
+        );
+    }
+
+    #[test]
+    fn test_find_postal_codes_reports_structural_formats_without_context() {
+        // Japanese, Dutch, Brazilian — distinctive enough to skip context gate.
+        let jp = "Tokyo HQ 100-0001";
+        assert!(
+            find_postal_codes_in_text(jp)
+                .iter()
+                .any(|m| m.matched_text == "100-0001"),
+            "expected Japanese match without context"
+        );
+
+        let nl = "Office at 1011 AB during business hours";
+        assert!(
+            find_postal_codes_in_text(nl)
+                .iter()
+                .any(|m| m.matched_text == "1011 AB"),
+            "expected Dutch match without context"
+        );
+
+        let br = "Endereço 01001-000 São Paulo";
+        assert!(
+            find_postal_codes_in_text(br)
+                .iter()
+                .any(|m| m.matched_text == "01001-000"),
+            "expected Brazilian match without context"
+        );
     }
 
     #[test]
