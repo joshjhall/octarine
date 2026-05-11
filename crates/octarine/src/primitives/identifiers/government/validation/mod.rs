@@ -102,8 +102,11 @@ pub use spain::{
 
 // Re-export India functions
 pub use india::{
-    is_test_india_aadhaar, is_test_india_pan, validate_india_aadhaar,
-    validate_india_aadhaar_with_checksum, validate_india_pan,
+    is_test_india_aadhaar, is_test_india_gstin, is_test_india_pan, is_test_india_passport,
+    is_test_india_vehicle_registration, is_test_india_voter_id, validate_india_aadhaar,
+    validate_india_aadhaar_with_checksum, validate_india_gstin, validate_india_gstin_with_checksum,
+    validate_india_pan, validate_india_passport, validate_india_vehicle_registration,
+    validate_india_voter_id,
 };
 
 // Re-export Singapore functions

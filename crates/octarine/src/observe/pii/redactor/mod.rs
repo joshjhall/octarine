@@ -165,6 +165,10 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::AustraliaAbn
             | PiiType::IndiaAadhaar
             | PiiType::IndiaPan
+            | PiiType::IndiaGstin
+            | PiiType::IndiaVehicleReg
+            | PiiType::IndiaVoterId
+            | PiiType::IndiaPassport
             | PiiType::SingaporeNric
             | PiiType::FinlandHetu
             | PiiType::PolandPesel

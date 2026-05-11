@@ -118,9 +118,10 @@ pub use validation::{clear_government_caches, ssn_cache_stats, vin_cache_stats};
 // Export test pattern detection functions (observe module testing)
 pub use validation::{
     is_test_australia_abn, is_test_australia_tfn, is_test_driver_license, is_test_ein,
-    is_test_finland_hetu, is_test_india_aadhaar, is_test_india_pan, is_test_italy_fiscal_code,
-    is_test_korea_rrn, is_test_poland_pesel, is_test_singapore_nric, is_test_spain_nie,
-    is_test_spain_nif, is_test_vin,
+    is_test_finland_hetu, is_test_india_aadhaar, is_test_india_gstin, is_test_india_pan,
+    is_test_india_passport, is_test_india_vehicle_registration, is_test_india_voter_id,
+    is_test_italy_fiscal_code, is_test_korea_rrn, is_test_poland_pesel, is_test_singapore_nric,
+    is_test_spain_nie, is_test_spain_nif, is_test_vin,
 };
 
 // Export Australia validation functions
@@ -131,7 +132,9 @@ pub use validation::{
 
 // Export India validation functions
 pub use validation::{
-    validate_india_aadhaar, validate_india_aadhaar_with_checksum, validate_india_pan,
+    validate_india_aadhaar, validate_india_aadhaar_with_checksum, validate_india_gstin,
+    validate_india_gstin_with_checksum, validate_india_pan, validate_india_passport,
+    validate_india_vehicle_registration, validate_india_voter_id,
 };
 
 // Export Finland validation functions

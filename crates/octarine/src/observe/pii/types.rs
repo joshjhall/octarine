@@ -78,6 +78,14 @@ pub enum PiiType {
     IndiaAadhaar,
     /// Indian Permanent Account Number (PAN)
     IndiaPan,
+    /// Indian Goods and Services Tax Identification Number (GSTIN, MOD-36 checksum)
+    IndiaGstin,
+    /// Indian vehicle registration (license plate)
+    IndiaVehicleReg,
+    /// Indian Voter ID (EPIC - Electors Photo Identity Card)
+    IndiaVoterId,
+    /// Indian passport (P/S/D type indicator + 7 digits)
+    IndiaPassport,
     /// Singapore NRIC / FIN
     SingaporeNric,
     /// Finnish personal identity code (HETU)
@@ -298,6 +306,10 @@ impl PiiType {
             Self::AustraliaAbn => "australia_abn",
             Self::IndiaAadhaar => "india_aadhaar",
             Self::IndiaPan => "india_pan",
+            Self::IndiaGstin => "india_gstin",
+            Self::IndiaVehicleReg => "india_vehicle_reg",
+            Self::IndiaVoterId => "india_voter_id",
+            Self::IndiaPassport => "india_passport",
             Self::SingaporeNric => "singapore_nric",
             Self::FinlandHetu => "finland_hetu",
             Self::PolandPesel => "poland_pesel",
@@ -408,6 +420,10 @@ impl PiiType {
             | Self::AustraliaAbn
             | Self::IndiaAadhaar
             | Self::IndiaPan
+            | Self::IndiaGstin
+            | Self::IndiaVehicleReg
+            | Self::IndiaVoterId
+            | Self::IndiaPassport
             | Self::SingaporeNric
             | Self::FinlandHetu
             | Self::PolandPesel
@@ -493,6 +509,7 @@ impl PiiType {
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
+            Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Medical (HIPAA)
@@ -525,8 +542,9 @@ impl PiiType {
             // Government IDs
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::TaxId | Self::NationalId |
             // EU-member country-specific government IDs (non-EU IDs like KoreaRrn,
-            // AustraliaTfn/Abn, IndiaAadhaar/Pan, SingaporeNric are protected by
-            // their own regimes — PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
+            // AustraliaTfn/Abn, IndiaAadhaar/Pan/Gstin/VehicleReg/VoterId/Passport,
+            // SingaporeNric are protected by their own regimes —
+            // PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
             Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode | Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Financial — IBAN identifies an EU account holder (Recital 30 /
             // Art. 4(1)). Crypto addresses are pseudonymous by design and are
@@ -700,6 +718,10 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::AustraliaAbn => Self::AustraliaAbn,
             IdentifierType::IndiaAadhaar => Self::IndiaAadhaar,
             IdentifierType::IndiaPan => Self::IndiaPan,
+            IdentifierType::IndiaGstin => Self::IndiaGstin,
+            IdentifierType::IndiaVehicleReg => Self::IndiaVehicleReg,
+            IdentifierType::IndiaVoterId => Self::IndiaVoterId,
+            IdentifierType::IndiaPassport => Self::IndiaPassport,
             IdentifierType::SingaporeNric => Self::SingaporeNric,
             IdentifierType::FinlandHetu => Self::FinlandHetu,
             IdentifierType::PolandPesel => Self::PolandPesel,
@@ -947,6 +969,10 @@ mod tests {
             PiiType::AustraliaAbn,
             PiiType::IndiaAadhaar,
             PiiType::IndiaPan,
+            PiiType::IndiaGstin,
+            PiiType::IndiaVehicleReg,
+            PiiType::IndiaVoterId,
+            PiiType::IndiaPassport,
             PiiType::SingaporeNric,
         ] {
             assert_eq!(pii.domain(), "government", "{pii:?} domain");

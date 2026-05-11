@@ -69,6 +69,10 @@ pub enum IdentifierType {
     AustraliaAbn,    // Australian Business Number
     IndiaAadhaar,    // Indian Aadhaar number (Verhoeff checksum)
     IndiaPan,        // Indian Permanent Account Number
+    IndiaGstin,      // Indian Goods and Services Tax Identification Number (MOD-36 checksum)
+    IndiaVehicleReg, // Indian vehicle registration (license plate)
+    IndiaVoterId,    // Indian Voter ID (EPIC - Electors Photo Identity Card)
+    IndiaPassport,   // Indian passport (P/S/D type indicator + 7 digits)
     SingaporeNric,   // Singapore NRIC/FIN
     FinlandHetu,     // Finnish personal identity code
     PolandPesel,     // Polish personal identity number (PESEL)
