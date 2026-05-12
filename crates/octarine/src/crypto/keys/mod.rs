@@ -37,7 +37,7 @@
 //! let hash = password::hash("user_password").await?;
 //!
 //! // Verify password
-//! if password::verify("user_password", &hash).await? {
+//! if password::validate("user_password", &hash).await? {
 //!     // Login successful
 //! }
 //! ```
@@ -51,7 +51,7 @@
 //! let hash = password::hash_sync("user_password")?;
 //!
 //! // Verify synchronously
-//! if password::verify_sync("user_password", &hash)? {
+//! if password::validate_sync("user_password", &hash)? {
 //!     // Login successful
 //! }
 //! ```

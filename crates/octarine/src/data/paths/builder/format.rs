@@ -229,9 +229,9 @@ impl FormatBuilder {
         PrimitiveFormatBuilder::new().strip_trailing_separator(path)
     }
 
-    /// Ensure path has trailing separator
+    /// Add a trailing separator if not already present
     #[must_use]
-    pub fn ensure_trailing_separator<'a>(&self, path: &'a str) -> Cow<'a, str> {
+    pub fn with_trailing_separator<'a>(&self, path: &'a str) -> Cow<'a, str> {
         PrimitiveFormatBuilder::new().with_trailing_separator(path)
     }
 

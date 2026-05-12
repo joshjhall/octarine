@@ -72,10 +72,10 @@ impl PasswordBuilder {
     /// ```ignore
     /// let crypto = CryptoBuilder::new();
     /// let hash = crypto.password().hash("secret")?;
-    /// assert!(crypto.password().verify("secret", &hash)?);
-    /// assert!(!crypto.password().verify("wrong", &hash)?);
+    /// assert!(crypto.password().validate("secret", &hash)?);
+    /// assert!(!crypto.password().validate("wrong", &hash)?);
     /// ```
-    pub fn verify(&self, password: &str, hash: &str) -> Result<bool, CryptoError> {
+    pub fn validate(&self, password: &str, hash: &str) -> Result<bool, CryptoError> {
         validate_password_sync(password, hash)
     }
 
@@ -178,13 +178,13 @@ mod tests {
         assert!(
             crypto
                 .password()
-                .verify("test_password", &hash)
+                .validate("test_password", &hash)
                 .expect("Verify failed")
         );
         assert!(
             !crypto
                 .password()
-                .verify("wrong", &hash)
+                .validate("wrong", &hash)
                 .expect("Verify failed")
         );
     }

@@ -4,22 +4,22 @@ use octarine::crypto::keys::password;
 use octarine::crypto::keys::{PasswordCharset, PasswordStrength};
 
 // =========================================================================
-// Hash + Verify (sync)
+// Hash + Validate (sync)
 // =========================================================================
 
-/// hash_sync → verify_sync with correct password succeeds.
+/// hash_sync → validate_sync with correct password succeeds.
 #[test]
-fn test_hash_verify_sync_correct() {
+fn test_hash_validate_sync_correct() {
     let hash = password::hash_sync("correct-horse-battery-staple").expect("hash");
-    let valid = password::verify_sync("correct-horse-battery-staple", &hash).expect("verify");
+    let valid = password::validate_sync("correct-horse-battery-staple", &hash).expect("verify");
     assert!(valid, "Correct password should verify");
 }
 
-/// hash_sync → verify_sync with wrong password fails.
+/// hash_sync → validate_sync with wrong password fails.
 #[test]
-fn test_hash_verify_sync_wrong_password() {
+fn test_hash_validate_sync_wrong_password() {
     let hash = password::hash_sync("correct-password").expect("hash");
-    let valid = password::verify_sync("wrong-password", &hash).expect("verify");
+    let valid = password::validate_sync("wrong-password", &hash).expect("verify");
     assert!(!valid, "Wrong password should not verify");
 }
 
@@ -31,19 +31,19 @@ fn test_hash_produces_unique_outputs() {
     assert_ne!(h1, h2, "Different salts should produce different hashes");
 
     // But both should verify
-    assert!(password::verify_sync("same-password", &h1).expect("verify 1"));
-    assert!(password::verify_sync("same-password", &h2).expect("verify 2"));
+    assert!(password::validate_sync("same-password", &h1).expect("verify 1"));
+    assert!(password::validate_sync("same-password", &h2).expect("verify 2"));
 }
 
 // =========================================================================
-// Hash + Verify (async)
+// Hash + Validate (async)
 // =========================================================================
 
-/// Async hash → verify round-trip.
+/// Async hash → validate round-trip.
 #[tokio::test]
-async fn test_hash_verify_async() {
+async fn test_hash_validate_async() {
     let hash = password::hash("async-password-test").await.expect("hash");
-    let valid = password::verify("async-password-test", &hash)
+    let valid = password::validate("async-password-test", &hash)
         .await
         .expect("verify");
     assert!(valid, "Async verification should succeed");

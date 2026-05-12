@@ -9,7 +9,7 @@
 //! attacks. This module provides async-first APIs that offload CPU-intensive
 //! work to a blocking thread pool:
 //!
-//! - Primary API is async (`hash()`, `verify()`, etc.)
+//! - Primary API is async (`hash()`, `validate()`, etc.)
 //! - Sync variants available with `*_sync()` suffix
 //!
 //! # Security Events
@@ -29,7 +29,7 @@
 //! let hash = password::hash("user_password").await?;
 //!
 //! // Verify password
-//! if password::verify("user_password", &hash).await? {
+//! if password::validate("user_password", &hash).await? {
 //!     // Success
 //! }
 //!
@@ -46,7 +46,7 @@
 //! let hash = password::hash_sync("user_password")?;
 //!
 //! // Verify synchronously
-//! if password::verify_sync("user_password", &hash)? {
+//! if password::validate_sync("user_password", &hash)? {
 //!     // Success
 //! }
 //! ```
@@ -119,11 +119,11 @@ pub async fn hash_with_profile(
 /// # Example
 ///
 /// ```ignore
-/// if password::verify("user_input", &stored_hash).await? {
+/// if password::validate("user_input", &stored_hash).await? {
 ///     // Login successful
 /// }
 /// ```
-pub async fn verify(password: &str, hash: &str) -> Result<bool, PasswordError> {
+pub async fn validate(password: &str, hash: &str) -> Result<bool, PasswordError> {
     let start = Instant::now();
     observe::debug("password_verify", "Starting password verification");
 
@@ -296,8 +296,8 @@ pub fn hash_with_profile_sync(
 
 /// Verify a password synchronously.
 ///
-/// **Warning**: Blocks the current thread. Use `verify()` in async contexts.
-pub fn verify_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
+/// **Warning**: Blocks the current thread. Use `validate()` in async contexts.
+pub fn validate_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
     let result = prim::validate_password_sync(password, hash);
 
     match &result {
@@ -313,13 +313,6 @@ pub fn verify_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
     }
 
     result
-}
-
-/// Alias for `verify_sync` following naming conventions.
-///
-/// **Warning**: Blocks the current thread. Use `verify()` in async contexts.
-pub fn validate_sync(password: &str, hash: &str) -> Result<bool, CryptoError> {
-    verify_sync(password, hash)
 }
 
 /// Derive a key from password synchronously.
@@ -431,12 +424,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hash_and_verify_sync() {
+    fn test_hash_and_validate_sync() {
         let hash = hash_sync("test_password").expect("Hash failed");
         assert!(hash.starts_with("$argon2id$"));
 
-        assert!(verify_sync("test_password", &hash).expect("Verify failed"));
-        assert!(!verify_sync("wrong_password", &hash).expect("Verify failed"));
+        assert!(validate_sync("test_password", &hash).expect("Verify failed"));
+        assert!(!validate_sync("wrong_password", &hash).expect("Verify failed"));
     }
 
     #[test]
@@ -459,13 +452,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_hash_and_verify_async() {
+    async fn test_hash_and_validate_async() {
         let hash = hash("test_password").await.expect("Hash failed");
         assert!(hash.starts_with("$argon2id$"));
 
-        assert!(verify("test_password", &hash).await.expect("Verify failed"));
         assert!(
-            !verify("wrong_password", &hash)
+            validate("test_password", &hash)
+                .await
+                .expect("Verify failed")
+        );
+        assert!(
+            !validate("wrong_password", &hash)
                 .await
                 .expect("Verify failed")
         );

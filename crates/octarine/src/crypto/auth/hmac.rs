@@ -18,7 +18,7 @@
 //! let mac = auth::compute(&key, b"message");
 //!
 //! // Verify HMAC (generates security event with result)
-//! let valid = auth::verify(&key, b"message", &mac);
+//! let valid = auth::is_valid(&key, b"message", &mac);
 //! ```
 
 use crate::observe;
@@ -37,7 +37,7 @@ use crate::primitives::crypto::auth as prim;
 ///
 /// - Key should be at least 32 bytes of cryptographically random data
 /// - Never reuse keys across different protocols
-/// - Use constant-time comparison when verifying (use `verify` function)
+/// - Use constant-time comparison when verifying (use `is_valid` function)
 #[must_use]
 pub fn compute(key: &[u8], message: &[u8]) -> [u8; 32] {
     let mac = prim::hmac_sha3_256(key, message);
@@ -72,7 +72,7 @@ pub fn compute_hex(key: &[u8], message: &[u8]) -> String {
 /// - Uses constant-time comparison to prevent timing attacks
 /// - Returns `false` for incorrect length MACs (timing-safe)
 #[must_use]
-pub fn verify(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
+pub fn is_valid(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
     let valid = prim::is_hmac_valid(key, message, expected_mac);
 
     if valid {
@@ -97,7 +97,7 @@ pub fn verify(key: &[u8], message: &[u8], expected_mac: &[u8]) -> bool {
 /// # Errors
 ///
 /// Returns `CryptoError::MacVerification` if verification fails.
-pub fn verify_strict(key: &[u8], message: &[u8], expected_mac: &[u8]) -> Result<(), CryptoError> {
+pub fn validate_strict(key: &[u8], message: &[u8], expected_mac: &[u8]) -> Result<(), CryptoError> {
     let result = prim::validate_hmac_strict(key, message, expected_mac);
 
     match &result {
@@ -120,7 +120,7 @@ pub fn verify_strict(key: &[u8], message: &[u8], expected_mac: &[u8]) -> Result<
 
 /// Verify an HMAC from a hex-encoded string with audit trail.
 #[must_use]
-pub fn verify_hex(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
+pub fn is_hex_valid(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
     let valid = prim::is_hmac_hex_valid(key, message, hex_mac);
 
     if valid {
@@ -178,7 +178,7 @@ pub fn with_domain(key: &[u8], domain: &str, message: &[u8]) -> [u8; 32] {
 
 /// Verify an HMAC created with domain separation with audit trail.
 #[must_use]
-pub fn verify_with_domain(key: &[u8], domain: &str, message: &[u8], mac: &[u8]) -> bool {
+pub fn is_with_domain_valid(key: &[u8], domain: &str, message: &[u8], mac: &[u8]) -> bool {
     let valid = prim::is_hmac_with_domain_valid(key, domain, message, mac);
 
     if valid {
@@ -240,7 +240,7 @@ pub fn multipart(key: &[u8], parts: &[&[u8]]) -> [u8; 32] {
 
 /// Verify a multipart HMAC with audit trail.
 #[must_use]
-pub fn verify_multipart(key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
+pub fn is_multipart_valid(key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
     let valid = prim::is_hmac_multipart_valid(key, parts, mac);
 
     let total_len: usize = parts.iter().map(|p| p.len()).sum();
@@ -265,37 +265,6 @@ pub fn verify_multipart(key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
     }
 
     valid
-}
-
-// ============================================================================
-// Validate Aliases (Standard Naming Convention)
-// ============================================================================
-
-/// Alias for `verify_strict` following naming conventions.
-///
-/// # Errors
-///
-/// Returns `CryptoError::MacVerification` if verification fails.
-pub fn validate_strict(key: &[u8], message: &[u8], expected_mac: &[u8]) -> Result<(), CryptoError> {
-    verify_strict(key, message, expected_mac)
-}
-
-/// Alias for `verify_hex` following naming conventions.
-#[must_use]
-pub fn validate_hex(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
-    verify_hex(key, message, hex_mac)
-}
-
-/// Alias for `verify_with_domain` following naming conventions.
-#[must_use]
-pub fn validate_with_domain(key: &[u8], domain: &str, message: &[u8], mac: &[u8]) -> bool {
-    verify_with_domain(key, domain, message, mac)
-}
-
-/// Alias for `verify_multipart` following naming conventions.
-#[must_use]
-pub fn validate_multipart(key: &[u8], parts: &[&[u8]], mac: &[u8]) -> bool {
-    verify_multipart(key, parts, mac)
 }
 
 // ============================================================================
@@ -326,33 +295,33 @@ mod tests {
     }
 
     #[test]
-    fn test_verify() {
+    fn test_is_valid() {
         let key = b"secret-key";
         let message = b"test message";
         let mac = compute(key, message);
 
-        assert!(verify(key, message, &mac));
-        assert!(!verify(key, b"wrong message", &mac));
+        assert!(is_valid(key, message, &mac));
+        assert!(!is_valid(key, b"wrong message", &mac));
     }
 
     #[test]
-    fn test_verify_strict() {
+    fn test_validate_strict() {
         let key = b"secret-key";
         let message = b"test message";
         let mac = compute(key, message);
 
-        assert!(verify_strict(key, message, &mac).is_ok());
-        assert!(verify_strict(key, b"wrong", &mac).is_err());
+        assert!(validate_strict(key, message, &mac).is_ok());
+        assert!(validate_strict(key, b"wrong", &mac).is_err());
     }
 
     #[test]
-    fn test_verify_hex() {
+    fn test_is_hex_valid() {
         let key = b"secret-key";
         let message = b"test message";
         let mac = compute_hex(key, message);
 
-        assert!(verify_hex(key, message, &mac));
-        assert!(!verify_hex(key, b"wrong", &mac));
+        assert!(is_hex_valid(key, message, &mac));
+        assert!(!is_hex_valid(key, b"wrong", &mac));
     }
 
     #[test]
@@ -368,14 +337,14 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_with_domain() {
+    fn test_is_with_domain_valid() {
         let key = b"secret-key";
         let message = b"data";
 
         let mac = with_domain(key, "api:v1", message);
 
-        assert!(verify_with_domain(key, "api:v1", message, &mac));
-        assert!(!verify_with_domain(key, "api:v2", message, &mac));
+        assert!(is_with_domain_valid(key, "api:v1", message, &mac));
+        assert!(!is_with_domain_valid(key, "api:v2", message, &mac));
     }
 
     #[test]
@@ -388,14 +357,14 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_multipart() {
+    fn test_is_multipart_valid() {
         let key = b"secret-key";
         let parts: &[&[u8]] = &[b"header", b"body"];
 
         let mac = multipart(key, parts);
 
-        assert!(verify_multipart(key, parts, &mac));
-        assert!(!verify_multipart(key, &[b"wrong", b"parts"], &mac));
+        assert!(is_multipart_valid(key, parts, &mac));
+        assert!(!is_multipart_valid(key, &[b"wrong", b"parts"], &mac));
     }
 
     #[test]
@@ -411,15 +380,15 @@ mod tests {
     }
 
     #[test]
-    fn test_verify_wrong_length_mac() {
+    fn test_is_valid_wrong_length_mac() {
         let key = b"secret-key";
         let message = b"test message";
 
         // Too short (16 bytes)
-        assert!(!verify(key, message, &[0u8; 16]));
+        assert!(!is_valid(key, message, &[0u8; 16]));
         // Too long (64 bytes)
-        assert!(!verify(key, message, &[0u8; 64]));
+        assert!(!is_valid(key, message, &[0u8; 64]));
         // Empty
-        assert!(!verify(key, message, &[]));
+        assert!(!is_valid(key, message, &[]));
     }
 }
