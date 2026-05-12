@@ -351,7 +351,11 @@ mod tests {
         sleep_ms(10).await;
         let elapsed = start.elapsed();
         // Allow 20% margin for OS scheduler jitter
-        assert!(elapsed.as_millis() >= 8);
+        assert!(
+            elapsed.as_millis() >= 8,
+            "Expected at least 8ms elapsed, got {}ms",
+            elapsed.as_millis()
+        );
     }
 
     #[tokio::test]
@@ -395,7 +399,11 @@ mod tests {
         let start = now();
         timeout(Duration::from_millis(10)).await;
         let elapsed = start.elapsed();
-        assert!(elapsed.as_millis() >= 10);
+        assert!(
+            elapsed.as_millis() >= 10,
+            "Expected at least 10ms elapsed, got {}ms",
+            elapsed.as_millis()
+        );
     }
 
     #[tokio::test]
