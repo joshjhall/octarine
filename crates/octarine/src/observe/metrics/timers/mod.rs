@@ -112,7 +112,11 @@ mod tests {
         let timer = timer("test_operation");
         thread::sleep(Duration::from_millis(10));
         let duration = timer.record();
-        assert!(duration.as_millis() >= 10);
+        assert!(
+            duration.as_millis() >= 10,
+            "Expected at least 10ms duration, got {}ms",
+            duration.as_millis()
+        );
     }
 
     #[test]

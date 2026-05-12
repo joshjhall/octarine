@@ -202,7 +202,12 @@ mod tests {
     fn test_batch_processor_elapsed() {
         let batch = BatchProcessor::<i32>::new(10, Duration::from_secs(60));
         std::thread::sleep(Duration::from_millis(10));
-        assert!(batch.elapsed().as_millis() >= 10);
+        let elapsed = batch.elapsed();
+        assert!(
+            elapsed.as_millis() >= 10,
+            "Expected at least 10ms elapsed, got {}ms",
+            elapsed.as_millis()
+        );
     }
 
     #[test]
