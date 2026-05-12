@@ -56,7 +56,7 @@ impl HmacBuilder {
     ///
     /// Returns `true` if the MAC is valid.
     #[must_use]
-    pub fn verify(&self, key: &[u8], message: &[u8], mac: &[u8]) -> bool {
+    pub fn is_valid(&self, key: &[u8], message: &[u8], mac: &[u8]) -> bool {
         is_hmac_valid(key, message, mac)
     }
 

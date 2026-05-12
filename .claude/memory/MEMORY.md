@@ -6,3 +6,4 @@
 - [LOC excludes docs and tests](feedback_loc_excludes_docs_tests.md) — size limits (300/500/800) measure production code only, not doc comments or test modules
 - [PR auto-merge on green](feedback_pr_auto_merge.md) — for /next-issue-ship PRs, squash-merge + delete-branch + prune as soon as CI is green; don't ask
 - [Dependabot coordinated bumps](project_dependabot_coordinated_bumps.md) — opentelemetry/tonic/tracing families need ONE unified PR; close individual Dependabot PRs as superseded
+- [Pre-1.0 prefer breaking](feedback_pre_1_0_breaking_changes.md) — while on 0.x beta, do breaking renames directly; skip `#[deprecated]` aliases

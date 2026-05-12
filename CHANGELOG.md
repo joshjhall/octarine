@@ -14,6 +14,16 @@ All notable changes to octarine will be documented in this file.
 
 ### Changed
 
+- **BREAKING refactor(naming):** rename Layer 3 public verify_*/has_*/ensure_*/check_* to canonical names (#314, completes #193 naming-drift)
+  - `crypto::auth::hmac`: `verify` / `verify_strict` / `verify_hex` / `verify_with_domain` / `verify_multipart` → `is_valid` / `validate_strict` / `is_hex_valid` / `is_with_domain_valid` / `is_multipart_valid` (old names deleted, no aliases)
+  - `crypto::auth::hmac`: misnamed `validate_hex` / `validate_with_domain` / `validate_multipart` bool-returning aliases removed (the convention reserves `validate_*` for `Result`-returning functions)
+  - `crypto::keys::password`: `verify` (async) / `verify_sync` → `validate` / `validate_sync` (the prior `validate_sync` alias is now the only name)
+  - `data::paths::FormatBuilder::ensure_trailing_separator` → `with_trailing_separator`
+  - `data::paths::SeparatorStyle::is_separators_present` (was `has_separators`) on both Layer 1 and Layer 3 enums
+  - `primitives::io::net::HealthCheck::evaluate_health` trait method (was `check_health`) — external implementers must update
+  - `primitives::crypto::builder::HmacBuilder::is_valid` / `PasswordBuilder::validate` (were `.verify`)
+  - `scripts/arch_check/checks/naming_prefix.py` scope extended to all Layer 3 modules (`crypto/`, `data/`, `security/`, `auth/`, `http/`, `runtime/`, `io/`) — completes the prefix-rule lockdown crate-wide
+
 - refactor(naming): rename internal `pub fn` violations of prohibited-prefix naming convention (slice of #193)
   - `primitives/crypto/auth/hmac`: `verify_hmac{,_strict,_hex,_with_domain,_multipart}` → `is_hmac_valid` / `validate_hmac_strict` / `is_hmac_hex_valid` / `is_hmac_with_domain_valid` / `is_hmac_multipart_valid`
   - `primitives/crypto/builder::HmacBuilder`: `verify_strict` / `verify_hex` / `verify_with_domain` / `verify_multipart` → `validate_strict` / `is_hex_valid` / `is_with_domain_valid` / `is_multipart_valid`

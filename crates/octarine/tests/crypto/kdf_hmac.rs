@@ -20,7 +20,7 @@ fn test_kdf_derived_key_hmac_round_trip() {
     let mac = auth::compute(&derived_key, message);
 
     assert!(
-        auth::verify(&derived_key, message, &mac),
+        auth::is_valid(&derived_key, message, &mac),
         "HMAC should verify with same derived key"
     );
 }
@@ -61,7 +61,7 @@ fn test_domain_separation_produces_different_macs() {
 
     // Cross-verification should fail
     assert!(
-        !auth::verify(&key_enc, message, &mac_auth),
+        !auth::is_valid(&key_enc, message, &mac_auth),
         "MAC from auth key should not verify with enc key"
     );
 }
@@ -102,7 +102,7 @@ fn test_versioned_key_rotation() {
 
     // v1 MAC should not verify with v2 key
     assert!(
-        !auth::verify(&key_v2, message, &mac_v1),
+        !auth::is_valid(&key_v2, message, &mac_v1),
         "v1 MAC should not verify with v2 key"
     );
 }
@@ -115,9 +115,14 @@ fn test_domain_separated_hmac() {
 
     let mac = auth::with_domain(key, "api-signing", message);
 
-    assert!(auth::verify_with_domain(key, "api-signing", message, &mac));
+    assert!(auth::is_with_domain_valid(
+        key,
+        "api-signing",
+        message,
+        &mac
+    ));
     assert!(
-        !auth::verify_with_domain(key, "different-domain", message, &mac),
+        !auth::is_with_domain_valid(key, "different-domain", message, &mac),
         "Different domain should not verify"
     );
 }
@@ -137,12 +142,12 @@ fn test_multipart_hmac_with_derived_key() {
     let parts: &[&[u8]] = &[b"header", b"payload", b"footer"];
     let mac = auth::multipart(&derived, parts);
 
-    assert!(auth::verify_multipart(&derived, parts, &mac));
+    assert!(auth::is_multipart_valid(&derived, parts, &mac));
 
     // Tampered parts should not verify
     let tampered: &[&[u8]] = &[b"header", b"TAMPERED", b"footer"];
     assert!(
-        !auth::verify_multipart(&derived, tampered, &mac),
+        !auth::is_multipart_valid(&derived, tampered, &mac),
         "Tampered data should not verify"
     );
 }

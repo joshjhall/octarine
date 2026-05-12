@@ -12,10 +12,8 @@ _TRIGGER = re.compile(r"pub fn (has_|contains_|check_|verify_|ensure_|remove_)")
 _EXTRACT = re.compile(r"(has_|contains_|check_|verify_|ensure_|remove_)[a-z_]*")
 
 # Subdirs to scan. Order matches the historical bash recipe: identifier
-# subdirs first, then the broader primitives/observe domains added in #193.
-# Layer 3 paths (`crypto/`, `data/`) are deliberately excluded — their few
-# remaining violations are `pub fn` public-API renames that require a
-# deprecation cycle paired with the next minor bump.
+# subdirs first, then the broader primitives/observe domains added in #193,
+# then Layer 3 modules added in #314.
 _SUBDIRS: tuple[str, ...] = (
     "primitives/identifiers",
     "identifiers",
@@ -23,6 +21,13 @@ _SUBDIRS: tuple[str, ...] = (
     "primitives/data",
     "primitives/io",
     "observe",
+    "crypto",
+    "data",
+    "security",
+    "auth",
+    "http",
+    "runtime",
+    "io",
 )
 
 

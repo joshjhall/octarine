@@ -624,7 +624,7 @@ pub enum SeparatorStyle {
 impl SeparatorStyle {
     /// Check if this style has any separators
     #[must_use]
-    pub const fn has_separators(&self) -> bool {
+    pub const fn is_separators_present(&self) -> bool {
         !matches!(self, Self::None)
     }
 

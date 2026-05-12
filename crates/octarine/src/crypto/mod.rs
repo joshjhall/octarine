@@ -59,7 +59,7 @@
 //! let hash = password::hash("user_password")?;
 //!
 //! // Verify password (generates auth event)
-//! if password::verify("user_password", &hash)? {
+//! if password::validate("user_password", &hash).await? {
 //!     // Login successful
 //! }
 //! ```

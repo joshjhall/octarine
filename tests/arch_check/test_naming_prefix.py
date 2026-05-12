@@ -73,10 +73,13 @@ def test_extended_scope_covers_primitives_crypto_data_io_and_observe(
     }
 
 
-def test_layer3_crypto_and_data_not_in_scope(write_rs, tmp_repo: Path):
-    # Layer 3 `crypto/` and `data/` retain deprecated public-surface names
-    # pending a SemVer-bumped follow-up; the scanner deliberately skips them.
+def test_layer3_crypto_and_data_now_in_scope(write_rs, tmp_repo: Path):
+    # As of #314, Layer 3 `crypto/` and `data/` are scanned too — the
+    # deferred public-surface renames have landed.
     write_rs("crypto/auth/legacy.rs", "pub fn verify_legacy() {}\n")
     write_rs("data/paths/legacy.rs", "pub fn ensure_legacy() {}\n")
     findings = list(naming_prefix.run(staged_only=False, root=tmp_repo))
-    assert findings == []
+    assert {f.rel_path for f in findings} == {
+        "crates/octarine/src/crypto/auth/legacy.rs",
+        "crates/octarine/src/data/paths/legacy.rs",
+    }

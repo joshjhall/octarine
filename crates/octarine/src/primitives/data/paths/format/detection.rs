@@ -103,7 +103,7 @@ pub enum SeparatorStyle {
 impl SeparatorStyle {
     /// Check if this style has any separators
     #[must_use]
-    pub const fn has_separators(&self) -> bool {
+    pub const fn is_separators_present(&self) -> bool {
         !matches!(self, Self::None)
     }
 
@@ -512,10 +512,10 @@ mod tests {
     // SeparatorStyle tests
     #[test]
     fn test_separator_style() {
-        assert!(SeparatorStyle::Forward.has_separators());
-        assert!(SeparatorStyle::Back.has_separators());
-        assert!(SeparatorStyle::Mixed.has_separators());
-        assert!(!SeparatorStyle::None.has_separators());
+        assert!(SeparatorStyle::Forward.is_separators_present());
+        assert!(SeparatorStyle::Back.is_separators_present());
+        assert!(SeparatorStyle::Mixed.is_separators_present());
+        assert!(!SeparatorStyle::None.is_separators_present());
 
         assert!(SeparatorStyle::Forward.is_consistent());
         assert!(SeparatorStyle::Back.is_consistent());

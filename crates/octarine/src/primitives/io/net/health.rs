@@ -68,7 +68,7 @@ impl std::fmt::Display for NetworkHealthStatus {
 /// struct DatabaseClient { /* ... */ }
 ///
 /// impl HealthCheck for DatabaseClient {
-///     fn check_health(&self) -> Pin<Box<dyn Future<Output = NetworkHealthStatus> + Send + '_>> {
+///     fn evaluate_health(&self) -> Pin<Box<dyn Future<Output = NetworkHealthStatus> + Send + '_>> {
 ///         Box::pin(async move {
 ///             // Perform health check
 ///             match self.ping().await {
@@ -87,7 +87,7 @@ pub trait HealthCheck: Send + Sync {
     /// Perform a health check
     ///
     /// Returns the current health status of the service.
-    fn check_health(&self) -> Pin<Box<dyn Future<Output = NetworkHealthStatus> + Send + '_>>;
+    fn evaluate_health(&self) -> Pin<Box<dyn Future<Output = NetworkHealthStatus> + Send + '_>>;
 
     /// Get the service name for logging/metrics
     fn service_name(&self) -> &str;
