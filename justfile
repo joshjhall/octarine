@@ -125,8 +125,12 @@ deps-audit:
 deps-deny:
     cargo deny check
 
-# Full dependency health check: audit + deny + outdated
-deps-check: deps-audit deps-deny deps-outdated
+# Check workspace lockfile against OSV.dev (RustSec + GHSA + cross-ecosystem)
+deps-osv:
+    osv-scanner scan source --lockfile=Cargo.lock
+
+# Full dependency health check: audit + deny + osv + outdated
+deps-check: deps-audit deps-deny deps-osv deps-outdated
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
 

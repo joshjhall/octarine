@@ -1,0 +1,10 @@
+# osv-scanner allowlist
+#
+# Findings ignored here must also be reflected in `cargo audit` invocations
+# (currently `just deps-audit` via `--ignore`) so the two scanners stay in
+# sync. See justfile and docs/security/.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0071"
+# Marvin attack on the rsa crate. No fix is available upstream yet. The same
+# ignore is applied in `just deps-audit`; revisit when rsa publishes a fix.
