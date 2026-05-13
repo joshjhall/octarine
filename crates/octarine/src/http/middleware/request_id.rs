@@ -21,6 +21,7 @@ use axum::{
 use tower::{Layer, Service};
 use uuid::Uuid;
 
+use crate::primitives::http::request_id::parse_or_generate_request_id;
 use crate::primitives::runtime as prim_runtime;
 
 /// Header name for request ID
@@ -99,14 +100,14 @@ where
     fn call(&mut self, mut request: Request<Body>) -> Self::Future {
         let header_name = self.header_name().clone();
 
-        // Extract existing request ID or generate new one
-        // Try to parse as UUID, generate new one if invalid or missing
-        let request_id: Uuid = request
-            .headers()
-            .get(&header_name)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| Uuid::try_parse(s).ok())
-            .unwrap_or_else(Uuid::new_v4);
+        // Extract existing request ID or generate new one (primitive parses
+        // the header string and falls back to a fresh v4).
+        let request_id: Uuid = parse_or_generate_request_id(
+            request
+                .headers()
+                .get(&header_name)
+                .and_then(|v| v.to_str().ok()),
+        );
 
         // Set in Octarine context for observability
         prim_runtime::set_correlation_id(request_id);

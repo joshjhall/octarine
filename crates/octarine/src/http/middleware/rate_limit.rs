@@ -67,6 +67,8 @@ use governor::{
 };
 
 use crate::observe;
+use crate::primitives::http::headers::{parse_forwarded_for, parse_real_ip};
+use crate::primitives::http::routing::is_path_excluded;
 
 /// Header for forwarded IP (when behind proxy)
 static X_FORWARDED_FOR: HeaderName = HeaderName::from_static("x-forwarded-for");
@@ -210,7 +212,7 @@ impl RateLimitConfig {
 
     /// Check if a path should be excluded.
     fn is_excluded(&self, path: &str) -> bool {
-        self.exclude_paths.iter().any(|p| path.starts_with(p))
+        is_path_excluded(path, &self.exclude_paths)
     }
 
     /// Build the quota for governor.
@@ -343,8 +345,8 @@ impl<S> RateLimitService<S> {
                 .headers()
                 .get(&X_FORWARDED_FOR)
                 .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.split(',').next())
-                .and_then(|s| s.trim().parse().ok());
+                .and_then(parse_forwarded_for)
+                .and_then(|s| s.parse().ok());
 
             if let Some(ip) = forwarded_ip {
                 return Some(ip);
@@ -355,6 +357,7 @@ impl<S> RateLimitService<S> {
                 .headers()
                 .get(&X_REAL_IP)
                 .and_then(|v| v.to_str().ok())
+                .and_then(parse_real_ip)
                 .and_then(|s| s.parse().ok());
 
             if let Some(ip) = real_ip {

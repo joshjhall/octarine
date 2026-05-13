@@ -58,6 +58,8 @@ use axum::{
 };
 use tower::{Layer, Service};
 
+use crate::primitives::http::security::{HstsConfig, build_hsts_value, is_production_or_staging};
+
 /// Header names for security headers
 static STRICT_TRANSPORT_SECURITY: HeaderName = HeaderName::from_static("strict-transport-security");
 static X_CONTENT_TYPE_OPTIONS: HeaderName = HeaderName::from_static("x-content-type-options");
@@ -296,29 +298,12 @@ impl SecurityConfig {
     /// Build the HSTS header value.
     fn build_hsts_value(&self) -> Option<String> {
         let max_age = self.hsts_max_age?;
-
-        let mut value = format!("max-age={max_age}");
-
-        if self.hsts_include_subdomains {
-            value.push_str("; includeSubDomains");
-        }
-
-        if self.hsts_preload {
-            value.push_str("; preload");
-        }
-
-        Some(value)
+        Some(build_hsts_value(&HstsConfig {
+            max_age,
+            include_subdomains: self.hsts_include_subdomains,
+            preload: self.hsts_preload,
+        }))
     }
-}
-
-/// Check if running in production or staging environment.
-fn is_production_or_staging() -> bool {
-    let env = std::env::var("ENVIRONMENT")
-        .or_else(|_| std::env::var("ENV"))
-        .unwrap_or_default()
-        .to_lowercase();
-
-    matches!(env.as_str(), "production" | "prod" | "staging" | "stage")
 }
 
 /// Layer that adds security headers to responses.

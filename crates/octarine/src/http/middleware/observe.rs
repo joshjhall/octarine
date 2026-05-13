@@ -67,6 +67,7 @@ use crate::observe::pii;
 use crate::primitives::data::network::{
     PathPattern as PrimitivePathPattern, normalize_path_segments_with_patterns,
 };
+use crate::primitives::http::routing::is_path_excluded;
 use crate::primitives::runtime::{
     correlation_id as get_correlation_id, tenant_id as get_tenant_id,
 };
@@ -258,7 +259,7 @@ impl ObserveConfig {
 
     /// Check if a path should be excluded from logging.
     fn is_excluded(&self, path: &str) -> bool {
-        self.exclude_paths.iter().any(|p| path.starts_with(p))
+        is_path_excluded(path, &self.exclude_paths)
     }
 
     /// Normalize a path using configured patterns and auto-detection.

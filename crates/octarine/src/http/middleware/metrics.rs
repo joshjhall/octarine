@@ -57,6 +57,7 @@ use crate::observe::metrics::{self, MetricName};
 use crate::primitives::data::network::{
     PathPattern as PrimitivePathPattern, normalize_path_segments_with_patterns,
 };
+use crate::primitives::http::routing::is_path_excluded;
 
 // ============================================================================
 // Metrics Configuration
@@ -154,7 +155,7 @@ impl MetricsConfig {
 
     /// Check if a path should be excluded from metrics.
     fn is_excluded(&self, path: &str) -> bool {
-        self.exclude_paths.iter().any(|p| path.starts_with(p))
+        is_path_excluded(path, &self.exclude_paths)
     }
 
     /// Apply normalization to a path using configured patterns.
