@@ -66,6 +66,7 @@ pub(crate) mod types;
 
 pub(crate) mod crypto;
 pub(crate) mod data;
+pub(crate) mod http;
 pub(crate) mod identifiers;
 pub(crate) mod io;
 pub(crate) mod runtime;

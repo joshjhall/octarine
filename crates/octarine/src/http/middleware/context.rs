@@ -24,6 +24,7 @@ use axum::{
 use tower::{Layer, Service};
 
 use crate::observe;
+use crate::primitives::http::headers::{parse_forwarded_for, parse_real_ip};
 use crate::primitives::runtime as prim_runtime;
 
 /// Header name for tenant ID
@@ -129,16 +130,13 @@ impl<S> ContextService<S> {
     fn extract_source_ip(&self, request: &Request<Body>) -> Option<String> {
         // Try X-Forwarded-For first (if trusted)
         if self.trust_forwarded_for {
-            if let Some(forwarded) = request
+            if let Some(client_ip) = request
                 .headers()
                 .get(&X_FORWARDED_FOR)
                 .and_then(|v| v.to_str().ok())
+                .and_then(parse_forwarded_for)
             {
-                // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-                // The first one is the original client
-                if let Some(client_ip) = forwarded.split(',').next() {
-                    return Some(client_ip.trim().to_string());
-                }
+                return Some(client_ip.to_string());
             }
 
             // Try X-Real-IP (nginx convention)
@@ -146,6 +144,7 @@ impl<S> ContextService<S> {
                 .headers()
                 .get(&X_REAL_IP)
                 .and_then(|v| v.to_str().ok())
+                .and_then(parse_real_ip)
             {
                 return Some(real_ip.to_string());
             }

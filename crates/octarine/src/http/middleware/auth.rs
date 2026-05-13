@@ -67,6 +67,8 @@ use tower::{Layer, Service};
 use super::super::ProblemResponse;
 use crate::Problem;
 use crate::observe;
+use crate::primitives::http::headers::parse_bearer_token;
+use crate::primitives::http::routing::is_path_excluded;
 use crate::primitives::runtime as prim_runtime;
 
 /// Type alias for API key validation function.
@@ -305,7 +307,7 @@ impl AuthConfig {
 
     /// Check if a path should be excluded from authentication.
     fn is_excluded(&self, path: &str) -> bool {
-        self.exclude_paths.iter().any(|p| path.starts_with(p))
+        is_path_excluded(path, &self.exclude_paths)
     }
 }
 
@@ -411,11 +413,9 @@ impl<S> AuthService<S> {
         };
 
         // Check for Bearer prefix
-        if !auth_str.starts_with("Bearer ") {
+        let Some(token) = parse_bearer_token(auth_str) else {
             return AuthResult::NoCredentials;
-        }
-
-        let token = &auth_str[7..]; // Skip "Bearer "
+        };
 
         // Decode and validate JWT
         match decode::<Claims>(token, key, validation) {
