@@ -37,7 +37,8 @@ just arch-check                  # Architecture enforcement
 
 # Dependencies
 just deps-check                  # Full dependency health check
-just deps-audit                  # Security vulnerability audit
+just deps-audit                  # Security vulnerability audit (cargo audit / RustSec)
+just deps-osv                    # Security vulnerability audit (osv-scanner / OSV.dev)
 just deps-outdated               # Show outdated dependencies
 ```
 
