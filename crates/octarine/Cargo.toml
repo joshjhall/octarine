@@ -142,7 +142,7 @@ sha1 = { version = "0.11", optional = true }
 graphql-parser = { version = "0.4", optional = true }
 
 # Structured data formats (optional, for formats module)
-quick-xml = { version = "0.39", optional = true }
+quick-xml = { version = "0.40", optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
 # Crypto input validation (optional)
