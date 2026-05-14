@@ -1,5 +1,6 @@
 //! Error types for database pool operations
 
+use crate::observe::ProblemExt;
 use thiserror::Error;
 
 /// Errors that can occur during pool operations

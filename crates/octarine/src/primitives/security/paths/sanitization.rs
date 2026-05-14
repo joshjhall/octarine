@@ -33,6 +33,7 @@
 use super::{detection, validation};
 use crate::primitives::data::paths::types::PathSanitizationStrategy;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 use std::borrow::Cow;
 
 /// Result type for sanitization functions

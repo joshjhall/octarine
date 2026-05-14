@@ -31,6 +31,7 @@ use crate::primitives::crypto::secrets::{Classification, SecretType};
 use thiserror::Error;
 
 use super::{ExposeSecret, TypedSecret};
+use crate::observe::ProblemExt;
 
 /// Error type for SecureVar operations
 #[derive(Debug, Clone, PartialEq, Eq, Error)]

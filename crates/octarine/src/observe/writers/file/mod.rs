@@ -79,6 +79,8 @@ use super::query::{AuditQuery, QueryResult, Queryable};
 use super::types::{LogDirectory, LogFilename, RotationConfig};
 use super::types::{LogFormat, RotationSchedule, SeverityFilter, WriterError, WriterHealthStatus};
 use crate::observe::Problem;
+#[cfg(test)]
+use crate::observe::ProblemExt;
 use crate::observe::types::{Event, Severity};
 use crate::primitives::io::file::FileMode;
 use crate::primitives::runtime::r#async::{CircuitBreaker, RetryPolicy};

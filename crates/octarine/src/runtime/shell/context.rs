@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 
 use super::command::ObservableCmd;
 use super::xshell_error;
+use crate::observe::ProblemExt;
 use crate::observe::metrics::MetricName;
 use crate::observe::{self, Problem, metrics};
 use crate::security::commands::validate_command_name;

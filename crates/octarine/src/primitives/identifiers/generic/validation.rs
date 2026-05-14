@@ -6,6 +6,7 @@
 use super::MAX_IDENTIFIER_LENGTH;
 use super::detection;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Result type for validation operations
 pub type ValidationResult = Result<(), Problem>;

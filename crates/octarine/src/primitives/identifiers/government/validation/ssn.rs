@@ -14,6 +14,7 @@
 
 use super::super::super::common::patterns;
 use crate::primitives::Problem;
+use crate::primitives::ProblemExt;
 
 use super::cache::SSN_VALIDATION_CACHE;
 

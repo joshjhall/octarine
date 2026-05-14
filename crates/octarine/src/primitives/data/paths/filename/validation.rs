@@ -26,6 +26,7 @@
 
 use super::detection;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 // ============================================================================
 // Result Type

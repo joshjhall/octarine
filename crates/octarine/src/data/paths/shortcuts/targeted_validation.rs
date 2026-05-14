@@ -3,6 +3,7 @@
 //! Convenience functions for specific security validations.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 use super::detection::{is_command_injection_present, is_path_traversal_present};
 use super::manipulation::clean_path_components;

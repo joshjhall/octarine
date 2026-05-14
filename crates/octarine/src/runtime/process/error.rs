@@ -7,6 +7,7 @@ use std::io;
 use thiserror::Error;
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 /// Errors that can occur during secure command execution
 ///

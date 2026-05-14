@@ -32,6 +32,7 @@
 use super::detection;
 use crate::primitives::data::paths::types::SecurityThreat;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Result type for strict validation functions
 pub type ValidationResult = Result<(), Problem>;

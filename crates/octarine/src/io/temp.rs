@@ -43,6 +43,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::io::delete::{DeleteMethod, SecureDelete};
+use crate::observe::ProblemExt;
 use crate::observe::{self, Problem};
 use crate::primitives::io::file::FileMode;
 use crate::primitives::runtime::r#async::spawn_blocking;

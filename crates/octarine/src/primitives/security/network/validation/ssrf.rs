@@ -25,6 +25,7 @@ use crate::primitives::security::network::detection::ssrf::{
     is_safe_scheme, is_url_shortener,
 };
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 // ============================================================================
 // Combined SSRF Validation

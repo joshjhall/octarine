@@ -6,6 +6,7 @@
 use super::super::FilenameBuilder;
 use super::super::PathBuilder;
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::primitives::data::paths::PathBuilder as PrimitivePathBuilder;
 
 impl PathBuilder {

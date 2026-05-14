@@ -21,6 +21,7 @@
 //! - Returns data only
 
 use crate::primitives::Problem;
+use crate::primitives::ProblemExt;
 
 // ============================================================================
 // NPI Formatting and Validation

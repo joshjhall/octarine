@@ -3,6 +3,7 @@
 //! Implementation of home directory expansion and collapse.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use std::path::PathBuf;
 
 /// Check if a path contains a home directory reference (~)

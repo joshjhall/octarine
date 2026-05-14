@@ -24,75 +24,116 @@ pub(in crate::observe) use builder::shortcuts;
 // Public exports - carefully selected for external use
 pub use types::{Problem, Result};
 
-// For backward compatibility, expose shortcuts as Problem methods
-impl Problem {
+/// Observability-enabled constructors for [`Problem`].
+///
+/// `Problem` is defined in the `octarine-problem` micro-crate to keep its
+/// recompilation blast radius small. Rust's orphan rules prevent us from
+/// attaching inherent methods to it from `octarine::observe`, so these
+/// constructors live on a trait instead. The call syntax is unchanged
+/// (`Problem::validation(msg)`) once `ProblemExt` is in scope.
+///
+/// Several constructors dispatch audit events as a side effect of building
+/// the problem (validation, conversion, sanitization, permission_denied,
+/// security). Use these instead of constructing variants directly when you
+/// want the failure to land in the audit trail.
+pub trait ProblemExt: Sized {
     /// Create a validation error (input doesn't meet requirements)
-    pub fn validation(msg: impl Into<String>) -> Self {
+    fn validation(msg: impl Into<String>) -> Self;
+
+    /// Create a conversion error (failed to convert between types)
+    fn conversion(msg: impl Into<String>) -> Self;
+
+    /// Create a sanitization error (failed to sanitize input)
+    fn sanitization(msg: impl Into<String>) -> Self;
+
+    /// Create a configuration error (invalid configuration)
+    fn config(msg: impl Into<String>) -> Self;
+
+    /// Create a not found error (resource doesn't exist)
+    fn not_found(what: impl Into<String>) -> Self;
+
+    /// Create an authentication error (failed to authenticate)
+    fn auth(msg: impl Into<String>) -> Self;
+
+    /// Create a permission denied error (insufficient privileges)
+    fn permission_denied(msg: impl Into<String>) -> Self;
+
+    /// Create a security error (security violation detected)
+    fn security(msg: impl Into<String>) -> Self;
+
+    /// Create a network error (network operation failed)
+    fn network(msg: impl Into<String>) -> Self;
+
+    /// Create a database error (database operation failed)
+    fn database(msg: impl Into<String>) -> Self;
+
+    /// Create a parse error (failed to parse input)
+    fn parse(msg: impl Into<String>) -> Self;
+
+    /// Create a timeout error (operation exceeded time limit)
+    fn timeout(msg: impl Into<String>) -> Self;
+
+    /// Create an operation failed error (generic operation failure)
+    fn operation_failed(msg: impl Into<String>) -> Self;
+
+    /// Create an other/unknown error (catch-all for uncategorized errors)
+    fn other(msg: impl Into<String>) -> Self;
+}
+
+impl ProblemExt for Problem {
+    fn validation(msg: impl Into<String>) -> Self {
         shortcuts::validation(msg)
     }
 
-    /// Create a conversion error (failed to convert between types)
-    pub fn conversion(msg: impl Into<String>) -> Self {
+    fn conversion(msg: impl Into<String>) -> Self {
         shortcuts::conversion(msg)
     }
 
-    /// Create a sanitization error (failed to sanitize input)
-    pub fn sanitization(msg: impl Into<String>) -> Self {
+    fn sanitization(msg: impl Into<String>) -> Self {
         shortcuts::sanitization(msg)
     }
 
-    /// Create a configuration error (invalid configuration)
-    pub fn config(msg: impl Into<String>) -> Self {
+    fn config(msg: impl Into<String>) -> Self {
         shortcuts::config(msg)
     }
 
-    /// Create a not found error (resource doesn't exist)
-    pub fn not_found(what: impl Into<String>) -> Self {
+    fn not_found(what: impl Into<String>) -> Self {
         shortcuts::not_found(what)
     }
 
-    /// Create an authentication error (failed to authenticate)
-    pub fn auth(msg: impl Into<String>) -> Self {
+    fn auth(msg: impl Into<String>) -> Self {
         shortcuts::auth(msg)
     }
 
-    /// Create a permission denied error (insufficient privileges)
-    pub fn permission_denied(msg: impl Into<String>) -> Self {
+    fn permission_denied(msg: impl Into<String>) -> Self {
         shortcuts::permission_denied(msg)
     }
 
-    /// Create a security error (security violation detected)
-    pub fn security(msg: impl Into<String>) -> Self {
+    fn security(msg: impl Into<String>) -> Self {
         shortcuts::security(msg)
     }
 
-    /// Create a network error (network operation failed)
-    pub fn network(msg: impl Into<String>) -> Self {
+    fn network(msg: impl Into<String>) -> Self {
         shortcuts::network(msg)
     }
 
-    /// Create a database error (database operation failed)
-    pub fn database(msg: impl Into<String>) -> Self {
+    fn database(msg: impl Into<String>) -> Self {
         shortcuts::database(msg)
     }
 
-    /// Create a parse error (failed to parse input)
-    pub fn parse(msg: impl Into<String>) -> Self {
+    fn parse(msg: impl Into<String>) -> Self {
         shortcuts::parse(msg)
     }
 
-    /// Create a timeout error (operation exceeded time limit)
-    pub fn timeout(msg: impl Into<String>) -> Self {
+    fn timeout(msg: impl Into<String>) -> Self {
         shortcuts::timeout(msg)
     }
 
-    /// Create an operation failed error (generic operation failure)
-    pub fn operation_failed(msg: impl Into<String>) -> Self {
+    fn operation_failed(msg: impl Into<String>) -> Self {
         shortcuts::operation_failed(msg)
     }
 
-    /// Create an other/unknown error (catch-all for uncategorized errors)
-    pub fn other(msg: impl Into<String>) -> Self {
+    fn other(msg: impl Into<String>) -> Self {
         shortcuts::other(msg)
     }
 }

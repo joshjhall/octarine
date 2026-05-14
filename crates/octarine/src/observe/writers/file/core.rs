@@ -5,6 +5,7 @@
 use super::FileWriter;
 use super::rotation;
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::observe::types::{Event, Severity};
 use crate::observe::writers::builder::FileWriterBuilder;
 use crate::observe::writers::sanitize_for_writing;

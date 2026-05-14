@@ -43,6 +43,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
+use crate::observe::ProblemExt;
 use crate::observe::{self, Problem};
 use crate::primitives::runtime::r#async::spawn_blocking;
 

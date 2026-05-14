@@ -27,6 +27,7 @@
 //! For filesystem-aware validation, use higher-level security modules.
 
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 use std::path::{Component, Path};
 
 // ============================================================================

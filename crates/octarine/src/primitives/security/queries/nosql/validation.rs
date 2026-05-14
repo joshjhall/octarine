@@ -16,6 +16,7 @@
 
 use super::detection;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Maximum allowed length for NoSQL field names
 const MAX_FIELD_NAME_LENGTH: usize = 128;

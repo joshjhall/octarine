@@ -80,7 +80,7 @@ pub(crate) mod auth;
 // ============================================================================
 
 // Foundational types - these are truly universal and stay at primitives level
-pub use types::{Problem, Result};
+pub use types::{Problem, ProblemExt, Result};
 
 // Shared types from primitives/types/ - also re-exported from domain modules
 #[allow(unused_imports)]

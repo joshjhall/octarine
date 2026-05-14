@@ -312,7 +312,7 @@ pub mod audit; // Public - Fluent audit builders with compliance tagging
 pub use types::{Event, EventContext, EventType, Severity, TenantId, UserId};
 
 // Problem types with consistent API
-pub use problem::{Problem, Result};
+pub use problem::{Problem, ProblemExt, Result};
 
 // Context management (for advanced use)
 pub use context::{

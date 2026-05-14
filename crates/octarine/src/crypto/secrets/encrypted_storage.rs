@@ -56,6 +56,7 @@ use crate::primitives::crypto::CryptoError;
 use crate::primitives::crypto::secrets::{Classification, SecretType};
 
 use super::buffer::SecureBuffer;
+use crate::observe::ProblemExt;
 
 // ============================================================================
 // Metric Names (validated at startup)

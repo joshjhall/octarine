@@ -3,6 +3,7 @@
 //! Convenience functions for common path operation workflows.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 use super::super::{BoundaryBuilder, FilenameBuilder, PathBuilder, PathContextBuilder};
 

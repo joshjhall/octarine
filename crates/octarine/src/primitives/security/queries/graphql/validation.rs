@@ -6,6 +6,7 @@
 use super::{analysis, schema::GraphqlSchema};
 use crate::primitives::security::queries::types::{GraphqlConfig, QueryThreat};
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Validate a GraphQL query against a schema and security config
 ///

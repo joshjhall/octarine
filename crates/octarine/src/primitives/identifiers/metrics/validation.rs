@@ -8,6 +8,7 @@ use super::{
     MAX_LABEL_KEY_LENGTH, MAX_LABEL_VALUE_LENGTH, MAX_LABELS_PER_METRIC, MAX_METRIC_NAME_LENGTH,
 };
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Result type for validation operations
 pub type ValidationResult = Result<(), Problem>;

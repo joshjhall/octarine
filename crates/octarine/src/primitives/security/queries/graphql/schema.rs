@@ -3,6 +3,7 @@
 //! Wrapper for parsed GraphQL schemas for validation.
 
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 use graphql_parser::schema::{self as gql, Definition, TypeDefinition};
 
 /// Parsed GraphQL schema for validation

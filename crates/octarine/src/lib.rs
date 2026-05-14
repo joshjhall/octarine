@@ -85,7 +85,7 @@ pub mod security;
 /// # Quick Start
 ///
 /// ```rust
-/// use octarine::observe::{info, warn, Problem, Result};
+/// use octarine::observe::{info, warn, Problem, ProblemExt, Result};
 ///
 /// fn process(input: &str) -> Result<()> {
 ///     if input.is_empty() {
@@ -184,7 +184,7 @@ pub mod prelude;
 // ============================================================================
 
 // Core types
-pub use observe::{Problem, Result};
+pub use observe::{Problem, ProblemExt, Result};
 
 // Logging shortcuts
 pub use observe::{auth_success, success, validation_success};

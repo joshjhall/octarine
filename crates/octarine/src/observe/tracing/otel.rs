@@ -48,6 +48,7 @@ use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use uuid::Uuid;
 
+use crate::observe::ProblemExt;
 use crate::observe::types::{Event, EventType, Severity};
 
 /// Global tracer provider for OpenTelemetry

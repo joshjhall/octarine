@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/octarine",
     "crates/octarine-derive",
+    "crates/octarine-problem",
 ]
 
 [workspace.package]
@@ -40,6 +41,7 @@ reqwest = { version = "0.13", features = ["json", "rustls"], default-features = 
 # Internal crates
 octarine = { path = "crates/octarine" }
 octarine-derive = { path = "crates/octarine-derive" }
+octarine-problem = { path = "crates/octarine-problem" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
