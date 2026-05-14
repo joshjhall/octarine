@@ -10,6 +10,9 @@ use crate::observe::types::{Event, Severity};
 use crate::observe::writers::builder::FileWriterBuilder;
 use crate::observe::writers::sanitize_for_writing;
 use crate::observe::writers::types::LogFormat;
+// Unix-only: POSIX file-mode bits for log-file permission enforcement.
+// On Windows the log file inherits the parent directory's default ACLs;
+// stricter access control must be configured externally.
 #[cfg(unix)]
 use crate::primitives::io::file::set_mode;
 use crate::primitives::io::file::with_directory_mode;
