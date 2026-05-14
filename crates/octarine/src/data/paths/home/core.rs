@@ -101,21 +101,24 @@ fn get_home_dir() -> Result<String, Problem> {
 
 /// Fallback home directory detection
 fn home_dir_fallback() -> Option<String> {
-    // Use a simple platform-specific fallback
+    // Best-effort platform-specific guess when $HOME is unset. We do not
+    // consult /etc/passwd via getpwuid — this is intentionally conservative.
     #[cfg(unix)]
     {
-        // On Unix, try /etc/passwd via getpwuid
-        // For simplicity, we'll just check common paths
         if let Ok(user) = std::env::var("USER") {
+            // Linux convention: /home/<user>.
             let path = PathBuf::from(format!("/home/{}", user));
             if path.exists() {
                 return Some(path.to_string_lossy().to_string());
             }
-            // macOS uses /Users
+            // macOS convention: /Users/<user>.
             let path = PathBuf::from(format!("/Users/{}", user));
             if path.exists() {
                 return Some(path.to_string_lossy().to_string());
             }
+            // BSDs, NixOS, and other Unix variants may use other layouts
+            // (e.g., /usr/home, /var/empty). Fall through to None and let
+            // the caller surface a clean error.
         }
     }
 
