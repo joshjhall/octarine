@@ -12,6 +12,7 @@
 
 use super::super::common::masking;
 use crate::primitives::Problem;
+use crate::primitives::ProblemExt;
 use crate::primitives::types::{parse_eu_date, parse_iso_date, parse_us_date};
 
 use super::detection;

@@ -6,6 +6,7 @@
 use super::detection;
 use super::types::{AllowList, CommandThreat};
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Result type for validation operations
 pub type ValidationResult = Result<(), Problem>;

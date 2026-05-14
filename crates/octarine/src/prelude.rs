@@ -118,6 +118,10 @@ pub use crate::identifiers::Identifiers;
 /// Error type with audit trail and context
 pub use crate::observe::Problem;
 
+/// Extension trait providing observability-enabled `Problem` constructors
+/// (e.g., `Problem::validation(msg)`, `Problem::security(msg)`).
+pub use crate::observe::ProblemExt;
+
 /// Result type alias using Problem
 pub use crate::observe::Result;
 

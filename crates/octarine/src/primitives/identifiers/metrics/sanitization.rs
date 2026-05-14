@@ -5,6 +5,7 @@
 use super::MAX_METRIC_NAME_LENGTH;
 use super::detection::is_valid_metric_char;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 // ============================================================================
 // Metric Name Sanitization

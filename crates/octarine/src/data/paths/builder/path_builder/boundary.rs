@@ -6,6 +6,7 @@
 
 use super::super::{BoundaryBuilder, PathBuilder};
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 impl PathBuilder {
     /// Check if within boundary

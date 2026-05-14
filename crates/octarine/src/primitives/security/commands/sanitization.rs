@@ -16,6 +16,7 @@
 //! whenever possible.
 
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Result type for sanitization operations
 pub type SanitizationResult = Result<String, Problem>;

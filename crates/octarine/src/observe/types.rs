@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::observe::compliance::ComplianceTags;
 use crate::observe::context::capture::capture_context;
 use crate::observe::problem::Problem;
+use crate::observe::problem::ProblemExt;
 
 /// A validated tenant identifier
 ///

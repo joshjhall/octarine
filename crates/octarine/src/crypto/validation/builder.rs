@@ -17,6 +17,7 @@
 
 use std::time::Instant;
 
+use crate::observe::ProblemExt;
 use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::observe::{Problem, event};
 use crate::primitives::identifiers::crypto::{KeyFormat, KeyType, SignatureAlgorithm};

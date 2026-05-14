@@ -4,6 +4,7 @@
 //! guarantee validation has occurred before values can be used.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use std::fmt;
 
 /// A validated metric name

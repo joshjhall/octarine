@@ -40,3 +40,29 @@ def test_multiple_observe_imports_yield_multiple_findings(write_rs, tmp_repo: Pa
     files = [tmp_repo / "crates/octarine/src/primitives/multi.rs"]
     findings = list(layer_boundary.run(files=files, root=tmp_repo))
     assert [f.line for f in findings] == [1, 3]
+
+
+def test_pub_use_reexport_exempt_in_types_mod(write_rs, tmp_repo: Path):
+    """primitives/types/mod.rs may re-export observe trait facades."""
+    write_rs("primitives/types/mod.rs", "pub use crate::observe::ProblemExt;\n")
+    files = [tmp_repo / "crates/octarine/src/primitives/types/mod.rs"]
+    findings = list(layer_boundary.run(files=files, root=tmp_repo))
+    assert findings == []
+
+
+def test_non_pub_use_still_flagged_in_types_mod(write_rs, tmp_repo: Path):
+    """Even in types/mod.rs, non-re-export observe imports remain forbidden."""
+    write_rs("primitives/types/mod.rs", "use crate::observe::ProblemExt;\n")
+    files = [tmp_repo / "crates/octarine/src/primitives/types/mod.rs"]
+    findings = list(layer_boundary.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_pub_use_reexport_flagged_outside_types_mod(write_rs, tmp_repo: Path):
+    """The pub use exemption only applies to types/mod.rs, not other primitives files."""
+    write_rs("primitives/security/mod.rs", "pub use crate::observe::ProblemExt;\n")
+    files = [tmp_repo / "crates/octarine/src/primitives/security/mod.rs"]
+    findings = list(layer_boundary.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1

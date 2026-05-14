@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 // Re-export shared PortRange type
 pub use crate::primitives::types::PortRange;

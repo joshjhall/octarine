@@ -1,19 +1,20 @@
-//! Problem type definitions
+//! Foundation error type for octarine
 //!
-//! Foundation error types for rust-core. These are pure types with no dependencies
-//! on observe or other internal modules, making them safe to use in primitives.
+//! Provides the `Problem` enum and `Result` type alias used throughout
+//! octarine. Extracted into its own crate so changes to error variants
+//! recompile only this micro-crate, not every consumer file.
 //!
 //! ## Architecture Note
 //!
-//! This is a **primitive** module in `types/` - core foundational types. It has
-//! NO dependencies on observe or other internal modules. The `observe` module
-//! re-exports these types and adds observability features (event dispatching,
+//! This is the **central definition** for octarine's error type. It has no
+//! dependencies on observe or other octarine modules — the `observe` crate
+//! re-exports these types and adds observability features (event dispatch,
 //! builders) on top.
 //!
 //! ## Usage
 //!
 //! ```rust,ignore
-//! use octarine::primitives::types::{Problem, Result};
+//! use octarine_problem::{Problem, Result};
 //!
 //! fn validate_input(input: &str) -> Result<()> {
 //!     if input.is_empty() {
@@ -28,7 +29,7 @@ use thiserror::Error;
 /// Problem type for all operations
 ///
 /// This enum provides a clean problem hierarchy. When used through the `observe`
-/// module's shortcuts (e.g., `Problem::Validation()`), problems automatically
+/// module's shortcuts (e.g., `Problem::validation()`), problems automatically
 /// generate observability events.
 #[derive(Debug, Error)]
 pub enum Problem {

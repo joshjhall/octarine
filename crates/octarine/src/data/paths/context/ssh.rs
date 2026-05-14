@@ -3,6 +3,7 @@
 //! Handles paths to SSH configuration and key files.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::primitives::security::paths::SecurityBuilder;
 
 /// Check if a path appears to be an SSH-related path

@@ -4,6 +4,7 @@
 
 use super::super::detection;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 use super::{SanitizationResult, is_bidi_char, sanitize};
 

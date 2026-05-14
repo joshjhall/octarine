@@ -3,6 +3,7 @@
 //! Provides error handling methods that delegate to ProblemBuilder internally.
 
 use super::ObserveBuilder;
+use crate::observe::problem::ProblemExt;
 use crate::observe::problem::{Problem, ProblemBuilder};
 
 /// Extensions for ObserveBuilder related to problem creation

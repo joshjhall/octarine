@@ -3,6 +3,7 @@
 //! Validation functions that return Result types for security checks.
 
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 use super::detection::{
     detect_hash_threats, detect_signature_algorithm_threat, is_deprecated_signature_algorithm,

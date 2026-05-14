@@ -9,6 +9,7 @@
 
 use super::FileWriter;
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::observe::writers::types::RotationSchedule;
 use crate::primitives::io::file::{IoBuilder, path_exists};
 use flate2::Compression;

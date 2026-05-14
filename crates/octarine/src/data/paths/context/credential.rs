@@ -3,6 +3,7 @@
 //! Handles paths to credential files, certificates, keystores, and secrets.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::primitives::security::paths::SecurityBuilder;
 
 /// Check if a path appears to be a credential-related path

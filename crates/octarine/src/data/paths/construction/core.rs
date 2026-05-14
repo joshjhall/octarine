@@ -3,6 +3,7 @@
 //! Safe path construction from validated components.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::primitives::data::paths::PathBuilder as PrimitivePathBuilder;
 use crate::primitives::security::paths::SecurityBuilder;
 use std::env;

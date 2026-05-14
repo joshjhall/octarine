@@ -6,6 +6,7 @@ use chrono::{DateTime, TimeZone, Utc};
 
 use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 use super::types::ParsedCertificate;
 

@@ -92,6 +92,9 @@ atomic-write-file = "0.3"
 # Derive macros (optional)
 octarine-derive = { workspace = true, optional = true }
 
+# Foundation error type
+octarine-problem = { workspace = true }
+
 # Compression
 flate2 = "1.0"
 

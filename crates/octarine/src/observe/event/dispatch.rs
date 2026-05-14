@@ -3,6 +3,7 @@
 //! These functions create and dispatch observability events.
 //! Access these through the builder pattern or shortcuts, not directly.
 
+use crate::observe::ProblemExt;
 use crate::observe::types::{Event, EventType};
 use crate::observe::writers;
 use std::collections::HashMap;

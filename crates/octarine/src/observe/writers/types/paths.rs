@@ -3,6 +3,7 @@
 //! Type-safe wrappers for log directories, filenames, and patterns.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::primitives::data::paths::{CharacteristicBuilder, FilenameBuilder};
 use crate::primitives::security::paths::SecurityBuilder;
 use std::path::{Path, PathBuf};

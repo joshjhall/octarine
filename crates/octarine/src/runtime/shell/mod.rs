@@ -40,6 +40,7 @@ pub use command::ObservableCmd;
 pub use context::ObservableShell;
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 /// Convert xshell error to Problem
 pub(crate) fn xshell_error(err: xshell::Error) -> Problem {

@@ -3,6 +3,7 @@
 //! Handles paths to .env files with appropriate security checks.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 use crate::primitives::security::paths::SecurityBuilder;
 
 /// Check if a path appears to be an environment file path

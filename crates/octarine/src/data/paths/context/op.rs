@@ -3,6 +3,7 @@
 //! Handles op:// references for 1Password CLI integration.
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 /// Check if a path is a 1Password reference
 pub(in crate::data::paths) fn is_op_reference(path: &str) -> bool {

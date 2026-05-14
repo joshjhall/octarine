@@ -8,6 +8,7 @@
 use crate::primitives::security::network::detection::ssrf::{is_dangerous_scheme, is_safe_scheme};
 use crate::primitives::security::network::detection::url::extract_scheme;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 // ============================================================================
 // Options

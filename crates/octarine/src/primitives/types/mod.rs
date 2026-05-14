@@ -5,7 +5,9 @@
 //!
 //! ## Module Contents
 //!
-//! - `problem` - Error type hierarchy (`Problem`, `Result`)
+//! - `Problem`, `Result` - Error type hierarchy (re-exported from
+//!   the `octarine-problem` micro-crate so changes to error variants do not
+//!   recompile the whole octarine crate)
 //! - `dates` - Date parsing utilities
 //! - `network` - Network types (`PortRange`)
 //!
@@ -46,7 +48,6 @@
 
 mod dates;
 mod network;
-mod problem;
 
 // Re-export commonly used types
 #[allow(unused_imports)]
@@ -54,4 +55,9 @@ pub(crate) use dates::{
     get_current_year, is_leap_year, parse_eu_date, parse_iso_date, parse_us_date,
 };
 pub use network::PortRange;
-pub use problem::{Problem, Result};
+pub use octarine_problem::{Problem, Result};
+
+// Re-export the observability-enabled constructors trait so call sites that
+// import `Problem` from `primitives::types` can also pick up
+// `Problem::validation(..)`, `Problem::network(..)`, etc.
+pub use crate::observe::ProblemExt;

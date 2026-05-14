@@ -52,6 +52,7 @@
 use super::super::common::utils::is_injection_pattern_present;
 use super::detection;
 use crate::primitives::Problem;
+use crate::primitives::ProblemExt;
 
 /// Validate employee ID format (returns Result)
 ///

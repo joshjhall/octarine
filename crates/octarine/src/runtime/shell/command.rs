@@ -6,6 +6,7 @@ use serde::de::DeserializeOwned;
 
 use super::xshell_error;
 use crate::crypto::secrets::SecretString;
+use crate::observe::ProblemExt;
 use crate::observe::metrics::MetricName;
 use crate::observe::{self, Problem, metrics, pii};
 use crate::security::commands::{is_dangerous_arg, validate_env, validate_safe_arg};

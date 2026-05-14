@@ -16,6 +16,7 @@
 
 use super::detection;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 
 /// Maximum allowed length for LDAP attribute values
 const MAX_ATTRIBUTE_VALUE_LENGTH: usize = 1024;

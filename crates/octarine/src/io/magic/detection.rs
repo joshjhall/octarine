@@ -5,6 +5,7 @@
 
 use std::path::Path;
 
+use crate::observe::ProblemExt;
 use crate::observe::{self, Problem};
 use crate::primitives::io::file as prim;
 use crate::primitives::runtime::r#async::spawn_blocking;

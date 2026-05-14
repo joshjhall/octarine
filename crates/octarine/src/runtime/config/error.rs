@@ -5,6 +5,7 @@ use std::path::Path;
 use thiserror::Error;
 
 use crate::observe::Problem;
+use crate::observe::ProblemExt;
 
 /// Errors that can occur during configuration loading
 #[derive(Debug, Clone, Error)]

@@ -32,6 +32,7 @@ use super::super::common::{
 };
 use super::validation;
 use crate::primitives::types::Problem;
+use crate::primitives::types::ProblemExt;
 use std::borrow::Cow;
 use std::path::{Component, Path};
 

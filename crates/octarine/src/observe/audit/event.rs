@@ -5,6 +5,7 @@
 
 use crate::observe::compliance::ComplianceTags;
 use crate::observe::problem::Problem;
+use crate::observe::problem::ProblemExt;
 use crate::observe::types::{Event, EventType};
 use crate::observe::writers;
 use std::collections::HashMap;
