@@ -169,7 +169,7 @@ local-ip-address = "0.6.8"
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", features = ["fs", "user"] }
 libc = "0.2"
-rexpect = { version = "0.6", optional = true }
+rexpect = { version = "0.7", optional = true }
 
 [features]
 default = ["console", "full", "derive"]
@@ -226,7 +226,7 @@ test-case = "3.3"
 wiremock = "0.6"
 fake = { version = "5.1", features = ["derive"] }
 assert_cmd = "2.0"
-rexpect = "0.6"
+rexpect = "0.7"
 
 [[bench]]
 name = "pii_redaction"
