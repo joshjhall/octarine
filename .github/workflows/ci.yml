@@ -106,11 +106,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: google/osv-scanner-action@v2.3.8
-        with:
-          scan-args: |-
-            --config=osv-scanner.toml
-            --lockfile=Cargo.lock
+      - uses: taiki-e/install-action@osv-scanner
+      - uses: taiki-e/install-action@just
+      - run: just deps-osv
 
   semver:
     name: SemVer
