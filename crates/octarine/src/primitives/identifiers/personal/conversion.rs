@@ -41,7 +41,7 @@ use super::detection;
 ///
 /// // For someone born in 1990, age will vary based on current date
 /// let age = conversion::calculate_age("1990-05-15").unwrap();
-/// assert!(age >= 34 && age <= 35); // Depends on current date
+/// // age is roughly current_year - 1990, ±1 around the birthday
 /// ```
 pub fn calculate_age(birthdate: &str) -> Result<u32, Problem> {
     let trimmed = birthdate.trim();
@@ -558,11 +558,15 @@ mod tests {
         let now = chrono::Utc::now();
         let current_year = now.year() as u32;
 
-        // Test with someone born in 1990
+        // Test with someone born in 1990 — age is current_year - 1990, ± 1 for birthday boundary
         let age = calculate_age("1990-05-15").expect("should calculate age");
+        let expected = current_year - 1990;
         assert!(
-            (34..=35).contains(&age),
-            "Age should be 34 or 35 for someone born in 1990"
+            (expected - 1..=expected).contains(&age),
+            "Age for someone born 1990-05-15 should be {} or {}, got {}",
+            expected - 1,
+            expected,
+            age,
         );
 
         // Test with someone born in 2000
@@ -576,21 +580,33 @@ mod tests {
 
     #[test]
     fn test_calculate_age_us_format() {
+        let current_year = chrono::Utc::now().year() as u32;
+
         // Test with someone born in 1990
         let age = calculate_age("05/15/1990").expect("should calculate age from US format");
+        let expected = current_year - 1990;
         assert!(
-            (34..=35).contains(&age),
-            "Age should be 34 or 35 for someone born in 1990"
+            (expected - 1..=expected).contains(&age),
+            "Age for someone born 1990-05-15 should be {} or {}, got {}",
+            expected - 1,
+            expected,
+            age,
         );
     }
 
     #[test]
     fn test_calculate_age_eu_format() {
+        let current_year = chrono::Utc::now().year() as u32;
+
         // EU format: day/month/year (day > 12 to disambiguate)
         let age = calculate_age("15/05/1990").expect("should calculate age from EU format");
+        let expected = current_year - 1990;
         assert!(
-            (34..=35).contains(&age),
-            "Age should be 34 or 35 for someone born in 1990"
+            (expected - 1..=expected).contains(&age),
+            "Age for someone born 1990-05-15 should be {} or {}, got {}",
+            expected - 1,
+            expected,
+            age,
         );
     }
 
