@@ -167,13 +167,11 @@ jobs:
       - name: Ensure $CARGO_HOME/bin on PATH
         # macOS runner images come with rustup pre-installed at a system path
         # (e.g. /opt/homebrew/bin/rustup). dtolnay/rust-toolchain's
-        # "install rustup if needed" guard sees that rustup is present and
-        # short-circuits past `echo "$CARGO_HOME/bin" >> $GITHUB_PATH`, so
-        # rustup's shim dir (where cargo/rustc actually live) never lands on
-        # PATH. Subsequent steps then hit "rustc: command not found" or
-        # cargo resolves to a stub rustup-init binary. Putting CARGO_HOME/bin
-        # on PATH here covers the short-circuit case; if dtolnay does run
-        # the curl install, the duplicate entry is harmless.
+        # "install rustup if needed" guard sees rustup is present and
+        # short-circuits past "echo $CARGO_HOME/bin >> $GITHUB_PATH". The
+        # toolchain installs fine, but the shim dir never lands on PATH,
+        # which breaks cargo invocations after the cache step swaps in its
+        # own .cargo/bin contents.
         run: echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -188,7 +186,16 @@ jobs:
           rustc --version
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: macos
+          # `macos-v2` invalidates a cache poisoned by the original
+          # rustup-init flake (an earlier run cached a stub `cargo` that
+          # was actually rustup-init; every subsequent run restored it
+          # and then `cargo check` resolved to rustup-init).
+          shared-key: macos-v2
+          # Do not cache ~/.cargo/bin on this job — we don't `cargo
+          # install` anything here, and caching the toolchain shims has
+          # only caused breakage on macOS. The toolchain itself lives in
+          # ~/.rustup/toolchains and is reinstalled by dtolnay each run.
+          cache-bin: false
       - run: cargo check --workspace --all-features
 
   test-nightly:
