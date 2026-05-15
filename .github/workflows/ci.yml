@@ -164,9 +164,23 @@ jobs:
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
+      - name: Reset pre-installed Rust toolchain
+        # macOS runner images sometimes ship a stub cargo that is actually
+        # rustup-init; the dtolnay/rust-toolchain action then short-circuits
+        # past its curl install (rustup-init reports "rustup is present") and
+        # never registers $CARGO_HOME/bin on PATH. cargo check then resolves
+        # to rustup-init and fails with "unexpected argument 'check' found".
+        # Wiping forces dtolnay's clean-install path.
+        run: rm -rf "$HOME/.cargo" "$HOME/.rustup"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.94"
+      - name: Verify cargo resolves to toolchain
+        # Fail fast (and visibly) if the rustup-init flake recurs, instead of
+        # letting cargo check emit a confusing usage error 30 lines later.
+        run: |
+          which cargo
+          cargo --version
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: macos
