@@ -7,3 +7,4 @@
 - [PR auto-merge on green](feedback_pr_auto_merge.md) — for /next-issue-ship PRs, squash-merge + delete-branch + prune as soon as CI is green; don't ask
 - [Dependabot coordinated bumps](project_dependabot_coordinated_bumps.md) — opentelemetry/tonic/tracing families need ONE unified PR; close individual Dependabot PRs as superseded
 - [Pre-1.0 prefer breaking](feedback_pre_1_0_breaking_changes.md) — while on 0.x beta, do breaking renames directly; skip `#[deprecated]` aliases
+- [macOS CI cache poisoning](project_ci_macos_cache_poisoning.md) — ci.yml uses `cache-bin: false` + versioned `shared-key` to prevent a poisoned `~/.cargo/bin` cache from breaking every subsequent run. Bump the key if it happens again; don't waste time debugging.
