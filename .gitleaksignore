@@ -15,3 +15,6 @@ crates/octarine/src/primitives/identifiers/entropy/detection.rs:generic-api-key:
 crates/octarine/src/identifiers/shortcuts/token.rs:stripe-access-token:173
 crates/octarine/src/identifiers/builder/token/mod.rs:jwt:93
 crates/octarine/src/primitives/identifiers/common/patterns/network/identifier_patterns.rs:private-key:146
+crates/octarine/src/primitives/identifiers/token/builder/mod.rs:jwt:51
+crates/octarine/src/primitives/identifiers/token/builder/redaction_text.rs:stripe-access-token:21
+crates/octarine/src/primitives/identifiers/token/builder/redaction_text.rs:stripe-access-token:45
