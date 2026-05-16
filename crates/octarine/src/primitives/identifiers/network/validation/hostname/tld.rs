@@ -491,6 +491,10 @@ pub fn validate_domain_tld(domain: &str) -> Result<(), Problem> {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
+    // `test_is_common_tld` is a long table of `assert!` calls exercising
+    // every entry in the common-TLD list. Each assert counts toward cognitive
+    // complexity; splitting per category would scatter the table.
+    #![allow(clippy::cognitive_complexity)]
     use super::*;
 
     #[test]

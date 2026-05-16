@@ -218,6 +218,12 @@ pub(crate) use filename::FilenameBuilder;
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
+    // `test_security_builder` and `test_filename_builder` are wide
+    // integration tests that drive an entire builder API in a single
+    // function. Each `assert!`/`assert_eq!` counts toward cognitive
+    // complexity; splitting would scatter the integration story without
+    // improving safety.
+    #![allow(clippy::cognitive_complexity)]
     use super::*;
     use crate::primitives::security::paths::SecurityBuilder;
 

@@ -332,6 +332,11 @@ pub fn detect_token_identifier(value: &str) -> Option<IdentifierType> {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
+    // `test_detect_token_type` is a long table of `assert_eq!` calls covering
+    // 40+ provider token formats; each assert counts toward cognitive
+    // complexity. Splitting per provider would scatter the table without
+    // improving safety.
+    #![allow(clippy::cognitive_complexity)]
     use super::*;
 
     #[test]

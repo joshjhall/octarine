@@ -1,6 +1,11 @@
 //! Unit tests for `PiiType` classification and `From<IdentifierType>` mapping.
 
 #![allow(clippy::panic, clippy::expect_used)]
+// `from_identifier_type_direct_mappings` is a long table of `assert_eq!`
+// calls exercising every IdentifierType -> PiiType mapping; each assert
+// counts toward cognitive complexity. Splitting into per-domain sub-tests
+// would obscure that the mapping is exhaustive without improving safety.
+#![allow(clippy::cognitive_complexity)]
 
 use super::*;
 use crate::primitives::identifiers::IdentifierType;

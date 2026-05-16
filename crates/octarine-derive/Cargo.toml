@@ -41,6 +41,7 @@ panic = "deny"
 todo = "warn"
 unimplemented = "warn"
 complexity = { level = "warn", priority = -1 }
+cognitive_complexity = "deny"
 perf = { level = "warn", priority = -1 }
 style = { level = "warn", priority = -1 }
 dbg_macro = "deny"
