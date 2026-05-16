@@ -236,418 +236,305 @@ impl StreamingScanner {
     /// Number of matches found
     pub fn scan_types(&self, text: &str, types: &[IdentifierType]) -> usize {
         let mut total: usize = 0;
-
         for id_type in types {
-            match id_type {
-                // Personal identifiers
-                IdentifierType::Email => {
-                    let personal = PersonalIdentifierBuilder::new();
-                    for m in personal.detect_emails_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::PhoneNumber => {
-                    let personal = PersonalIdentifierBuilder::new();
-                    for m in personal.detect_phones_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::PersonalName => {
-                    let personal = PersonalIdentifierBuilder::new();
-                    for m in personal.detect_names_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Birthdate => {
-                    let personal = PersonalIdentifierBuilder::new();
-                    for m in personal.detect_birthdates_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Username => {
-                    // Not yet implemented in personal module
-                    continue;
-                }
+            total = total.saturating_add(self.scan_one_type(text, id_type));
+        }
+        total
+    }
 
-                // Network identifiers
-                IdentifierType::IpAddress => {
-                    let network = NetworkIdentifierBuilder::new();
-                    for m in network.find_ip_addresses_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Url => {
-                    let network = NetworkIdentifierBuilder::new();
-                    for m in network.find_urls_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Uuid => {
-                    let network = NetworkIdentifierBuilder::new();
-                    for m in network.find_uuids_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::MacAddress => {
-                    let network = NetworkIdentifierBuilder::new();
-                    for m in network.find_mac_addresses_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Domain
-                | IdentifierType::Hostname
-                | IdentifierType::Port
-                | IdentifierType::Jwt
-                | IdentifierType::ApiKey
-                | IdentifierType::SessionId
-                | IdentifierType::OAuthToken
-                | IdentifierType::SshKey
-                | IdentifierType::OnePasswordToken
-                | IdentifierType::OnePasswordVaultRef
-                | IdentifierType::BearerToken
-                | IdentifierType::UrlWithCredentials => {
-                    // These are detected by network/token modules via
-                    // find_all_in_text / is_X predicates, but the streaming
-                    // scanner has no dedicated find_X_in_text methods for
-                    // them. Skip for now in selective scan.
-                    continue;
-                }
+    /// Dispatch a single requested identifier type to the matching per-domain
+    /// scanner. Returns the number of matches pushed to the buffer.
+    fn scan_one_type(&self, text: &str, id_type: &IdentifierType) -> usize {
+        // Each helper returns Some(count) for variants it owns, None otherwise.
+        // The fall-through covers variants that have no dedicated scanner
+        // (Unknown, unimplemented Username, etc.) and is therefore a no-op.
+        self.scan_personal_type(text, id_type)
+            .or_else(|| self.scan_network_type(text, id_type))
+            .or_else(|| self.scan_financial_type(text, id_type))
+            .or_else(|| self.scan_government_type(text, id_type))
+            .or_else(|| self.scan_grouped_type(text, id_type))
+            .or_else(|| self.scan_special_type(text, id_type))
+            .unwrap_or(0)
+    }
 
-                // Financial identifiers
-                IdentifierType::CreditCard => {
-                    let financial = FinancialIdentifierBuilder::new();
-                    for m in financial.detect_credit_cards_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::BankAccount
-                | IdentifierType::RoutingNumber
-                | IdentifierType::PaymentToken
-                | IdentifierType::CryptoAddress
-                | IdentifierType::Iban => {
-                    // Financial module covers all via detect_all_in_text
-                    let financial = FinancialIdentifierBuilder::new();
-                    for m in financial.detect_all_in_text(text) {
-                        // Only push if it matches the requested type
-                        if m.identifier_type == *id_type {
-                            let _ = self.buffer.push(m);
-                            total = total.saturating_add(1);
-                        }
-                    }
-                }
+    /// Push every match from `matches` into the buffer and return the count.
+    fn push_all(&self, matches: Vec<IdentifierMatch>) -> usize {
+        let mut count: usize = 0;
+        for m in matches {
+            let _ = self.buffer.push(m);
+            count = count.saturating_add(1);
+        }
+        count
+    }
 
-                // Token/Key identifiers (not yet implemented in modules)
-                IdentifierType::GitHubToken
-                | IdentifierType::GitLabToken
-                | IdentifierType::AwsAccessKey
-                | IdentifierType::AwsSessionToken => {
-                    // Not yet implemented in primitives
-                    continue;
-                }
-
-                // Connection string detection
-                IdentifierType::ConnectionString => {
-                    let creds = CredentialIdentifierBuilder::new();
-                    if creds.is_connection_string_with_credentials(text) {
-                        total = total.saturating_add(1);
-                    }
-                }
-
-                // Government identifiers
-                IdentifierType::Ssn => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_ssns_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::DriverLicense => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_driver_licenses_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Passport => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_passports_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::Ein => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_eins_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::TaxId => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_tax_ids_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::NationalId => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_national_ids_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::KoreaRrn => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_korea_rrns_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::AustraliaTfn => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_australia_tfns_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::AustraliaAbn => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_australia_abns_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::IndiaAadhaar => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_india_aadhaars_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::IndiaPan => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_india_pans_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::IndiaGstin => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_india_gstins_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::IndiaVehicleReg => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_india_vehicle_registrations_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::IndiaVoterId => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_india_voter_ids_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::IndiaPassport => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_india_passports_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::BrazilCpf => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_brazil_cpfs_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::BrazilCnpj => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_brazil_cnpjs_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::MexicoCurp => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_mexico_curps_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::NigeriaNin => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_nigeria_nins_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::ThailandTnin => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_thailand_tnins_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::FinlandHetu => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_finland_hetus_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::PolandPesel => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_poland_pesels_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::ItalyFiscalCode => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_italy_fiscal_codes_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::SingaporeNric => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_singapore_nrics_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::SpainNif => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_spain_nifs_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::SpainNie => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_spain_nies_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::UkNi => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_uk_nis_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-                IdentifierType::VehicleId => {
-                    let government = GovernmentIdentifierBuilder::new();
-                    for m in government.find_vehicle_ids_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-
-                // Organizational identifiers
-                IdentifierType::EmployeeId
-                | IdentifierType::StudentId
-                | IdentifierType::BadgeNumber => {
-                    // Organizational module covers all via find_all_in_text
-                    let organizational = OrganizationalIdentifierBuilder::new();
-                    for m in organizational.find_all_in_text(text) {
-                        if m.identifier_type == *id_type {
-                            let _ = self.buffer.push(m);
-                            total = total.saturating_add(1);
-                        }
-                    }
-                }
-
-                // Location identifiers
-                IdentifierType::GPSCoordinate
-                | IdentifierType::StreetAddress
-                | IdentifierType::PostalCode => {
-                    // Location module covers all via find_all_in_text
-                    let location = LocationIdentifierBuilder::new();
-                    for m in location.find_all_in_text(text) {
-                        if m.identifier_type == *id_type {
-                            let _ = self.buffer.push(m);
-                            total = total.saturating_add(1);
-                        }
-                    }
-                }
-
-                // Medical identifiers
-                IdentifierType::MedicalRecordNumber
-                | IdentifierType::HealthInsurance
-                | IdentifierType::Prescription
-                | IdentifierType::ProviderID
-                | IdentifierType::MedicalCode
-                | IdentifierType::MedicalLicense => {
-                    // Medical module covers all via find_all_in_text
-                    let medical = MedicalIdentifierBuilder::new();
-                    for m in medical.find_all_in_text(text) {
-                        if m.identifier_type == *id_type {
-                            let _ = self.buffer.push(m);
-                            total = total.saturating_add(1);
-                        }
-                    }
-                }
-
-                // Biometric identifiers
-                IdentifierType::Fingerprint
-                | IdentifierType::FacialRecognition
-                | IdentifierType::IrisScan
-                | IdentifierType::VoicePrint
-                | IdentifierType::DNASequence
-                | IdentifierType::BiometricTemplate => {
-                    // Biometric module covers all via detect_all_in_text
-                    let biometric = BiometricIdentifierBuilder::new();
-                    for m in biometric.detect_all_in_text(text) {
-                        if m.identifier_type == *id_type {
-                            let _ = self.buffer.push(m);
-                            total = total.saturating_add(1);
-                        }
-                    }
-                }
-
-                // Credential identifiers (context-based detection)
-                IdentifierType::Password
-                | IdentifierType::Pin
-                | IdentifierType::SecurityAnswer
-                | IdentifierType::Passphrase => {
-                    // Credentials require context-based detection which works differently
-                    // from pattern-based detection. They are detected via labels like
-                    // "password:", "pin=", etc. Use CredentialIdentifierBuilder directly.
-                    continue;
-                }
-
-                IdentifierType::HighEntropyString => {
-                    for m in entropy::detect_high_entropy_strings_in_text(text) {
-                        let _ = self.buffer.push(m);
-                        total = total.saturating_add(1);
-                    }
-                }
-
-                IdentifierType::Unknown => {
-                    // Don't scan for unknown types
-                    continue;
-                }
+    /// Push every match whose type equals `wanted` and return the count.
+    fn push_matching(&self, matches: Vec<IdentifierMatch>, wanted: &IdentifierType) -> usize {
+        let mut count: usize = 0;
+        for m in matches {
+            if m.identifier_type == *wanted {
+                let _ = self.buffer.push(m);
+                count = count.saturating_add(1);
             }
         }
+        count
+    }
 
-        total
+    fn scan_personal_type(&self, text: &str, id_type: &IdentifierType) -> Option<usize> {
+        let personal = PersonalIdentifierBuilder::new();
+        let matches = match id_type {
+            IdentifierType::Email => personal.detect_emails_in_text(text),
+            IdentifierType::PhoneNumber => personal.detect_phones_in_text(text),
+            IdentifierType::PersonalName => personal.detect_names_in_text(text),
+            IdentifierType::Birthdate => personal.detect_birthdates_in_text(text),
+            // Username is not yet implemented in the personal module.
+            IdentifierType::Username => return Some(0),
+            _ => return None,
+        };
+        Some(self.push_all(matches))
+    }
+
+    fn scan_network_type(&self, text: &str, id_type: &IdentifierType) -> Option<usize> {
+        let network = NetworkIdentifierBuilder::new();
+        let matches = match id_type {
+            IdentifierType::IpAddress => network.find_ip_addresses_in_text(text),
+            IdentifierType::Url => network.find_urls_in_text(text),
+            IdentifierType::Uuid => network.find_uuids_in_text(text),
+            IdentifierType::MacAddress => network.find_mac_addresses_in_text(text),
+            // Detected by network/token modules via find_all_in_text /
+            // is_X predicates, but the streaming scanner has no dedicated
+            // find_X_in_text methods for them. Skip for now in selective scan.
+            IdentifierType::Domain
+            | IdentifierType::Hostname
+            | IdentifierType::Port
+            | IdentifierType::Jwt
+            | IdentifierType::ApiKey
+            | IdentifierType::SessionId
+            | IdentifierType::OAuthToken
+            | IdentifierType::SshKey
+            | IdentifierType::OnePasswordToken
+            | IdentifierType::OnePasswordVaultRef
+            | IdentifierType::BearerToken
+            | IdentifierType::UrlWithCredentials => return Some(0),
+            _ => return None,
+        };
+        Some(self.push_all(matches))
+    }
+
+    fn scan_financial_type(&self, text: &str, id_type: &IdentifierType) -> Option<usize> {
+        let financial = FinancialIdentifierBuilder::new();
+        match id_type {
+            IdentifierType::CreditCard => {
+                Some(self.push_all(financial.detect_credit_cards_in_text(text)))
+            }
+            IdentifierType::BankAccount
+            | IdentifierType::RoutingNumber
+            | IdentifierType::PaymentToken
+            | IdentifierType::CryptoAddress
+            | IdentifierType::Iban => {
+                // Financial module covers all via detect_all_in_text; filter to
+                // the requested type only.
+                Some(self.push_matching(financial.detect_all_in_text(text), id_type))
+            }
+            _ => None,
+        }
+    }
+
+    fn scan_government_type(&self, text: &str, id_type: &IdentifierType) -> Option<usize> {
+        type Finder = fn(&GovernmentIdentifierBuilder, &str) -> Vec<IdentifierMatch>;
+        type MatchesVariant = fn(&IdentifierType) -> bool;
+        // Lookup of IdentifierType variant -> per-variant finder method. Lets
+        // the helper stay flat regardless of how many country IDs we add.
+        const FINDERS: &[(MatchesVariant, Finder)] = &[
+            (
+                |t| matches!(t, IdentifierType::Ssn),
+                GovernmentIdentifierBuilder::find_ssns_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::DriverLicense),
+                GovernmentIdentifierBuilder::find_driver_licenses_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::Passport),
+                GovernmentIdentifierBuilder::find_passports_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::Ein),
+                GovernmentIdentifierBuilder::find_eins_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::TaxId),
+                GovernmentIdentifierBuilder::find_tax_ids_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::NationalId),
+                GovernmentIdentifierBuilder::find_national_ids_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::KoreaRrn),
+                GovernmentIdentifierBuilder::find_korea_rrns_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::AustraliaTfn),
+                GovernmentIdentifierBuilder::find_australia_tfns_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::AustraliaAbn),
+                GovernmentIdentifierBuilder::find_australia_abns_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::IndiaAadhaar),
+                GovernmentIdentifierBuilder::find_india_aadhaars_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::IndiaPan),
+                GovernmentIdentifierBuilder::find_india_pans_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::IndiaGstin),
+                GovernmentIdentifierBuilder::find_india_gstins_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::IndiaVehicleReg),
+                GovernmentIdentifierBuilder::find_india_vehicle_registrations_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::IndiaVoterId),
+                GovernmentIdentifierBuilder::find_india_voter_ids_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::IndiaPassport),
+                GovernmentIdentifierBuilder::find_india_passports_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::BrazilCpf),
+                GovernmentIdentifierBuilder::find_brazil_cpfs_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::BrazilCnpj),
+                GovernmentIdentifierBuilder::find_brazil_cnpjs_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::MexicoCurp),
+                GovernmentIdentifierBuilder::find_mexico_curps_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::NigeriaNin),
+                GovernmentIdentifierBuilder::find_nigeria_nins_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::ThailandTnin),
+                GovernmentIdentifierBuilder::find_thailand_tnins_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::FinlandHetu),
+                GovernmentIdentifierBuilder::find_finland_hetus_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::PolandPesel),
+                GovernmentIdentifierBuilder::find_poland_pesels_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::ItalyFiscalCode),
+                GovernmentIdentifierBuilder::find_italy_fiscal_codes_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::SingaporeNric),
+                GovernmentIdentifierBuilder::find_singapore_nrics_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::SpainNif),
+                GovernmentIdentifierBuilder::find_spain_nifs_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::SpainNie),
+                GovernmentIdentifierBuilder::find_spain_nies_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::UkNi),
+                GovernmentIdentifierBuilder::find_uk_nis_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::VehicleId),
+                GovernmentIdentifierBuilder::find_vehicle_ids_in_text,
+            ),
+        ];
+
+        let finder = FINDERS
+            .iter()
+            .find(|(matches_variant, _)| matches_variant(id_type))?
+            .1;
+        let government = GovernmentIdentifierBuilder::new();
+        Some(self.push_all(finder(&government, text)))
+    }
+
+    /// Handle domains whose builders expose a single `find_all_in_text` /
+    /// `detect_all_in_text` entry point, plus the credential domain which
+    /// requires context-based detection elsewhere.
+    fn scan_grouped_type(&self, text: &str, id_type: &IdentifierType) -> Option<usize> {
+        match id_type {
+            IdentifierType::EmployeeId
+            | IdentifierType::StudentId
+            | IdentifierType::BadgeNumber => {
+                let organizational = OrganizationalIdentifierBuilder::new();
+                Some(self.push_matching(organizational.find_all_in_text(text), id_type))
+            }
+            IdentifierType::GPSCoordinate
+            | IdentifierType::StreetAddress
+            | IdentifierType::PostalCode => {
+                let location = LocationIdentifierBuilder::new();
+                Some(self.push_matching(location.find_all_in_text(text), id_type))
+            }
+            IdentifierType::MedicalRecordNumber
+            | IdentifierType::HealthInsurance
+            | IdentifierType::Prescription
+            | IdentifierType::ProviderID
+            | IdentifierType::MedicalCode
+            | IdentifierType::MedicalLicense => {
+                let medical = MedicalIdentifierBuilder::new();
+                Some(self.push_matching(medical.find_all_in_text(text), id_type))
+            }
+            IdentifierType::Fingerprint
+            | IdentifierType::FacialRecognition
+            | IdentifierType::IrisScan
+            | IdentifierType::VoicePrint
+            | IdentifierType::DNASequence
+            | IdentifierType::BiometricTemplate => {
+                let biometric = BiometricIdentifierBuilder::new();
+                Some(self.push_matching(biometric.detect_all_in_text(text), id_type))
+            }
+            // Credentials require context-based detection ("password:",
+            // "pin="). Use CredentialIdentifierBuilder directly instead of
+            // pattern-based scanning.
+            IdentifierType::Password
+            | IdentifierType::Pin
+            | IdentifierType::SecurityAnswer
+            | IdentifierType::Passphrase => Some(0),
+            _ => None,
+        }
+    }
+
+    /// Handle one-off variants that don't fit any domain grouping:
+    /// connection strings (credentials), high-entropy strings, and explicit
+    /// no-op variants (Unknown, unimplemented provider tokens).
+    fn scan_special_type(&self, text: &str, id_type: &IdentifierType) -> Option<usize> {
+        match id_type {
+            IdentifierType::ConnectionString => {
+                let creds = CredentialIdentifierBuilder::new();
+                Some(usize::from(
+                    creds.is_connection_string_with_credentials(text),
+                ))
+            }
+            IdentifierType::HighEntropyString => {
+                Some(self.push_all(entropy::detect_high_entropy_strings_in_text(text)))
+            }
+            // Not yet implemented in primitives.
+            IdentifierType::GitHubToken
+            | IdentifierType::GitLabToken
+            | IdentifierType::AwsAccessKey
+            | IdentifierType::AwsSessionToken
+            | IdentifierType::Unknown => Some(0),
+            _ => None,
+        }
     }
 
     /// Drain all matches from the buffer

@@ -113,132 +113,167 @@ pub fn normalize_url_path_with_options<'a>(
         return Cow::Borrowed("");
     }
 
+    let (mut result, mut modified) = if options.remove_dot_segments {
+        process_with_dot_segments(path, options)
+    } else {
+        process_simple(path, options)
+    };
+
+    apply_post_normalization(&mut result, &mut modified, options);
+    finalize(result, modified, path)
+}
+
+/// Process path with dot-segment removal: split into segments, drop `.` /
+/// pop on `..`, then rebuild with the original leading/trailing slash
+/// semantics and any requested case folding.
+fn process_with_dot_segments(path: &str, options: &NormalizeUrlPathOptions) -> (String, bool) {
     let mut result = String::new();
     let mut modified = false;
 
-    // Process the path
-    let mut prev_was_slash = false;
-    let mut segments: Vec<&str> = Vec::new();
-    let mut current_segment_start = 0;
-
-    // Split into segments for dot segment processing
-    if options.remove_dot_segments {
-        let mut had_consecutive_slashes = false;
-        for (i, c) in path.char_indices() {
-            if c == '/' {
-                // Detect consecutive slashes (empty segment would be skipped)
-                if i == current_segment_start && i > 0 {
-                    had_consecutive_slashes = true;
-                }
-                if i > current_segment_start {
-                    segments.push(&path[current_segment_start..i]);
-                }
-                current_segment_start = i + 1;
-            }
-        }
-        if current_segment_start < path.len() {
-            segments.push(&path[current_segment_start..]);
-        }
-        if had_consecutive_slashes && options.collapse_slashes {
-            modified = true;
-        }
-
-        // Process dot segments
-        let mut output_segments: Vec<&str> = Vec::new();
-        for segment in &segments {
-            match *segment {
-                "." => {
-                    modified = true;
-                    // Skip current directory references
-                }
-                ".." => {
-                    modified = true;
-                    // Go up one directory
-                    output_segments.pop();
-                }
-                _ => {
-                    output_segments.push(segment);
-                }
-            }
-        }
-
-        // Rebuild path from segments
-        let starts_with_slash = path.starts_with('/');
-        let ends_with_slash = path.ends_with('/') && path.len() > 1;
-
-        if starts_with_slash {
-            result.push('/');
-        }
-
-        for (i, segment) in output_segments.iter().enumerate() {
-            if i > 0 {
-                result.push('/');
-            }
-            if options.lowercase {
-                result.push_str(&segment.to_lowercase());
-                if segment.chars().any(|c| c.is_uppercase()) {
-                    modified = true;
-                }
-            } else {
-                result.push_str(segment);
-            }
-        }
-
-        // Handle trailing slash
-        if ends_with_slash && !options.remove_trailing_slash {
-            result.push('/');
-        } else if ends_with_slash {
-            modified = true;
-        }
-    } else {
-        // Simple processing without dot segment removal
-        for c in path.chars() {
-            if c == '/' {
-                if prev_was_slash && options.collapse_slashes {
-                    modified = true;
-                    continue;
-                }
-                prev_was_slash = true;
-            } else {
-                prev_was_slash = false;
-            }
-
-            if options.lowercase && c.is_uppercase() {
-                result.push(c.to_lowercase().next().unwrap_or(c));
-                modified = true;
-            } else {
-                result.push(c);
-            }
-        }
-    }
-
-    // Collapse slashes if we haven't already processed this
-    if options.collapse_slashes && !options.remove_dot_segments {
-        let collapsed = collapse_slashes(&result);
-        if collapsed.len() != result.len() {
-            result = collapsed;
-            modified = true;
-        }
-    } else if options.collapse_slashes && options.remove_dot_segments {
-        // Already built result, check for collapsed slashes
-        let collapsed = collapse_slashes(&result);
-        if collapsed != result {
-            result = collapsed;
-            modified = true;
-        }
-    }
-
-    // Remove trailing slash (but keep root path as "/")
-    if options.remove_trailing_slash && result.len() > 1 && result.ends_with('/') {
-        result.pop();
+    let (segments, had_consecutive_slashes) = split_segments(path);
+    if had_consecutive_slashes && options.collapse_slashes {
         modified = true;
     }
 
-    // Ensure we have at least "/" for empty result from root path
+    // Process dot segments
+    let mut output_segments: Vec<&str> = Vec::new();
+    for segment in &segments {
+        match *segment {
+            "." => {
+                modified = true;
+                // Skip current directory references
+            }
+            ".." => {
+                modified = true;
+                // Go up one directory
+                output_segments.pop();
+            }
+            _ => {
+                output_segments.push(segment);
+            }
+        }
+    }
+
+    // Rebuild path from segments
+    let starts_with_slash = path.starts_with('/');
+    let ends_with_slash = path.ends_with('/') && path.len() > 1;
+
+    if starts_with_slash {
+        result.push('/');
+    }
+
+    for (i, segment) in output_segments.iter().enumerate() {
+        if i > 0 {
+            result.push('/');
+        }
+        if options.lowercase {
+            result.push_str(&segment.to_lowercase());
+            if segment.chars().any(|c| c.is_uppercase()) {
+                modified = true;
+            }
+        } else {
+            result.push_str(segment);
+        }
+    }
+
+    // Handle trailing slash
+    if ends_with_slash && !options.remove_trailing_slash {
+        result.push('/');
+    } else if ends_with_slash {
+        modified = true;
+    }
+
+    (result, modified)
+}
+
+/// Split a path into slash-delimited segments. Returns the segments and a
+/// flag indicating whether consecutive slashes were observed (which the
+/// caller may need to record as `modified` when collapsing).
+fn split_segments(path: &str) -> (Vec<&str>, bool) {
+    let mut segments: Vec<&str> = Vec::new();
+    let mut current_segment_start = 0;
+    let mut had_consecutive_slashes = false;
+    for (i, c) in path.char_indices() {
+        if c == '/' {
+            if i == current_segment_start && i > 0 {
+                had_consecutive_slashes = true;
+            }
+            if i > current_segment_start {
+                segments.push(&path[current_segment_start..i]);
+            }
+            current_segment_start = i + 1;
+        }
+    }
+    if current_segment_start < path.len() {
+        segments.push(&path[current_segment_start..]);
+    }
+    (segments, had_consecutive_slashes)
+}
+
+/// Simple character-by-character pass for when dot-segment removal is
+/// disabled. Handles slash collapse and case folding inline.
+fn process_simple(path: &str, options: &NormalizeUrlPathOptions) -> (String, bool) {
+    let mut result = String::new();
+    let mut modified = false;
+    let mut prev_was_slash = false;
+
+    for c in path.chars() {
+        if c == '/' {
+            if prev_was_slash && options.collapse_slashes {
+                modified = true;
+                continue;
+            }
+            prev_was_slash = true;
+        } else {
+            prev_was_slash = false;
+        }
+
+        if options.lowercase && c.is_uppercase() {
+            result.push(c.to_lowercase().next().unwrap_or(c));
+            modified = true;
+        } else {
+            result.push(c);
+        }
+    }
+    (result, modified)
+}
+
+/// Apply post-processing slash normalization: collapse runs of `/` (if not
+/// already done during dot-segment processing) and strip a trailing slash
+/// from non-root paths when requested.
+fn apply_post_normalization(
+    result: &mut String,
+    modified: &mut bool,
+    options: &NormalizeUrlPathOptions,
+) {
+    if options.collapse_slashes {
+        let collapsed = collapse_slashes(result);
+        // First branch is the dot-segments-disabled path (length-based shortcut);
+        // second is the dot-segments-enabled path where we've already rebuilt.
+        let changed = if options.remove_dot_segments {
+            collapsed != *result
+        } else {
+            collapsed.len() != result.len()
+        };
+        if changed {
+            *result = collapsed;
+            *modified = true;
+        }
+    }
+
+    if options.remove_trailing_slash && result.len() > 1 && result.ends_with('/') {
+        result.pop();
+        *modified = true;
+    }
+}
+
+/// Convert the working buffer into the right `Cow` variant: borrow when the
+/// path was untouched, or own when changes were applied. Restores `/` for
+/// the special case of an empty result from an absolute root path.
+fn finalize<'a>(result: String, modified: bool, path: &'a str) -> Cow<'a, str> {
     if result.is_empty() && path.starts_with('/') {
         return Cow::Borrowed("/");
     }
-
     if modified {
         Cow::Owned(result)
     } else {

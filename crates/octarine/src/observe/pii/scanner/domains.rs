@@ -8,9 +8,9 @@ use super::super::types::PiiType;
 // Import domain builders from primitives/identifiers
 use crate::primitives::identifiers::{
     BiometricIdentifierBuilder, CredentialIdentifierBuilder, FinancialIdentifierBuilder,
-    GovernmentIdentifierBuilder, LocationIdentifierBuilder, MedicalIdentifierBuilder,
-    NetworkIdentifierBuilder, OrganizationalIdentifierBuilder, PersonalIdentifierBuilder,
-    TokenIdentifierBuilder, TokenType,
+    GovernmentIdentifierBuilder, IdentifierMatch, LocationIdentifierBuilder,
+    MedicalIdentifierBuilder, NetworkIdentifierBuilder, OrganizationalIdentifierBuilder,
+    PersonalIdentifierBuilder, TokenIdentifierBuilder, TokenType,
 };
 
 /// Scan for personal PII (email, phone, name, birthdate)
@@ -62,96 +62,124 @@ pub(super) fn scan_financial(text: &str, pii_types: &mut Vec<PiiType>) {
     }
 }
 
-/// Scan for government IDs (SSN, driver license, passport, tax ID)
+/// Scan for government IDs (SSN, driver license, passport, tax ID, plus
+/// country-specific national IDs across 18 jurisdictions).
 pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
-    let government = GovernmentIdentifierBuilder::new();
+    type Finder = fn(&GovernmentIdentifierBuilder, &str) -> Vec<IdentifierMatch>;
+    const SCANNERS: &[(Finder, PiiType)] = &[
+        (GovernmentIdentifierBuilder::find_ssns_in_text, PiiType::Ssn),
+        (
+            GovernmentIdentifierBuilder::find_driver_licenses_in_text,
+            PiiType::DriverLicense,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_passports_in_text,
+            PiiType::Passport,
+        ),
+        (GovernmentIdentifierBuilder::find_eins_in_text, PiiType::Ein),
+        (
+            GovernmentIdentifierBuilder::find_tax_ids_in_text,
+            PiiType::TaxId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_national_ids_in_text,
+            PiiType::NationalId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_vehicle_ids_in_text,
+            PiiType::Vin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_rrns_in_text,
+            PiiType::KoreaRrn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_tfns_in_text,
+            PiiType::AustraliaTfn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_abns_in_text,
+            PiiType::AustraliaAbn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_aadhaars_in_text,
+            PiiType::IndiaAadhaar,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_pans_in_text,
+            PiiType::IndiaPan,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_gstins_in_text,
+            PiiType::IndiaGstin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_vehicle_registrations_in_text,
+            PiiType::IndiaVehicleReg,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_voter_ids_in_text,
+            PiiType::IndiaVoterId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_passports_in_text,
+            PiiType::IndiaPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_brazil_cpfs_in_text,
+            PiiType::BrazilCpf,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_brazil_cnpjs_in_text,
+            PiiType::BrazilCnpj,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_mexico_curps_in_text,
+            PiiType::MexicoCurp,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_nigeria_nins_in_text,
+            PiiType::NigeriaNin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_thailand_tnins_in_text,
+            PiiType::ThailandTnin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_singapore_nrics_in_text,
+            PiiType::SingaporeNric,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_finland_hetus_in_text,
+            PiiType::FinlandHetu,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_poland_pesels_in_text,
+            PiiType::PolandPesel,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_fiscal_codes_in_text,
+            PiiType::ItalyFiscalCode,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_spain_nifs_in_text,
+            PiiType::SpainNif,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_spain_nies_in_text,
+            PiiType::SpainNie,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_nis_in_text,
+            PiiType::UkNi,
+        ),
+    ];
 
-    if !government.find_ssns_in_text(text).is_empty() {
-        pii_types.push(PiiType::Ssn);
-    }
-    if !government.find_driver_licenses_in_text(text).is_empty() {
-        pii_types.push(PiiType::DriverLicense);
-    }
-    if !government.find_passports_in_text(text).is_empty() {
-        pii_types.push(PiiType::Passport);
-    }
-    if !government.find_eins_in_text(text).is_empty() {
-        pii_types.push(PiiType::Ein);
-    }
-    if !government.find_tax_ids_in_text(text).is_empty() {
-        pii_types.push(PiiType::TaxId);
-    }
-    if !government.find_national_ids_in_text(text).is_empty() {
-        pii_types.push(PiiType::NationalId);
-    }
-    if !government.find_vehicle_ids_in_text(text).is_empty() {
-        pii_types.push(PiiType::Vin);
-    }
-    if !government.find_korea_rrns_in_text(text).is_empty() {
-        pii_types.push(PiiType::KoreaRrn);
-    }
-    if !government.find_australia_tfns_in_text(text).is_empty() {
-        pii_types.push(PiiType::AustraliaTfn);
-    }
-    if !government.find_australia_abns_in_text(text).is_empty() {
-        pii_types.push(PiiType::AustraliaAbn);
-    }
-    if !government.find_india_aadhaars_in_text(text).is_empty() {
-        pii_types.push(PiiType::IndiaAadhaar);
-    }
-    if !government.find_india_pans_in_text(text).is_empty() {
-        pii_types.push(PiiType::IndiaPan);
-    }
-    if !government.find_india_gstins_in_text(text).is_empty() {
-        pii_types.push(PiiType::IndiaGstin);
-    }
-    if !government
-        .find_india_vehicle_registrations_in_text(text)
-        .is_empty()
-    {
-        pii_types.push(PiiType::IndiaVehicleReg);
-    }
-    if !government.find_india_voter_ids_in_text(text).is_empty() {
-        pii_types.push(PiiType::IndiaVoterId);
-    }
-    if !government.find_india_passports_in_text(text).is_empty() {
-        pii_types.push(PiiType::IndiaPassport);
-    }
-    if !government.find_brazil_cpfs_in_text(text).is_empty() {
-        pii_types.push(PiiType::BrazilCpf);
-    }
-    if !government.find_brazil_cnpjs_in_text(text).is_empty() {
-        pii_types.push(PiiType::BrazilCnpj);
-    }
-    if !government.find_mexico_curps_in_text(text).is_empty() {
-        pii_types.push(PiiType::MexicoCurp);
-    }
-    if !government.find_nigeria_nins_in_text(text).is_empty() {
-        pii_types.push(PiiType::NigeriaNin);
-    }
-    if !government.find_thailand_tnins_in_text(text).is_empty() {
-        pii_types.push(PiiType::ThailandTnin);
-    }
-    if !government.find_singapore_nrics_in_text(text).is_empty() {
-        pii_types.push(PiiType::SingaporeNric);
-    }
-    if !government.find_finland_hetus_in_text(text).is_empty() {
-        pii_types.push(PiiType::FinlandHetu);
-    }
-    if !government.find_poland_pesels_in_text(text).is_empty() {
-        pii_types.push(PiiType::PolandPesel);
-    }
-    if !government.find_italy_fiscal_codes_in_text(text).is_empty() {
-        pii_types.push(PiiType::ItalyFiscalCode);
-    }
-    if !government.find_spain_nifs_in_text(text).is_empty() {
-        pii_types.push(PiiType::SpainNif);
-    }
-    if !government.find_spain_nies_in_text(text).is_empty() {
-        pii_types.push(PiiType::SpainNie);
-    }
-    if !government.find_uk_nis_in_text(text).is_empty() {
-        pii_types.push(PiiType::UkNi);
+    let government = GovernmentIdentifierBuilder::new();
+    for &(finder, pii_type) in SCANNERS {
+        if !finder(&government, text).is_empty() {
+            pii_types.push(pii_type);
+        }
     }
 }
 
