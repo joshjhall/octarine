@@ -107,32 +107,17 @@ pub use token::TokenBuilder;
 use std::time::Instant;
 
 use crate::observe;
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::primitives::identifiers::StreamingScanner;
 use crate::primitives::identifiers::confidence::ConfidenceBuilder as PrimitiveConfidenceBuilder;
 
 use super::types::{IdentifierMatch, IdentifierType};
 
-// Pre-validated metric names for IdentifierBuilder
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn detect_ms() -> MetricName {
-        MetricName::new("data.identifiers.detect_ms").expect("valid metric name")
-    }
-
-    pub fn scan_ms() -> MetricName {
-        MetricName::new("data.identifiers.scan_ms").expect("valid metric name")
-    }
-
-    pub fn detected() -> MetricName {
-        MetricName::new("data.identifiers.detected").expect("valid metric name")
-    }
-
-    pub fn pii_found() -> MetricName {
-        MetricName::new("data.identifiers.pii_found").expect("valid metric name")
-    }
+crate::define_metrics! {
+    detect_ms => "data.identifiers.detect_ms",
+    scan_ms => "data.identifiers.scan_ms",
+    detected => "data.identifiers.detected",
+    pii_found => "data.identifiers.pii_found",
 }
 
 /// Unified identifier operations builder with observability

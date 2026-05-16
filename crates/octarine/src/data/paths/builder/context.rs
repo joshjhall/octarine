@@ -21,18 +21,12 @@
 //! ```
 
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, increment};
+use crate::observe::metrics::increment;
 
 use super::super::context;
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn context_sanitized() -> MetricName {
-        MetricName::new("data.paths.context.sanitized").expect("valid metric name")
-    }
+crate::define_metrics! {
+    context_sanitized => "data.paths.context.sanitized",
 }
 
 /// Context-specific sanitization builder with observability

@@ -32,28 +32,16 @@ use std::time::Instant;
 
 use crate::observe;
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::primitives::data::paths::FilenameBuilder as PrimitiveFilenameBuilder;
 
 // Re-export SanitizationContext from local types module
 pub use crate::data::paths::types::SanitizationContext;
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn threats_detected() -> MetricName {
-        MetricName::new("data.paths.filename.threats_detected").expect("valid metric name")
-    }
-
-    pub fn sanitize_ms() -> MetricName {
-        MetricName::new("data.paths.filename.sanitize_ms").expect("valid metric name")
-    }
-
-    pub fn validated() -> MetricName {
-        MetricName::new("data.paths.filename.validated").expect("valid metric name")
-    }
+crate::define_metrics! {
+    threats_detected => "data.paths.filename.threats_detected",
+    sanitize_ms => "data.paths.filename.sanitize_ms",
+    validated => "data.paths.filename.validated",
 }
 
 /// Filename operations builder with observability

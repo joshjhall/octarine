@@ -28,21 +28,12 @@ use std::time::Instant;
 
 use crate::observe;
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, record};
+use crate::observe::metrics::record;
 use crate::primitives::data::paths::BoundaryBuilder as PrimitiveBoundaryBuilder;
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn validate_ms() -> MetricName {
-        MetricName::new("data.paths.boundary.validate_ms").expect("valid metric name")
-    }
-
-    pub fn constrain_ms() -> MetricName {
-        MetricName::new("data.paths.boundary.constrain_ms").expect("valid metric name")
-    }
+crate::define_metrics! {
+    validate_ms => "data.paths.boundary.validate_ms",
+    constrain_ms => "data.paths.boundary.constrain_ms",
 }
 
 /// Boundary operations builder with observability

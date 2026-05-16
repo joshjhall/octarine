@@ -23,23 +23,14 @@
 //! assert!(chars.is_portable("relative/path"));
 //! ```
 
-use crate::observe::metrics::{MetricName, increment};
+use crate::observe::metrics::increment;
 use crate::primitives::data::paths::CharacteristicBuilder as PrimitiveCharacteristicBuilder;
 
 use crate::data::paths::types::{PathType, Platform};
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn path_type_detected() -> MetricName {
-        MetricName::new("data.paths.characteristic.path_type_detected").expect("valid metric name")
-    }
-
-    pub fn platform_detected() -> MetricName {
-        MetricName::new("data.paths.characteristic.platform_detected").expect("valid metric name")
-    }
+crate::define_metrics! {
+    path_type_detected => "data.paths.characteristic.path_type_detected",
+    platform_detected => "data.paths.characteristic.platform_detected",
 }
 
 /// Path characteristic operations builder with observability

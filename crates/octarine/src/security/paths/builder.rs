@@ -34,28 +34,16 @@ use std::time::Instant;
 
 use crate::observe;
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::primitives::data::paths::PathSanitizationStrategy as PrimitiveSanitizationStrategy;
 use crate::primitives::security::paths::SecurityBuilder as PrimitiveSecurityBuilder;
 
 use super::types::{PathSanitizationStrategy, SecurityThreat};
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn threats_detected() -> MetricName {
-        MetricName::new("security.paths.threats_detected").expect("valid metric name")
-    }
-
-    pub fn validate_ms() -> MetricName {
-        MetricName::new("security.paths.validate_ms").expect("valid metric name")
-    }
-
-    pub fn sanitize_ms() -> MetricName {
-        MetricName::new("security.paths.sanitize_ms").expect("valid metric name")
-    }
+crate::define_metrics! {
+    threats_detected => "security.paths.threats_detected",
+    validate_ms => "security.paths.validate_ms",
+    sanitize_ms => "security.paths.sanitize_ms",
 }
 
 /// Security operations builder with observability

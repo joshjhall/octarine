@@ -21,18 +21,12 @@
 //! ```
 
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, increment};
+use crate::observe::metrics::increment;
 
 use super::super::construction;
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn paths_built() -> MetricName {
-        MetricName::new("data.paths.construction.paths_built").expect("valid metric name")
-    }
+crate::define_metrics! {
+    paths_built => "data.paths.construction.paths_built",
 }
 
 /// Path construction builder with observability

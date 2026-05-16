@@ -18,7 +18,7 @@ use std::time::Instant;
 
 use crate::observe;
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::primitives::identifiers::{
     BankAccountRedactionStrategy, CreditCardRedactionStrategy, FinancialIdentifierBuilder,
     RoutingNumberRedactionStrategy,
@@ -28,30 +28,12 @@ use super::super::types::{
     CreditCardType, DetectionResult, FinancialTextPolicy, IdentifierMatch, IdentifierType,
 };
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn detect_ms() -> MetricName {
-        MetricName::new("data.identifiers.financial.detect_ms").expect("valid metric name")
-    }
-
-    pub fn validate_ms() -> MetricName {
-        MetricName::new("data.identifiers.financial.validate_ms").expect("valid metric name")
-    }
-
-    pub fn redact_ms() -> MetricName {
-        MetricName::new("data.identifiers.financial.redact_ms").expect("valid metric name")
-    }
-
-    pub fn detected() -> MetricName {
-        MetricName::new("data.identifiers.financial.detected").expect("valid metric name")
-    }
-
-    pub fn pci_data_found() -> MetricName {
-        MetricName::new("data.identifiers.financial.pci_data_found").expect("valid metric name")
-    }
+crate::define_metrics! {
+    detect_ms => "data.identifiers.financial.detect_ms",
+    validate_ms => "data.identifiers.financial.validate_ms",
+    redact_ms => "data.identifiers.financial.redact_ms",
+    detected => "data.identifiers.financial.detected",
+    pci_data_found => "data.identifiers.financial.pci_data_found",
 }
 
 /// Financial identifier builder with observability

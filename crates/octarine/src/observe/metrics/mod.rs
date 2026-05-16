@@ -124,6 +124,22 @@ pub use export::{DefaultLabels, PrometheusConfig, PrometheusExporter, StatsDConf
 /// record(metric_names::latency_ms(), 42.5);
 /// ```
 ///
+/// # Visibility
+///
+/// An optional visibility specifier before the first metric controls the
+/// generated `metric_names` module's visibility. This is needed when sibling
+/// submodules must access the metric names — for example, when a builder's
+/// methods are split across files.
+///
+/// ```rust
+/// use octarine::define_metrics;
+///
+/// define_metrics! {
+///     pub(crate)
+///     requests => "api.requests",
+/// }
+/// ```
+///
 /// # Generated Code
 ///
 /// The macro generates a `metric_names` module with:
@@ -132,9 +148,9 @@ pub use export::{DefaultLabels, PrometheusConfig, PrometheusExporter, StatsDConf
 /// - Clear panic messages identifying the invalid metric if it somehow fails
 #[macro_export]
 macro_rules! define_metrics {
-    ($($name:ident => $metric:literal),* $(,)?) => {
+    ($vis:vis $($name:ident => $metric:literal),* $(,)?) => {
         #[allow(clippy::expect_used)]
-        mod metric_names {
+        $vis mod metric_names {
             use $crate::observe::metrics::MetricName;
 
             $(
