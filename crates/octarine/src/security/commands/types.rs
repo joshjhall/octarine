@@ -3,7 +3,7 @@
 //! These types form the canonical location for command security types.
 //! They wrap primitives types with the Layer 3 visibility boundary.
 
-use std::collections::HashSet;
+use crate::primitives::security::commands::AllowList as PrimAllowList;
 
 // ============================================================================
 // Command Threat Types
@@ -195,6 +195,9 @@ impl From<AllowListMode> for crate::primitives::security::commands::AllowListMod
 /// Controls which commands can be executed. The default mode is `AllowOnly`,
 /// which only permits explicitly listed commands.
 ///
+/// Internally wraps a [`PrimAllowList`] and delegates all operations to it,
+/// so conversions to the primitive are zero-cost and lossless.
+///
 /// # Example
 ///
 /// ```ignore
@@ -209,8 +212,7 @@ impl From<AllowListMode> for crate::primitives::security::commands::AllowListMod
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct AllowList {
-    commands: HashSet<String>,
-    mode: AllowListMode,
+    inner: PrimAllowList,
 }
 
 impl AllowList {
@@ -223,7 +225,7 @@ impl AllowList {
     /// Add a command to the list
     #[must_use]
     pub fn allow(mut self, command: impl Into<String>) -> Self {
-        self.commands.insert(command.into());
+        self.inner = self.inner.allow(command);
         self
     }
 
@@ -234,36 +236,28 @@ impl AllowList {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        for cmd in commands {
-            self.commands.insert(cmd.into());
-        }
+        self.inner = self.inner.allow_many(commands);
         self
     }
 
     /// Set mode to deny all commands not in the list (default)
     #[must_use]
     pub fn deny_all_others(mut self) -> Self {
-        self.mode = AllowListMode::AllowOnly;
+        self.inner = self.inner.deny_all_others();
         self
     }
 
     /// Set mode to allow all commands except those in the list
     #[must_use]
     pub fn allow_all_except(mut self) -> Self {
-        self.mode = AllowListMode::DenyListed;
+        self.inner = self.inner.allow_all_except();
         self
     }
 
     /// Check if a command is allowed
     #[must_use]
     pub fn is_allowed(&self, command: &str) -> bool {
-        // Extract just the command name (basename) for comparison
-        let cmd_name = Self::extract_command_name(command);
-
-        match self.mode {
-            AllowListMode::AllowOnly => self.commands.contains(cmd_name),
-            AllowListMode::DenyListed => !self.commands.contains(cmd_name),
-        }
+        self.inner.is_allowed(command)
     }
 
     /// Check if a command is allowed, resolving symlinks
@@ -271,68 +265,31 @@ impl AllowList {
     /// Prevents bypass attacks where an attacker creates a symlink
     /// like `/tmp/git -> /bin/rm` to execute disallowed commands.
     pub fn is_allowed_resolving_symlinks(&self, command: &str) -> std::io::Result<bool> {
-        // First check the basename
-        let cmd_name = Self::extract_command_name(command);
-        if !self.is_allowed(cmd_name) {
-            return Ok(false);
-        }
-
-        // If it's a path (contains separator), resolve symlinks
-        if command.contains('/') || command.contains('\\') {
-            use std::path::Path;
-
-            let path = Path::new(command);
-
-            // Only resolve if the path exists
-            if path.exists() {
-                let resolved = std::fs::canonicalize(path)?;
-                let resolved_name = resolved.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-                // The resolved binary name must also be in the allow-list
-                return Ok(self.is_allowed(resolved_name));
-            }
-        }
-
-        Ok(true)
-    }
-
-    /// Extract the command name from a path
-    fn extract_command_name(command: &str) -> &str {
-        command
-            .rsplit('/')
-            .next()
-            .unwrap_or(command)
-            .rsplit('\\')
-            .next()
-            .unwrap_or(command)
+        self.inner.is_allowed_resolving_symlinks(command)
     }
 
     /// Get the number of commands in the list
     #[must_use]
     pub fn len(&self) -> usize {
-        self.commands.len()
+        self.inner.len()
     }
 
     /// Check if the list is empty
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
+        self.inner.is_empty()
     }
 
     /// Get the mode
     #[must_use]
     pub fn mode(&self) -> AllowListMode {
-        self.mode
+        self.inner.mode().into()
     }
 
     /// Get reference to the underlying primitive AllowList
     #[must_use]
-    pub(crate) fn as_primitive(&self) -> &crate::primitives::security::commands::AllowList {
-        // Safety: AllowList has the same internal structure as primitive AllowList
-        // This is a temporary workaround - ideally we'd store or convert properly
-        // For now, we create a primitive on demand
-        // This leaks a static reference which is fine for the limited use case
-        static_allowlist(self)
+    pub(crate) fn as_primitive(&self) -> &PrimAllowList {
+        &self.inner
     }
 
     // Preset allow-lists
@@ -340,77 +297,53 @@ impl AllowList {
     /// Create an allow-list for shell-safe commands
     #[must_use]
     pub fn shell_safe() -> Self {
-        Self::new().allow_many([
-            "ls", "cat", "echo", "grep", "find", "head", "tail", "wc", "sort", "uniq", "cut", "tr",
-            "date", "whoami", "pwd", "env", "printenv", "which", "file", "stat", "du", "df",
-        ])
+        Self {
+            inner: PrimAllowList::shell_safe(),
+        }
     }
 
     /// Create an allow-list for git operations
     #[must_use]
     pub fn git_operations() -> Self {
-        Self::new().allow("git")
+        Self {
+            inner: PrimAllowList::git_operations(),
+        }
     }
 
     /// Create an allow-list for docker operations
     #[must_use]
     pub fn docker_operations() -> Self {
-        Self::new().allow_many(["docker", "docker-compose"])
+        Self {
+            inner: PrimAllowList::docker_operations(),
+        }
     }
 
     /// Create an allow-list for npm/node operations
     #[must_use]
     pub fn node_operations() -> Self {
-        Self::new().allow_many(["node", "npm", "npx", "yarn", "pnpm"])
+        Self {
+            inner: PrimAllowList::node_operations(),
+        }
     }
 
     /// Create an allow-list for cargo/rust operations
     #[must_use]
     pub fn rust_operations() -> Self {
-        Self::new().allow_many(["cargo", "rustc", "rustup", "rustfmt", "clippy-driver"])
+        Self {
+            inner: PrimAllowList::rust_operations(),
+        }
     }
 }
 
-/// Helper to create a primitive AllowList from our wrapper
-/// This is used internally for validation calls
-fn static_allowlist(
-    wrapper: &AllowList,
-) -> &'static crate::primitives::security::commands::AllowList {
-    use crate::primitives::security::commands::AllowList as PrimAllowList;
-    use std::sync::OnceLock;
-
-    // For simplicity, we'll just create a new primitive each time
-    // In practice this could be optimized with caching
-    // Leak the allocation to get a 'static reference
-    let prim = match wrapper.mode {
-        AllowListMode::AllowOnly => {
-            let mut p = PrimAllowList::new();
-            for cmd in &wrapper.commands {
-                p = p.allow(cmd.clone());
-            }
-            p.deny_all_others()
-        }
-        AllowListMode::DenyListed => {
-            let mut p = PrimAllowList::new();
-            for cmd in &wrapper.commands {
-                p = p.allow(cmd.clone());
-            }
-            p.allow_all_except()
-        }
-    };
-
-    Box::leak(Box::new(prim))
+impl From<PrimAllowList> for AllowList {
+    fn from(inner: PrimAllowList) -> Self {
+        Self { inner }
+    }
 }
 
-impl From<crate::primitives::security::commands::AllowList> for AllowList {
-    fn from(p: crate::primitives::security::commands::AllowList) -> Self {
-        // We can't directly access the internal commands set from primitive
-        // So we create a new wrapper - the primitives AllowList would need
-        // accessor methods for full conversion support
-        Self {
-            commands: HashSet::new(), // Can't access primitive's commands
-            mode: p.mode().into(),
-        }
+impl From<AllowList> for PrimAllowList {
+    fn from(wrapper: AllowList) -> Self {
+        wrapper.inner
     }
 }
 
@@ -448,5 +381,42 @@ mod tests {
     #[test]
     fn test_allowlist_mode_default() {
         assert_eq!(AllowListMode::default(), AllowListMode::AllowOnly);
+    }
+
+    #[test]
+    fn test_from_primitive_preserves_commands() {
+        // Previously, From<PrimAllowList> for AllowList silently discarded the
+        // commands set because the wrapper had no way to read primitive state.
+        // After the wrap-and-delegate refactor it round-trips losslessly.
+        let prim = PrimAllowList::new().allow("git").allow("docker");
+        let wrapper: AllowList = prim.into();
+
+        assert!(wrapper.is_allowed("git"));
+        assert!(wrapper.is_allowed("docker"));
+        assert!(!wrapper.is_allowed("rm"));
+        assert_eq!(wrapper.len(), 2);
+    }
+
+    #[test]
+    fn test_from_primitive_preserves_mode() {
+        let prim = PrimAllowList::new().allow("rm").allow_all_except();
+        let wrapper: AllowList = prim.into();
+
+        // Mode preserved → "rm" is denied, everything else allowed.
+        assert!(!wrapper.is_allowed("rm"));
+        assert!(wrapper.is_allowed("ls"));
+        assert_eq!(wrapper.mode(), AllowListMode::DenyListed);
+    }
+
+    #[test]
+    fn test_repeated_validation_no_leak() {
+        // Smoke test for the hot path. Previously every call to as_primitive()
+        // leaked a Box; this loop would have leaked thousands of allocations.
+        // The structural fix (no Box::leak in the source) is the real guarantee
+        // — this test just exercises the call path heavily.
+        let list = AllowList::git_operations();
+        for _ in 0..1000 {
+            assert!(list.as_primitive().is_allowed("git"));
+        }
     }
 }
