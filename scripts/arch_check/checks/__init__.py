@@ -8,6 +8,7 @@ from typing import Callable, Iterator
 from scripts.arch_check.core import Finding, iter_files
 from scripts.arch_check.checks import (
     builder_visibility,
+    file_length,
     layer_boundary,
     naming_prefix,
     naming_return_type,
@@ -51,6 +52,10 @@ def _run_builder_visibility(*, staged_only: bool, root: Path) -> Iterator[Findin
     yield from builder_visibility.run(root=root)
 
 
+def _run_file_length(*, staged_only: bool, root: Path) -> Iterator[Finding]:
+    yield from file_length.run(staged_only=staged_only, root=root)
+
+
 # Order matters: bash executes checks in this exact sequence.
 CHECK_ORDER: list[str] = [
     "layer-boundary",
@@ -60,6 +65,7 @@ CHECK_ORDER: list[str] = [
     "test-lint",
     "type-visibility",
     "builder-visibility",
+    "file-length",
 ]
 
 CHECKS: dict[str, CheckRunner] = {
@@ -70,4 +76,5 @@ CHECKS: dict[str, CheckRunner] = {
     "test-lint": _run_test_lint,
     "type-visibility": _run_type_visibility,
     "builder-visibility": _run_builder_visibility,
+    "file-length": _run_file_length,
 }
