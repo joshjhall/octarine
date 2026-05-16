@@ -8,7 +8,7 @@
 use std::borrow::Cow;
 use std::time::Instant;
 
-use crate::observe::metrics::{MetricName, increment, record};
+use crate::observe::metrics::{increment, record};
 use crate::primitives::data::network::{
     NormalizeUrlPathOptions as PrimitiveOptions, PathPattern as PrimitivePathPattern,
     normalize_path_segments as prim_normalize_segments,
@@ -18,26 +18,11 @@ use crate::primitives::data::network::{
 
 use super::types::{NormalizeUrlPathOptions, PathPattern};
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn normalize_ms() -> MetricName {
-        MetricName::new("data.network.normalize_ms").expect("valid metric name")
-    }
-
-    pub fn normalize_count() -> MetricName {
-        MetricName::new("data.network.normalize_count").expect("valid metric name")
-    }
-
-    pub fn normalize_segments_ms() -> MetricName {
-        MetricName::new("data.network.normalize_segments_ms").expect("valid metric name")
-    }
-
-    pub fn normalize_segments_count() -> MetricName {
-        MetricName::new("data.network.normalize_segments_count").expect("valid metric name")
-    }
+crate::define_metrics! {
+    normalize_ms => "data.network.normalize_ms",
+    normalize_count => "data.network.normalize_count",
+    normalize_segments_ms => "data.network.normalize_segments_ms",
+    normalize_segments_count => "data.network.normalize_segments_count",
 }
 
 /// URL normalization builder with observability

@@ -24,7 +24,7 @@
 
 use std::time::Instant;
 
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::observe::{self, Problem};
 use crate::primitives::identifiers::{
     DriverLicenseRedactionStrategy, GovernmentIdentifierBuilder, NationalIdRedactionStrategy,
@@ -54,30 +54,13 @@ mod thailand;
 mod uk_ni;
 mod vehicle_id;
 
-#[allow(clippy::expect_used)]
-pub(super) mod metric_names {
-    use super::MetricName;
-
-    pub fn detect_ms() -> MetricName {
-        MetricName::new("data.identifiers.government.detect_ms").expect("valid metric name")
-    }
-
-    pub fn validate_ms() -> MetricName {
-        MetricName::new("data.identifiers.government.validate_ms").expect("valid metric name")
-    }
-
-    pub fn redact_ms() -> MetricName {
-        MetricName::new("data.identifiers.government.redact_ms").expect("valid metric name")
-    }
-
-    pub fn detected() -> MetricName {
-        MetricName::new("data.identifiers.government.detected").expect("valid metric name")
-    }
-
-    pub fn government_data_found() -> MetricName {
-        MetricName::new("data.identifiers.government.government_data_found")
-            .expect("valid metric name")
-    }
+crate::define_metrics! {
+    pub(super)
+    detect_ms => "data.identifiers.government.detect_ms",
+    validate_ms => "data.identifiers.government.validate_ms",
+    redact_ms => "data.identifiers.government.redact_ms",
+    detected => "data.identifiers.government.detected",
+    government_data_found => "data.identifiers.government.government_data_found",
 }
 
 /// Government identifier builder with observability

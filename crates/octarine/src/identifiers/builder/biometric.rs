@@ -16,7 +16,7 @@
 use std::borrow::Cow;
 use std::time::Instant;
 
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::observe::{self, Problem};
 use crate::primitives::identifiers::BiometricIdentifierBuilder;
 
@@ -26,30 +26,12 @@ use super::super::types::{
     IrisIdRedactionStrategy, VoiceIdRedactionStrategy,
 };
 
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn detect_ms() -> MetricName {
-        MetricName::new("data.identifiers.biometric.detect_ms").expect("valid metric name")
-    }
-
-    pub fn validate_ms() -> MetricName {
-        MetricName::new("data.identifiers.biometric.validate_ms").expect("valid metric name")
-    }
-
-    pub fn redact_ms() -> MetricName {
-        MetricName::new("data.identifiers.biometric.redact_ms").expect("valid metric name")
-    }
-
-    pub fn detected() -> MetricName {
-        MetricName::new("data.identifiers.biometric.detected").expect("valid metric name")
-    }
-
-    pub fn biometric_data_found() -> MetricName {
-        MetricName::new("data.identifiers.biometric.biometric_data_found")
-            .expect("valid metric name")
-    }
+crate::define_metrics! {
+    detect_ms => "data.identifiers.biometric.detect_ms",
+    validate_ms => "data.identifiers.biometric.validate_ms",
+    redact_ms => "data.identifiers.biometric.redact_ms",
+    detected => "data.identifiers.biometric.detected",
+    biometric_data_found => "data.identifiers.biometric.biometric_data_found",
 }
 
 /// Biometric identifier builder with observability (BIPA compliance)

@@ -18,45 +18,18 @@
 use std::time::Instant;
 
 use crate::observe::ProblemExt;
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::observe::{Problem, event};
 use crate::primitives::identifiers::crypto::{KeyFormat, KeyType, SignatureAlgorithm};
 use crate::primitives::security::crypto::{CryptoAuditResult, CryptoPolicy, CryptoSecurityBuilder};
 
-// Pre-validated metric names for crypto validation
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    /// Time to validate a certificate (PEM or DER)
-    pub fn validate_cert_ms() -> MetricName {
-        MetricName::new("crypto.validation.certificate_ms").expect("valid metric name")
-    }
-
-    /// Time to validate an SSH key
-    pub fn validate_ssh_ms() -> MetricName {
-        MetricName::new("crypto.validation.ssh_key_ms").expect("valid metric name")
-    }
-
-    /// Time to perform a full audit
-    pub fn audit_ms() -> MetricName {
-        MetricName::new("crypto.validation.audit_ms").expect("valid metric name")
-    }
-
-    /// Count of successfully validated items
-    pub fn validated_count() -> MetricName {
-        MetricName::new("crypto.validation.validated").expect("valid metric name")
-    }
-
-    /// Count of blocking threats that caused validation failure
-    pub fn threats_blocked() -> MetricName {
-        MetricName::new("crypto.validation.threats_blocked").expect("valid metric name")
-    }
-
-    /// Count of warnings issued
-    pub fn warnings_count() -> MetricName {
-        MetricName::new("crypto.validation.warnings").expect("valid metric name")
-    }
+crate::define_metrics! {
+    validate_cert_ms => "crypto.validation.certificate_ms",
+    validate_ssh_ms => "crypto.validation.ssh_key_ms",
+    audit_ms => "crypto.validation.audit_ms",
+    validated_count => "crypto.validation.validated",
+    threats_blocked => "crypto.validation.threats_blocked",
+    warnings_count => "crypto.validation.warnings",
 }
 
 #[cfg(feature = "crypto-validation")]

@@ -31,24 +31,15 @@
 
 use std::borrow::Cow;
 
-use crate::observe::metrics::{MetricName, increment};
+use crate::observe::metrics::increment;
 use crate::primitives::data::paths::FormatBuilder as PrimitiveFormatBuilder;
 
 // Re-export PathFormat and SeparatorStyle from local types module
 pub use crate::data::paths::types::{PathFormat, SeparatorStyle};
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn format_detected() -> MetricName {
-        MetricName::new("data.paths.format.format_detected").expect("valid metric name")
-    }
-
-    pub fn converted() -> MetricName {
-        MetricName::new("data.paths.format.converted").expect("valid metric name")
-    }
+crate::define_metrics! {
+    format_detected => "data.paths.format.format_detected",
+    converted => "data.paths.format.converted",
 }
 
 /// Path format operations builder with observability

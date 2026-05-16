@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use crate::observe;
 use crate::observe::Problem;
-use crate::observe::metrics::{MetricName, increment_by, record};
+use crate::observe::metrics::{increment_by, record};
 use crate::primitives::identifiers::{
     BirthdateRedactionStrategy, EmailRedactionStrategy, NameRedactionStrategy,
     PersonalIdentifierBuilder as PrimitivePersonalBuilder, PersonalTextPolicy, PhoneFormatStyle,
@@ -18,30 +18,12 @@ use crate::primitives::identifiers::{
 
 use super::super::types::{IdentifierMatch, IdentifierType, PhoneRegion};
 
-// Pre-validated metric names
-#[allow(clippy::expect_used)]
-mod metric_names {
-    use super::MetricName;
-
-    pub fn detect_ms() -> MetricName {
-        MetricName::new("data.identifiers.personal.detect_ms").expect("valid metric name")
-    }
-
-    pub fn validate_ms() -> MetricName {
-        MetricName::new("data.identifiers.personal.validate_ms").expect("valid metric name")
-    }
-
-    pub fn redact_ms() -> MetricName {
-        MetricName::new("data.identifiers.personal.redact_ms").expect("valid metric name")
-    }
-
-    pub fn detected() -> MetricName {
-        MetricName::new("data.identifiers.personal.detected").expect("valid metric name")
-    }
-
-    pub fn pii_found() -> MetricName {
-        MetricName::new("data.identifiers.personal.pii_found").expect("valid metric name")
-    }
+crate::define_metrics! {
+    detect_ms => "data.identifiers.personal.detect_ms",
+    validate_ms => "data.identifiers.personal.validate_ms",
+    redact_ms => "data.identifiers.personal.redact_ms",
+    detected => "data.identifiers.personal.detected",
+    pii_found => "data.identifiers.personal.pii_found",
 }
 
 /// Personal identifier builder with observability
