@@ -42,9 +42,9 @@ jobs:
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
-      - uses: dprint/check@v2.3
-        with:
-          dprint-version: "0.54.0"
+      - uses: taiki-e/install-action@dprint
+      - uses: taiki-e/install-action@just
+      - run: just fmt-data-check
 
   clippy:
     name: Clippy
