@@ -4,19 +4,19 @@ on:
   push:
     branches: [main]
     paths:
-      - '**.md'
-      - 'docs/**'
-      - '.github/workflows/doc-links.yml'
-      - '.lycheeignore'
-      - 'lychee.toml'
+      - "**.md"
+      - "docs/**"
+      - ".github/workflows/doc-links.yml"
+      - ".lycheeignore"
+      - "lychee.toml"
   pull_request:
     branches: [main]
     paths:
-      - '**.md'
-      - 'docs/**'
-      - '.github/workflows/doc-links.yml'
-      - '.lycheeignore'
-      - 'lychee.toml'
+      - "**.md"
+      - "docs/**"
+      - ".github/workflows/doc-links.yml"
+      - ".lycheeignore"
+      - "lychee.toml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -31,6 +31,7 @@
         // Linting & formatting
         "redhat.vscode-yaml",
         "biomejs.biome",
+        "dprint.dprint",
         // Database
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
@@ -61,21 +62,21 @@
           "editor.defaultFormatter": "rust-lang.rust-analyzer"
         },
 
-        // YAML settings (Red Hat YAML)
+        // YAML settings (dprint)
         "[yaml]": {
           "editor.formatOnSave": true,
-          "editor.defaultFormatter": "redhat.vscode-yaml"
+          "editor.defaultFormatter": "dprint.dprint"
         },
         "yaml.format.bracketSpacing": false,
 
-        // JSON settings (biome)
+        // JSON settings (dprint)
         "[json]": {
           "editor.formatOnSave": true,
-          "editor.defaultFormatter": "biomejs.biome"
+          "editor.defaultFormatter": "dprint.dprint"
         },
         "[jsonc]": {
           "editor.formatOnSave": true,
-          "editor.defaultFormatter": "biomejs.biome"
+          "editor.defaultFormatter": "dprint.dprint"
         },
 
         // General editor settings

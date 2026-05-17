@@ -31,6 +31,14 @@ fmt-check:
 fmt:
     cargo fmt --all
 
+# Check YAML/JSON formatting via dprint (no fixes)
+fmt-data-check:
+    dprint check
+
+# Format YAML/JSON via dprint
+fmt-data:
+    dprint fmt
+
 # Run all formatters and file fixers via pre-commit on every file in the repo
 fmt-all: pre-commit
 
@@ -101,7 +109,7 @@ shellcheck:
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
 # Full pre-push validation: fmt, clippy, shellcheck, arch-check, tests
-preflight: fmt-check clippy shellcheck arch-check test
+preflight: fmt-check fmt-data-check clippy shellcheck arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
