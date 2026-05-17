@@ -77,7 +77,7 @@ Both must pass before the PR can merge.
 ```bash
 git clone git@github.com:joshjhall/octarine.git
 cd octarine
-just preflight    # fmt + clippy + shellcheck + arch-check + tests
+just preflight    # fmt + clippy + shellcheck + lint-docker + arch-check + tests
 ```
 
 Run `just --list` to discover the full recipe set. All tooling is invoked
