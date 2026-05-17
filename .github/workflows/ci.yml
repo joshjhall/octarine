@@ -58,6 +58,42 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just spell
 
+  commit-lint:
+    name: Commit Lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # conform --base-branch needs full history to diff against
+          # origin/main. Default fetch-depth: 1 would fail.
+          fetch-depth: 0
+      - name: Install conform
+        # No taiki-e/install-action recipe yet; install the naked
+        # binary directly. Pinned to the version shipped by containers
+        # v4.19.0 so the dev-container hook and CI run identical
+        # binaries.
+        run: |
+          version=0.1.0-alpha.31
+          url="https://github.com/siderolabs/conform/releases/download/v${version}/conform-linux-amd64"
+          sudo curl -fsSL "$url" -o /usr/local/bin/conform
+          sudo chmod +x /usr/local/bin/conform
+          conform version
+      - name: Lint branch commits
+        run: conform enforce --base-branch origin/main
+      - name: Lint PR title
+        # Squash-merge uses the PR title as the merge subject, so it
+        # must also pass. Write to a tmp file and pass through
+        # --commit-msg-file (the only flag that accepts arbitrary text).
+        env:
+          # Read via env to avoid shell injection via malicious PR
+          # titles (actionlint-recommended pattern).
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          tmp=$(mktemp)
+          printf '%s\n' "$PR_TITLE" > "$tmp"
+          conform enforce --commit-msg-file "$tmp"
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest

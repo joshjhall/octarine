@@ -127,6 +127,19 @@ pre-commit:
         fi
 
 # ============================================================================
+# commit-msg stage: validates the message before the commit lands
+# ============================================================================
+commit-msg:
+  commands:
+    conform:
+      # conform is shipped by the containers dev-tools feature; skip
+      # gracefully if running outside a dev-tools container — CI is the
+      # safety net.
+      skip:
+        - run: "! command -v conform >/dev/null 2>&1"
+      run: conform enforce --commit-msg-file {1}
+
+# ============================================================================
 # Pre-push stage: runs on `git push`
 # ============================================================================
 pre-push:
