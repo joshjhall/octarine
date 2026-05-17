@@ -30,7 +30,6 @@
         "tamasfe.even-better-toml",
         // Linting & formatting
         "redhat.vscode-yaml",
-        "biomejs.biome",
         "dprint.dprint",
         // Database
         "mtxr.sqltools",
