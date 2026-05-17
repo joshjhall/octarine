@@ -1,0 +1,88 @@
+# typos configuration — code-aware spell checking
+# https://github.com/crate-ci/typos
+
+[default]
+# Skip identifiers that look like hex blobs or base64; these surface in
+# crypto/identifier fixtures and test vectors as legitimate non-words.
+extend-ignore-identifiers-re = [
+    "^[A-Fa-f0-9]{6,}$",
+    "^[A-Za-z0-9+/]{32,}={0,2}$",
+]
+
+[default.extend-words]
+# Discworld lore — eighth color of the spectrum, project namesake
+octarine = "octarine"
+
+# Security and identifier domain acronyms that resemble typos
+ssrf = "ssrf"
+xxe = "xxe"
+xss = "xss"
+pii = "pii"
+
+# Medical identifier account types (primitives/identifiers/medical)
+hsa = "hsa"
+hra = "hra"
+fsa = "fsa"
+
+# US tax identifier — Employer ID Number (primitives/identifiers/government)
+ein = "ein"
+Ein = "Ein"
+EIN = "EIN"
+
+# Nigeria National ID Number (primitives/identifiers/government/nigeria)
+nin = "nin"
+Nin = "Nin"
+NIN = "NIN"
+
+# MongoDB query operator $nin — NoSQL injection detection patterns
+# (covered by lowercase `nin` above)
+
+# HashiCorp Vault prefix — secrets-manager API key detection
+Hashi = "Hashi"
+
+# Spanish identifier vocabulary used in regional detection / passphrase regex
+# (frase = phrase, secretas = secret/secrets, Identificacion = identification)
+frase = "frase"
+secretas = "secretas"
+Identificacion = "Identificacion"
+
+# German passphrase vocabulary — "geheime worte" = "secret words"
+worte = "worte"
+
+# Polish PESEL — "numer PESEL" = "PESEL number"
+numer = "numer"
+
+# US state abbreviation North Dakota (location/conversion/address)
+ND = "ND"
+
+# observe metric name — observe.threshold.criticals
+criticals = "criticals"
+CRITICALS = "CRITICALS"
+
+# Test fixtures: strings chosen specifically because they are NOT words
+# `abd` — single-char-diff from "abc" in constant-time-compare and
+#         Levenshtein-distance tests across auth/{csrf,remember,reset,password}
+# `caf` — ASCII-only stripped form of "café" used as the expected output
+#         in unicode-decomposition / non-ASCII removal tests
+# `nam` — embedded substring inside test Google API key fixtures
+abd = "abd"
+caf = "caf"
+nam = "nam"
+
+# Doc comment in primitives/http/request_id.rs — both spellings are accepted;
+# project chooses `unparseable` for consistency with the surrounding text
+unparseable = "unparseable"
+
+[files]
+extend-exclude = [
+    "CHANGELOG.md",
+    "Cargo.lock",
+    "target/**",
+    "node_modules/**",
+    ".git/**",
+    "containers/**",
+    "**/*.lock",
+    "tests/results/**",
+    "**/proptest-regressions/**",
+    "**/fixtures/**",
+]
