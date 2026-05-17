@@ -116,6 +116,14 @@ shellcheck:
         shellcheck "${files[@]}"
     fi
 
+# Lint a commit message against the conform policy (default: HEAD's message)
+commit-lint FILE='.git/COMMIT_EDITMSG':
+    conform enforce --commit-msg-file {{FILE}}
+
+# Lint every commit on this branch against origin/main
+commit-lint-branch:
+    conform enforce --base-branch origin/main
+
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
 # Full pre-push validation: fmt, clippy, shellcheck, spell, arch-check, tests

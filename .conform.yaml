@@ -1,0 +1,95 @@
+# conform configuration — enforces conventional-commit format on every
+# commit (via lefthook commit-msg) and every PR branch + title (via the
+# Commit Lint CI job).
+#
+# Types listed below = 8 observed in octarine git history (build, chore,
+# deps, docs, feat, fix, refactor, test) + ci and perf from the
+# Conventional Commits spec for forward-compat.
+#
+# Run locally:  conform enforce --commit-msg-file <path>
+# Run on a PR:  conform enforce --base-branch origin/main
+policies:
+  - type: commit
+    spec:
+      header:
+        # The conventional-commit policy below also enforces a 72-char
+        # cap on the description (text after `type(scope): `) per spec.
+        # The 89-char header ceiling here is the *outer* budget — it
+        # allows long `type(scope):` prefixes without expanding the
+        # description budget.
+        length: 89
+        invalidLastCharacters: .
+      body:
+        required: false
+      dco: false
+      gpg:
+        required: false
+      conventional:
+        types:
+          - build
+          - chore
+          - ci
+          - deps
+          - docs
+          - feat
+          - fix
+          - perf
+          - refactor
+          - test
+        # Scope allowlist curated from `git log` of last ~300 commits
+        # plus octarine top-level modules. Permissive on purpose —
+        # easier to prune than to add after a rejection. Adding a new
+        # scope: open a PR; the bar is "we'll plausibly use this more
+        # than once".
+        #
+        # IMPORTANT — entries are Go regular expressions, NOT exact
+        # matches. See conform's check_conventional_commit.go: each
+        # scope is compiled with regexp.MustCompile and tested with
+        # re.MatchString — which is unanchored. Without `^...$`,
+        # `op` would match `feat(operation):` and `r` would match any
+        # scope containing the letter r. Anchor every entry.
+        scopes:
+          # --- octarine source modules (crates/octarine/src/*) ---
+          - ^auth$
+          - ^crypto$
+          - ^data$
+          - ^http$
+          - ^identifiers$
+          - ^io$
+          - ^observe$
+          - ^primitives$
+          - ^runtime$
+          - ^security$
+          - ^testing$
+          # --- cross-cutting subsystems / process ---
+          - ^ai$
+          - ^api$
+          - ^architecture$
+          - ^arch-check$
+          - ^ci$
+          - ^claude$
+          - ^claude-md$
+          - ^containers$
+          - ^credentials$
+          - ^deps$
+          - ^devcontainer$
+          - ^docs$
+          - ^examples$
+          - ^just$
+          - ^license$
+          - ^lints$
+          - ^memory$
+          - ^naming$
+          - ^pii$
+          - ^pii-scanner$
+          - ^pii-sync$
+          - ^platform$
+          - ^release$
+          - ^shell$
+          - ^test$
+          - ^tests$
+          - ^timing$
+          - ^tooling$
+          - ^types$
+          - ^visibility$
+          - ^xml$

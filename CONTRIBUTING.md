@@ -6,8 +6,71 @@ overview and [docs/architecture/](docs/architecture/) for the three-layer
 design.
 
 This file is deliberately minimal — it covers dev setup and the SemVer policy.
-Branching, commit conventions, and the full PR workflow are documented in
-[CLAUDE.md](CLAUDE.md) and the project skills under `.claude/skills/`.
+Branching and the full PR workflow are documented in the project skills under
+`.claude/skills/git-workflow/`. Commit format is enforced automatically — see
+[Commit Format](#commit-format) below.
+
+## Commit Format
+
+octarine enforces [Conventional Commits](https://www.conventionalcommits.org/)
+via [conform](https://github.com/siderolabs/conform). The source of truth for
+allowed types, scopes, and length limits is [`.conform.yaml`](.conform.yaml) —
+read that file before adding a new scope.
+
+### Format
+
+```text
+<type>(<scope>): <subject>
+
+<optional body>
+
+<optional footers>
+```
+
+- **type** — one of: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`,
+  `build`, `ci`, `deps`, `perf`.
+- **scope** — a single entry from `.conform.yaml` (no comma-separated
+  lists). New scopes welcome: open a PR adding an anchored `^name$` entry.
+- **subject** — imperative mood, no trailing period. The Conventional
+  Commits spec caps the **description** (text after `<type>(<scope>): `) at
+  **72 characters**, enforced by conform. The full header has a generous
+  89-character ceiling so longer `type(scope):` prefixes still fit.
+
+### Examples
+
+```text
+feat(crypto): add Ed25519 keypair generation
+fix(observe): prevent panic on writer shutdown race
+docs(architecture): document layer-3 cascading visibility
+chore(deps): bump tokio to 1.42
+```
+
+### Local enforcement
+
+The `commit-msg` lefthook hook runs conform on every commit. Install hooks
+once per clone:
+
+```bash
+lefthook install
+```
+
+If you're working outside the dev container and don't have conform installed,
+the hook is a no-op locally — but CI's `Commit Lint` job will reject the PR.
+Install conform via:
+
+```bash
+go install github.com/siderolabs/conform/cmd/conform@latest
+```
+
+### CI enforcement
+
+The `Commit Lint` job in `.github/workflows/ci.yml` runs on every PR and
+validates:
+
+1. Every commit in the branch (against `origin/main`).
+2. The PR title (used as the squash-merge subject).
+
+Both must pass before the PR can merge.
 
 ## Development Setup
 
