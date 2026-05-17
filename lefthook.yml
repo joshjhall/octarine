@@ -111,6 +111,17 @@ pre-commit:
       glob: "*.sh"
       run: shellcheck {staged_files}
 
+    # --- Dockerfile linting ---
+
+    hadolint:
+      glob: "Dockerfile*"
+      # hadolint is shipped by the containers dev-tools feature; skip
+      # gracefully if running outside a dev-tools container — CI is the
+      # safety net.
+      skip:
+        - run: "! command -v hadolint >/dev/null 2>&1"
+      run: hadolint {staged_files}
+
     # --- Architecture enforcement ---
 
     arch-check:

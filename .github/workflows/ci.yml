@@ -58,6 +58,26 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just spell
 
+  hadolint:
+    name: Hadolint
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install hadolint
+        # No taiki-e/install-action recipe yet; install the static
+        # Linux binary directly. Pinned to v2.14.0 to match the
+        # version shipped by containers v4.19.0's dev-tools feature
+        # so the dev-container hook and CI run identical binaries.
+        run: |
+          version=2.14.0
+          url="https://github.com/hadolint/hadolint/releases/download/v${version}/hadolint-Linux-x86_64"
+          sudo curl -fsSL "$url" -o /usr/local/bin/hadolint
+          sudo chmod +x /usr/local/bin/hadolint
+          hadolint --version
+      - uses: taiki-e/install-action@just
+      - run: just lint-docker
+
   commit-lint:
     name: Commit Lint
     runs-on: ubuntu-latest

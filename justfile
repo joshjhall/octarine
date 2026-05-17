@@ -116,6 +116,17 @@ shellcheck:
         shellcheck "${files[@]}"
     fi
 
+# Lint Dockerfiles with hadolint (no-op when no repo-local Dockerfiles present; submodule excluded)
+lint-docker:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    files=$(git ls-files | /usr/bin/grep -E '(^|/)Dockerfile([.-].+)?$' || true)
+    if [ -z "$files" ]; then
+        echo "hadolint: no Dockerfiles to lint"
+    else
+        echo "$files" | xargs hadolint
+    fi
+
 # Lint a commit message against the conform policy (default: HEAD's message)
 commit-lint FILE='.git/COMMIT_EDITMSG':
     conform enforce --commit-msg-file {{FILE}}
@@ -126,8 +137,8 @@ commit-lint-branch:
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, shellcheck, spell, arch-check, tests
-preflight: fmt-check fmt-data-check clippy shellcheck spell arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, spell, arch-check, tests
+preflight: fmt-check fmt-data-check clippy shellcheck lint-docker spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
