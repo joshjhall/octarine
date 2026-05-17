@@ -87,6 +87,11 @@ pre-commit:
     gitleaks:
       run: gitleaks protect --staged --verbose --redact
 
+    # --- Spell check ---
+
+    typos:
+      run: typos {staged_files}
+
     # --- Rust formatting ---
 
     cargo-fmt:

@@ -42,6 +42,16 @@ fmt-data:
 # Run all formatters and file fixers via pre-commit on every file in the repo
 fmt-all: pre-commit
 
+# ─── Spell check ─────────────────────────────────────────────────────────────
+
+# Spell-check the repo with typos (read-only; non-zero exit on findings)
+spell:
+    typos
+
+# Apply typos fixes (prompts before writing changes)
+spell-fix:
+    typos --write-changes
+
 # ─── SemVer ──────────────────────────────────────────────────────────────────
 
 # Check for breaking public-API changes vs. the main branch baseline.
@@ -108,8 +118,8 @@ shellcheck:
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, shellcheck, arch-check, tests
-preflight: fmt-check fmt-data-check clippy shellcheck arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, spell, arch-check, tests
+preflight: fmt-check fmt-data-check clippy shellcheck spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
