@@ -38,6 +38,7 @@ pre-commit:
       glob: "*.json"
       exclude:
         - ".devcontainer/devcontainer.json"
+        - ".zed/settings.json"
       run: |
         fail=0
         for f in {staged_files}; do
@@ -99,6 +100,7 @@ pre-commit:
       glob: "*.json"
       exclude:
         - ".devcontainer/**"
+        - ".zed/**"
       run: biome check --write {staged_files}
       stage_fixed: true
 
