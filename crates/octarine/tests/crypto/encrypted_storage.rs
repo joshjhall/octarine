@@ -1,13 +1,20 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use octarine::crypto::secrets::{Classification, EncryptedSecretStorage, SecretType};
 use tokio::time::timeout;
 
 /// Per-test executor timeout. Prevents a stalled runtime or held lock from
-/// hanging CI; longest legitimate internal deadline in this file is ~100 ms.
+/// hanging CI; longest legitimate internal deadline in this file is ~5 s.
 const TEST_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Maximum time the polling loops in TTL tests will wait for a secret to
+/// expire before giving up. Generous enough to absorb coverage-instrumented
+/// and nightly CI runs, where a 50-100 ms scheduling slip can otherwise
+/// flake fixed-sleep assertions (see `octarine-test-resilience` skill).
+const EXPIRY_POLL_DEADLINE: Duration = Duration::from_secs(5);
+const EXPIRY_POLL_INTERVAL: Duration = Duration::from_millis(25);
 
 // =========================================================================
 // Basic insert and access (sync)
@@ -74,7 +81,11 @@ async fn test_insert_typed_and_access_async() {
 // TTL expiration
 // =========================================================================
 
-/// Insert with short TTL → wait → access fails.
+/// Insert with TTL → read immediately → wait → access fails.
+///
+/// TTL is sized generously (500 ms) so the immediate read has slack even
+/// under coverage-instrumented / nightly CI; the expiration check polls
+/// rather than sleeping a fixed amount (Rule 2 of `octarine-test-resilience`).
 #[tokio::test]
 async fn test_ttl_expiration() {
     timeout(TEST_TIMEOUT, async {
@@ -86,7 +97,7 @@ async fn test_ttl_expiration() {
                 "short-lived-value",
                 SecretType::AuthToken,
                 Classification::Confidential,
-                Some(Duration::from_millis(50)),
+                Some(Duration::from_millis(500)),
             )
             .await
             .expect("insert with TTL");
@@ -98,20 +109,29 @@ async fn test_ttl_expiration() {
             .expect("immediate access");
         assert_eq!(value, "short-lived-value");
 
-        // Wait for expiration
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
-        // Should now be expired
-        let result = storage
-            .with_secret("temp_token", "expired_read", |v| v.to_string())
-            .await;
-        assert!(result.is_err(), "Expired secret should not be accessible");
+        // Poll until the secret expires (or give up after EXPIRY_POLL_DEADLINE).
+        let deadline = Instant::now() + EXPIRY_POLL_DEADLINE;
+        loop {
+            let result = storage
+                .with_secret("temp_token", "expired_read", |v| v.to_string())
+                .await;
+            if result.is_err() {
+                break;
+            }
+            if Instant::now() > deadline {
+                panic!("Secret did not expire within {EXPIRY_POLL_DEADLINE:?}");
+            }
+            tokio::time::sleep(EXPIRY_POLL_INTERVAL).await;
+        }
     })
     .await
     .expect("test timed out after 30s");
 }
 
 /// purge_expired removes expired entries.
+///
+/// TTL is sized generously (500 ms) and expiration is polled rather than
+/// asserted after a fixed sleep — same pattern as `test_ttl_expiration`.
 #[tokio::test]
 async fn test_purge_expired() {
     timeout(TEST_TIMEOUT, async {
@@ -123,7 +143,7 @@ async fn test_purge_expired() {
                 "expires-soon",
                 SecretType::Generic,
                 Classification::Internal,
-                Some(Duration::from_millis(10)),
+                Some(Duration::from_millis(500)),
             )
             .await
             .expect("insert short TTL");
@@ -139,9 +159,18 @@ async fn test_purge_expired() {
             .await
             .expect("insert no TTL");
 
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
-        let purged = storage.purge_expired().await;
+        // Poll until purge_expired actually removes the short-lived entry.
+        let deadline = Instant::now() + EXPIRY_POLL_DEADLINE;
+        let purged = loop {
+            let n = storage.purge_expired().await;
+            if n >= 1 {
+                break n;
+            }
+            if Instant::now() > deadline {
+                panic!("Short-TTL secret did not expire within {EXPIRY_POLL_DEADLINE:?}");
+            }
+            tokio::time::sleep(EXPIRY_POLL_INTERVAL).await;
+        };
         assert!(purged >= 1, "Should purge at least 1 expired secret");
 
         // Long-lived secret still accessible
