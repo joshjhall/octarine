@@ -253,6 +253,8 @@ impl ConfigBuilder {
     pub fn with_secure_file(mut self, path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         use std::os::unix::fs::PermissionsExt;
 
+        use crate::primitives::io::file::FileMode;
+
         let path = path.as_ref();
         if !path.exists() {
             return Err(ConfigError::file_error(path, "file not found"));
@@ -262,7 +264,7 @@ impl ConfigBuilder {
         let metadata =
             std::fs::metadata(path).map_err(|e| ConfigError::file_error(path, e.to_string()))?;
         let mode = metadata.permissions().mode() & 0o777;
-        if mode != 0o600 {
+        if mode != FileMode::PRIVATE.as_raw() {
             return Err(ConfigError::insecure_permissions(
                 path,
                 "0600 (owner read/write only)",
