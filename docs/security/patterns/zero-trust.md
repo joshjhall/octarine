@@ -2,7 +2,8 @@
 
 ## Core Principle
 
-"Never Trust, Always Verify, Assume Breach" - Every input source is untrusted by default, including internal systems and secure vaults.
+"Never Trust, Always Verify, Assume Breach" - Every input source is untrusted by default, including internal systems and
+secure vaults.
 
 ## Trust Boundaries
 

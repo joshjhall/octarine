@@ -45,6 +45,7 @@ pub enum PiiType {
 ```
 
 Update classification methods:
+
 - `domain()` — return correct `PiiDomain::{Domain}`
 - `is_high_risk()` — if the type is high-risk PII
 - `is_gdpr_protected()` — if GDPR-relevant
@@ -60,6 +61,7 @@ current classifications before deciding which to update.
 File: `crates/octarine/src/observe/pii/scanner/domains.rs`
 
 Add detection call to the appropriate `scan_{domain}` function:
+
 ```rust
 pub(super) fn scan_{domain}(text: &str, pii_types: &mut Vec<PiiType>) {
     let builder = {Domain}IdentifierBuilder::new();

@@ -2,9 +2,11 @@
 
 ## Overview
 
-This document tracks opportunities to improve compile-time safety in the observe module by replacing string-based fields with validated newtype wrappers, following the pattern established in the FileWriter refactoring.
+This document tracks opportunities to improve compile-time safety in the observe module by replacing string-based fields
+with validated newtype wrappers, following the pattern established in the FileWriter refactoring.
 
-**Pattern**: Use newtype wrappers + builder pattern to move validation from runtime to compile-time, preventing invalid configurations from being created in the first place.
+**Pattern**: Use newtype wrappers + builder pattern to move validation from runtime to compile-time, preventing invalid
+configurations from being created in the first place.
 
 **Benefits**:
 
@@ -529,7 +531,7 @@ ______________________________________________________________________
 
 Based on MetricName success, apply same pattern to remaining priorities:
 
-**Week 1: Identity Types**
+#### Week 1: Identity Types
 
 1. ✅ MetricName, MetricLabel - COMPLETE
 1. Implement `TenantId`, `UserId` (Priority 2)
@@ -537,14 +539,14 @@ Based on MetricName success, apply same pattern to remaining priorities:
    - Compiler finds all call sites
    - ~1-2 hours estimated
 
-**Week 2: Event System Types**
+#### Week 2: Event System Types
 
 1. Implement `OperationName` (Priority 3)
 1. Implement `ResourceType`, `ResourceId` (Priority 4)
    - Each as separate atomic commits
    - ~1 hour per type estimated
 
-**Week 3: Testing & Documentation**
+#### Week 3: Testing & Documentation
 
 1. Add integration tests for all new types
 1. Update documentation with examples

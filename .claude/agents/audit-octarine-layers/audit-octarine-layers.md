@@ -69,51 +69,60 @@ Categories use `octarine-layers/<slug>` format (e.g., `octarine-layers/primitive
 ### primitives-observe-import (severity: high)
 
 Scan all files under `primitives/` for:
+
 - `use crate::observe` — flag UNLESS the import is ONLY `Problem` or `crate::observe::Problem`
 - `observe::info`, `observe::warn`, `observe::debug`, `observe::fail` — flag any observe function calls
 - `increment_by(`, `record(` — flag metrics calls (these are L3 concerns)
 
-```
+```text
 Grep pattern="use crate::observe" path="crates/octarine/src/primitives/"
 ```
+
 Then read each matching file to verify whether the import is limited to `Problem`.
 
 ### primitives-layer3-import (severity: high)
 
 Scan all files under `primitives/` for imports from Layer 3 modules:
-```
+
+```text
 Grep pattern="use crate::(identifiers|data|runtime|crypto|security|auth|http|io)::" path="crates/octarine/src/primitives/"
 ```
 
 ### observe-layer3-import (severity: high)
 
 Scan all files under `observe/` for imports from Layer 3 modules:
-```
+
+```text
 Grep pattern="use crate::(identifiers|data|runtime|crypto|security|auth|http|io)::" path="crates/octarine/src/observe/"
 ```
 
 ### observe-testing-import (severity: high)
 
 Scan `observe/` for testing imports outside cfg(test):
-```
+
+```text
 Grep pattern="use crate::testing" path="crates/octarine/src/observe/"
 ```
+
 Then verify matches are NOT inside `#[cfg(test)]` blocks.
 
 ### wrong-layer-visibility (severity: medium)
 
 Scan `primitives/**/mod.rs` files for module declarations that use `pub mod`
 instead of `pub(crate) mod`:
-```
+
+```text
 Grep pattern="pub mod " path="crates/octarine/src/primitives/" glob="mod.rs"
 ```
+
 Flag any `pub mod` that is not `pub(crate) mod`.
 
 ### event-in-primitives (severity: medium)
 
 Scan primitives for direct observe function calls even without explicit imports
 (could use fully-qualified paths):
-```
+
+```text
 Grep pattern="observe::(info|warn|debug|error|fail|event)" path="crates/octarine/src/primitives/"
 Grep pattern="(increment_by|record)\(" path="crates/octarine/src/primitives/"
 ```
@@ -123,7 +132,7 @@ Grep pattern="(increment_by|record)\(" path="crates/octarine/src/primitives/"
 Scan primitives for doc test code fences that will try to run (no `ignore`,
 `no_run`, or `compile_fail` annotation):
 
-```
+```text
 Grep pattern="/// ```$|/// ```rust$" path="crates/octarine/src/primitives/"
 ```
 

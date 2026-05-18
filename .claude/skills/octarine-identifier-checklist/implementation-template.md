@@ -28,12 +28,14 @@ pub fn detect_{type}s_in_text(text: &str) -> Vec<IdentifierMatch> {
 ```
 
 Register in `detection/mod.rs`:
+
 ```rust
 pub(crate) mod {type};
 pub use {type}::*;
 ```
 
 Add to domain's `detect_{domain}_identifier()`:
+
 ```rust
 if is_{type}(value) {
     return Some(IdentifierType::{Type});
@@ -107,6 +109,7 @@ pub fn redact_{type}(value: &str, strategy: {Type}RedactionStrategy) -> String {
 ### Steps 6-8: Primitives Builder Methods
 
 In `primitives/identifiers/{domain}/builder/detection_methods.rs`:
+
 ```rust
 impl {Domain}IdentifierBuilder {
     pub fn is_{type}(&self, value: &str) -> bool {
@@ -119,6 +122,7 @@ impl {Domain}IdentifierBuilder {
 ```
 
 In `builder/validation_methods.rs`:
+
 ```rust
 impl {Domain}IdentifierBuilder {
     pub fn validate_{type}(&self, value: &str) -> Result<(), Problem> {
@@ -128,6 +132,7 @@ impl {Domain}IdentifierBuilder {
 ```
 
 In `builder/sanitization_methods.rs`:
+
 ```rust
 impl {Domain}IdentifierBuilder {
     pub fn redact_{type}(&self, value: &str, strategy: {Type}RedactionStrategy) -> String {
@@ -194,6 +199,7 @@ pub fn redact_{type}(value: &str) -> String {
 ### Step 11: PII Registration (if PII)
 
 In `crates/octarine/src/identifiers/types/core.rs`, add variant:
+
 ```rust
 pub enum IdentifierType {
     // ... existing variants
@@ -206,6 +212,7 @@ In PII scanner, add detection mapping.
 ### Step 12: Tests
 
 Each layer gets its own test:
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -248,6 +255,7 @@ crates/octarine/src/primitives/identifiers/{domain}/
 ```
 
 Then wire up in parent `mod.rs` files:
+
 - `primitives/identifiers/mod.rs`: add `pub(crate) mod {domain};`
 - `identifiers/builder/mod.rs`: add `pub(crate) mod {domain};` + builder struct
 - `identifiers/mod.rs`: add re-exports

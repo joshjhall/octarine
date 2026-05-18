@@ -62,7 +62,7 @@ ______________________________________________________________________
 
 ### 1. Zero-Trust Security
 
-**"Trust nothing, verify everything, validate at every boundary."**
+> "Trust nothing, verify everything, validate at every boundary."
 
 Every identifier is untrusted regardless of source:
 

@@ -45,3 +45,11 @@ disable = [
 line_length = 120
 code_blocks = false
 tables = false
+
+# Per-file overrides: .claude/ files use YAML frontmatter with long
+# description fields by design (skill discovery, memory schema), so
+# MD013 doesn't apply there.
+[per-file-ignores]
+".claude/memory/**" = ["MD013"]
+".claude/skills/**" = ["MD013"]
+".claude/agents/**" = ["MD013"]

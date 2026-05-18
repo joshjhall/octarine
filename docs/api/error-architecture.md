@@ -2,7 +2,9 @@
 
 ## Overview
 
-The octarine library uses a unified `Problem` type for error handling that automatically captures context, generates events, and maintains audit trails. This architecture separates the error (what went wrong) from the context (who/where/when) for better observability and compliance.
+The octarine library uses a unified `Problem` type for error handling that automatically captures context, generates
+events, and maintains audit trails. This architecture separates the error (what went wrong) from the context
+(who/where/when) for better observability and compliance.
 
 ## Core Principles
 

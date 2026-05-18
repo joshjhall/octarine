@@ -77,7 +77,7 @@ When in doubt, run `cargo semver-checks check-release --workspace
 
 The state machine enforces a strict forward-only lifecycle:
 
-```
+```text
         beta ───────► rc ───────► (finalize via patch/minor)
         ▲
         │

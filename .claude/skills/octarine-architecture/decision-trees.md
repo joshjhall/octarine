@@ -46,6 +46,7 @@ Where does this code go?
 | `#[cfg(test)]` blocks | ALLOW | ALLOW | ALLOW | ALLOW |
 
 **Allowed `observe` import in primitives** (the ONLY exception):
+
 ```rust
 use crate::observe::Problem;  // OK — error type only
 ```

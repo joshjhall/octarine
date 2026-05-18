@@ -2,7 +2,8 @@
 
 > **For vulnerability reporting and security policy**, see [SECURITY.md](../../SECURITY.md) in the repository root.
 
-This document outlines critical security principles and anti-patterns discovered during development of the octarine security library.
+This document outlines critical security principles and anti-patterns discovered during development of the octarine
+security library.
 
 ## Table of Contents
 

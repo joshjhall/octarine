@@ -1,11 +1,15 @@
 # Octarine
 
-Foundation library for security and observability in Rust. Named after the eighth color of the Discworld spectrum — the color of magic, visible only to wizards.
+Foundation library for security and observability in Rust. Named after the
+eighth color of the Discworld spectrum — the color of magic, visible only to
+wizards.
 
 ## Features
 
-- **Security Primitives** — Input validation, sanitization, and threat detection following OWASP patterns
-- **Compliance-Grade Observability** — Automatic WHO/WHAT/WHEN/WHERE context capture, PII redaction, SOC2/HIPAA/GDPR/PCI-DSS control mapping
+- **Security Primitives** — Input validation, sanitization, and threat
+  detection following OWASP patterns
+- **Compliance-Grade Observability** — Automatic WHO/WHAT/WHEN/WHERE context
+  capture, PII redaction, SOC2/HIPAA/GDPR/PCI-DSS control mapping
 - **Three-Layer Architecture** — Clean separation of primitives, observability, and instrumented operations
 - **Post-Quantum Cryptography** — ML-KEM and X25519 key exchange, ChaCha20-Poly1305 and AES-GCM encryption
 - **Modular Feature Flags** — Enable only what you need (20 feature flags)

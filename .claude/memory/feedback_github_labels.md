@@ -4,6 +4,7 @@ description: Ensure status/pr-pending exists alongside status/in-progress, statu
 type: feedback
 originSessionId: 62b38eb1-d94a-4b80-9d19-bda2bdac77bb
 ---
+
 `/next-issue-ship` (Option 1, Branch+PR) requires a `status/pr-pending`
 label on the GitHub repo. It was missing from joshjhall/octarine on
 2026-04-17 — `gh issue edit` failed atomically so neither the add nor

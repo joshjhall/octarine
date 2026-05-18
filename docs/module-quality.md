@@ -1,6 +1,7 @@
 # Module Quality Scorecard & Evaluation Methodology
 
-**Purpose**: This document provides an objective, reproducible methodology for evaluating the quality of Rust security modules. Use this as a quality gate for new modules and for scoring refactored modules.
+**Purpose**: This document provides an objective, reproducible methodology for evaluating the quality of Rust security
+modules. Use this as a quality gate for new modules and for scoring refactored modules.
 
 **Version**: 1.0
 **Date**: 2025-11-10
@@ -505,7 +506,8 @@ For internal modules (marked `pub(crate)` or `pub(super)`):
 - ✅ Show correct usage patterns even if not compilable
 - ❌ Never omit examples just because module is internal
 
-**Why**: Documentation is for developers working on the codebase. Internal APIs need documentation as much as public ones.
+**Why**: Documentation is for developers working on the codebase. Internal APIs need documentation as much as public
+ones.
 
 **Handling Private/Internal Code**:
 
@@ -550,17 +552,21 @@ Check for comprehensive architectural documentation:
 ## Design Decisions
 
 ### Why Three Layers?
+
 1. **Domain files** contain pure business logic for testing
 2. **Builder** provides configuration API without logic
 3. **Shortcuts** offer convenience for common patterns
 
 ### Detection Order Rationale
+
 Credentials checked first because:
+
 - Most security-sensitive
 - Specific patterns (less false positives)
 - Early exit improves performance
 
 ### Module Organization
+
 - `credential.rs` - 15 functions, ~300 LOC (cohesive domain)
 - `characteristic.rs` - 8 functions, ~200 LOC (path properties)
 - Split avoids mixing security checks with general properties
@@ -779,7 +785,8 @@ ______________________________________________________________________
 | **validation/paths** | 12/15 | 9/15 | 2/15 | 8/10 | 7/10 | 9/10 | 8/10 | 10/10 | 4/5 | **69/100** | **D** |
 | **sanitization/paths** | 12/15 | 9/15 | 2/15 | 8/10 | 7/10 | 9/10 | 8/10 | 10/10 | 5/5 | **70/100** | **C** |
 
-**Key Takeaway**: The duplication issue significantly impacts validation and sanitization scores. Creating security_core would bring both modules to B+ grade.
+**Key Takeaway**: The duplication issue significantly impacts validation and sanitization scores. Creating security_core
+would bring both modules to B+ grade.
 
 ______________________________________________________________________
 
@@ -814,4 +821,4 @@ If new quality dimensions emerge:
 
 ______________________________________________________________________
 
-**End of Scorecard**
+End of Scorecard.

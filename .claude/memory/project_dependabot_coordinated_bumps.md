@@ -14,6 +14,7 @@ When Dependabot files multiple PRs touching crates from the same release cycle (
 **How to apply:** when you see multiple failing Dependabot PRs touching crates that share a version number or release cadence, don't try to merge them individually or rebase them — close them all as superseded and file ONE unified bump PR that updates all of them together. The trait errors disappear once the lockfile resolves to a single version, and typically no call-site changes are needed (the API across versions in a coordinated release is usually stable).
 
 **Examples of coordinated families to watch for:**
+
 - `opentelemetry*` (opentelemetry, opentelemetry_sdk, opentelemetry-otlp, opentelemetry-http, opentelemetry-proto)
 - `tonic*` (tonic, tonic-build, tonic-types)
 - `tracing*` (tracing, tracing-subscriber, tracing-core)

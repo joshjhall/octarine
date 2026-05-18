@@ -4,6 +4,7 @@ description: When a PR opened via /next-issue-ship goes green, squash-merge with
 type: feedback
 originSessionId: 332028ef-8736-458e-a34d-2fedb2a3582a
 ---
+
 When a PR (typically opened via `/next-issue-ship` Option 1) reports all CI
 checks green, immediately:
 

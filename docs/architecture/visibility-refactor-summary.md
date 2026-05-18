@@ -2,7 +2,8 @@
 
 ## ✅ Refactor Complete
 
-The async runtime refactor has been completed. The old `async_runtime` module has been replaced with a proper three-layer architecture:
+The async runtime refactor has been completed. The old `async_runtime` module has been replaced with a proper
+three-layer architecture:
 
 ### Architecture Overview
 

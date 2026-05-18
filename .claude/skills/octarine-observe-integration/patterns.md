@@ -34,6 +34,7 @@ mod metric_names {
 ## Existing Metric Registry
 
 ### data.paths.*
+
 - `data.paths.context.sanitized` — context sanitization count
 - `data.paths.filename.threats_detected` — filename threat count
 - `data.paths.filename.sanitize_ms` — filename sanitization timing
@@ -47,10 +48,12 @@ mod metric_names {
 - `data.paths.format.converted` — format conversion count
 
 ### data.network.*
+
 - `data.network.normalize_ms` — URL normalization timing
 - `data.network.normalize_count` — URL normalization count
 
 ### data.identifiers.{domain}.*
+
 - `data.identifiers.personal.detect_ms` — personal detection timing
 - `data.identifiers.personal.validate_ms` — personal validation timing
 - `data.identifiers.personal.redact_ms` — personal redaction timing
@@ -59,6 +62,7 @@ mod metric_names {
 - (Similar pattern for financial, government, network, token, etc.)
 
 ### security.*
+
 - `security.commands.threats_detected` — command injection threats
 - `security.commands.validate_ms` — command validation timing
 - `security.commands.escape_ms` — command escaping timing
@@ -67,6 +71,7 @@ mod metric_names {
 - `security.paths.sanitize_ms` — path security sanitization timing
 
 ### crypto.*
+
 - `crypto.validation.certificate_ms` — certificate validation timing
 - `crypto.validation.ssh_key_ms` — SSH key validation timing
 - `crypto.validation.audit_ms` — crypto audit timing
@@ -75,15 +80,18 @@ mod metric_names {
 - `crypto.validation.warnings` — crypto warnings count
 
 ### secrets.*
+
 - `secrets.storage.created` — encrypted storage created
 - `secrets.insert_count` — secret insertions
 - `secrets.access_count` — secret accesses
 - `secrets.expired_count` — secret expirations
 
 ### http.*
+
 - `http.request.latency_ms` — HTTP request latency
 
 ### Modules MISSING Metrics (need attention)
+
 - `security/formats/builder.rs` — XXE, JSON depth, YAML bombs (logging only)
 - `security/network/builder.rs` — SSRF, dangerous schemes (logging only)
 - `security/queries/builder.rs` — SQL/NoSQL/LDAP injection (logging only)
@@ -103,7 +111,7 @@ For a new Layer 3 module `{module}/{concern}/`:
 └── types.rs            # Public types (optional)
 ```
 
-### mod.rs template:
+### mod.rs template
 
 ```rust
 //! {Concern} operations with observability
@@ -117,7 +125,7 @@ pub use builder::{Concern}Builder;
 pub use builder::shortcuts::*;
 ```
 
-### builder/mod.rs template:
+### builder/mod.rs template
 
 ```rust
 use std::time::Instant;
@@ -163,7 +171,7 @@ impl {Concern}Builder {
 }
 ```
 
-### builder/shortcuts.rs template:
+### builder/shortcuts.rs template
 
 ```rust
 use super::{Concern}Builder;

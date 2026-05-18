@@ -1,11 +1,13 @@
 # Builder Hierarchy Pattern
 
 > **Related:** This document covers **file organization** and **directory structure** for builders.
-> For the **visibility mechanics** (how `pub`/`pub(super)` cascading works), see [Cascading Visibility Pattern](./cascading-visibility.md).
+> For the **visibility mechanics** (how `pub`/`pub(super)` cascading works), see [Cascading Visibility
+  Pattern](./cascading-visibility.md).
 
 ## Overview
 
-This document defines the standard pattern for organizing builders in a hierarchical module structure. This pattern provides a single, unified API at the root level while keeping internal implementation details encapsulated.
+This document defines the standard pattern for organizing builders in a hierarchical module structure. This pattern
+provides a single, unified API at the root level while keeping internal implementation details encapsulated.
 
 ## Core Principles
 

@@ -1,6 +1,7 @@
 # Testing Patterns
 
-This document describes octarine's shared test infrastructure and how to use it effectively in both octarine itself and consuming projects.
+This document describes octarine's shared test infrastructure and how to use it effectively in both octarine itself and
+consuming projects.
 
 ## Overview
 

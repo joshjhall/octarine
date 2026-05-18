@@ -1,6 +1,7 @@
 # Observe Module - Compliance Guide
 
-This guide provides detailed compliance control mapping for the observe module, covering SOC2, HIPAA, GDPR, PCI-DSS, and ISO 27001 requirements.
+This guide provides detailed compliance control mapping for the observe module, covering SOC2, HIPAA, GDPR, PCI-DSS, and
+ISO 27001 requirements.
 
 ## Overview
 

@@ -54,6 +54,7 @@ In order:
    - Annotate breaking changes explicitly with **BREAKING:** prefix
    - Remove the `<!-- TODO: review and curate before push -->` marker
 2. **Amend** if you curated:
+
    ```bash
    git add CHANGELOG.md
    git commit --amend --no-edit

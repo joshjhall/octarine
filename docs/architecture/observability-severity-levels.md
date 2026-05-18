@@ -2,7 +2,8 @@
 
 ## Overview
 
-The observe module provides a smart logging system with automatic severity assignment based on the type of issue detected. This document explains when to use each severity level.
+The observe module provides a smart logging system with automatic severity assignment based on the type of issue
+detected. This document explains when to use each severity level.
 
 ## Severity Hierarchy
 

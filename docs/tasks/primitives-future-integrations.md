@@ -6,7 +6,8 @@ Ideas for leveraging `primitives/common` (RingBuffer, LruCache) that require mor
 
 **Location:** `src/observe/metrics/aggregation/mod.rs:62-83`
 
-**Current Issue:** `snapshot()` creates full clones of all metrics every call, which is expensive for high-frequency exports.
+**Current Issue:** `snapshot()` creates full clones of all metrics every call, which is expensive for high-frequency
+exports.
 
 **Proposed Solution:** Use LruCache to cache recent snapshots with short TTL (1-5 seconds).
 
@@ -25,7 +26,8 @@ ______________________________________________________________________
 
 **Location:** `src/observe/context/capture.rs:96-100`
 
-**Current Issue:** Generates new `Uuid::new_v4()` per event, which is expensive (allocation + randomness). Code already notes: "can be expensive, future optimization".
+**Current Issue:** Generates new `Uuid::new_v4()` per event, which is expensive (allocation + randomness). Code already
+notes: "can be expensive, future optimization".
 
 **Proposed Solution:** Cache correlation IDs per request scope using task-local storage + LruCache.
 
@@ -38,7 +40,8 @@ ______________________________________________________________________
 
 **Benefit:** Reduce UUID allocations, enable proper distributed tracing.
 
-**Related Work:** This ties into the broader observability story - may want to design alongside OpenTelemetry integration.
+**Related Work:** This ties into the broader observability story - may want to design alongside OpenTelemetry
+integration.
 
 ______________________________________________________________________
 
@@ -48,7 +51,8 @@ ______________________________________________________________________
 
 **Current State:** Feature flags are loaded once at startup from environment variables into a static HashMap.
 
-**Why Not Applicable Now:** LruCache only makes sense if flags are dynamically fetched from a service with TTL-based refresh. Current design is static.
+**Why Not Applicable Now:** LruCache only makes sense if flags are dynamically fetched from a service with TTL-based
+refresh. Current design is static.
 
 **Future Consideration:** If we add a feature flag service integration:
 
@@ -66,7 +70,8 @@ ______________________________________________________________________
 
 ## Implementation Notes
 
-These items were identified during Phase 2.1 of the primitives migration. They represent opportunities to leverage the new `primitives/common` module but require architectural decisions beyond simple refactoring.
+These items were identified during Phase 2.1 of the primitives migration. They represent opportunities to leverage the
+new `primitives/common` module but require architectural decisions beyond simple refactoring.
 
 When ready to implement:
 

@@ -14,7 +14,8 @@ module/
 └── mod.rs               # Minimal exports
 ```
 
-**Note**: Shortcuts are organized by domain (`feature_shortcuts.rs`) rather than a single `shortcuts.rs` file. This improves clarity, discoverability, and maintainability.
+**Note**: Shortcuts are organized by domain (`feature_shortcuts.rs`) rather than a single `shortcuts.rs` file. This
+improves clarity, discoverability, and maintainability.
 
 ### Dual Function Pattern
 
@@ -52,7 +53,8 @@ module/
 
 ### Why Domain-Specific Shortcuts?
 
-As modules grow, a single `shortcuts.rs` file becomes unwieldy. Instead, we organize shortcuts by their functional domain:
+As modules grow, a single `shortcuts.rs` file becomes unwieldy. Instead, we organize shortcuts by their functional
+domain:
 
 1. **Clarity**: `payment_shortcuts.rs` clearly contains payment-related shortcuts
 1. **Discoverability**: Developers can easily find relevant shortcuts

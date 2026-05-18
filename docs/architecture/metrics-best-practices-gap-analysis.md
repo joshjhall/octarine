@@ -250,15 +250,15 @@ pub struct Exemplar {
 ### Medium Priority (Next Phase)
 
 5. **Units of Measurement** - Improves clarity
-1. **Metric Documentation** - Helps users
-1. **Stale Metric Cleanup** - Prevents memory leaks
-1. **Rate Windows** - Better monitoring
+6. **Metric Documentation** - Helps users
+7. **Stale Metric Cleanup** - Prevents memory leaks
+8. **Rate Windows** - Better monitoring
 
 ### Low Priority (Nice to Have)
 
 9. **Percentile Accuracy** - Current approximation probably OK
-1. **Zero-Overhead** - Only if performance critical
-1. **Exemplars** - Advanced feature
+10. **Zero-Overhead** - Only if performance critical
+11. **Exemplars** - Advanced feature
 
 ## Example Implementation: Labels
 

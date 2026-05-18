@@ -1,7 +1,8 @@
 # Cascading Visibility Pattern
 
 > **Related:** This document explains the **visibility mechanics** of the builder cascade.
-> For **file organization** and **directory structure**, see [Builder Hierarchy Pattern](./builder-hierarchy-pattern.md).
+> For **file organization** and **directory structure**, see [Builder Hierarchy
+  Pattern](./builder-hierarchy-pattern.md).
 
 ## The Problem This Solves
 
@@ -202,7 +203,8 @@ pub(super) use super::identifiers::IdentifierDetector;  // ❌ Can't see it!
 // ERROR: `IdentifierDetector` is private
 ```
 
-**Why it fails:** `pub(super)` makes it visible to the PARENT only, not to SIBLINGS. So `detection/builder/` (a sibling of `identifiers/`) cannot see it.
+**Why it fails:** `pub(super)` makes it visible to the PARENT only, not to SIBLINGS. So `detection/builder/` (a sibling
+of `identifiers/`) cannot see it.
 
 ### ✅ CORRECT: Using `pub` for re-exports
 
@@ -214,7 +216,8 @@ pub use builder::IdentifierDetector;  // ✅ Visible within identifiers/ tree
 pub use super::identifiers::IdentifierDetector;  // ✅ Can access it!
 ```
 
-**Why it works:** `pub` makes it visible within the module tree. Even though the MODULE `identifiers` is `pub(super)`, the RE-EXPORTED items can be `pub`.
+**Why it works:** `pub` makes it visible within the module tree. Even though the MODULE `identifiers` is `pub(super)`,
+the RE-EXPORTED items can be `pub`.
 
 ## Visual Summary
 
@@ -416,6 +419,7 @@ pub struct EventBuilder {
 
 ## Related Patterns
 
-- [Builder Hierarchy Pattern](./builder-hierarchy-pattern.md) - File organization, naming conventions, directory structure
+- [Builder Hierarchy Pattern](./builder-hierarchy-pattern.md) - File organization, naming conventions, directory
+  structure
 - [Module Patterns](../architecture/module-patterns.md) - Three-layer architecture (core/builder/shortcuts)
 - [Refactor Plan](../architecture/refactor-plan.md) - Strategy for migrating to primitives module

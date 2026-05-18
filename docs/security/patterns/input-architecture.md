@@ -2,7 +2,8 @@
 
 ## Overview
 
-The security input module provides a unified, secure API for all input handling in octarine. It implements defense-in-depth through multiple layers of validation, sanitization, and type safety.
+The security input module provides a unified, secure API for all input handling in octarine. It implements
+defense-in-depth through multiple layers of validation, sanitization, and type safety.
 
 ## Core Principles
 

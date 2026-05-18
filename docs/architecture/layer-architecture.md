@@ -1,6 +1,7 @@
 # Layer Architecture
 
-This document defines the strict layer architecture that governs module dependencies in octarine. Understanding and following these rules is critical to prevent circular dependencies and maintain clean separation of concerns.
+This document defines the strict layer architecture that governs module dependencies in octarine. Understanding and
+following these rules is critical to prevent circular dependencies and maintain clean separation of concerns.
 
 ## Overview
 
@@ -87,7 +88,8 @@ octarine uses a **three-layer architecture** where each layer can only depend on
 
 **Visibility**: `pub(crate)` - Only accessible within octarine
 
-**Purpose**: Pure utility functions with ZERO internal dependencies. These are the building blocks that observe and security modules use internally.
+**Purpose**: Pure utility functions with ZERO internal dependencies. These are the building blocks that observe and
+security modules use internally.
 
 **Rules**:
 
@@ -96,7 +98,8 @@ octarine uses a **three-layer architecture** where each layer can only depend on
 - MUST NOT import from observe, security, runtime, or testing
 - MUST NOT generate events or log anything
 
-**Why Internal Only**: Forces external consumers to use Layer 3 APIs which include proper observability. Prevents bypassing audit logging.
+**Why Internal Only**: Forces external consumers to use Layer 3 APIs which include proper observability. Prevents
+bypassing audit logging.
 
 ```rust
 // primitives/paths/validation.rs
@@ -116,7 +119,8 @@ Layer 1 also includes shared test infrastructure, which is feature-gated and act
 
 **Visibility**: `pub` with `#[cfg(feature = "testing")]`
 
-**Purpose**: Reusable test utilities, fixtures, and generators that can be shared across octarine and all consuming projects.
+**Purpose**: Reusable test utilities, fixtures, and generators that can be shared across octarine and all consuming
+projects.
 
 **Rules**:
 
@@ -125,7 +129,8 @@ Layer 1 also includes shared test infrastructure, which is feature-gated and act
 - Only compiled when `testing` feature is enabled
 - Only used in `[dev-dependencies]` by consumers
 
-**Why Public**: Allows consistent testing patterns across all projects using octarine. Security test generators match the attack patterns that octarine defends against.
+**Why Public**: Allows consistent testing patterns across all projects using octarine. Security test generators match
+the attack patterns that octarine defends against.
 
 ```rust
 // testing/generators/attacks.rs
@@ -143,7 +148,8 @@ pub fn arb_path_traversal() -> impl Strategy<Value = String> {
 
 **Visibility**: `pub` - Full public API
 
-**Purpose**: Event generation, metrics, PII redaction, and audit logging. Provides the observability infrastructure used by Layer 3.
+**Purpose**: Event generation, metrics, PII redaction, and audit logging. Provides the observability infrastructure used
+by Layer 3.
 
 **Rules**:
 
@@ -284,7 +290,8 @@ module docstring.
 
 ## The Critical Rule: Testing is a Consumer
 
-The `testing` module breaks the normal "down only" rule because it's a **consumer** of the public API, not a **provider** to it:
+The `testing` module breaks the normal "down only" rule because it's a **consumer** of the public API, not a
+**provider** to it:
 
 ```text
 Normal dependency flow:       Testing dependency flow:
@@ -381,7 +388,8 @@ When adding new functionality, ask:
 
 ## Three Orthogonal Concerns in Primitives
 
-The `primitives/` module is organized around three orthogonal concerns that apply across all domains (paths, network, text):
+The `primitives/` module is organized around three orthogonal concerns that apply across all domains (paths, network,
+text):
 
 | Concern | Module | Question | Purpose |
 |---------|--------|----------|---------|
