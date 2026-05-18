@@ -8,13 +8,17 @@ default: check clippy test
 
 # ─── Build & Check ───────────────────────────────────────────────────────────
 
-# Type-check the workspace
+# Type-check the workspace (matches CI flag set — see check-windows / check-macos)
 check:
-    cargo check --workspace
+    cargo check --workspace --all-features
 
 # Build the workspace
 build:
     cargo build --workspace
+
+# Generate rustdoc with warnings denied (matches CI doc job)
+doc:
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features
 
 # ─── Lint ────────────────────────────────────────────────────────────────────
 
