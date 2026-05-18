@@ -103,6 +103,7 @@ test-mod PATTERN FEATURES='':
 # Generate LCOV coverage report (target/coverage/lcov.info).
 # Matches the CI coverage job flag set.
 coverage:
+    mkdir -p target/coverage
     cargo llvm-cov --workspace --all-features -j4 \
         --lcov --output-path target/coverage/lcov.info
 
