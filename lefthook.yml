@@ -111,6 +111,11 @@ pre-commit:
       glob: "*.sh"
       run: shellcheck {staged_files}
 
+    shfmt:
+      glob: "*.sh"
+      run: shfmt -w -i 2 -ci -bn {staged_files}
+      stage_fixed: true
+
     # --- Dockerfile linting ---
 
     hadolint:

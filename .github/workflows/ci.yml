@@ -46,6 +46,18 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just fmt-data-check
 
+  shfmt:
+    name: Shfmt
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: shfmt
+      - uses: taiki-e/install-action@just
+      - run: just fmt-sh-check
+
   typos:
     name: Typos
     runs-on: ubuntu-latest

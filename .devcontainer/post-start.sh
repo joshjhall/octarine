@@ -13,12 +13,12 @@ setup-glab
 
 # --- Git hooks via lefthook ---
 if command -v lefthook &>/dev/null; then
-    echo "==> Installing lefthook hooks..."
-    # lefthook refuses to install when core.hooksPath is set
-    git config --unset-all core.hooksPath 2>/dev/null || true
-    lefthook install
+  echo "==> Installing lefthook hooks..."
+  # lefthook refuses to install when core.hooksPath is set
+  git config --unset-all core.hooksPath 2>/dev/null || true
+  lefthook install
 else
-    echo "WARN: lefthook not found. Check that the containers submodule is present."
+  echo "WARN: lefthook not found. Check that the containers submodule is present."
 fi
 
 echo "==> Post-start setup complete."
