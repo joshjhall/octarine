@@ -98,6 +98,18 @@ pre-commit:
       glob: "*.rs"
       run: cargo fmt --all --
 
+    # --- Cargo dependency hygiene ---
+
+    cargo-machete:
+      glob: "**/Cargo.toml"
+      # cargo-machete is shipped by INCLUDE_RUST_DEV; skip gracefully
+      # outside that container — CI is the safety net. A Cargo.toml change
+      # may surface unused deps anywhere in the workspace, so the run:
+      # command scopes to all our crates rather than just {staged_files}.
+      skip:
+        - run: "! command -v cargo-machete >/dev/null 2>&1"
+      run: cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-problem
+
     # --- JSON/YAML formatting (dprint) ---
 
     dprint:

@@ -119,6 +119,16 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just lint-md
 
+  machete:
+    name: Machete
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@cargo-machete
+      - uses: taiki-e/install-action@just
+      - run: just lint-deps
+
   commit-lint:
     name: Commit Lint
     runs-on: ubuntu-latest

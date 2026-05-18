@@ -2242,12 +2242,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 
 [[package]]
-name = "ipnetwork"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf370abdafd54d13e54a620e8c3e1145f28e46cc9d704bc6d94414559df41763"
-
-[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2765,9 +2759,7 @@ dependencies = [
  "http",
  "http-body-util",
  "indicatif",
- "ipnetwork",
  "jsonwebtoken",
- "keccak",
  "lazy_static",
  "libc",
  "local-ip-address",
@@ -2781,7 +2773,6 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "pem",
- "pkcs8 0.11.0",
  "predicates",
  "pretty_assertions",
  "proptest",
@@ -2793,7 +2784,6 @@ dependencies = [
  "reqwest",
  "rexpect",
  "rstest",
- "secrecy",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2820,7 +2810,6 @@ dependencies = [
  "unicode-security",
  "url",
  "uuid",
- "which",
  "wiremock",
  "x25519-dalek",
  "x509-parser",
@@ -4008,15 +3997,6 @@ dependencies = [
  "generic-array",
  "pkcs8 0.10.2",
  "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "secrecy"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e891af845473308773346dc847b2c23ee78fe442e0472ac50e22a18a93d3ae5a"
-dependencies = [
  "zeroize",
 ]
 
@@ -5550,15 +5530,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "804f18a4ac2676ffb4e8b5b5fa9ae38af06df08162314f96a68d2a363e21a8ca"
 dependencies = [
  "rustls-pki-types",
-]
-
-[[package]]
-name = "which"
-version = "8.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81995fafaaaf6ae47a7d0cc83c67caf92aeb7e5331650ae6ff856f7c0c60c459"
-dependencies = [
- "libc",
 ]
 
 [[package]]
