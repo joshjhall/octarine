@@ -199,8 +199,8 @@ commit-lint-branch:
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, spell, arch-check, tests
-preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker lint-md spell arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, lint-deps, spell, arch-check, tests
+preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker lint-md lint-deps spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
@@ -230,6 +230,13 @@ deps-osv:
 
 # Full dependency health check: audit + deny + osv + outdated
 deps-check: deps-audit deps-deny deps-osv deps-outdated
+
+# Detect unused workspace dependencies. Scopes to our crates only so the
+# containers submodule's Cargo.toml files (and any future workspace
+# additions) don't surface false positives. Exit 0 = clean; exit 1 =
+# unused deps found.
+lint-deps:
+    cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-problem
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
 

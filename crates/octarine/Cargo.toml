@@ -36,7 +36,6 @@ unicode-security = "0.1"
 
 # URL and network validation
 url = { workspace = true }
-ipnetwork = "0.21"
 
 # Unique identifiers
 uuid = { workspace = true }
@@ -45,9 +44,7 @@ uuid = { workspace = true }
 base64 = "0.22"
 sha2 = "0.11"
 sha3 = "0.11"
-keccak = "0.2"
 hex = "0.4"
-secrecy = "0.10"
 zeroize = { version = "1.8", features = ["derive"] }
 chacha20poly1305 = "0.10.1"
 aes-gcm = "0.10.3"
@@ -68,9 +65,6 @@ console = { version = "0.16.2", optional = true }
 # CLI framework (optional)
 clap = { workspace = true, optional = true }
 indicatif = { version = "0.18", optional = true }
-
-# File and path operations
-which = "8.0"
 
 # Shell command safety (for process module)
 xshell = "0.2"
@@ -152,7 +146,6 @@ serde_yaml = { version = "0.9", optional = true }
 pem = { version = "3.0", optional = true }
 x509-parser = { version = "0.18", optional = true }
 ssh-key = { version = "0.6", optional = true }
-pkcs8 = { version = "0.11", optional = true }
 
 # Testing infrastructure (optional)
 proptest = { version = "1.4", optional = true }
@@ -199,7 +192,7 @@ auth = ["http", "dep:jsonwebtoken", "dep:zxcvbn"]
 auth-hibp = ["auth", "dep:sha1"]
 auth-totp = ["auth", "dep:totp-rs"]
 auth-full = ["auth-hibp", "auth-totp"]
-crypto-validation = ["dep:pem", "dep:x509-parser", "dep:ssh-key", "dep:pkcs8"]
+crypto-validation = ["dep:pem", "dep:x509-parser", "dep:ssh-key"]
 shell = []
 testing = [
     "dep:proptest",

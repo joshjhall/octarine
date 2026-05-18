@@ -134,6 +134,25 @@ Project config: `bacon.toml`. The `check` / `clippy` / `test` jobs use the
 same flag set as `just check` / `just clippy` / `just test`, so bacon
 output matches `just preflight` and CI.
 
+### Dependency hygiene
+
+[cargo-machete](https://github.com/bnjbvr/cargo-machete) flags unused
+dependencies on every CI run and on pre-commit when `Cargo.toml` changes.
+Pre-installed in the devcontainer via `INCLUDE_RUST_DEV`. Run locally:
+
+```bash
+just lint-deps
+```
+
+If machete flags a dependency you intentionally keep (e.g., a feature-gated
+re-export used only at the boundary), document it with a
+`[package.metadata.cargo-machete]` entry in the relevant `Cargo.toml`:
+
+```toml
+[package.metadata.cargo-machete]
+ignored = ["some-dep"]   # why it's kept
+```
+
 ## SemVer Policy
 
 octarine is a foundational library. Downstream crates depend on a stable
