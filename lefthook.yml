@@ -127,6 +127,20 @@ pre-commit:
         - run: "! command -v hadolint >/dev/null 2>&1"
       run: hadolint {staged_files}
 
+    # --- Markdown linting (rumdl) ---
+
+    rumdl:
+      glob: "*.md"
+      exclude:
+        - "CHANGELOG.md"
+      # rumdl is shipped by the containers dev-tools feature; skip
+      # gracefully if running outside a dev-tools container — CI is the
+      # safety net. Lint-only; format via `just fmt-md` and review the
+      # diff (rumdl fmt has aggressive rewrites on nested code fences).
+      skip:
+        - run: "! command -v rumdl >/dev/null 2>&1"
+      run: rumdl check {staged_files}
+
     # --- Architecture enforcement ---
 
     arch-check:

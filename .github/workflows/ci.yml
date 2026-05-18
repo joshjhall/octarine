@@ -90,6 +90,25 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just lint-docker
 
+  rumdl:
+    name: Rumdl
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rumdl
+        # No taiki-e/install-action recipe yet; install the static
+        # Linux tarball directly. Pinned to v0.1.91 to match the
+        # version shipped by containers v4.19.0's dev-tools feature
+        # so the dev-container hook and CI run identical binaries.
+        run: |
+          version=0.1.91
+          url="https://github.com/rvben/rumdl/releases/download/v${version}/rumdl-v${version}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL "$url" | sudo tar -xz -C /usr/local/bin rumdl
+          rumdl --version
+      - uses: taiki-e/install-action@just
+      - run: just lint-md
+
   commit-lint:
     name: Commit Lint
     runs-on: ubuntu-latest

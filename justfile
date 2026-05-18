@@ -149,6 +149,14 @@ lint-docker:
         echo "$files" | xargs hadolint
     fi
 
+# Lint Markdown with rumdl (config: .rumdl.toml; submodule excluded there)
+lint-md:
+    rumdl check .
+
+# Format Markdown with rumdl (writes; review diff before committing)
+fmt-md:
+    rumdl fmt .
+
 # Lint a commit message against the conform policy (default: HEAD's message)
 commit-lint FILE='.git/COMMIT_EDITMSG':
     conform enforce --commit-msg-file {{FILE}}
@@ -159,8 +167,8 @@ commit-lint-branch:
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, spell, arch-check, tests
-preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker spell arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, spell, arch-check, tests
+preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker lint-md spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
