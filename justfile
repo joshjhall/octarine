@@ -116,6 +116,28 @@ shellcheck:
         shellcheck "${files[@]}"
     fi
 
+# Format shell scripts with shfmt (no-op when no .sh files present; submodule excluded)
+fmt-sh:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    files=$(git ls-files | /usr/bin/grep -E '\.sh$' || true)
+    if [ -z "$files" ]; then
+        echo "shfmt: no shell scripts to format"
+    else
+        echo "$files" | xargs shfmt -w -i 2 -ci -bn
+    fi
+
+# Check shell script formatting with shfmt (no-op when no .sh files present; submodule excluded)
+fmt-sh-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    files=$(git ls-files | /usr/bin/grep -E '\.sh$' || true)
+    if [ -z "$files" ]; then
+        echo "shfmt: no shell scripts to check"
+    else
+        echo "$files" | xargs shfmt -d -i 2 -ci -bn
+    fi
+
 # Lint Dockerfiles with hadolint (no-op when no repo-local Dockerfiles present; submodule excluded)
 lint-docker:
     #!/usr/bin/env bash
@@ -138,7 +160,7 @@ commit-lint-branch:
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
 # Full pre-push validation: fmt, clippy, shellcheck, lint-docker, spell, arch-check, tests
-preflight: fmt-check fmt-data-check clippy shellcheck lint-docker spell arch-check test
+preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
