@@ -84,6 +84,38 @@ Run `just --list` to discover the full recipe set. All tooling is invoked
 through `just` — never invoke `cargo test`, `cargo clippy`, or scripts
 directly, as recipes encode the correct feature flags and arguments.
 
+### Linker on Linux
+
+`.cargo/config.toml` configures the [mold linker](https://github.com/rui314/mold)
+on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`, which links
+5-10x faster than the default. mold and clang are installed by the
+devcontainer's `INCLUDE_RUST_DEV` feature (containers v4.19.0+).
+
+Non-devcontainer Linux contributors need both tools:
+
+```bash
+sudo apt-get install -y mold clang   # Debian/Ubuntu
+sudo dnf install -y mold clang        # Fedora/RHEL
+```
+
+If you can't install mold (locked-down workstation, unsupported distro),
+override globally in `~/.cargo/config.toml` — it takes precedence over the
+project config:
+
+```toml
+[target.x86_64-unknown-linux-gnu]
+linker = "cc"
+rustflags = []
+
+[target.aarch64-unknown-linux-gnu]
+linker = "cc"
+rustflags = []
+```
+
+macOS and Windows contributors are unaffected — the project config has no
+`[target.*-apple-darwin]` or `*-windows-*` overrides, so the platform
+default linker is used.
+
 ## SemVer Policy
 
 octarine is a foundational library. Downstream crates depend on a stable
