@@ -116,6 +116,24 @@ macOS and Windows contributors are unaffected — the project config has no
 `[target.*-apple-darwin]` or `*-windows-*` overrides, so the platform
 default linker is used.
 
+### Continuous Checks (bacon)
+
+[bacon](https://github.com/Canop/bacon) re-runs `cargo check` / `clippy` /
+`test` on every save in a live TUI pane, eliminating the "wait for the last
+run before starting the next edit" delay. Pre-installed in the devcontainer
+via `INCLUDE_RUST_DEV`.
+
+```bash
+just bacon                                    # default: cargo check --workspace --all-features
+just bacon clippy                             # or press `c` once running
+just bacon test                               # or press `t`
+just bacon test-filter -- module::path::test  # focused test run
+```
+
+Project config: `bacon.toml`. The `check` / `clippy` / `test` jobs use the
+same flag set as `just check` / `just clippy` / `just test`, so bacon
+output matches `just preflight` and CI.
+
 ## SemVer Policy
 
 octarine is a foundational library. Downstream crates depend on a stable
