@@ -230,11 +230,14 @@ pub mod http;
 /// # Features
 ///
 /// - Password policy validation with zxcvbn strength checking
-/// - Session management with binding and timeouts (coming soon)
-/// - Account lockout with exponential backoff (coming soon)
-/// - CSRF protection (coming soon)
-/// - TOTP/MFA support (`auth-totp` feature, coming soon)
-/// - HIBP breach checking (`auth-hibp` feature, coming soon)
+/// - Session management with binding, idle and absolute timeouts (V3)
+/// - Account lockout with exponential backoff (V2.2)
+/// - CSRF protection with token-based mitigation (V3.4)
+/// - Password reset flow with rate limiting (V2.5)
+/// - Remember-me tokens with selector:validator split (V3.5)
+/// - Constant-time responses to prevent account enumeration (V2.9.1)
+/// - TOTP/MFA support (`auth-totp` feature)
+/// - HIBP breach checking via k-anonymity (`auth-hibp` feature)
 ///
 /// # Quick Start
 ///
