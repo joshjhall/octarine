@@ -113,4 +113,5 @@ Start with the section index, then drill down to specific topics as needed.
 See [`../CLAUDE.md`](../CLAUDE.md) for contributor and AI-assistant workflow,
 and [`./architecture/testing-patterns.md`](./architecture/testing-patterns.md)
 for testing conventions.
+
 - Review process

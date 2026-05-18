@@ -4,11 +4,14 @@ This section covers the system design, patterns, and architectural decisions for
 
 ## Quick Links
 
-- **Layer Architecture**: [`layer-architecture.md`](./layer-architecture.md) - **START HERE** - Three-layer dependency rules
+- **Layer Architecture**: [`layer-architecture.md`](./layer-architecture.md) - **START HERE** - Three-layer dependency
+  rules
 - **Module Patterns**: [`module-patterns.md`](./module-patterns.md) - Three-layer pattern and builder pattern
 - **System Design**: [`system-design.md`](./system-design.md) - Overall library architecture
 - **Testing Patterns**: [`testing-patterns.md`](./testing-patterns.md) - Shared test infrastructure
-- **Async + Observability Integration**: [`../runtime/observability-integration.md`](../runtime/observability-integration.md) - Comprehensive async runtime instrumentation
+- **Async + Observability Integration**:
+  [`../runtime/observability-integration.md`](../runtime/observability-integration.md) - Comprehensive async runtime
+  instrumentation
 - **Refactor Status**: [`refactor-plan.md`](./refactor-plan.md) - Completed refactor summary (v0.3.0-beta.1)
 
 ## In This Section

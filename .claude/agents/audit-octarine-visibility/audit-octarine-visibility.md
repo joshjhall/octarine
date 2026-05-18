@@ -70,16 +70,19 @@ Categories use `octarine-visibility/<slug>` format.
 ### pubsuper-for-reexport (severity: medium)
 
 Scan for re-exports using `pub(super) use` instead of `pub use`:
-```
+
+```text
 Grep pattern="pub\(super\) use" path="crates/octarine/src/"
 ```
 
 ### pub-module-at-sublevel (severity: medium)
 
 In feature modules (NOT primitives, NOT root-level), scan for `pub mod`:
-```
+
+```text
 Grep pattern="^pub mod " path="crates/octarine/src/" glob="mod.rs"
 ```
+
 Exclude root-level feature modules: `identifiers/mod.rs`, `data/mod.rs`,
 `security/mod.rs`, `runtime/mod.rs`, `crypto/mod.rs`, `io/mod.rs`,
 `auth/mod.rs`, `http/mod.rs`, `observe/mod.rs`.
@@ -87,16 +90,18 @@ Exclude root-level feature modules: `identifiers/mod.rs`, `data/mod.rs`,
 ### business-logic-in-builder (severity: high)
 
 Identify non-mod.rs, non-core.rs files in `builder/` directories. Check for:
+
 - `Regex::new(` — regex compilation belongs in detection files
-- `for ` / `while ` / `loop ` — iteration belongs in implementation
+- `for` / `while` / `loop` — iteration belongs in implementation
 - Complex `match` on string content
 - >5 lines of logic between method signature and delegation call
 
 ### shortcut-bypasses-builder (severity: high)
 
-```
+```text
 Grep pattern="crate::primitives::" path="crates/octarine/src/" glob="shortcuts.rs"
 ```
+
 Shortcuts must use the builder, not import from primitives directly.
 
 ### missing-reexport (severity: medium)

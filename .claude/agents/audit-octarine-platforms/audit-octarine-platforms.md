@@ -106,13 +106,15 @@ or block without a corresponding `#[cfg(not(unix))]` or `#[cfg(windows)]`
 means the code silently vanishes on the uncovered platform.
 
 Grep patterns:
-```
+
+```text
 Grep pattern="#\[cfg\(unix\)\]" path="crates/octarine/src/"
 Grep pattern="#\[cfg\(windows\)\]" path="crates/octarine/src/"
 Grep pattern="#\[cfg\(target_os" path="crates/octarine/src/"
 ```
 
 For each match:
+
 1. Read the file and identify the cfg-gated item (function, impl block, or module)
 2. Search the same file and parent `mod.rs` for a complementary cfg gate
    (`not(unix)`, `not(windows)`, `cfg_if!` with else)
@@ -126,7 +128,8 @@ Platform-conditional code with no test coverage on the non-default platform.
 CI runs on ubuntu-latest/x86_64, so Windows and macOS paths are untested.
 
 Grep patterns:
-```
+
+```text
 Grep pattern="#\[cfg\(windows\)\]" path="crates/octarine/src/"
 Grep pattern="#\[cfg\(target_os = \"macos\"\)\]" path="crates/octarine/src/"
 Grep pattern="#\[cfg\(target_arch" path="crates/octarine/src/"
@@ -144,12 +147,14 @@ Public functions or methods that only exist on Unix with no cross-platform
 alternative. Users calling these on Windows get a compile error.
 
 Grep patterns:
-```
+
+```text
 Grep pattern="#\[cfg\(unix\)\]\s*\n\s*pub fn" path="crates/octarine/src/" multiline=true
 Grep pattern="#\[cfg\(unix\)\]\s*\n\s*pub(crate) fn" path="crates/octarine/src/" multiline=true
 ```
 
 For each match:
+
 1. Check if the function has a `#[cfg(not(unix))]` counterpart
 2. Check if it is behind a feature gate (acceptable if documented)
 3. Check if the parent module is entirely cfg-gated (acceptable — the
@@ -164,13 +169,15 @@ Literal `/` or `\\` used in path construction instead of `std::path::Path`,
 regex patterns, and documentation strings.
 
 Grep patterns:
-```
+
+```text
 Grep pattern='format!\(".*[/\\\\].*"' path="crates/octarine/src/"
 Grep pattern='push_str\(".*[/\\\\]' path="crates/octarine/src/"
 Grep pattern='\.to_string\(\) \+ "[/\\\\]' path="crates/octarine/src/"
 ```
 
 For each match, read context to determine if:
+
 - It is a filesystem path (flag) vs URL/URI path (skip)
 - It is in a const/static string for display purposes (skip)
 - It uses `format!` to build a filesystem path with literal separators (flag)
@@ -182,7 +189,8 @@ documenting the difference. A permission check that works on Unix but is
 a no-op on Windows is a security gap.
 
 Grep patterns:
-```
+
+```text
 Grep pattern="#\[cfg\(unix\)\]" path="crates/octarine/src/primitives/security/"
 Grep pattern="#\[cfg\(unix\)\]" path="crates/octarine/src/security/"
 Grep pattern="#\[cfg\(unix\)\]" path="crates/octarine/src/primitives/io/"
@@ -191,6 +199,7 @@ Grep pattern="mode\(\)|permissions\(\)|set_permissions" path="crates/octarine/sr
 ```
 
 For each match:
+
 1. Read the function and its cfg counterpart (if any)
 2. Check if the Windows path provides equivalent security guarantees
 3. Flag if the Windows arm is missing, a no-op, or weaker than the Unix arm
@@ -202,7 +211,8 @@ behavior. Developers maintaining this code need to understand WHY
 a block is platform-gated.
 
 Grep patterns:
-```
+
+```text
 Grep pattern="#\[cfg\((unix|windows|target_os|target_arch)" path="crates/octarine/src/"
 ```
 
@@ -213,12 +223,14 @@ explaining the platform-specific behavior. Flag if no comment present.
 
 Code that assumes pointer size, endianness, or CPU features without a
 `cfg(target_arch)` guard. Common violations:
+
 - `as usize` on values that could overflow on 32-bit
 - `mem::size_of::<usize>()` used as a constant (8 on 64-bit, 4 on 32-bit)
 - Byte order assumptions without `cfg(target_endian)`
 
 Grep patterns:
-```
+
+```text
 Grep pattern="mem::size_of::<usize>\(\)" path="crates/octarine/src/"
 Grep pattern="as usize.*>> (32|16)" path="crates/octarine/src/"
 Grep pattern="\.to_be_bytes\(\)|\.to_le_bytes\(\)" path="crates/octarine/src/"
@@ -233,7 +245,8 @@ Architecture-specific blocks (e.g., `#[cfg(target_arch = "x86_64")]`) without
 a fallback for other architectures.
 
 Grep patterns:
-```
+
+```text
 Grep pattern="#\[cfg\(target_arch" path="crates/octarine/src/"
 ```
 
@@ -254,6 +267,7 @@ or a generic fallback. Flag if no fallback exists.
 | arch-specific-no-fallback  | MEDIUM | deterministic | 0.85       |
 
 Notes on confidence:
+
 - `cfg-without-else` is 0.90 not 0.95 because some cfg items are intentionally
   platform-exclusive (the agent must read context to distinguish)
 - `hardcoded-path-separator` is 0.65 due to false positives from URL paths

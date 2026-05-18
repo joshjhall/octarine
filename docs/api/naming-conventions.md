@@ -1,6 +1,7 @@
 # API Naming Conventions
 
-This document defines the naming conventions for all public API methods in octarine's `data/` modules. Consistent naming ensures predictability, discoverability, and makes the API easier for both humans and AI agents to use correctly.
+This document defines the naming conventions for all public API methods in octarine's `data/` modules. Consistent naming
+ensures predictability, discoverability, and makes the API easier for both humans and AI agents to use correctly.
 
 ## Core Rule: Prefix Indicates Return Type
 
@@ -100,7 +101,8 @@ fn detect_extension(path: &str) -> Option<&str>;  // detect_* returns Vec
 
 ### Accessors: No Prefix
 
-Simple property access uses no prefix. The `get_*` prefix is prohibited — drop it and name the accessor after the property:
+Simple property access uses no prefix. The `get_*` prefix is prohibited — drop it and name the accessor after the
+property:
 
 ```rust
 // ✅ CORRECT

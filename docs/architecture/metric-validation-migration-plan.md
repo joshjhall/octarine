@@ -154,4 +154,5 @@ The security module should check for:
 
 ## Conclusion
 
-Moving validation to the security module is the right architectural decision. It should be done gradually, maintaining backward compatibility while adding security depth.
+Moving validation to the security module is the right architectural decision. It should be done gradually, maintaining
+backward compatibility while adding security depth.

@@ -64,7 +64,7 @@ deduplicates, and assigns final sequential IDs.
 
 Find tests that assert on absolute elapsed time without `#[ignore]`:
 
-```
+```text
 Grep pattern="elapsed\(\).*<|elapsed\(\).*>|as_millis\(\).*<|as_micros\(\).*<" path="crates/octarine/"
 ```
 
@@ -77,7 +77,7 @@ If not, flag it — CI coverage instrumentation inflates timing 10-100x.
 
 Find `test_perf_*` functions without `#[ignore]`:
 
-```
+```text
 Grep pattern="fn test_perf_" path="crates/octarine/"
 ```
 
@@ -87,7 +87,7 @@ ALL performance tests MUST have `#[ignore]`.
 
 Find `sleep()` calls in tests NOT inside a polling loop:
 
-```
+```text
 Grep pattern="thread::sleep|tokio::time::sleep" path="crates/octarine/"
 ```
 
@@ -99,7 +99,7 @@ Grep pattern="thread::sleep|tokio::time::sleep" path="crates/octarine/"
 
 Find tests asserting on absolute global state:
 
-```
+```text
 Grep pattern="assert.*get_count|assert.*total_written.*==\s*\d" path="crates/octarine/"
 ```
 
@@ -109,7 +109,7 @@ Tests should compare deltas (before/after) not absolute values.
 
 Find async tests without timeout:
 
-```
+```text
 Grep pattern="#\[tokio::test\]" path="crates/octarine/"
 ```
 
@@ -119,7 +119,7 @@ Check for `tokio::time::timeout()` or deadline check.
 
 Find patterns suggesting race conditions:
 
-```
+```text
 Grep pattern="spawn.*assert|thread::spawn.*assert" path="crates/octarine/"
 ```
 
@@ -132,7 +132,7 @@ proper synchronization.
 
 Scan for timing-related assertions without message:
 
-```
+```text
 Grep pattern="assert!\(.*elapsed|assert!\(.*millis|assert!\(.*duration" path="crates/octarine/"
 ```
 
@@ -142,7 +142,7 @@ Flag matches lacking a trailing `, "..."` message argument.
 
 Tests modifying global state without cleanup:
 
-```
+```text
 Grep pattern="env::set_var|std::env::set_var" path="crates/octarine/"
 ```
 

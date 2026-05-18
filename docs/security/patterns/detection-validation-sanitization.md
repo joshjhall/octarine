@@ -185,7 +185,7 @@ ______________________________________________________________________
 
 ### Examples
 
-**Scenario 1: User Uploads File**
+#### Scenario 1: User Uploads File
 
 ```rust
 // Step 1: DETECT potential issues (logging)
@@ -200,7 +200,7 @@ validation::validate_no_traversal(path)?;  // Rejects if unsafe
 let safe_path = sanitization::sanitize_path_strict(path)?;
 ```
 
-**Scenario 2: Security Scanner**
+#### Scenario 2: Security Scanner
 
 ```rust
 // Use DETECTION only - we want to find everything
@@ -213,7 +213,7 @@ let issues = vec![
 generate_security_report(issues);  // Report includes false positives
 ```
 
-**Scenario 3: API Endpoint**
+#### Scenario 3: API Endpoint
 
 ```rust
 // Use VALIDATION only - strict enforcement
@@ -387,7 +387,8 @@ detection.rs  ──→  validation.rs  ──→  sanitization.rs
 
 ### Why Validators Should Use Detectors
 
-**Principle:** Validators should call detection functions FIRST to confirm input format before applying validation rules.
+**Principle:** Validators should call detection functions FIRST to confirm input format before applying validation
+rules.
 
 ```rust
 // ✅ CORRECT: Validator uses detector first
@@ -444,7 +445,9 @@ Some modules have architectural reasons for NOT using detection first:
 
 **Location:** `primitives/identifiers/biometric/validation.rs`
 
-**Reason:** Detection patterns require labels (e.g., "fingerprint: abc123") to avoid false positives with git commit hashes and other hex strings. Validators work on bare application IDs (e.g., "FP-A1B2C3D4"), so detection would always return false.
+**Reason:** Detection patterns require labels (e.g., "fingerprint: abc123") to avoid false positives with git commit
+hashes and other hex strings. Validators work on bare application IDs (e.g., "FP-A1B2C3D4"), so detection would always
+return false.
 
 ```rust
 // Detection layer: Requires labeled format
@@ -459,7 +462,8 @@ validate_fingerprint_id_strict("FP-A1B2C3D4")  // ✅ validates directly
 
 **Location:** `primitives/identifiers/location/validation.rs`
 
-**Reason:** Location validators use the **conversion layer** for format detection instead of the detection layer because:
+**Reason:** Location validators use the **conversion layer** for format detection instead of the detection layer
+because:
 
 - Conversion layer is case-insensitive (UK postcodes, Canadian postal codes)
 - Returns specific format types (`GpsFormat`, `PostalCodeType`) needed for validation
@@ -482,13 +486,15 @@ A comprehensive audit of all 9 identifier modules found:
 | Validators not using detection | ~31 | Fixed in #39-#48 |
 | Documented exceptions | 2 | Biometric, Location |
 
-**Conclusion:** The inheritance arrow is strictly respected. All modules now follow the "validators use detectors" pattern where architecturally appropriate.
+**Conclusion:** The inheritance arrow is strictly respected. All modules now follow the "validators use detectors"
+pattern where architecturally appropriate.
 
 ______________________________________________________________________
 
 ## Conversion Module Patterns
 
-The conversion layer handles **format transformation** and **metadata extraction**. Unlike sanitization (which cleans dangerous input), conversion transforms valid input between formats.
+The conversion layer handles **format transformation** and **metadata extraction**. Unlike sanitization (which cleans
+dangerous input), conversion transforms valid input between formats.
 
 ### Where Conversion Fits in the Inheritance Arrow
 
@@ -518,7 +524,8 @@ ______________________________________________________________________
 
 ### Conversion Return Type Patterns
 
-Unlike validation (which uses `Result<(), Problem>` vs `bool`), conversion uses return types to signal **operation semantics**:
+Unlike validation (which uses `Result<(), Problem>` vs `bool`), conversion uses return types to signal **operation
+semantics**:
 
 | Return Type | When to Use | Semantics |
 |-------------|-------------|-----------|
@@ -552,7 +559,8 @@ pub fn normalize_email(email: &str) -> Result<String, Problem> {
 }
 ```
 
-**Rule**: Return `String` when normalization is pure character stripping (digits_only, uppercase, remove separators). Return `Result<String, Problem>` when normalization requires parsing or validation.
+**Rule**: Return `String` when normalization is pure character stripping (digits_only, uppercase, remove separators).
+Return `Result<String, Problem>` when normalization requires parsing or validation.
 
 ______________________________________________________________________
 
@@ -613,7 +621,8 @@ pub fn extract_jwt_algorithm(token: &str) -> Result<String, Problem> {
 }
 ```
 
-**Rule**: Use `Option` when the component may legitimately not exist in valid input. Use `Result` when extraction requires specific format validation.
+**Rule**: Use `Option` when the component may legitimately not exist in valid input. Use `Result` when extraction
+requires specific format validation.
 
 ______________________________________________________________________
 
@@ -643,7 +652,8 @@ pub fn detect_postal_code_type(input: &str) -> Option<PostalCodeType> {
 }
 ```
 
-**Rule**: Detection functions return `Option<Enum>` to allow for unknown formats. They should NOT return `Result` because an unrecognized format is not an error—it's just unclassified.
+**Rule**: Detection functions return `Option<Enum>` to allow for unknown formats. They should NOT return `Result`
+because an unrecognized format is not an error—it's just unclassified.
 
 ______________________________________________________________________
 
@@ -691,7 +701,8 @@ pub fn normalize_email(email: &str) -> Result<String, Problem> {
 }
 ```
 
-**Exception**: Format detection functions (`detect_*_format()`) may need more sophisticated logic than simple detection. They can implement their own pattern matching when returning rich type information.
+**Exception**: Format detection functions (`detect_*_format()`) may need more sophisticated logic than simple detection.
+They can implement their own pattern matching when returning rich type information.
 
 ______________________________________________________________________
 
@@ -796,7 +807,8 @@ ______________________________________________________________________
 
 ## Test Data Detection Pattern
 
-The `is_test_*` functions help identify test/development/sample data that should be excluded from analytics, treated specially in production, or flagged during security audits.
+The `is_test_*` functions help identify test/development/sample data that should be excluded from analytics, treated
+specially in production, or flagged during security audits.
 
 ### Purpose
 
@@ -921,4 +933,6 @@ ______________________________________________________________________
 
 **Last Updated**: 2025-11-24
 **Status**: Established architectural pattern across all modules
-**Related Issues**: #15 (audit), #20 (conversion patterns), #22 (cache standardization), #23 (test data detection), #39-#48 (module fixes), #49 (cache security)
+**Related Issues**: #15 (audit), #20 (conversion patterns), #22
+(cache standardization), #23 (test data detection), #39-#48
+(module fixes), #49 (cache security)

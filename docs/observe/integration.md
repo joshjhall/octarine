@@ -1,6 +1,7 @@
 # Observe Module - Integration Guide
 
-This guide covers integrating the observe module with external systems including SIEM platforms, monitoring tools, and custom backends.
+This guide covers integrating the observe module with external systems including SIEM platforms, monitoring tools, and
+custom backends.
 
 ## Overview
 
@@ -95,7 +96,6 @@ may freely `.await` tokio I/O — HTTP clients, file handles, database
 drivers, async channels — and do not need to spawn their own runtime.
 A failure returned from `write` is logged to stderr and does not block
 dispatch to other registered writers.
-
 
 ```rust
 use octarine::observe::writers::{Writer, WriterError, HealthStatus};

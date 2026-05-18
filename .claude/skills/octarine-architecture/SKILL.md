@@ -37,6 +37,7 @@ primitives/{domain}/builder/core.rs  pub(crate) struct XBuilder  # Orchestration
 ```
 
 **Critical rules**:
+
 - Primitives modules: `pub(crate) mod` — never `pub mod`
 - Sub-level feature modules: `pub(super) mod` or `pub(crate) mod` — never `pub mod`
 - Re-exports at ALL levels: `pub use` — NEVER `pub(super) use`
@@ -102,6 +103,7 @@ pub fn is_email(value: &str) -> bool {
 ```
 
 ## Verification
+
 - `just arch-check` — verify layer boundary compliance
 - `just clippy` — catch visibility modifier errors
 

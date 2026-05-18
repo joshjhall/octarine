@@ -47,7 +47,7 @@ git history; the operator curates it before push.
 
 ### Other
 
-- summary  # commits without a recognized prefix
+- summary # commits without a recognized prefix
 ```
 
 Sections are emitted in the order above and only appear when they have
@@ -112,6 +112,7 @@ Example of curated output:
 ```
 
 Compared to the raw auto-generated entry, this:
+
 - Combined 5 dependabot bumps into a single bullet
 - Added explicit migration notes for the rand 0.10 break
 - Marked the IdentifierType variant as breaking (it is — exhaustive matches)

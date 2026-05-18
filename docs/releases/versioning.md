@@ -21,7 +21,7 @@ to support across patch releases.
 
 ## Decision tree
 
-```
+```text
 1. Does the change alter the public API or default behavior in a way callers
    could depend on?
    → YES, see step 2

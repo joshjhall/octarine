@@ -6,7 +6,8 @@
 
 ## Overview
 
-Comprehensive observability for all async runtime infrastructure. Every operation, state transition, and error condition is instrumented with metrics.
+Comprehensive observability for all async runtime infrastructure. Every operation, state transition, and error condition
+is instrumented with metrics.
 
 ## Module Breakdown
 

@@ -2,7 +2,8 @@
 
 ## Overview
 
-The octarine observe module provides a comprehensive event system for audit logging, compliance, and observability. Events are automatically generated for security-relevant operations, errors, and business activities.
+The octarine observe module provides a comprehensive event system for audit logging, compliance, and observability.
+Events are automatically generated for security-relevant operations, errors, and business activities.
 
 ## Event Categories
 

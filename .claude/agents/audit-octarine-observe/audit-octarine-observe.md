@@ -41,12 +41,14 @@ When invoked, you receive a work manifest in the task prompt containing:
 ## What Layer 3 Builders Must Have
 
 Every builder in these directories wraps primitives with observe:
+
 - `crates/octarine/src/identifiers/builder/`
 - `crates/octarine/src/data/*/builder/`
 - `crates/octarine/src/security/*/builder*`
 - `crates/octarine/src/crypto/*/builder*`
 
 Each must include:
+
 1. Metric name definitions (`define_metrics!` or `MetricName::new`)
 2. Timing metrics (`record()` calls)
 3. Count metrics (`increment_by()` calls)
@@ -82,15 +84,18 @@ Categories use `octarine-observe/<slug>` format.
 ### missing-metrics (severity: high)
 
 Scan each Layer 3 builder for metrics:
-```
+
+```text
 Grep pattern="MetricName|define_metrics!" path="{builder_file}"
 ```
+
 If neither found, the builder has NO metrics.
 
 ### missing-silent-mode (severity: medium)
 
 Check builder struct for `emit_events` field and both constructors:
-```
+
+```text
 Grep pattern="emit_events" path="{builder_file}"
 Grep pattern="fn new\(\)|fn silent\(\)" path="{builder_file}"
 ```
@@ -99,7 +104,8 @@ Grep pattern="fn new\(\)|fn silent\(\)" path="{builder_file}"
 
 Layer 3 builders should use 2-arg shortcuts API (`observe::warn("op", "msg")`),
 not 1-arg event API (`event::warn("msg")`):
-```
+
+```text
 Grep pattern="event::(info|warn|debug|error)\(" path="{builder_file}"
 ```
 
@@ -117,9 +123,11 @@ Methods returning `bool` may skip timing (cheap operations).
 ### unguarded-observe-call (severity: medium)
 
 Verify observe calls are inside `if self.emit_events` blocks:
-```
+
+```text
 Grep pattern="observe::|increment_by|record\(" path="{builder_file}"
 ```
+
 Unguarded calls break silent mode.
 
 ## Certainty Assignment

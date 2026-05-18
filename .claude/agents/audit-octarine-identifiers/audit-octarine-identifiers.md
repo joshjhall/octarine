@@ -68,7 +68,8 @@ partial error.
 ### octarine-identifiers/missing-validation (severity: high)
 
 For each `is_{type}` detection function, check for corresponding `validate_{type}`:
-```
+
+```text
 Grep pattern="pub fn is_" path="crates/octarine/src/primitives/identifiers/{domain}/detection/"
 Grep pattern="pub fn validate_" path="crates/octarine/src/primitives/identifiers/{domain}/validation/"
 ```
@@ -83,14 +84,16 @@ Flag only types that are PII or sensitive data.
 ### octarine-identifiers/missing-builder-method (severity: high)
 
 For each `is_{type}` detection function, check the primitives builder:
-```
+
+```text
 Grep pattern="fn is_{type}" path="crates/octarine/src/primitives/identifiers/{domain}/builder/"
 ```
 
 ### octarine-identifiers/missing-public-builder-method (severity: high)
 
 For each primitives builder method, check the public builder:
-```
+
+```text
 Grep pattern="fn is_{type}\|fn validate_{type}\|fn redact_{type}" \
   path="crates/octarine/src/identifiers/builder/{domain}.rs"
 ```
@@ -98,7 +101,8 @@ Grep pattern="fn is_{type}\|fn validate_{type}\|fn redact_{type}" \
 ### octarine-identifiers/missing-shortcut (severity: medium)
 
 For common operations, check shortcuts:
-```
+
+```text
 Grep pattern="fn is_{type}\|fn validate_{type}\|fn redact_{type}" \
   path="crates/octarine/src/identifiers/shortcuts.rs"
 ```
@@ -106,7 +110,8 @@ Grep pattern="fn is_{type}\|fn validate_{type}\|fn redact_{type}" \
 ### octarine-identifiers/incomplete-dual-api (severity: medium)
 
 For each domain, check both exist:
-```
+
+```text
 Grep pattern="fn detect_{domain}_identifier" path="..."
 Grep pattern="fn is_{domain}_identifier" path="..."
 ```
@@ -114,7 +119,8 @@ Grep pattern="fn is_{domain}_identifier" path="..."
 ### octarine-identifiers/naming-violation (severity: medium)
 
 Scan for prohibited prefixes:
-```
+
+```text
 Grep pattern="pub(\(crate\) )?fn (has_|contains_|check_|verify_|ensure_|remove_)" \
   path="crates/octarine/src/primitives/identifiers/"
 ```
@@ -122,7 +128,8 @@ Grep pattern="pub(\(crate\) )?fn (has_|contains_|check_|verify_|ensure_|remove_)
 ### octarine-identifiers/inheritance-arrow-violation (severity: high)
 
 Detection must NOT import from validation or sanitization:
-```
+
+```text
 Grep pattern="use (super::validation|super::sanitization)" \
   path="crates/octarine/src/primitives/identifiers/*/detection/"
 ```

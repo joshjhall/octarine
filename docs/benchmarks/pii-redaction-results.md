@@ -175,7 +175,8 @@ A few scenarios exceed 100μs but are still acceptable:
 
 **Result**: ✅ **PASS** - PII redaction system meets the \<100μs performance target for all typical use cases.
 
-The system achieves excellent performance while providing comprehensive PII protection. The few edge cases that exceed 100μs (5+ PII types, ProductionStrict) are acceptable trade-offs for security and rare in practice.
+The system achieves excellent performance while providing comprehensive PII protection. The few edge cases that exceed
+100μs (5+ PII types, ProductionStrict) are acceptable trade-offs for security and rare in practice.
 
 **Recommendation**: Deploy PII redaction with confidence for production use.
 

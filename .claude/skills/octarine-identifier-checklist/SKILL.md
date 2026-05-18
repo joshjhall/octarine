@@ -48,7 +48,7 @@ Every identifier type requires ALL applicable steps.
 ### Layer 3: Public API (pub)
 
 9. **Public builder** — `identifiers/builder/{domain}.rs`
-    - Wraps primitives builder + adds observe (metrics, events, timing)
+   - Wraps primitives builder + adds observe (metrics, events, timing)
 
 10. **Shortcuts** — `identifiers/shortcuts.rs`
     - `pub fn is_{type}(v: &str) -> bool { {Domain}Builder::new().is_{type}(v) }`

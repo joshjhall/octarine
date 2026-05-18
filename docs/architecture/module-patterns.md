@@ -2,15 +2,19 @@
 
 ## Overview
 
-octarine uses consistent architectural patterns across all modules to ensure maintainability, security, and ease of use. The primary patterns are the Three-Layer Pattern for module structure and the Builder Pattern for complex configurations.
+octarine uses consistent architectural patterns across all modules to ensure maintainability, security, and ease of use.
+The primary patterns are the Three-Layer Pattern for module structure and the Builder Pattern for complex
+configurations.
 
 ## The Three-Layer Pattern
 
-Every module in octarine follows a three-layer architecture that separates concerns and provides multiple levels of API access.
+Every module in octarine follows a three-layer architecture that separates concerns and provides multiple levels of API
+access.
 
 ### Layer 1: Core Implementation (Private)
 
-The innermost layer contains the actual business logic. These are private or `pub(crate)` functions that do the real work.
+The innermost layer contains the actual business logic. These are private or `pub(crate)` functions that do the real
+work.
 
 ```text
 module/

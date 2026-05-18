@@ -2,7 +2,8 @@
 
 ## Overview
 
-octarine is a foundational security and observability library for Rust applications. It provides two main modules that work together to create secure, auditable, and maintainable applications.
+octarine is a foundational security and observability library for Rust applications. It provides two main modules that
+work together to create secure, auditable, and maintainable applications.
 
 ## High-Level Architecture
 
@@ -31,11 +32,13 @@ octarine is a foundational security and observability library for Rust applicati
 
 ## Core Modules
 
-Octarine uses a three-layer architecture that prevents circular dependencies. See [`layer-architecture.md`](./layer-architecture.md) for the full dependency rules.
+Octarine uses a three-layer architecture that prevents circular dependencies. See
+[`layer-architecture.md`](./layer-architecture.md) for the full dependency rules.
 
 ### Layer 1: Primitives (`crates/octarine/src/primitives/`)
 
-Pure functions with no observability dependencies. Visibility is `pub(crate)` — primitives are always wrapped by a Layer 3 module for public use. Organized around three orthogonal concerns:
+Pure functions with no observability dependencies. Visibility is `pub(crate)` — primitives are always wrapped by a Layer
+3 module for public use. Organized around three orthogonal concerns:
 
 | Concern | Purpose | Example question |
 |---------|---------|------------------|
@@ -43,11 +46,15 @@ Pure functions with no observability dependencies. Visibility is `pub(crate)` �
 | `primitives/security/` | THREATS | "Is this dangerous?" |
 | `primitives/identifiers/` | CLASSIFICATION | "What is it? Is it PII?" |
 
-Each concern has sub-domains (paths, network, text, and so on), yielding cells such as `primitives/security/paths/` (path-traversal detection) and `primitives/identifiers/network/` (IP/MAC/URL/UUID classification). Supporting primitive modules: `crypto/`, `io/`, `runtime/`, `types/`.
+Each concern has sub-domains (paths, network, text, and so on), yielding cells such as `primitives/security/paths/`
+(path-traversal detection) and `primitives/identifiers/network/` (IP/MAC/URL/UUID classification). Supporting primitive
+modules: `crypto/`, `io/`, `runtime/`, `types/`.
 
 ### Layer 2: Observe (`crates/octarine/src/observe/`)
 
-Public observability module that depends only on primitives. Submodules include `audit/`, `builder/`, `compliance/` (SOC2, HIPAA, GDPR, PCI-DSS mappings), `context/` (automatic WHO/WHAT/WHEN/WHERE capture), `event/`, `metrics/`, `pii/` (detection and redaction), `problem/`, `tracing/`, and `writers/` (console, file, SQLite, PostgreSQL).
+Public observability module that depends only on primitives. Submodules include `audit/`, `builder/`, `compliance/`
+(SOC2, HIPAA, GDPR, PCI-DSS mappings), `context/` (automatic WHO/WHAT/WHEN/WHERE capture), `event/`, `metrics/`, `pii/`
+(detection and redaction), `problem/`, `tracing/`, and `writers/` (console, file, SQLite, PostgreSQL).
 
 #### Event Flow
 
@@ -73,7 +80,8 @@ Event Sent to Writers
 
 ### Layer 3: Public Operations
 
-Public modules that wrap primitives with observe instrumentation. Every Layer 3 operation emits events and metrics automatically:
+Public modules that wrap primitives with observe instrumentation. Every Layer 3 operation emits events and metrics
+automatically:
 
 - `data/` — normalization and canonicalization (paths, network, text, formats, tokens)
 - `security/` — threat detection and validation (commands, formats, network, paths, queries)
@@ -86,7 +94,8 @@ Public modules that wrap primitives with observe instrumentation. Every Layer 3 
 
 ### Testing Infrastructure (`crates/octarine/src/testing/`, feature-gated)
 
-Shared test fixtures, attack-pattern generators, and security assertions. Compiled only when the `testing` feature is enabled; production code never imports it.
+Shared test fixtures, attack-pattern generators, and security assertions. Compiled only when the `testing` feature is
+enabled; production code never imports it.
 
 ## Key Design Patterns
 

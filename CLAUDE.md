@@ -4,7 +4,9 @@ This file provides guidance for working with the octarine project.
 
 ## Overview
 
-**Octarine** is the foundation library providing security primitives and observability tools for Rust applications. Named after the eighth color of the Discworld spectrum - the color of magic, visible only to wizards.
+**Octarine** is the foundation library providing security primitives and
+observability tools for Rust applications. Named after the eighth color of the
+Discworld spectrum - the color of magic, visible only to wizards.
 
 ## Architecture (CRITICAL)
 
@@ -240,7 +242,7 @@ layout.
 
 ### Naming Conventions (CRITICAL)
 
-**Core Rule: Prefix indicates return type**
+**Core Rule:** Prefix indicates return type
 
 | Return Type | Prefix | Example |
 |-------------|--------|---------|
@@ -273,9 +275,12 @@ The project enforces strict clippy lints via `Cargo.toml [lints.clippy]`. Key de
 | `dbg_macro` | **deny** | No debug macros in committed code |
 | `print_stdout` / `print_stderr` | **deny** | Use `observe` module for all output |
 
-**In test modules**, add `#![allow(clippy::panic, clippy::expect_used)]` at the module level. Do NOT allow `indexing_slicing` — use `.first()`, `.get()`, etc. even in tests.
+**In test modules**, add `#![allow(clippy::panic, clippy::expect_used)]` at
+the module level. Do NOT allow `indexing_slicing` — use `.first()`, `.get()`,
+etc. even in tests.
 
-**For static regexes**, use `#![allow(clippy::expect_used)]` at the file level with a comment explaining the patterns are compile-time-known-valid.
+**For static regexes**, use `#![allow(clippy::expect_used)]` at the file
+level with a comment explaining the patterns are compile-time-known-valid.
 
 ## Testing
 

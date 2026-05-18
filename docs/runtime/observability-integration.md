@@ -1,6 +1,7 @@
 # Async + Observability Integration Project
 
-**Goal**: Integrate runtime and observe modules throughout security/data, following the pattern established in detection module.
+**Goal**: Integrate runtime and observe modules throughout security/data, following the pattern established in detection
+module.
 
 **Status**: In Progress
 **Started**: 2025-11-16
@@ -130,7 +131,8 @@ ______________________________________________________________________
 1. `src/runtime/mod.rs` - Exported `interval` publicly
 1. `src/observe/metrics/async_dispatch.rs` - Removed `use tokio::time::interval`, uses `crate::runtime::interval()`
 1. `src/observe/writers/async_dispatch.rs` - Removed `use tokio::time::interval`, uses `crate::runtime::interval()`
-1. `src/runtime/writer.rs` - Removed `use tokio::time::interval`, uses `crate::runtime::interval()` and `sleep_ms()` in tests
+1. `src/runtime/writer.rs` - Removed `use tokio::time::interval`, uses `crate::runtime::interval()` and `sleep_ms()` in
+   tests
 1. `src/runtime/retry.rs` - Removed `use tokio::time::sleep`, uses `crate::runtime::sleep()`
 1. `src/runtime/circuit_breaker.rs` - Uses `crate::runtime::sleep_ms()` in tests
 1. `src/runtime/worker.rs` - Uses `crate::runtime::sleep_ms()` in tests
@@ -146,8 +148,10 @@ ______________________________________________________________________
 
 **Remaining Direct tokio Usage** (Intentional - Infrastructure Only):
 
-- `observe/metrics/async_dispatch.rs` - Uses `tokio::sync::mpsc`, `tokio::runtime::Builder`, `tokio::select!` (async dispatcher infrastructure)
-- `observe/writers/async_dispatch.rs` - Uses `tokio::sync::mpsc`, `tokio::runtime::Builder`, `tokio::select!` (async dispatcher infrastructure)
+- `observe/metrics/async_dispatch.rs` - Uses `tokio::sync::mpsc`, `tokio::runtime::Builder`, `tokio::select!` (async
+  dispatcher infrastructure)
+- `observe/writers/async_dispatch.rs` - Uses `tokio::sync::mpsc`, `tokio::runtime::Builder`, `tokio::select!` (async
+  dispatcher infrastructure)
 - All files in `runtime/` module - Legitimate implementation of centralized wrappers
 - `#[tokio::test]` attributes - Test harness (cannot be abstracted)
 

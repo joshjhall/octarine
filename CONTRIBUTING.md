@@ -32,7 +32,7 @@ read that file before adding a new scope.
 - **scope** — a single entry from `.conform.yaml` (no comma-separated
   lists). New scopes welcome: open a PR adding an anchored `^name$` entry.
 - **subject** — imperative mood, no trailing period. The Conventional
-  Commits spec caps the **description** (text after `<type>(<scope>): `) at
+  Commits spec caps the **description** (text after `<type>(<scope>):`) at
   **72 characters**, enforced by conform. The full header has a generous
   89-character ceiling so longer `type(scope):` prefixes still fit.
 
