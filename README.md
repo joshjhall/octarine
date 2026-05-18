@@ -4,6 +4,8 @@ Foundation library for security and observability in Rust. Named after the
 eighth color of the Discworld spectrum — the color of magic, visible only to
 wizards.
 
+[![codecov](https://codecov.io/gh/joshjhall/octarine/graph/badge.svg)](https://codecov.io/gh/joshjhall/octarine)
+
 ## Features
 
 - **Security Primitives** — Input validation, sanitization, and threat

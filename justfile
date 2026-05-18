@@ -98,6 +98,25 @@ test-filter PATTERN:
 test-mod PATTERN FEATURES='':
     cargo test -p octarine --lib -j4 --features "{{FEATURES}}" -- {{PATTERN}}
 
+# ─── Coverage ────────────────────────────────────────────────────────────────
+
+# Generate LCOV coverage report (target/coverage/lcov.info).
+# Matches the CI coverage job flag set.
+coverage:
+    mkdir -p target/coverage
+    cargo llvm-cov --workspace --all-features -j4 \
+        --lcov --output-path target/coverage/lcov.info
+
+# Generate an HTML coverage report (target/llvm-cov/html/index.html).
+coverage-html:
+    cargo llvm-cov --workspace --all-features -j4 --html
+    @echo ""
+    @echo "Open: target/llvm-cov/html/index.html"
+
+# Print a short coverage summary to the console.
+coverage-summary:
+    cargo llvm-cov --workspace --all-features -j4 --summary-only
+
 # ─── Inner-loop ──────────────────────────────────────────────────────────────
 
 # Launch bacon for continuous background checks (config: .bacon.toml).
