@@ -98,6 +98,15 @@ test-filter PATTERN:
 test-mod PATTERN FEATURES='':
     cargo test -p octarine --lib -j4 --features "{{FEATURES}}" -- {{PATTERN}}
 
+# ─── Inner-loop ──────────────────────────────────────────────────────────────
+
+# Launch bacon for continuous background checks (config: .bacon.toml).
+# Default job is `check`; press `c` for clippy, `t` for test, `d` for rustdoc,
+# `?` for shortcuts. Pass extra args, e.g. `just bacon clippy`,
+# `just bacon test-filter -- some::module`, `just bacon --headless`.
+bacon *ARGS:
+    bacon {{ARGS}}
+
 # ─── Architecture ────────────────────────────────────────────────────────────
 
 # Run architecture enforcement checks (layer boundaries, naming, lint rules)
