@@ -197,6 +197,41 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just test
 
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mold linker
+        run: sudo apt-get update && sudo apt-get install -y mold clang
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94"
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Coverage uses different RUSTFLAGS (-Cinstrument-coverage), so
+          # its target/ is incompatible with the test job's cache.
+          shared-key: coverage
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: taiki-e/install-action@just
+      - run: just coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: target/coverage/lcov.info
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload LCOV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: target/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 30
+
   doc:
     name: Doc
     runs-on: ubuntu-latest

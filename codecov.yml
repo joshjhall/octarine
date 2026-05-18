@@ -1,0 +1,31 @@
+# Codecov configuration — see https://docs.codecov.com/docs/codecov-yaml.
+#
+# Coverage reporting is advisory while we establish a baseline. No
+# thresholds enforced; no per-module gates. Both can be added later once
+# the baseline stabilizes (#261 out-of-scope).
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%
+        informational: true
+    patch:
+      default:
+        target: auto
+        informational: true
+
+comment:
+  layout: "header, diff, flags, files"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+
+ignore:
+  - "crates/octarine/src/testing/**"
+  - "tests/**"
+  - "**/test_*.rs"
+  - "examples/**"
+  - "benches/**"
