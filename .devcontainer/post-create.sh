@@ -11,6 +11,16 @@ command -v lefthook >/dev/null || {
   exit 1
 }
 
+# .cargo/config.toml sets linker = "clang" + -fuse-ld=mold for Linux. mold
+# ships with the containers submodule's rust-dev feature; clang does not
+# (only libclang-dev for bindgen), so install it explicitly. Without this,
+# `cargo test` and rustdoc fail to link.
+if ! command -v clang >/dev/null; then
+  echo "==> Installing clang (needed by .cargo/config.toml linker setting)..."
+  sudo apt-get update -qq
+  sudo apt-get install -y --no-install-recommends clang
+fi
+
 echo "==> Warming cargo cache..."
 cargo fetch --manifest-path /workspace/octarine/Cargo.toml
 

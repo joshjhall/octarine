@@ -1,0 +1,28 @@
+# Octarine nextest configuration.
+# Reference: https://nexte.st/docs/configuration/reference/
+
+[profile.default]
+# Surface failures immediately, then a final summary. The built-in "final"
+# default hides failures until the run ends — annoying during long local runs.
+failure-output = "immediate-final"
+success-output = "never"
+status-level = "pass"
+# Anything taking longer than 60s gets a warning; terminate after three slow
+# intervals (180s total). The repo's slowest integration tests sit at 5–10s,
+# so 60s catches genuine pathologies without spamming on large fixtures.
+slow-timeout = { period = "60s", terminate-after = 3 }
+
+[profile.ci]
+# Inherits default thresholds; overrides only the CI-relevant knobs.
+failure-output = "immediate-final"
+status-level = "fail"
+# Two retries with exponential backoff. Flaky tests (network, timing) pass
+# on retry; consistently broken tests still fail after three attempts.
+retries = { backoff = "exponential", count = 2, delay = "1s", jitter = true }
+# Run every test even after failures so the JUnit report is complete.
+fail-fast = false
+
+[profile.ci.junit]
+# Resolves to target/nextest/ci/junit.xml.
+path = "junit.xml"
+report-name = "octarine"

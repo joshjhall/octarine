@@ -204,8 +204,20 @@ jobs:
         with:
           toolchain: "1.94"
       - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - uses: taiki-e/install-action@just
-      - run: just test
+      - name: Run nextest (ci profile)
+        run: cargo nextest run --workspace --all-features --build-jobs 4 --profile ci
+      - name: Run doctests
+        run: cargo test --workspace --all-features --doc -j4
+      - name: Upload JUnit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-xml
+          path: target/nextest/ci/junit.xml
+          if-no-files-found: error
+          retention-days: 30
 
   coverage:
     name: Coverage
