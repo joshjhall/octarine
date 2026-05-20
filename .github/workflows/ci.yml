@@ -139,6 +139,24 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just lint-workflows
 
+  taplo:
+    name: Taplo
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      # taiki-e/install-action ships a taplo-cli recipe; pin to 0.10.0
+      # to match the version shipped by containers v4.17.0+ so the
+      # dev-container hook and CI run identical binaries.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli@0.10.0
+      - uses: taiki-e/install-action@just
+      # Split into two steps so format-drift and schema-lint failures
+      # are distinguishable in the CI log.
+      - run: just fmt-toml-check
+      - run: just lint-toml
+
   machete:
     name: Machete
     runs-on: ubuntu-latest

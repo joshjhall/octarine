@@ -43,6 +43,18 @@ fmt-data-check:
 fmt-data:
     dprint fmt
 
+# Check TOML formatting via taplo (no fixes; config: .taplo.toml)
+fmt-toml-check:
+    taplo format --check
+
+# Format TOML via taplo (writes; config: .taplo.toml)
+fmt-toml:
+    taplo format
+
+# Lint TOML schema correctness via taplo (config: .taplo.toml)
+lint-toml:
+    taplo lint
+
 # Run all formatters and file fixers via pre-commit on every file in the repo
 fmt-all: pre-commit
 
@@ -213,8 +225,8 @@ commit-lint-branch:
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, lint-workflows, lint-deps, spell, arch-check, tests
-preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker lint-md lint-workflows lint-deps spell arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, lint-workflows, lint-toml, lint-deps, spell, arch-check, tests
+preflight: fmt-check fmt-data-check fmt-toml-check fmt-sh-check clippy shellcheck lint-docker lint-md lint-workflows lint-toml lint-deps spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf

@@ -117,6 +117,18 @@ pre-commit:
       run: dprint fmt {staged_files}
       stage_fixed: true
 
+    # --- TOML formatting (taplo) ---
+
+    taplo-fmt:
+      glob: "*.toml"
+      # The repo-level .taplo.toml excludes containers/**, but lefthook
+      # passes explicit {staged_files} which bypasses taplo's own
+      # include/exclude — re-exclude here.
+      exclude:
+        - "containers/**"
+      run: taplo format {staged_files}
+      stage_fixed: true
+
     # --- Shell script linting ---
 
     shellcheck:
