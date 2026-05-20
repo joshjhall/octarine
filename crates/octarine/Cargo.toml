@@ -115,7 +115,7 @@ opentelemetry-otlp = { version = "0.32", optional = true, features = ["grpc-toni
 # HTTP server middleware (optional)
 axum = { version = "0.8", optional = true }
 tower = { version = "0.5", optional = true, features = ["util"] }
-tower-http = { version = "0.6.10", optional = true, features = [
+tower-http = { version = "0.6.11", optional = true, features = [
   "request-id",
   "util",
   "cors",
@@ -162,7 +162,7 @@ shell-escape = { version = "0.1", optional = true }
 
 # System info
 hostname = "0.4"
-local-ip-address = "0.6.8"
+local-ip-address = "0.6.13"
 
 # Unix permissions and testing tools
 [target.'cfg(unix)'.dependencies]
