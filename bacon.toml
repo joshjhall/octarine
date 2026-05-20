@@ -20,9 +20,14 @@ need_stdout = false
 # Clippy with deny-warnings, all features, all targets. Matches `just clippy`.
 [jobs.clippy]
 command = [
-    "cargo", "clippy",
-    "--workspace", "--all-targets", "--all-features",
-    "--", "-D", "warnings",
+  "cargo",
+  "clippy",
+  "--workspace",
+  "--all-targets",
+  "--all-features",
+  "--",
+  "-D",
+  "warnings",
 ]
 need_stdout = false
 
@@ -35,11 +40,7 @@ need_stdout = true
 # Run a single test by name pattern. Invoke as:
 #   bacon test-filter -- PATTERN
 [jobs.test-filter]
-command = [
-    "cargo", "test",
-    "--workspace", "--all-features", "-j4",
-    "--",
-]
+command = ["cargo", "test", "--workspace", "--all-features", "-j4", "--"]
 need_stdout = true
 
 # Rustdoc. Matches `just doc` minus `RUSTDOCFLAGS=-D warnings` —

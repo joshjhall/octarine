@@ -15,9 +15,9 @@ exclude = [
   ".git/**",
   ".vscode/**",
   ".devcontainer/**",
-  "containers/**",          # submodule — has its own .rumdl.toml + CI gate
-  ".claude/memory/tmp/**",  # ephemeral session state (gitignored anyway)
-  ".claude/worktrees/**",   # parallel-agent worktrees (gitignored anyway)
+  "containers/**",         # submodule — has its own .rumdl.toml + CI gate
+  ".claude/memory/tmp/**", # ephemeral session state (gitignored anyway)
+  ".claude/worktrees/**",  # parallel-agent worktrees (gitignored anyway)
 ]
 
 disable = [
