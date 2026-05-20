@@ -4,10 +4,7 @@
 [default]
 # Skip identifiers that look like hex blobs or base64; these surface in
 # crypto/identifier fixtures and test vectors as legitimate non-words.
-extend-ignore-identifiers-re = [
-    "^[A-Fa-f0-9]{6,}$",
-    "^[A-Za-z0-9+/]{32,}={0,2}$",
-]
+extend-ignore-identifiers-re = ["^[A-Fa-f0-9]{6,}$", "^[A-Za-z0-9+/]{32,}={0,2}$"]
 
 [default.extend-words]
 # Discworld lore — eighth color of the spectrum, project namesake
@@ -75,14 +72,14 @@ unparseable = "unparseable"
 
 [files]
 extend-exclude = [
-    "CHANGELOG.md",
-    "Cargo.lock",
-    "target/**",
-    "node_modules/**",
-    ".git/**",
-    "containers/**",
-    "**/*.lock",
-    "tests/results/**",
-    "**/proptest-regressions/**",
-    "**/fixtures/**",
+  "CHANGELOG.md",
+  "Cargo.lock",
+  "target/**",
+  "node_modules/**",
+  ".git/**",
+  "containers/**",
+  "**/*.lock",
+  "tests/results/**",
+  "**/proptest-regressions/**",
+  "**/fixtures/**",
 ]
