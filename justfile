@@ -252,6 +252,89 @@ deps-check: deps-audit deps-deny deps-osv deps-outdated
 lint-deps:
     cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-problem
 
+# Surface past-due "re-evaluate YYYY-MM-DD" markers on advisory ignores in
+# deny.toml. Exit 0 = nothing due; exit 1 = at least one past-due marker.
+# Used by `just quarterly` and safe to wire into preflight later.
+deps-expiry-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    today=$(date +%Y-%m-%d)
+    overdue=0
+    while IFS= read -r line; do
+        match=$(echo "$line" | /usr/bin/grep -oE 're-evaluate [0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+        [ -z "$match" ] && continue
+        marker_date=${match#re-evaluate }
+        if [[ "$marker_date" < "$today" ]]; then
+            echo "PAST DUE ($marker_date): $line"
+            overdue=$((overdue + 1))
+        fi
+    done < <(/usr/bin/grep -E 're-evaluate [0-9]{4}-[0-9]{2}-[0-9]{2}' deny.toml || true)
+    if [ "$overdue" -eq 0 ]; then
+        echo "deps-expiry-check: no past-due re-evaluate markers"
+    else
+        echo "deps-expiry-check: $overdue past-due marker(s) — review deny.toml" >&2
+        exit 1
+    fi
+
+# ─── Quarterly (long-cycle review) ───────────────────────────────────────────
+
+# Composite deep-scan recipe for the quarterly review checklist. Runs each
+# tool independently (non-halting) so one tool's exit code does not mask
+# another's; emits a per-section header and a final pass/fail summary.
+#
+# Differs from `deps-check` in that:
+#   - cargo audit runs WITHOUT --ignore so RUSTSEC-2023-0071 surfaces for
+#     human re-evaluation (its re-evaluate date is in deny.toml).
+#   - Adds cargo tree --duplicates, license inventory, advisory-expiry
+#     check, and optional cargo-geiger.
+#
+# See CONTRIBUTING.md "Maintenance Cadence" for the quarterly workflow.
+quarterly:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    sections=()
+    statuses=()
+    run() {
+        local label=$1
+        shift
+        echo ""
+        echo "══ $label ═══════════════════════════════════════════════════════════"
+        if "$@"; then
+            sections+=("$label")
+            statuses+=("PASS")
+        else
+            sections+=("$label")
+            statuses+=("FAIL")
+        fi
+    }
+    echo "Quarterly review — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    run "cargo audit (no --ignore)"       cargo audit
+    run "cargo deny check"                cargo deny check
+    run "osv-scanner"                     osv-scanner scan source --lockfile=Cargo.lock
+    run "cargo outdated"                  cargo outdated --workspace --depth 1
+    run "cargo tree --duplicates"         cargo tree --duplicates --workspace
+    run "cargo deny list (licenses)"      cargo deny list
+    if command -v cargo-geiger >/dev/null 2>&1; then
+        run "cargo geiger (unsafe scan)"  cargo geiger --workspace
+    else
+        echo ""
+        echo "── cargo geiger: not installed, skipping ──"
+    fi
+    run "deps-expiry-check"               just deps-expiry-check
+    echo ""
+    echo "══ Summary ══════════════════════════════════════════════════════════"
+    fail_count=0
+    for i in "${!sections[@]}"; do
+        printf '  %-35s %s\n' "${sections[$i]}" "${statuses[$i]}"
+        [ "${statuses[$i]}" = "FAIL" ] && fail_count=$((fail_count + 1))
+    done
+    echo ""
+    if [ "$fail_count" -eq 0 ]; then
+        echo "All sections passed. Continue with the human-judgment checklist in the quarterly reminder issue."
+    else
+        echo "$fail_count section(s) reported findings — review output above and triage into issues."
+    fi
+
 # ─── Utilities ───────────────────────────────────────────────────────────────
 
 # Remove build artifacts

@@ -1,0 +1,106 @@
+name: Quarterly Review
+
+# Opens a tracking issue every quarter (14:07 UTC on the 1st of Jan/Apr/Jul/Oct)
+# with the checklist for the long-cycle maintenance items that need human
+# judgment: `just quarterly` output review, /codebase-audit triage, doc drift,
+# on-hold issue review, advisory-ignore expiry review.
+#
+# The issue is the tracking container — close it when the checklist is done.
+# Idempotent: re-running in the same quarter does NOT create a duplicate.
+#
+# Companion: `just quarterly` recipe (justfile) and CONTRIBUTING.md
+# "Maintenance Cadence" section.
+
+on:
+  schedule:
+    # 14:07 UTC, 1st of Jan/Apr/Jul/Oct. Off-mark minute to avoid the :00
+    # stampede on GitHub Actions runners (matches ci.yml convention).
+    - cron: "7 14 1 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  open-reminder:
+    name: Open quarterly reminder issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute quarter
+        id: q
+        run: |
+          year=$(date -u +%Y)
+          month=$(date -u +%-m)
+          quarter=$(( (month - 1) / 3 + 1 ))
+          echo "year=$year" >> "$GITHUB_OUTPUT"
+          echo "quarter=$quarter" >> "$GITHUB_OUTPUT"
+          echo "title=Quarterly review — $year Q$quarter" >> "$GITHUB_OUTPUT"
+
+      - name: Check for existing issue (idempotency guard)
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: ${{ steps.q.outputs.title }}
+        run: |
+          # `in:title` + label filter so we do not false-match on body mentions
+          # in other issues. --state all so closed prior runs still dedupe.
+          count=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --label "audit/quarterly" \
+            --state all \
+            --search "in:title \"$TITLE\"" \
+            --json number \
+            --jq 'length')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -gt 0 ]; then
+            echo "Issue \"$TITLE\" already exists ($count match) — skipping create."
+          fi
+
+      - name: Create reminder issue
+        if: steps.existing.outputs.count == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: ${{ steps.q.outputs.title }}
+          YEAR: ${{ steps.q.outputs.year }}
+          QUARTER: ${{ steps.q.outputs.quarter }}
+        run: |
+          body=$(cat <<EOF
+          Tracking issue for the **$YEAR Q$QUARTER** quarterly maintenance pass.
+          Close this issue when every box below is checked.
+
+          See [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md#maintenance-cadence)
+          for the cadence rationale and [\`justfile\`](../blob/main/justfile)
+          for the \`just quarterly\` recipe.
+
+          ## Automatable scans
+
+          - [ ] Run \`just quarterly\`, review per-section output, file issues for any action items.
+
+          ## Human-judgment review
+
+          - [ ] Run \`/codebase-audit\` and triage findings into issues.
+          - [ ] Review CLAUDE.md and top-level docs for drift against code reality.
+          - [ ] Walk open \`status/on-hold\` issues; unblock or close stale ones.
+          - [ ] Check advisory ignore-list expiry dates in \`deny.toml\` and re-evaluate due items.
+          - [ ] Review \`severity/medium\`+ open issues for staleness.
+          - [ ] Refresh license allow-list in \`deny.toml\` against the inventory from \`cargo deny list\`.
+
+          ---
+
+          _Opened automatically by \`.github/workflows/quarterly-review.yml\`._
+          EOF
+          )
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --body "$body" \
+            --label "severity/low" \
+            --label "type/operations" \
+            --label "audit/quarterly"

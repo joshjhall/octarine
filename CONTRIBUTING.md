@@ -153,6 +153,30 @@ re-export used only at the boundary), document it with a
 ignored = ["some-dep"]   # why it's kept
 ```
 
+### Maintenance Cadence
+
+Two cadences cover dependency and code health:
+
+- **Short cycle (CI / daily)** — `just clippy`, `just test`, `just deps-audit`,
+  `just deps-deny`, `just deps-osv` run on every push, PR, and the daily
+  schedule in `.github/workflows/ci.yml`. These catch regressions and new
+  advisories within 24 hours.
+- **Long cycle (quarterly)** — `just quarterly` chains the short-cycle scans
+  with deeper checks that need human judgment to act on: `cargo outdated`
+  (version bump decisions), `cargo tree --duplicates` (dep-graph drift),
+  `cargo deny list` (license inventory refresh), `just deps-expiry-check`
+  (past-due `re-evaluate YYYY-MM-DD` markers in `deny.toml`), and optional
+  `cargo geiger` (unsafe-code surface). The recipe is non-halting so one
+  failing section does not mask another.
+
+The companion workflow `.github/workflows/quarterly-review.yml` opens a
+**reminder issue** on the 1st of January, April, July, and October with the
+full checklist (automatable scans + judgment-heavy items like
+`/codebase-audit` triage, CLAUDE.md drift review, and `status/on-hold`
+issue triage). The issue is the tracking container — close it when the
+checklist is done. The workflow is idempotent: re-running it within the
+same quarter does not create a duplicate.
+
 ## SemVer Policy
 
 octarine is a foundational library. Downstream crates depend on a stable
