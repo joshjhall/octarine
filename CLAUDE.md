@@ -308,9 +308,15 @@ The `testing/` module provides:
 (`--all-features`, `-j4`, etc.) across agents, CI, and human developers. Raw
 commands can miss feature-gated code or use wrong flags.
 
+Tests run under [`cargo-nextest`](https://nexte.st/) (process-per-test isolation,
+retry support, JUnit output). Doctests still run via `cargo test --doc` because
+nextest cannot drive them. `just test` runs both.
+
 ```bash
-just test                                 # All workspace tests
-just test-octarine                        # Octarine crate only
+just test                                 # nextest + doctests (full workspace)
+just test-nextest                         # nextest only (skip doctests)
+just test-docs                            # doctests only
+just test-octarine                        # Octarine crate only (nextest)
 just test-mod "module::path"              # Unit tests by module path (e.g., "correlation::proximity")
 just test-filter PATTERN                  # Filter by test name across workspace
 just test-verbose                         # All tests with output visible
@@ -336,7 +342,9 @@ assertions under CI coverage. Run them manually before releases:
 just test-perf
 ```
 
-See `docs/architecture/testing-patterns.md` for thresholds and details.
+Other timing-sensitive tests get two retries on CI (via nextest's `ci` profile)
+so transient runner contention does not block PRs. See
+`docs/architecture/testing-patterns.md` for thresholds and details.
 
 ## Common Patterns
 

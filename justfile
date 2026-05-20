@@ -65,38 +65,48 @@ semver-check:
 
 # ─── Test ────────────────────────────────────────────────────────────────────
 
-# Run all workspace tests (all features — matches `just clippy`)
-test:
-    cargo test --workspace --all-features -j4
+# Run all workspace tests + doctests (all features — matches `just clippy`).
+# Tests run under cargo-nextest; doctests run via `cargo test --doc` because
+# nextest cannot drive doctests.
+test: test-nextest test-docs
+
+# Run nextest-managed tests (everything except doctests)
+test-nextest:
+    cargo nextest run --workspace --all-features --build-jobs 4
+
+# Run doctests via cargo (nextest cannot run doctests)
+test-docs:
+    cargo test --workspace --all-features --doc -j4
 
 # Run tests with output visible
 test-verbose:
-    cargo test --workspace --all-features -j4 -- --nocapture
+    cargo nextest run --workspace --all-features --build-jobs 4 --no-capture
 
 # Run tests for the octarine crate only
 test-octarine:
-    cargo test -p octarine --all-features -j4
+    cargo nextest run -p octarine --all-features --build-jobs 4
 
-# Run performance/timing tests (ignored by default, run before releases)
+# Run performance/timing tests (ignored by default, run before releases).
+# Filterset unions three regex patterns matched against the prior cargo
+# substring filters, in a single nextest invocation.
 test-perf:
-    cargo test -p octarine --all-features -j4 test_perf_ -- --ignored
-    cargo test -p octarine --all-features -j4 test_adversarial_ -- --ignored
-    cargo test -p octarine --all-features -j4 test_batch_processor_time_flush -- --ignored
+    cargo nextest run -p octarine --all-features --build-jobs 4 --run-ignored ignored-only \
+        -E 'test(/^test_perf_/) + test(/^test_adversarial_/) + test(test_batch_processor_time_flush)'
 
 # Run tests with the testing feature enabled (kept for explicit minimal-feature runs)
 test-with-fixtures:
-    cargo test -p octarine -j4 --features testing
+    cargo nextest run -p octarine --build-jobs 4 --features testing
 
 # Run a specific test by name pattern
 test-filter PATTERN:
-    cargo test --workspace --all-features -j4 -- {{PATTERN}}
+    cargo nextest run --workspace --all-features --build-jobs 4 -E 'test(/{{PATTERN}}/)'
 
 # Run lib unit tests in octarine by module path, optionally enabling features.
 # Examples:
 #   just test-mod correlation::proximity
 #   just test-mod observe::writers::database sqlite,postgres
 test-mod PATTERN FEATURES='':
-    cargo test -p octarine --lib -j4 --features "{{FEATURES}}" -- {{PATTERN}}
+    cargo nextest run -p octarine --lib --build-jobs 4 --features "{{FEATURES}}" -E 'test(/{{PATTERN}}/)'
 
 # ─── Coverage ────────────────────────────────────────────────────────────────
 
@@ -253,7 +263,7 @@ test-count:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Counting tests..."
-    count=$(cargo test --workspace -j4 -- --list 2>&1 | grep -c ': test$')
+    count=$(cargo nextest list --workspace --all-features 2>&1 | /usr/bin/grep -cE '^\s+[A-Za-z]' || true)
     echo "$count tests found"
 
 # ─── Release ────────────────────────────────────────────────────────────────
