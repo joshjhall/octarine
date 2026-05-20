@@ -45,6 +45,7 @@ target/criterion/
 
 # Claude Code local state
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 .claude/memory/tmp/
 .claude/worktrees/
 .worktrees/
