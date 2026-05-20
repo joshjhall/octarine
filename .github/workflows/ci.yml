@@ -119,6 +119,26 @@ jobs:
       - uses: taiki-e/install-action@just
       - run: just lint-md
 
+  actionlint:
+    name: Actionlint
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actionlint
+        # No taiki-e/install-action recipe yet; install the static
+        # Linux binary directly. Pinned to v1.7.12 to match the
+        # version shipped by containers v4.19.2's dev-tools feature
+        # so the dev-container hook and CI run identical binaries.
+        # shellcheck is preinstalled on ubuntu-latest runners.
+        run: |
+          version=1.7.12
+          url="https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_amd64.tar.gz"
+          curl -fsSL "$url" | sudo tar -xz -C /usr/local/bin actionlint
+          actionlint -version
+      - uses: taiki-e/install-action@just
+      - run: just lint-workflows
+
   machete:
     name: Machete
     runs-on: ubuntu-latest

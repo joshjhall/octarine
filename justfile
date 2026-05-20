@@ -199,6 +199,10 @@ lint-md:
 fmt-md:
     rumdl fmt .
 
+# Lint GitHub Actions workflows with actionlint (embedded shellcheck at warning severity)
+lint-workflows:
+    actionlint -shellcheck "shellcheck --severity=warning"
+
 # Lint a commit message against the conform policy (default: HEAD's message)
 commit-lint FILE='.git/COMMIT_EDITMSG':
     conform enforce --commit-msg-file {{FILE}}
@@ -209,8 +213,8 @@ commit-lint-branch:
 
 # ─── Pre-flight (run before push / PR) ──────────────────────────────────────
 
-# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, lint-deps, spell, arch-check, tests
-preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker lint-md lint-deps spell arch-check test
+# Full pre-push validation: fmt, clippy, shellcheck, lint-docker, lint-md, lint-workflows, lint-deps, spell, arch-check, tests
+preflight: fmt-check fmt-data-check fmt-sh-check clippy shellcheck lint-docker lint-md lint-workflows lint-deps spell arch-check test
 
 # Everything including perf tests (run before releases)
 preflight-full: preflight test-perf
