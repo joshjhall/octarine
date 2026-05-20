@@ -139,6 +139,19 @@ pre-commit:
         - run: "! command -v hadolint >/dev/null 2>&1"
       run: hadolint {staged_files}
 
+    # --- GitHub Actions workflow linting (actionlint) ---
+
+    actionlint:
+      # actionlint is shipped by the containers dev-tools feature; skip
+      # gracefully if running outside a dev-tools container — CI is the
+      # safety net. actionlint embeds shellcheck for `run:` blocks; the
+      # top-level shellcheck hook only globs *.sh, so no double-lint.
+      # --severity=warning matches the project shellcheck policy.
+      glob: ".github/workflows/*.{yml,yaml}"
+      skip:
+        - run: "! command -v actionlint >/dev/null 2>&1"
+      run: actionlint -shellcheck "shellcheck --severity=warning" {staged_files}
+
     # --- Markdown linting (rumdl) ---
 
     rumdl:
