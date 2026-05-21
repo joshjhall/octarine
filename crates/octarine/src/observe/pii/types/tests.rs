@@ -179,6 +179,8 @@ fn test_country_specific_government_classifications() {
         PiiType::BrazilCnpj,
         PiiType::MexicoCurp,
         PiiType::NigeriaNin,
+        PiiType::NigeriaBvn,
+        PiiType::NigeriaVehicleReg,
         PiiType::ThailandTnin,
         PiiType::SingaporeNric,
     ] {
@@ -399,6 +401,14 @@ fn from_identifier_type_direct_mappings() {
     assert_eq!(
         PiiType::from(IdentifierType::NigeriaNin),
         PiiType::NigeriaNin
+    );
+    assert_eq!(
+        PiiType::from(IdentifierType::NigeriaBvn),
+        PiiType::NigeriaBvn
+    );
+    assert_eq!(
+        PiiType::from(IdentifierType::NigeriaVehicleReg),
+        PiiType::NigeriaVehicleReg
     );
     assert_eq!(
         PiiType::from(IdentifierType::ThailandTnin),

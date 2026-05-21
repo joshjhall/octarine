@@ -23,7 +23,7 @@ impl PiiType {
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
             Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
-            Self::BrazilCpf | Self::BrazilCnpj | Self::MexicoCurp | Self::NigeriaNin | Self::ThailandTnin |
+            Self::BrazilCpf | Self::BrazilCnpj | Self::MexicoCurp | Self::NigeriaNin | Self::NigeriaBvn | Self::NigeriaVehicleReg | Self::ThailandTnin |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Medical (HIPAA)

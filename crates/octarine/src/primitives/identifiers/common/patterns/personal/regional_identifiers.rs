@@ -114,6 +114,75 @@ pub(crate) mod nigeria_nin {
     }
 }
 
+/// Nigeria BVN (Bank Verification Number) patterns
+///
+/// Format: 11 plain digits. The unlabeled form is identical to NIN, phone
+/// numbers, and many other identifiers, so scanning uses LABELED only —
+/// analogous to `nigeria_nin`. Direct `is_nigeria_bvn()` checks still accept
+/// the bare 11-digit form.
+///
+/// Note: NIN and BVN labels are disjoint (`NIN|national identification
+/// number|NIMC` vs `BVN|bank verification|verification number`) so the two
+/// scanners do not cross-match.
+pub(crate) mod nigeria_bvn {
+    use super::*;
+
+    /// BVN standard format (11 digits, no separators)
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{11}\b").expect("BUG: Invalid regex pattern"));
+
+    /// BVN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:BVN|bank[\s-]?verification(?:[\s-]?number)?|verification[\s-]?number)[\s:#-]*(\d{11})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Returns patterns used for text scanning (LABELED only — STANDARD is
+    /// `\d{11}` which matches phone numbers, NINs, and many other 11-digit
+    /// strings).
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Nigeria Vehicle Registration patterns
+///
+/// Current (post-2020) format: 3-letter LGA code + 3 digits + 2 letters
+/// (e.g. `LAG-123-AB`, `ABC456XY`). Pre-2020 legacy format: 2 letters + 3
+/// digits + `-` + 3 letters (e.g. `LA123-ABC`).
+///
+/// LGA codes (e.g. LAG, ABJ, KAN) are not enforced against a closed list —
+/// new codes are issued periodically and authoritative lists vary by source.
+pub(crate) mod nigeria_vehicle_reg {
+    use super::*;
+
+    /// Plate standard format (no separators for current; legacy keeps the
+    /// dash because `AA999AAA` is too generic to safely scan)
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b(?:[A-Z]{3}\d{3}[A-Z]{2}|[A-Z]{2}\d{3}-[A-Z]{3})\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Plate with spaces or hyphens between current-format segments
+    pub static WITH_SEPARATORS: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b[A-Z]{3}[\s-]\d{3}[\s-][A-Z]{2}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Plate with explicit label (current format with optional separators)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:vehicle[\s-]?(?:registration|plate|number)?|number[\s-]?plate|plate[\s-]?(?:no\.?|number)?|reg[\s-]?no\.?)[\s:#-]*([A-Z]{3}[\s-]?\d{3}[\s-]?[A-Z]{2})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_SEPARATORS, &*STANDARD]
+    }
+}
+
 /// Thailand TNIN (National Identification Number) patterns
 ///
 /// Format: 13 digits. Display form `N-NNNN-NNNNN-NN-N`.

@@ -173,6 +173,8 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::BrazilCnpj
             | PiiType::MexicoCurp
             | PiiType::NigeriaNin
+            | PiiType::NigeriaBvn
+            | PiiType::NigeriaVehicleReg
             | PiiType::ThailandTnin
             | PiiType::SingaporeNric
             | PiiType::FinlandHetu

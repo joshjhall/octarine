@@ -87,6 +87,8 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::BrazilCnpj => Self::BrazilCnpj,
             IdentifierType::MexicoCurp => Self::MexicoCurp,
             IdentifierType::NigeriaNin => Self::NigeriaNin,
+            IdentifierType::NigeriaBvn => Self::NigeriaBvn,
+            IdentifierType::NigeriaVehicleReg => Self::NigeriaVehicleReg,
             IdentifierType::ThailandTnin => Self::ThailandTnin,
             IdentifierType::SingaporeNric => Self::SingaporeNric,
             IdentifierType::FinlandHetu => Self::FinlandHetu,

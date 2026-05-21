@@ -142,6 +142,14 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::NigeriaNin,
         ),
         (
+            GovernmentIdentifierBuilder::find_nigeria_bvns_in_text,
+            PiiType::NigeriaBvn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_nigeria_vehicle_registrations_in_text,
+            PiiType::NigeriaVehicleReg,
+        ),
+        (
             GovernmentIdentifierBuilder::find_thailand_tnins_in_text,
             PiiType::ThailandTnin,
         ),
