@@ -38,10 +38,12 @@ pub(crate) mod password {
     /// Example: "password=secret123" → ("password=", "secret123")
     /// Example: "passwort=geheim123" → ("passwort=", "geheim123")
     ///
-    /// Supports English + Spanish, French, German, Portuguese, Italian, Dutch translations.
+    /// Supports English + European (Spanish, French, German, Portuguese,
+    /// Italian, Dutch) and non-Latin scripts (Japanese, Chinese Simplified,
+    /// Chinese Traditional, Korean, Arabic, Hindi).
     pub static FIELD: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r#"(?i)\b(password|passwd|pwd|pass|secret|credential|contrasena|contrasenya|clave|mot_de_passe|motdepasse|passwort|kennwort|senha|wachtwoord|secreto|geheimnis|segredo|segreto|geheim)\s*[:=]\s*['"]?([^\s'"}\]]+)['"]?"#,
+            r#"(?i)\b(password|passwd|pwd|pass|secret|credential|contrasena|contrasenya|clave|mot_de_passe|motdepasse|passwort|kennwort|senha|wachtwoord|secreto|geheimnis|segredo|segreto|geheim|パスワード|秘密鍵|暗号|鍵|密码|密钥|口令|凭证|密碼|密鑰|憑證|비밀번호|암호|비밀키|كلمة المرور|كلمة_المرور|مفتاح|سر|पासवर्ड|कुंजी|गुप्त)\s*[:=]\s*['"]?([^\s'"}\]]+)['"]?"#,
         )
         .expect("BUG: Invalid password field regex")
     });
@@ -50,9 +52,10 @@ pub(crate) mod password {
     /// Captures: (key) (value)
     /// Example: {"password": "hunter2"} → ("password", "hunter2")
     ///
-    /// Supports English + Spanish, French, German, Portuguese, Italian, Dutch translations.
+    /// Supports English + European and non-Latin scripts (Japanese, Chinese,
+    /// Korean, Arabic, Hindi).
     pub static JSON: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r#"["'](password|passwd|pwd|pass|secret|credential|contrasena|contrasenya|clave|mot_de_passe|motdepasse|passwort|kennwort|senha|wachtwoord|secreto|geheimnis|segredo|segreto|geheim)["']\s*:\s*["']([^"']+)["']"#)
+        Regex::new(r#"["'](password|passwd|pwd|pass|secret|credential|contrasena|contrasenya|clave|mot_de_passe|motdepasse|passwort|kennwort|senha|wachtwoord|secreto|geheimnis|segredo|segreto|geheim|パスワード|秘密鍵|暗号|鍵|密码|密钥|口令|凭证|密碼|密鑰|憑證|비밀번호|암호|비밀키|كلمة المرور|كلمة_المرور|مفتاح|سر|पासवर्ड|कुंजी|गुप्त)["']\s*:\s*["']([^"']+)["']"#)
             .expect("BUG: Invalid JSON password regex")
     });
 
@@ -123,19 +126,21 @@ pub(crate) mod passphrase {
     /// Captures: (label) (value)
     /// Note: Passphrases can contain spaces, so we capture until end of line or closing bracket/quote
     ///
-    /// Supports English + Spanish, French, German, Portuguese, Dutch translations.
+    /// Supports English + European (Spanish, French, German, Portuguese, Dutch)
+    /// and non-Latin scripts (Japanese, Chinese, Korean, Hindi).
     pub static FIELD: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r#"(?i)\b(passphrase|pass_phrase|frase_de_paso|phrase_de_passe|kennphrase|frase_secreta|wachtwoordzin)\s*[:=]\s*['"]?([^'"}\]]+?)['"]?(?:\s|$|[}\]])"#,
+            r#"(?i)\b(passphrase|pass_phrase|frase_de_paso|phrase_de_passe|kennphrase|frase_secreta|wachtwoordzin|合言葉|口令|암호문|गुप्तकूट)\s*[:=]\s*['"]?([^'"}\]]+?)['"]?(?:\s|$|[}\]])"#,
         )
         .expect("BUG: Invalid passphrase field regex")
     });
 
     /// JSON passphrase pattern
     ///
-    /// Supports English + Spanish, French, German, Portuguese, Dutch translations.
+    /// Supports English + European and non-Latin scripts (Japanese, Chinese,
+    /// Korean, Hindi).
     pub static JSON: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r#"["'](passphrase|pass_phrase|frase_de_paso|phrase_de_passe|kennphrase|frase_secreta|wachtwoordzin)["']\s*:\s*["']([^"']+)["']"#)
+        Regex::new(r#"["'](passphrase|pass_phrase|frase_de_paso|phrase_de_passe|kennphrase|frase_secreta|wachtwoordzin|合言葉|口令|암호문|गुप्तकूट)["']\s*:\s*["']([^"']+)["']"#)
             .expect("BUG: Invalid JSON passphrase regex")
     });
 
@@ -311,6 +316,97 @@ mod tests {
     fn test_passphrase_json_international() {
         assert!(passphrase::JSON.is_match(r#""frase_de_paso": "palabras secretas""#));
         assert!(passphrase::JSON.is_match(r#""kennphrase": "geheime worte""#));
+    }
+
+    // ==================== CJK / ARABIC / HINDI KEYWORD TESTS (Issue #35) ====================
+
+    #[test]
+    fn test_password_field_japanese() {
+        assert!(password::FIELD.is_match("パスワード=secret123"));
+        assert!(password::FIELD.is_match("パスワード: hunter2"));
+        assert!(password::FIELD.is_match("秘密鍵=keyvalue"));
+        assert!(password::FIELD.is_match("暗号=cipher123"));
+    }
+
+    #[test]
+    fn test_password_field_chinese_simplified() {
+        assert!(password::FIELD.is_match("密码=secret123"));
+        assert!(password::FIELD.is_match("密钥: keyvalue"));
+        assert!(password::FIELD.is_match("口令=passphrase"));
+        assert!(password::FIELD.is_match("凭证=credential123"));
+    }
+
+    #[test]
+    fn test_password_field_chinese_traditional() {
+        assert!(password::FIELD.is_match("密碼=secret123"));
+        assert!(password::FIELD.is_match("密鑰: keyvalue"));
+        assert!(password::FIELD.is_match("憑證=credential123"));
+    }
+
+    #[test]
+    fn test_password_field_korean() {
+        assert!(password::FIELD.is_match("비밀번호=secret123"));
+        assert!(password::FIELD.is_match("암호: hunter2"));
+        assert!(password::FIELD.is_match("비밀키=keyvalue"));
+    }
+
+    #[test]
+    fn test_password_field_arabic() {
+        // Both space form (text/JSON labels) and underscore form (variable names)
+        assert!(password::FIELD.is_match("كلمة المرور: secret123"));
+        assert!(password::FIELD.is_match("كلمة_المرور=secret123"));
+        assert!(password::FIELD.is_match("مفتاح=keyvalue"));
+        assert!(password::FIELD.is_match("سر=secretvalue"));
+    }
+
+    #[test]
+    fn test_password_field_hindi() {
+        assert!(password::FIELD.is_match("पासवर्ड=secret123"));
+        assert!(password::FIELD.is_match("कुंजी: keyvalue"));
+        assert!(password::FIELD.is_match("गुप्त=secretvalue"));
+    }
+
+    #[test]
+    fn test_password_json_cjk() {
+        assert!(password::JSON.is_match(r#""パスワード": "hunter2""#));
+        assert!(password::JSON.is_match(r#""密码": "secret123""#));
+        assert!(password::JSON.is_match(r#""密碼": "secret123""#));
+        assert!(password::JSON.is_match(r#""비밀번호": "k0r34n""#));
+    }
+
+    #[test]
+    fn test_password_json_arabic_hindi() {
+        assert!(password::JSON.is_match(r#""كلمة المرور": "secret123""#));
+        assert!(password::JSON.is_match(r#""كلمة_المرور": "secret123""#));
+        assert!(password::JSON.is_match(r#""पासवर्ड": "secret123""#));
+    }
+
+    #[test]
+    fn test_password_captures_cjk() {
+        let caps = password::FIELD
+            .captures("パスワード=hunter2")
+            .expect("should match Japanese password");
+        assert_eq!(caps.get(1).expect("group 1 label").as_str(), "パスワード");
+        assert_eq!(caps.get(2).expect("group 2 value").as_str(), "hunter2");
+    }
+
+    #[test]
+    fn test_passphrase_field_cjk_hindi() {
+        // Japanese
+        assert!(passphrase::FIELD.is_match("合言葉=correct horse battery staple"));
+        // Chinese (Simplified) — 口令 also serves as passphrase
+        assert!(passphrase::FIELD.is_match("口令=my secret words"));
+        // Korean
+        assert!(passphrase::FIELD.is_match("암호문: many secret words"));
+        // Hindi
+        assert!(passphrase::FIELD.is_match("गुप्तकूट=mein gupt vakya"));
+    }
+
+    #[test]
+    fn test_passphrase_json_cjk_hindi() {
+        assert!(passphrase::JSON.is_match(r#""合言葉": "correct horse battery staple""#));
+        assert!(passphrase::JSON.is_match(r#""암호문": "my secret words""#));
+        assert!(passphrase::JSON.is_match(r#""गुप्तकूट": "mein gupt vakya""#));
     }
 
     // ==================== FALSE POSITIVE TESTS ====================

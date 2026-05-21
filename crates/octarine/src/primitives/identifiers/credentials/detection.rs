@@ -23,6 +23,157 @@ use super::super::common::patterns::network;
 // Re-export types from shared types module
 pub use super::super::types::{CredentialMatch, CredentialType};
 
+// ============================================================================
+// Quick-Check Keyword Tables
+// ============================================================================
+//
+// These tables are scanned by `is_*_present` before invoking the more expensive
+// regex matchers. Every entry must be lowercase — the input is lowercased via
+// `to_lowercase()` before lookup. CJK, Arabic, and Hindi scripts have no notion
+// of case, so `to_lowercase()` is identity for them and the entries below are
+// in their natural form.
+//
+// Limitation: matching is byte-level `str::contains` and does NOT apply Unicode
+// NFC/NFD normalization. Inputs that paste decomposed forms (e.g. Korean
+// jamo decomposed as ㅂ+ㅣ instead of 비) will not match, the same way
+// European keywords with combining diacritics would not. If a future
+// regression demands NFC normalization, apply it consistently to both the
+// input and these tables.
+
+/// Keywords triggering the credential pre-filter (passwords, secrets, PINs,
+/// passphrases, credentials, tokens, keys, authentication labels).
+const CREDENTIAL_KEYWORDS: &[&str] = &[
+    // English
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "pin",
+    "passphrase",
+    "credential",
+    // European: Spanish, French, German, Portuguese, Italian, Dutch
+    "contrasena",
+    "clave",
+    "mot_de_passe",
+    "passwort",
+    "kennwort",
+    "senha",
+    "wachtwoord",
+    "geheimnis",
+    "segredo",
+    "segreto",
+    "geheim",
+    // Japanese
+    "パスワード",
+    "秘密鍵",
+    "認証",
+    "暗号",
+    "トークン",
+    "鍵",
+    "合言葉",
+    // Chinese (Simplified)
+    "密码",
+    "密钥",
+    "令牌",
+    "口令",
+    "凭证",
+    "认证",
+    // Chinese (Traditional)
+    "密碼",
+    "密鑰",
+    "憑證",
+    "認證",
+    // Korean
+    "비밀번호",
+    "암호",
+    "토큰",
+    "인증",
+    "비밀키",
+    "암호문",
+    // Arabic (space form for label text, underscore form for variable names)
+    "كلمة المرور",
+    "كلمة_المرور",
+    "مفتاح",
+    "سر",
+    "رمز",
+    // Hindi
+    "पासवर्ड",
+    "कुंजी",
+    "गुप्त",
+    "गुप्तकूट",
+];
+
+/// Keywords triggering the password pre-filter (password/pwd/secret family).
+const PASSWORD_KEYWORDS: &[&str] = &[
+    // English
+    "password",
+    "passwd",
+    "pwd",
+    "pass",
+    "secret",
+    "credential",
+    // European
+    "contrasena",
+    "clave",
+    "mot_de_passe",
+    "passwort",
+    "kennwort",
+    "senha",
+    "wachtwoord",
+    "geheimnis",
+    "segredo",
+    "segreto",
+    "geheim",
+    // Japanese
+    "パスワード",
+    "秘密鍵",
+    "暗号",
+    "鍵",
+    // Chinese (Simplified)
+    "密码",
+    "密钥",
+    "口令",
+    "凭证",
+    // Chinese (Traditional)
+    "密碼",
+    "密鑰",
+    "憑證",
+    // Korean
+    "비밀번호",
+    "암호",
+    "비밀키",
+    // Arabic
+    "كلمة المرور",
+    "كلمة_المرور",
+    "مفتاح",
+    "سر",
+    // Hindi
+    "पासवर्ड",
+    "कुंजी",
+    "गुप्त",
+];
+
+/// Keywords triggering the passphrase pre-filter.
+const PASSPHRASE_KEYWORDS: &[&str] = &[
+    // English
+    "passphrase",
+    "pass_phrase",
+    // European
+    "frase_de_paso",
+    "phrase_de_passe",
+    "kennphrase",
+    "frase_secreta",
+    "wachtwoordzin",
+    // Japanese
+    "合言葉",
+    // Chinese (Simplified)
+    "口令",
+    // Korean
+    "암호문",
+    // Hindi
+    "गुप्तकूट",
+];
+
 // Detection functions
 
 /// Check if text contains any credential patterns
@@ -33,25 +184,7 @@ pub fn is_credentials_present(text: &str) -> bool {
     let lower = text.to_lowercase();
 
     // Quick keyword check first (English + international translations)
-    if !lower.contains("password")
-        && !lower.contains("passwd")
-        && !lower.contains("pwd")
-        && !lower.contains("secret")
-        && !lower.contains("pin")
-        && !lower.contains("passphrase")
-        && !lower.contains("credential")
-        && !lower.contains("contrasena")
-        && !lower.contains("clave")
-        && !lower.contains("mot_de_passe")
-        && !lower.contains("passwort")
-        && !lower.contains("kennwort")
-        && !lower.contains("senha")
-        && !lower.contains("wachtwoord")
-        && !lower.contains("geheimnis")
-        && !lower.contains("segredo")
-        && !lower.contains("segreto")
-        && !lower.contains("geheim")
-    {
+    if !CREDENTIAL_KEYWORDS.iter().any(|k| lower.contains(k)) {
         return false;
     }
 
@@ -68,24 +201,7 @@ pub fn is_credentials_present(text: &str) -> bool {
 #[must_use]
 pub fn is_passwords_present(text: &str) -> bool {
     let lower = text.to_lowercase();
-    if !lower.contains("password")
-        && !lower.contains("passwd")
-        && !lower.contains("pwd")
-        && !lower.contains("pass")
-        && !lower.contains("secret")
-        && !lower.contains("credential")
-        && !lower.contains("contrasena")
-        && !lower.contains("clave")
-        && !lower.contains("mot_de_passe")
-        && !lower.contains("passwort")
-        && !lower.contains("kennwort")
-        && !lower.contains("senha")
-        && !lower.contains("wachtwoord")
-        && !lower.contains("geheimnis")
-        && !lower.contains("segredo")
-        && !lower.contains("segreto")
-        && !lower.contains("geheim")
-    {
+    if !PASSWORD_KEYWORDS.iter().any(|k| lower.contains(k)) {
         return false;
     }
 
@@ -121,14 +237,7 @@ pub fn is_security_answers_present(text: &str) -> bool {
 #[must_use]
 pub fn is_passphrases_present(text: &str) -> bool {
     let lower = text.to_lowercase();
-    if !lower.contains("passphrase")
-        && !lower.contains("pass_phrase")
-        && !lower.contains("frase_de_paso")
-        && !lower.contains("phrase_de_passe")
-        && !lower.contains("kennphrase")
-        && !lower.contains("frase_secreta")
-        && !lower.contains("wachtwoordzin")
-    {
+    if !PASSPHRASE_KEYWORDS.iter().any(|k| lower.contains(k)) {
         return false;
     }
 
@@ -623,6 +732,107 @@ mod tests {
         assert_eq!(matches.len(), 1);
         let first = matches.first().expect("should detect Portuguese password");
         assert_eq!(first.value, "segredo123");
+    }
+
+    // ------------------------------------------------------------------------
+    // CJK / Arabic / Hindi keyword tests (Issue #35)
+    // ------------------------------------------------------------------------
+
+    #[test]
+    fn test_is_passwords_present_cjk() {
+        // Japanese
+        assert!(is_passwords_present("パスワード=secret123"));
+        // Chinese Simplified
+        assert!(is_passwords_present("密码=secret123"));
+        // Chinese Traditional
+        assert!(is_passwords_present("密碼=secret123"));
+        // Korean
+        assert!(is_passwords_present("비밀번호=secret123"));
+    }
+
+    #[test]
+    fn test_is_passwords_present_arabic_hindi() {
+        // Arabic: both space and underscore variants
+        assert!(is_passwords_present("كلمة المرور: secret123"));
+        assert!(is_passwords_present("كلمة_المرور=secret123"));
+        // Hindi
+        assert!(is_passwords_present("पासवर्ड=secret123"));
+    }
+
+    #[test]
+    fn test_is_credentials_present_cjk_arabic_hindi() {
+        assert!(is_credentials_present("パスワード=secret"));
+        assert!(is_credentials_present("密码=secret"));
+        assert!(is_credentials_present("비밀번호=secret"));
+        assert!(is_credentials_present("كلمة المرور: secret"));
+        assert!(is_credentials_present("पासवर्ड=secret"));
+
+        // Plain non-Latin text without a credential keyword must not trip the filter.
+        assert!(!is_credentials_present("日本語のテキスト"));
+        assert!(!is_credentials_present("中文文本"));
+        assert!(!is_credentials_present("نص عربي عام"));
+        assert!(!is_credentials_present("सामान्य हिंदी पाठ"));
+    }
+
+    #[test]
+    fn test_is_passphrases_present_cjk_hindi() {
+        // Japanese passphrase
+        assert!(is_passphrases_present(
+            "合言葉=correct horse battery staple"
+        ));
+        // Korean passphrase
+        assert!(is_passphrases_present("암호문: my secret words"));
+        // Hindi passphrase
+        assert!(is_passphrases_present("गुप्तकूट=correct horse battery staple"));
+    }
+
+    #[test]
+    fn test_detect_passwords_cjk() {
+        let matches = detect_passwords("パスワード=hunter2");
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("should detect Japanese password");
+        assert_eq!(first.value, "hunter2");
+        assert_eq!(first.label, "パスワード");
+        assert_eq!(first.credential_type, CredentialType::Password);
+    }
+
+    #[test]
+    fn test_detect_passwords_mixed_scripts_json() {
+        // Real-world style multilingual config — one document with several
+        // languages of password labels. Each should be detected and captured.
+        let text = r#"{"パスワード": "ja_secret", "密码": "zh_secret", "비밀번호": "ko_secret"}"#;
+        let matches = detect_passwords(text);
+        assert_eq!(matches.len(), 3);
+
+        let values: Vec<&str> = matches.iter().map(|m| m.value.as_str()).collect();
+        assert!(values.contains(&"ja_secret"));
+        assert!(values.contains(&"zh_secret"));
+        assert!(values.contains(&"ko_secret"));
+    }
+
+    #[test]
+    fn test_english_european_still_works_after_refactor() {
+        // Smoke regression for the .contains() → const slice refactor.
+        // Each branch of the old chain is exercised here.
+        assert!(is_passwords_present("password=secret"));
+        assert!(is_passwords_present("passwd=secret"));
+        assert!(is_passwords_present("pwd=secret"));
+        assert!(is_passwords_present("contrasena=secreto"));
+        assert!(is_passwords_present("passwort=geheim"));
+        assert!(is_passwords_present("senha=segredo"));
+        assert!(is_passwords_present("wachtwoord=geheim"));
+        assert!(is_passwords_present("segreto=valore"));
+        assert!(!is_passwords_present("no credentials here"));
+
+        assert!(is_passphrases_present(
+            "passphrase=correct horse battery staple"
+        ));
+        assert!(is_passphrases_present(
+            "frase_de_paso=palabras secretas aqui"
+        ));
+        assert!(!is_passphrases_present(
+            "just regular text without keywords"
+        ));
     }
 
     #[test]

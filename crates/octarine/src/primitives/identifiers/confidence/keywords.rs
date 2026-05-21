@@ -131,6 +131,33 @@ pub fn context_keywords(entity_type: &IdentifierType) -> &'static [&'static str]
             "secret key",
             "auth token",
             "authorization",
+            // Japanese
+            "apiキー",
+            "認証",
+            "トークン",
+            "秘密鍵",
+            // Chinese (Simplified)
+            "api密钥",
+            "认证",
+            "令牌",
+            "密钥",
+            // Chinese (Traditional)
+            "api密鑰",
+            "認證",
+            "密鑰",
+            // Korean
+            "api키",
+            "인증",
+            "토큰",
+            "비밀키",
+            // Arabic
+            "مفتاح api",
+            "رمز",
+            "مصادقة",
+            // Hindi
+            "एपीआई कुंजी",
+            "टोकन",
+            "प्रमाणीकरण",
         ],
         IdentifierType::AwsAccessKey => &[
             "aws",
@@ -245,6 +272,20 @@ mod tests {
         let keywords = context_keywords(&IdentifierType::ApiKey);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"api key"));
+    }
+
+    #[test]
+    fn test_api_key_keywords_include_non_latin_scripts() {
+        let keywords = context_keywords(&IdentifierType::ApiKey);
+        // Spot-check one keyword per script family. Existing
+        // `test_all_keywords_are_lowercase` enforces the lowercase invariant
+        // across every entry.
+        assert!(keywords.contains(&"apiキー"), "Japanese api key missing");
+        assert!(keywords.contains(&"api密钥"), "Chinese Simplified missing");
+        assert!(keywords.contains(&"api密鑰"), "Chinese Traditional missing");
+        assert!(keywords.contains(&"api키"), "Korean missing");
+        assert!(keywords.contains(&"مفتاح api"), "Arabic missing");
+        assert!(keywords.contains(&"एपीआई कुंजी"), "Hindi missing");
     }
 
     #[test]
