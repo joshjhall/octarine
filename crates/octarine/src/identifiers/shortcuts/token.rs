@@ -106,6 +106,58 @@ pub fn is_bearer_token(value: &str) -> bool {
     TokenBuilder::new().is_bearer_token(value)
 }
 
+// ============================================================
+// DEVELOPER-PLATFORM TOKEN SHORTCUTS
+// ============================================================
+
+/// Check if value is a Heroku modern API token (HRKU-AA prefix)
+#[must_use]
+pub fn is_heroku_token(value: &str) -> bool {
+    TokenBuilder::new().is_heroku_token(value)
+}
+
+/// Check if value is a Linear API key (lin_api_ prefix)
+#[must_use]
+pub fn is_linear_token(value: &str) -> bool {
+    TokenBuilder::new().is_linear_token(value)
+}
+
+/// Check if value is a Doppler token (service/CLI/SCM/service-account)
+#[must_use]
+pub fn is_doppler_token(value: &str) -> bool {
+    TokenBuilder::new().is_doppler_token(value)
+}
+
+/// Check if value is a Netlify Personal Access Token (nfp_ prefix)
+#[must_use]
+pub fn is_netlify_token(value: &str) -> bool {
+    TokenBuilder::new().is_netlify_token(value)
+}
+
+/// Check if value is a Fly.io macaroon-based token (FlyV1 prefix)
+#[must_use]
+pub fn is_fly_io_token(value: &str) -> bool {
+    TokenBuilder::new().is_fly_io_token(value)
+}
+
+/// Check if value is a Render API key (rnd_ prefix)
+#[must_use]
+pub fn is_render_token(value: &str) -> bool {
+    TokenBuilder::new().is_render_token(value)
+}
+
+/// Check if value is a PlanetScale service token (pscale_tkn_ prefix)
+#[must_use]
+pub fn is_planetscale_token(value: &str) -> bool {
+    TokenBuilder::new().is_planetscale_token(value)
+}
+
+/// Check if value is a Supabase Personal Access Token (sbp_ prefix)
+#[must_use]
+pub fn is_supabase_token(value: &str) -> bool {
+    TokenBuilder::new().is_supabase_token(value)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -185,5 +237,36 @@ mod tests {
         assert!(validate_session_id("short").is_err());
         // Obvious test session IDs are rejected
         assert!(validate_session_id("test_session_12345678").is_err());
+    }
+
+    #[test]
+    fn test_developer_platform_token_shortcuts() {
+        assert!(is_heroku_token(&format!("HRKU-AA{}", "a".repeat(58))));
+        assert!(!is_heroku_token("not-a-token"));
+
+        assert!(is_linear_token(&format!("lin_api_{}", "A".repeat(40))));
+        assert!(!is_linear_token("lin_api_short"));
+
+        assert!(is_doppler_token(&format!("dp.st.{}", "a".repeat(40))));
+        assert!(is_doppler_token(&format!("dp.sa.{}", "a".repeat(40))));
+        assert!(!is_doppler_token(&format!("dp.xx.{}", "a".repeat(40))));
+
+        assert!(is_netlify_token(&format!("nfp_{}", "a".repeat(40))));
+        assert!(!is_netlify_token("nfp_short"));
+
+        assert!(is_fly_io_token(&format!("FlyV1 {}", "a".repeat(100))));
+        assert!(!is_fly_io_token("FlyV1 short"));
+
+        assert!(is_render_token(&format!("rnd_{}", "A".repeat(32))));
+        assert!(!is_render_token("rnd_short"));
+
+        assert!(is_planetscale_token(&format!(
+            "pscale_tkn_{}",
+            "A".repeat(40)
+        )));
+        assert!(!is_planetscale_token("pscale_tkn_short"));
+
+        assert!(is_supabase_token(&format!("sbp_{}", "a".repeat(40))));
+        assert!(!is_supabase_token("sbp_short"));
     }
 }

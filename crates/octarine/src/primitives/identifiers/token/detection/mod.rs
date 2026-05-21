@@ -49,13 +49,15 @@ pub use api_keys::{
     detect_api_key_provider, is_api_key, is_artifactory_token, is_aws_access_key,
     is_aws_secret_key, is_aws_session_token, is_azure_connection_string, is_azure_key,
     is_bearer_token, is_bitbucket_token, is_brevo_key, is_cloudflare_ca_key, is_databricks_token,
-    is_discord_token, is_discord_webhook, is_docker_hub_token, is_firebase_fcm_key, is_gcp_api_key,
-    is_gcp_oauth_client_secret, is_gcp_service_account, is_gcp_service_account_email,
-    is_github_token, is_gitlab_token, is_mailchimp_key, is_mailgun_key, is_npm_token, is_nuget_key,
-    is_onepassword_token, is_onepassword_vault_ref, is_openai_key, is_paypal_token, is_pypi_token,
-    is_resend_key, is_sendgrid_key, is_shopify_token, is_slack_token, is_slack_webhook,
-    is_square_token, is_stripe_key, is_telegram_bot_token, is_test_api_key, is_twilio_account_sid,
-    is_twilio_api_key_sid, is_url_with_credentials, is_vault_token,
+    is_discord_token, is_discord_webhook, is_docker_hub_token, is_doppler_token,
+    is_firebase_fcm_key, is_fly_io_token, is_gcp_api_key, is_gcp_oauth_client_secret,
+    is_gcp_service_account, is_gcp_service_account_email, is_github_token, is_gitlab_token,
+    is_heroku_token, is_linear_token, is_mailchimp_key, is_mailgun_key, is_netlify_token,
+    is_npm_token, is_nuget_key, is_onepassword_token, is_onepassword_vault_ref, is_openai_key,
+    is_paypal_token, is_planetscale_token, is_pypi_token, is_render_token, is_resend_key,
+    is_sendgrid_key, is_shopify_token, is_slack_token, is_slack_webhook, is_square_token,
+    is_stripe_key, is_supabase_token, is_telegram_bot_token, is_test_api_key,
+    is_twilio_account_sid, is_twilio_api_key_sid, is_url_with_credentials, is_vault_token,
 };
 
 // Re-export SSH functions
@@ -187,6 +189,30 @@ pub fn detect_token_type(value: &str) -> Option<TokenType> {
     }
     if is_openai_key(trimmed) {
         return Some(TokenType::OpenAiKey);
+    }
+    if is_heroku_token(trimmed) {
+        return Some(TokenType::HerokuToken);
+    }
+    if is_linear_token(trimmed) {
+        return Some(TokenType::LinearToken);
+    }
+    if is_doppler_token(trimmed) {
+        return Some(TokenType::DopplerToken);
+    }
+    if is_netlify_token(trimmed) {
+        return Some(TokenType::NetlifyToken);
+    }
+    if is_fly_io_token(trimmed) {
+        return Some(TokenType::FlyIoToken);
+    }
+    if is_render_token(trimmed) {
+        return Some(TokenType::RenderToken);
+    }
+    if is_planetscale_token(trimmed) {
+        return Some(TokenType::PlanetScaleToken);
+    }
+    if is_supabase_token(trimmed) {
+        return Some(TokenType::SupabaseToken);
     }
     if is_aws_access_key(trimmed) {
         return Some(TokenType::AwsAccessKey);
@@ -325,7 +351,15 @@ pub fn detect_token_identifier(value: &str) -> Option<IdentifierType> {
         | TokenType::TwilioToken
         | TokenType::SendGridToken
         | TokenType::OpenAiKey
-        | TokenType::BitbucketToken => IdentifierType::ApiKey,
+        | TokenType::BitbucketToken
+        | TokenType::HerokuToken
+        | TokenType::LinearToken
+        | TokenType::DopplerToken
+        | TokenType::NetlifyToken
+        | TokenType::FlyIoToken
+        | TokenType::RenderToken
+        | TokenType::PlanetScaleToken
+        | TokenType::SupabaseToken => IdentifierType::ApiKey,
     })
 }
 

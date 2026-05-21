@@ -124,6 +124,14 @@ impl PiiType {
             Self::DiscordToken => "discord_token",
             Self::SlackToken => "slack_token",
             Self::TwilioToken => "twilio_token",
+            Self::HerokuToken => "heroku_token",
+            Self::LinearToken => "linear_token",
+            Self::DopplerToken => "doppler_token",
+            Self::NetlifyToken => "netlify_token",
+            Self::FlyIoToken => "fly_io_token",
+            Self::RenderToken => "render_token",
+            Self::PlanetScaleToken => "planetscale_token",
+            Self::SupabaseToken => "supabase_token",
             // Credential
             Self::Password => "password",
             Self::Pin => "pin",
@@ -236,7 +244,15 @@ impl PiiType {
             | Self::OpenAiKey
             | Self::DiscordToken
             | Self::SlackToken
-            | Self::TwilioToken => "token",
+            | Self::TwilioToken
+            | Self::HerokuToken
+            | Self::LinearToken
+            | Self::DopplerToken
+            | Self::NetlifyToken
+            | Self::FlyIoToken
+            | Self::RenderToken
+            | Self::PlanetScaleToken
+            | Self::SupabaseToken => "token",
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase => "credential",
             Self::Generic => "generic",
         }

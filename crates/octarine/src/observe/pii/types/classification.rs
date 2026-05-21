@@ -43,7 +43,9 @@ impl PiiType {
             Self::DatabricksToken | Self::VaultToken | Self::CloudflareOriginCaKey |
             Self::NpmToken | Self::PyPiToken | Self::NuGetKey | Self::ArtifactoryToken | Self::DockerHubToken |
             Self::TelegramToken | Self::SendGridToken | Self::OpenAiKey |
-            Self::DiscordToken | Self::SlackToken | Self::TwilioToken
+            Self::DiscordToken | Self::SlackToken | Self::TwilioToken |
+            Self::HerokuToken | Self::LinearToken | Self::DopplerToken | Self::NetlifyToken |
+            Self::FlyIoToken | Self::RenderToken | Self::PlanetScaleToken | Self::SupabaseToken
         )
     }
 
@@ -154,6 +156,14 @@ impl PiiType {
                 | Self::DiscordToken
                 | Self::SlackToken
                 | Self::TwilioToken
+                | Self::HerokuToken
+                | Self::LinearToken
+                | Self::DopplerToken
+                | Self::NetlifyToken
+                | Self::FlyIoToken
+                | Self::RenderToken
+                | Self::PlanetScaleToken
+                | Self::SupabaseToken
         )
     }
 }
