@@ -46,16 +46,19 @@ from `.claude/skills/` to prevent the most common implementation errors:
   Load its `implementation-template.md` companion for function signatures.
 - **`octarine-pii-bridge`** — WHEN adding identifier types that affect PII
   detection. Ensures `IdentifierType`, `PiiType`, and scanner domains stay
-  in sync across the three parallel registries.
+  in sync across the three parallel registries. Self-contained — no
+  companion file.
 - **`octarine-observe-integration`** — WHEN adding or modifying Layer 3
   builders. Enforces metrics, events, silent mode, and the `define_metrics!`
   macro pattern. Load its `patterns.md` companion for the metric registry.
 - **`octarine-test-resilience`** — WHEN writing tests involving timing,
   async, sleep, or performance benchmarks. Prevents flaky CI failures from
-  hard timing assertions and fixed sleeps.
+  hard timing assertions and fixed sleeps. Self-contained — no companion
+  file.
 - **`octarine-platform-compat`** — WHEN writing `cfg()` attributes,
   platform-specific code, file permissions, signal handling, or path
-  operations targeting Windows, macOS, Linux, or ARM64.
+  operations targeting Windows, macOS, Linux, or ARM64. Self-contained — no
+  companion file.
 - **`octarine-release`** — WHEN cutting a release, picking a bump type
   (major/minor/patch/beta/rc), or auditing a change for SemVer impact.
   Encodes the pre-1.0 versioning policy and the breaking-change catalog
