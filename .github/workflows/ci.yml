@@ -445,5 +445,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: nightly
+      - uses: taiki-e/install-action@cargo-nextest
       - uses: taiki-e/install-action@just
       - run: just test
