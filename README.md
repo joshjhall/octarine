@@ -85,6 +85,29 @@ Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/  �
 
 See [`docs/`](docs/) for detailed documentation and [`crates/octarine/examples/`](crates/octarine/examples/) for runnable examples.
 
+## Maintenance Status
+
+octarine is currently maintained by a single author
+([@joshjhall](https://github.com/joshjhall)). Domain knowledge for
+specialized subsystems — memory zeroization, compliance control mappings,
+post-quantum encryption, and provider-specific token detection — is
+concentrated in this maintainer.
+
+This posture is intentional for the pre-1.0 phase. Before tagging `1.0`,
+the following high-risk subsystems are targeted for third-party review:
+
+- `crypto/secrets/*` — memory zeroization, mlock, NIST key classification
+- `observe/compliance/*` — SOC2, HIPAA, GDPR, PCI-DSS, ISO 27001 control
+  mappings
+- `primitives/crypto/encryption/hybrid/*` — hybrid (post-quantum +
+  classical) encryption scheme
+- `primitives/identifiers/token/detection/api_keys/*` — provider-specific
+  token format detection
+
+See [`.github/CODEOWNERS`](.github/CODEOWNERS) for the review-required
+path list and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contributor
+on-ramp (dev setup, commit format, SemVer policy).
+
 ## License
 
 Dual-licensed under either of:
