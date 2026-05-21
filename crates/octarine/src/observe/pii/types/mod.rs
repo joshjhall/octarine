@@ -293,6 +293,22 @@ pub enum PiiType {
     SlackToken,
     /// Twilio Account SID (AC...) or API Key SID (SK...)
     TwilioToken,
+    /// Heroku modern API token (HRKU-AA prefix)
+    HerokuToken,
+    /// Linear API key (lin_api_ prefix)
+    LinearToken,
+    /// Doppler service/CLI/SCM/service-account token
+    DopplerToken,
+    /// Netlify Personal Access Token (nfp_ prefix)
+    NetlifyToken,
+    /// Fly.io macaroon-based token (FlyV1 prefix)
+    FlyIoToken,
+    /// Render API key (rnd_ prefix)
+    RenderToken,
+    /// PlanetScale service token (pscale_tkn_ prefix)
+    PlanetScaleToken,
+    /// Supabase Personal Access Token (sbp_ prefix)
+    SupabaseToken,
 
     // =========================================================================
     // Credential Domain (NIST 800-63 Factor 1: Something You Know)

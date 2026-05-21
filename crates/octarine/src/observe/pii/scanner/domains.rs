@@ -455,6 +455,14 @@ fn token_type_to_pii(t: TokenType) -> Option<PiiType> {
         TokenType::DiscordToken => PiiType::DiscordToken,
         TokenType::SlackToken => PiiType::SlackToken,
         TokenType::TwilioToken => PiiType::TwilioToken,
+        TokenType::HerokuToken => PiiType::HerokuToken,
+        TokenType::LinearToken => PiiType::LinearToken,
+        TokenType::DopplerToken => PiiType::DopplerToken,
+        TokenType::NetlifyToken => PiiType::NetlifyToken,
+        TokenType::FlyIoToken => PiiType::FlyIoToken,
+        TokenType::RenderToken => PiiType::RenderToken,
+        TokenType::PlanetScaleToken => PiiType::PlanetScaleToken,
+        TokenType::SupabaseToken => PiiType::SupabaseToken,
         // Already handled by sibling dispatches in scan_tokens — return
         // None to avoid double-emission.
         TokenType::Jwt

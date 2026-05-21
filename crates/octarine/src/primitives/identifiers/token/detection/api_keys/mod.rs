@@ -19,6 +19,7 @@
 mod ai;
 mod aws;
 mod data_platforms;
+mod dev_platforms;
 mod email_marketing;
 mod generic;
 mod google;
@@ -33,6 +34,7 @@ mod source_control;
 pub use ai::*;
 pub use aws::*;
 pub use data_platforms::*;
+pub use dev_platforms::*;
 pub use email_marketing::*;
 pub use generic::*;
 pub use google::*;
@@ -258,6 +260,36 @@ pub fn detect_api_key_provider(key: &str) -> Option<ApiKeyProvider> {
         return Some(ApiKeyProvider::Bitbucket);
     }
 
+    // Developer-platform tokens (prefix-based, unambiguous)
+    if key.starts_with("HRKU-AA") {
+        return Some(ApiKeyProvider::Heroku);
+    }
+    if key_lower.starts_with("lin_api_") {
+        return Some(ApiKeyProvider::Linear);
+    }
+    if key_lower.starts_with("dp.st.")
+        || key_lower.starts_with("dp.ct.")
+        || key_lower.starts_with("dp.scm.")
+        || key_lower.starts_with("dp.sa.")
+    {
+        return Some(ApiKeyProvider::Doppler);
+    }
+    if key_lower.starts_with("nfp_") {
+        return Some(ApiKeyProvider::Netlify);
+    }
+    if key.starts_with("FlyV1 ") {
+        return Some(ApiKeyProvider::FlyIo);
+    }
+    if key_lower.starts_with("rnd_") {
+        return Some(ApiKeyProvider::Render);
+    }
+    if key_lower.starts_with("pscale_tkn_") {
+        return Some(ApiKeyProvider::PlanetScale);
+    }
+    if key_lower.starts_with("sbp_") {
+        return Some(ApiKeyProvider::Supabase);
+    }
+
     // Generic/unknown provider
     Some(ApiKeyProvider::Generic)
 }
@@ -300,6 +332,14 @@ pub fn is_api_key(value: &str) -> bool {
         || patterns::network::API_KEY_OPENAI_LEGACY.is_match(trimmed)
         || patterns::network::API_KEY_OPENAI_PROJECT.is_match(trimmed)
         || patterns::network::API_KEY_OPENAI_ORG.is_match(trimmed)
+        || patterns::network::API_KEY_HEROKU.is_match(trimmed)
+        || patterns::network::API_KEY_LINEAR.is_match(trimmed)
+        || patterns::network::API_KEY_DOPPLER.is_match(trimmed)
+        || patterns::network::API_KEY_NETLIFY.is_match(trimmed)
+        || patterns::network::API_KEY_FLY_IO.is_match(trimmed)
+        || patterns::network::API_KEY_RENDER.is_match(trimmed)
+        || patterns::network::API_KEY_PLANETSCALE.is_match(trimmed)
+        || patterns::network::API_KEY_SUPABASE.is_match(trimmed)
         || (trimmed.len() <= MAX_AZURE_KEY_LENGTH
             && patterns::network::API_KEY_AZURE.is_match(trimmed))
 }
@@ -737,6 +777,78 @@ mod tests {
         assert_eq!(
             detect_api_key_provider(&format!("org-{}", "a".repeat(24))),
             Some(ApiKeyProvider::OpenAi)
+        );
+    }
+
+    // ========================================================================
+    // detect_api_key_provider — developer-platform tokens
+    // ========================================================================
+
+    #[test]
+    fn test_detect_heroku_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("HRKU-AA{}", "a".repeat(58))),
+            Some(ApiKeyProvider::Heroku)
+        );
+    }
+
+    #[test]
+    fn test_detect_linear_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("lin_api_{}", "A".repeat(40))),
+            Some(ApiKeyProvider::Linear)
+        );
+    }
+
+    #[test]
+    fn test_detect_doppler_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("dp.st.{}", "a".repeat(40))),
+            Some(ApiKeyProvider::Doppler)
+        );
+        assert_eq!(
+            detect_api_key_provider(&format!("dp.sa.{}", "a".repeat(40))),
+            Some(ApiKeyProvider::Doppler)
+        );
+    }
+
+    #[test]
+    fn test_detect_netlify_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("nfp_{}", "a".repeat(40))),
+            Some(ApiKeyProvider::Netlify)
+        );
+    }
+
+    #[test]
+    fn test_detect_fly_io_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("FlyV1 {}", "a".repeat(100))),
+            Some(ApiKeyProvider::FlyIo)
+        );
+    }
+
+    #[test]
+    fn test_detect_render_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("rnd_{}", "A".repeat(32))),
+            Some(ApiKeyProvider::Render)
+        );
+    }
+
+    #[test]
+    fn test_detect_planetscale_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("pscale_tkn_{}", "A".repeat(40))),
+            Some(ApiKeyProvider::PlanetScale)
+        );
+    }
+
+    #[test]
+    fn test_detect_supabase_provider() {
+        assert_eq!(
+            detect_api_key_provider(&format!("sbp_{}", "a".repeat(40))),
+            Some(ApiKeyProvider::Supabase)
         );
     }
 

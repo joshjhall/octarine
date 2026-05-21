@@ -204,6 +204,54 @@ impl TokenBuilder {
         self.inner.is_gitlab_token(value)
     }
 
+    /// Check if value is a Heroku modern API token
+    #[must_use]
+    pub fn is_heroku_token(&self, value: &str) -> bool {
+        self.inner.is_heroku_token(value)
+    }
+
+    /// Check if value is a Linear API key
+    #[must_use]
+    pub fn is_linear_token(&self, value: &str) -> bool {
+        self.inner.is_linear_token(value)
+    }
+
+    /// Check if value is a Doppler token (service/CLI/SCM/service-account)
+    #[must_use]
+    pub fn is_doppler_token(&self, value: &str) -> bool {
+        self.inner.is_doppler_token(value)
+    }
+
+    /// Check if value is a Netlify Personal Access Token
+    #[must_use]
+    pub fn is_netlify_token(&self, value: &str) -> bool {
+        self.inner.is_netlify_token(value)
+    }
+
+    /// Check if value is a Fly.io macaroon-based token
+    #[must_use]
+    pub fn is_fly_io_token(&self, value: &str) -> bool {
+        self.inner.is_fly_io_token(value)
+    }
+
+    /// Check if value is a Render API key
+    #[must_use]
+    pub fn is_render_token(&self, value: &str) -> bool {
+        self.inner.is_render_token(value)
+    }
+
+    /// Check if value is a PlanetScale service token
+    #[must_use]
+    pub fn is_planetscale_token(&self, value: &str) -> bool {
+        self.inner.is_planetscale_token(value)
+    }
+
+    /// Check if value is a Supabase Personal Access Token
+    #[must_use]
+    pub fn is_supabase_token(&self, value: &str) -> bool {
+        self.inner.is_supabase_token(value)
+    }
+
     /// Check if value is a 1Password service account token
     #[must_use]
     pub fn is_onepassword_token(&self, value: &str) -> bool {

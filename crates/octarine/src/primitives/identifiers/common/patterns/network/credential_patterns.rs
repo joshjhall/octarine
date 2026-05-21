@@ -233,6 +233,49 @@ pub static API_KEY_CLOUDFLARE_CA: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\bv1\.0-[a-f0-9]{24}-[a-f0-9]{146}\b").expect("BUG: Invalid regex pattern")
 });
 
+/// Heroku modern API token (HRKU-AA prefix)
+/// Format: HRKU-AA[A-Za-z0-9_-]{58}
+pub static API_KEY_HEROKU: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bHRKU-AA[A-Za-z0-9_-]{58}\b").expect("BUG: Invalid regex pattern"));
+
+/// Linear API key pattern
+/// Format: lin_api_[A-Za-z0-9]{40}
+pub static API_KEY_LINEAR: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\blin_api_[A-Za-z0-9]{40}\b").expect("BUG: Invalid regex pattern"));
+
+/// Doppler token pattern (service token, CLI token, SCM token, service-account token)
+/// Format: dp.(st|ct|scm|sa).[A-Za-z0-9_-]{40,}
+pub static API_KEY_DOPPLER: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bdp\.(?:st|ct|scm|sa)\.[A-Za-z0-9_-]{40,}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// Netlify Personal Access Token pattern
+/// Format: nfp_[A-Za-z0-9]{40,}
+pub static API_KEY_NETLIFY: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bnfp_[A-Za-z0-9]{40,}\b").expect("BUG: Invalid regex pattern"));
+
+/// Fly.io macaroon-based token pattern
+/// Format: FlyV1 [A-Za-z0-9_-]{100,} (space separator after the FlyV1 prefix)
+pub static API_KEY_FLY_IO: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bFlyV1\s[A-Za-z0-9_-]{100,}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// Render API key pattern
+/// Format: rnd_[A-Za-z0-9]{32,}
+pub static API_KEY_RENDER: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\brnd_[A-Za-z0-9]{32,}\b").expect("BUG: Invalid regex pattern"));
+
+/// PlanetScale service token pattern
+/// Format: pscale_tkn_[A-Za-z0-9_-]{40,}
+pub static API_KEY_PLANETSCALE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\bpscale_tkn_[A-Za-z0-9_-]{40,}\b").expect("BUG: Invalid regex pattern")
+});
+
+/// Supabase Personal Access Token pattern
+/// Format: sbp_[a-f0-9]{40}
+pub static API_KEY_SUPABASE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\bsbp_[a-f0-9]{40}\b").expect("BUG: Invalid regex pattern"));
+
 /// NPM access token pattern
 /// Format: npm_[a-zA-Z0-9]{36}
 /// Example: "npm_" + 36 alnum chars

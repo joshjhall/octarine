@@ -73,6 +73,22 @@ pub enum ApiKeyProvider {
     OpenAi,
     /// Bitbucket Cloud app passwords (ATBB...)
     Bitbucket,
+    /// Heroku modern API token (`HRKU-AA[A-Za-z0-9_-]{58}`)
+    Heroku,
+    /// Linear API key (`lin_api_[A-Za-z0-9]{40}`)
+    Linear,
+    /// Doppler tokens (`dp.{st,ct,scm,sa}.[A-Za-z0-9_-]{40,}`)
+    Doppler,
+    /// Netlify Personal Access Token (`nfp_[A-Za-z0-9]{40,}`)
+    Netlify,
+    /// Fly.io macaroon-based token (`FlyV1 [A-Za-z0-9_-]{100,}`)
+    FlyIo,
+    /// Render API key (`rnd_[A-Za-z0-9]{32,}`)
+    Render,
+    /// PlanetScale service token (`pscale_tkn_[A-Za-z0-9_-]{40,}`)
+    PlanetScale,
+    /// Supabase Personal Access Token (`sbp_[a-f0-9]{40}`)
+    Supabase,
     /// Generic or unknown provider
     Generic,
 }
@@ -111,6 +127,14 @@ impl std::fmt::Display for ApiKeyProvider {
             Self::SendGrid => write!(f, "SendGrid"),
             Self::OpenAi => write!(f, "OpenAI"),
             Self::Bitbucket => write!(f, "Bitbucket"),
+            Self::Heroku => write!(f, "Heroku"),
+            Self::Linear => write!(f, "Linear"),
+            Self::Doppler => write!(f, "Doppler"),
+            Self::Netlify => write!(f, "Netlify"),
+            Self::FlyIo => write!(f, "Fly.io"),
+            Self::Render => write!(f, "Render"),
+            Self::PlanetScale => write!(f, "PlanetScale"),
+            Self::Supabase => write!(f, "Supabase"),
             Self::Generic => write!(f, "Generic"),
         }
     }
@@ -309,4 +333,20 @@ pub enum TokenType {
     OpenAiKey,
     /// Bitbucket Cloud App Password (ATBB...)
     BitbucketToken,
+    /// Heroku modern API token (HRKU-AA prefix)
+    HerokuToken,
+    /// Linear API key (lin_api_ prefix)
+    LinearToken,
+    /// Doppler service/CLI/SCM/service-account token
+    DopplerToken,
+    /// Netlify Personal Access Token (nfp_ prefix)
+    NetlifyToken,
+    /// Fly.io macaroon-based token (FlyV1 prefix)
+    FlyIoToken,
+    /// Render API key (rnd_ prefix)
+    RenderToken,
+    /// PlanetScale service token (pscale_tkn_ prefix)
+    PlanetScaleToken,
+    /// Supabase Personal Access Token (sbp_ prefix)
+    SupabaseToken,
 }
