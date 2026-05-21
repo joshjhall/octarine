@@ -81,7 +81,11 @@ pub use india::{
 pub use korea_rrn::{find_korea_rrns_in_text, is_korea_rrn};
 pub use mexico::{find_mexico_curps_in_text, is_mexico_curp};
 pub use national_id::{find_national_ids_in_text, find_uk_nis_in_text, is_national_id, is_uk_ni};
-pub use nigeria::{find_nigeria_nins_in_text, is_nigeria_nin};
+pub use nigeria::{
+    find_nigeria_bvns_in_text, find_nigeria_nins_in_text,
+    find_nigeria_vehicle_registrations_in_text, is_nigeria_bvn, is_nigeria_nin,
+    is_nigeria_vehicle_registration,
+};
 pub use passport::{find_passports_in_text, is_passport};
 pub use singapore::{find_singapore_nrics_in_text, is_singapore_nric};
 pub use ssn::{find_ssns_in_text, is_ssn};
@@ -105,6 +109,7 @@ pub use vehicle_id::{find_vehicle_ids_in_text, is_vehicle_id};
 /// assert_eq!(detection::detect_government_identifier("not an id"), None);
 /// ```
 #[must_use]
+#[allow(clippy::cognitive_complexity)]
 pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
     if is_ssn(value) {
         Some(IdentifierType::Ssn)
@@ -134,7 +139,12 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::MexicoCurp)
     } else if is_thailand_tnin(value) {
         Some(IdentifierType::ThailandTnin)
+    } else if is_nigeria_vehicle_registration(value) {
+        Some(IdentifierType::NigeriaVehicleReg)
     } else if is_nigeria_nin(value) {
+        // NIN and BVN share the same shape (`\d{11}`). The dispatcher returns
+        // NIN for any 11-digit value — callers needing BVN precision should use
+        // `find_nigeria_bvns_in_text`, which is label-gated.
         Some(IdentifierType::NigeriaNin)
     } else if is_singapore_nric(value) {
         Some(IdentifierType::SingaporeNric)
@@ -207,6 +217,8 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_brazil_cnpjs_in_text(text));
     all_matches.extend(find_mexico_curps_in_text(text));
     all_matches.extend(find_nigeria_nins_in_text(text));
+    all_matches.extend(find_nigeria_bvns_in_text(text));
+    all_matches.extend(find_nigeria_vehicle_registrations_in_text(text));
     all_matches.extend(find_thailand_tnins_in_text(text));
     all_matches.extend(find_singapore_nrics_in_text(text));
     all_matches.extend(find_finland_hetus_in_text(text));

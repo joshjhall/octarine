@@ -64,27 +64,29 @@ pub enum IdentifierType {
     Ein,   // Employer Identification Number (XX-XXXXXXX, IRS campus prefix)
     TaxId, // TIN, ITIN (EIN has its own variant)
     NationalId,
-    KoreaRrn,        // South Korea Resident Registration Number
-    AustraliaTfn,    // Australian Tax File Number
-    AustraliaAbn,    // Australian Business Number
-    IndiaAadhaar,    // Indian Aadhaar number (Verhoeff checksum)
-    IndiaPan,        // Indian Permanent Account Number
-    IndiaGstin,      // Indian Goods and Services Tax Identification Number (MOD-36 checksum)
-    IndiaVehicleReg, // Indian vehicle registration (license plate)
-    IndiaVoterId,    // Indian Voter ID (EPIC - Electors Photo Identity Card)
-    IndiaPassport,   // Indian passport (P/S/D type indicator + 7 digits)
-    BrazilCpf,       // Brazilian Cadastro de Pessoas Físicas (mod-11 dual check digits)
-    BrazilCnpj,      // Brazilian Cadastro Nacional da Pessoa Jurídica (mod-11 dual check digits)
-    MexicoCurp,      // Mexican Clave Única de Registro de Población (18 chars + check)
-    NigeriaNin,      // Nigerian National Identification Number (11 digits)
-    ThailandTnin,    // Thai National Identification Number (13 digits, mod-11 check)
-    SingaporeNric,   // Singapore NRIC/FIN
-    FinlandHetu,     // Finnish personal identity code
-    PolandPesel,     // Polish personal identity number (PESEL)
-    ItalyFiscalCode, // Italian Codice Fiscale
-    SpainNif,        // Spanish NIF (Numero de Identificacion Fiscal)
-    SpainNie,        // Spanish NIE (Numero de Identidad de Extranjero)
-    UkNi,            // UK National Insurance Number (NINO)
+    KoreaRrn,          // South Korea Resident Registration Number
+    AustraliaTfn,      // Australian Tax File Number
+    AustraliaAbn,      // Australian Business Number
+    IndiaAadhaar,      // Indian Aadhaar number (Verhoeff checksum)
+    IndiaPan,          // Indian Permanent Account Number
+    IndiaGstin,        // Indian Goods and Services Tax Identification Number (MOD-36 checksum)
+    IndiaVehicleReg,   // Indian vehicle registration (license plate)
+    IndiaVoterId,      // Indian Voter ID (EPIC - Electors Photo Identity Card)
+    IndiaPassport,     // Indian passport (P/S/D type indicator + 7 digits)
+    BrazilCpf,         // Brazilian Cadastro de Pessoas Físicas (mod-11 dual check digits)
+    BrazilCnpj,        // Brazilian Cadastro Nacional da Pessoa Jurídica (mod-11 dual check digits)
+    MexicoCurp,        // Mexican Clave Única de Registro de Población (18 chars + check)
+    NigeriaNin,        // Nigerian National Identification Number (11 digits)
+    NigeriaBvn,        // Nigerian Bank Verification Number (11 digits, no public checksum)
+    NigeriaVehicleReg, // Nigerian vehicle registration (XXX-NNN-XX current, AA999-AAA legacy)
+    ThailandTnin,      // Thai National Identification Number (13 digits, mod-11 check)
+    SingaporeNric,     // Singapore NRIC/FIN
+    FinlandHetu,       // Finnish personal identity code
+    PolandPesel,       // Polish personal identity number (PESEL)
+    ItalyFiscalCode,   // Italian Codice Fiscale
+    SpainNif,          // Spanish NIF (Numero de Identificacion Fiscal)
+    SpainNie,          // Spanish NIE (Numero de Identidad de Extranjero)
+    UkNi,              // UK National Insurance Number (NINO)
 
     // Organizational identifiers
     EmployeeId,

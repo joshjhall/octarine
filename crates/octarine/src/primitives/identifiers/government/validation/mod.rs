@@ -131,7 +131,10 @@ pub use brazil::{
 pub use mexico::{is_test_mexico_curp, validate_mexico_curp, validate_mexico_curp_with_checksum};
 
 // Re-export Nigeria functions
-pub use nigeria::{is_test_nigeria_nin, validate_nigeria_nin};
+pub use nigeria::{
+    is_test_nigeria_bvn, is_test_nigeria_nin, is_test_nigeria_vehicle_registration,
+    validate_nigeria_bvn, validate_nigeria_nin, validate_nigeria_vehicle_registration,
+};
 
 // Re-export Thailand functions
 pub use thailand::{

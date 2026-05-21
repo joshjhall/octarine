@@ -40,6 +40,8 @@ impl PiiType {
             Self::BrazilCnpj => "brazil_cnpj",
             Self::MexicoCurp => "mexico_curp",
             Self::NigeriaNin => "nigeria_nin",
+            Self::NigeriaBvn => "nigeria_bvn",
+            Self::NigeriaVehicleReg => "nigeria_vehicle_reg",
             Self::ThailandTnin => "thailand_tnin",
             Self::SingaporeNric => "singapore_nric",
             Self::FinlandHetu => "finland_hetu",
@@ -159,6 +161,8 @@ impl PiiType {
             | Self::BrazilCnpj
             | Self::MexicoCurp
             | Self::NigeriaNin
+            | Self::NigeriaBvn
+            | Self::NigeriaVehicleReg
             | Self::ThailandTnin
             | Self::SingaporeNric
             | Self::FinlandHetu

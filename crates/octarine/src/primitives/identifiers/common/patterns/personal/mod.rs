@@ -33,7 +33,8 @@ pub(crate) use global_identifiers::{
     india_vehicle_reg, india_voter_id, korea_rrn, national_id,
 };
 pub(crate) use regional_identifiers::{
-    birthdate, brazil_cnpj, brazil_cpf, finland_hetu, italy_fiscal_code, mexico_curp, nigeria_nin,
-    personal_name, poland_pesel, singapore_nric, spain_nie, spain_nif, thailand_tnin, uk_ni,
+    birthdate, brazil_cnpj, brazil_cpf, finland_hetu, italy_fiscal_code, mexico_curp, nigeria_bvn,
+    nigeria_nin, nigeria_vehicle_reg, personal_name, poland_pesel, singapore_nric, spain_nie,
+    spain_nif, thailand_tnin, uk_ni,
 };
 pub(crate) use us_identifiers::{driver_license, employee_id, passport, ssn, student_id, tax_id};

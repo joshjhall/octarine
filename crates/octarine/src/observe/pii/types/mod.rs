@@ -111,6 +111,10 @@ pub enum PiiType {
     MexicoCurp,
     /// Nigerian National Identification Number (NIN)
     NigeriaNin,
+    /// Nigerian Bank Verification Number (BVN, 11 digits)
+    NigeriaBvn,
+    /// Nigerian vehicle registration plate (XXX-NNN-XX current, AA999-AAA legacy)
+    NigeriaVehicleReg,
     /// Thai National Identification Number (TNIN, mod-11 check digit)
     ThailandTnin,
     /// Singapore NRIC / FIN
