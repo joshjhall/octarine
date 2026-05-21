@@ -1,0 +1,45 @@
+# CODEOWNERS — octarine
+#
+# Documents the solo-maintainer posture (see README.md "Maintenance Status").
+# Every path matches the default rule below; the explicit blocks beneath it
+# are reminders that flag the highest-risk subsystems for extra-careful
+# review on every change.
+#
+# Syntax: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+# First match in this file wins for any given path.
+
+# Default — every file in the repo
+*                                                                       @joshjhall
+
+# -----------------------------------------------------------------------------
+# High-risk subsystems (audit finding architecture-008, issue #199)
+# Domain knowledge concentrated in a single maintainer; reviewer must
+# understand the subsystem's invariants before merging.
+# -----------------------------------------------------------------------------
+
+# Memory zeroization, mlock, NIST key classification
+/crates/octarine/src/crypto/secrets/                                    @joshjhall
+/crates/octarine/src/primitives/crypto/secrets/                         @joshjhall
+
+# SOC2, HIPAA, GDPR, PCI-DSS, ISO27001 control mappings
+/crates/octarine/src/observe/compliance/                                @joshjhall
+
+# Hybrid (post-quantum + classical) encryption scheme
+/crates/octarine/src/primitives/crypto/encryption/hybrid/                @joshjhall
+
+# Provider-specific API key detection (40+ formats)
+/crates/octarine/src/primitives/identifiers/token/detection/api_keys/    @joshjhall
+
+# -----------------------------------------------------------------------------
+# Load-bearing developer guidance
+# Changes to these files affect how every future contributor — human or
+# agent — implements the rest of the codebase.
+# -----------------------------------------------------------------------------
+
+/CLAUDE.md                                                              @joshjhall
+/docs/architecture/layer-architecture.md                                 @joshjhall
+/docs/security/                                                         @joshjhall
+/.claude/skills/octarine-architecture/                                   @joshjhall
+/.claude/skills/octarine-pii-bridge/                                     @joshjhall
+/.claude/skills/octarine-observe-integration/                            @joshjhall
+/.claude/skills/octarine-identifier-checklist/                           @joshjhall
