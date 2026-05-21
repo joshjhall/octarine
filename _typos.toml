@@ -31,6 +31,16 @@ nin = "nin"
 Nin = "Nin"
 NIN = "NIN"
 
+# Australian Company Number (primitives/identifiers/government/australia)
+acn = "acn"
+Acn = "Acn"
+ACN = "ACN"
+
+# Singapore Unique Entity Number (primitives/identifiers/government/singapore)
+uen = "uen"
+Uen = "Uen"
+UEN = "UEN"
+
 # MongoDB query operator $nin — NoSQL injection detection patterns
 # (covered by lowercase `nin` above)
 
