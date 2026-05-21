@@ -78,8 +78,10 @@ pub use national_id::{
 
 // Re-export Australia functions
 pub use australia::{
-    is_test_australia_abn, is_test_australia_tfn, validate_australia_abn,
-    validate_australia_abn_with_checksum, validate_australia_tfn,
+    is_test_australia_abn, is_test_australia_acn, is_test_australia_medicare,
+    is_test_australia_tfn, validate_australia_abn, validate_australia_abn_with_checksum,
+    validate_australia_acn, validate_australia_acn_with_checksum, validate_australia_medicare,
+    validate_australia_medicare_with_checksum, validate_australia_tfn,
     validate_australia_tfn_with_checksum,
 };
 
@@ -115,7 +117,8 @@ pub use india::{
 
 // Re-export Singapore functions
 pub use singapore::{
-    is_test_singapore_nric, validate_singapore_nric, validate_singapore_nric_with_checksum,
+    is_test_singapore_nric, is_test_singapore_uen, validate_singapore_nric,
+    validate_singapore_nric_with_checksum, validate_singapore_uen,
 };
 
 // Re-export Korea RRN functions

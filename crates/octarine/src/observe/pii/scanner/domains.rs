@@ -102,6 +102,14 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::AustraliaAbn,
         ),
         (
+            GovernmentIdentifierBuilder::find_australia_medicares_in_text,
+            PiiType::AustraliaMedicare,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_acns_in_text,
+            PiiType::AustraliaAcn,
+        ),
+        (
             GovernmentIdentifierBuilder::find_india_aadhaars_in_text,
             PiiType::IndiaAadhaar,
         ),
@@ -156,6 +164,10 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
         (
             GovernmentIdentifierBuilder::find_singapore_nrics_in_text,
             PiiType::SingaporeNric,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_singapore_uens_in_text,
+            PiiType::SingaporeUen,
         ),
         (
             GovernmentIdentifierBuilder::find_finland_hetus_in_text,

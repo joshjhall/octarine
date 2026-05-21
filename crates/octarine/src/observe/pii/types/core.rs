@@ -30,6 +30,8 @@ impl PiiType {
             Self::KoreaRrn => "korea_rrn",
             Self::AustraliaTfn => "australia_tfn",
             Self::AustraliaAbn => "australia_abn",
+            Self::AustraliaMedicare => "australia_medicare",
+            Self::AustraliaAcn => "australia_acn",
             Self::IndiaAadhaar => "india_aadhaar",
             Self::IndiaPan => "india_pan",
             Self::IndiaGstin => "india_gstin",
@@ -44,6 +46,7 @@ impl PiiType {
             Self::NigeriaVehicleReg => "nigeria_vehicle_reg",
             Self::ThailandTnin => "thailand_tnin",
             Self::SingaporeNric => "singapore_nric",
+            Self::SingaporeUen => "singapore_uen",
             Self::FinlandHetu => "finland_hetu",
             Self::PolandPesel => "poland_pesel",
             Self::ItalyFiscalCode => "italy_fiscal_code",
@@ -151,6 +154,8 @@ impl PiiType {
             | Self::KoreaRrn
             | Self::AustraliaTfn
             | Self::AustraliaAbn
+            | Self::AustraliaMedicare
+            | Self::AustraliaAcn
             | Self::IndiaAadhaar
             | Self::IndiaPan
             | Self::IndiaGstin
@@ -165,6 +170,7 @@ impl PiiType {
             | Self::NigeriaVehicleReg
             | Self::ThailandTnin
             | Self::SingaporeNric
+            | Self::SingaporeUen
             | Self::FinlandHetu
             | Self::PolandPesel
             | Self::ItalyFiscalCode

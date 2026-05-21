@@ -163,6 +163,8 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::KoreaRrn
             | PiiType::AustraliaTfn
             | PiiType::AustraliaAbn
+            | PiiType::AustraliaMedicare
+            | PiiType::AustraliaAcn
             | PiiType::IndiaAadhaar
             | PiiType::IndiaPan
             | PiiType::IndiaGstin
@@ -177,6 +179,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::NigeriaVehicleReg
             | PiiType::ThailandTnin
             | PiiType::SingaporeNric
+            | PiiType::SingaporeUen
             | PiiType::FinlandHetu
             | PiiType::PolandPesel
             | PiiType::ItalyFiscalCode

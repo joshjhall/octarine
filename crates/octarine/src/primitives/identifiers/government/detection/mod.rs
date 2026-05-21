@@ -61,7 +61,9 @@ mod thailand;
 mod vehicle_id;
 
 pub use australia::{
-    find_australia_abns_in_text, find_australia_tfns_in_text, is_australia_abn, is_australia_tfn,
+    find_australia_abns_in_text, find_australia_acns_in_text, find_australia_medicares_in_text,
+    find_australia_tfns_in_text, is_australia_abn, is_australia_acn, is_australia_medicare,
+    is_australia_tfn,
 };
 pub use brazil::{
     find_brazil_cnpjs_in_text, find_brazil_cpfs_in_text, is_brazil_cnpj, is_brazil_cpf,
@@ -87,7 +89,9 @@ pub use nigeria::{
     is_nigeria_vehicle_registration,
 };
 pub use passport::{find_passports_in_text, is_passport};
-pub use singapore::{find_singapore_nrics_in_text, is_singapore_nric};
+pub use singapore::{
+    find_singapore_nrics_in_text, find_singapore_uens_in_text, is_singapore_nric, is_singapore_uen,
+};
 pub use ssn::{find_ssns_in_text, is_ssn};
 pub use tax_id::{find_eins_in_text, find_tax_ids_in_text, is_ein, is_tax_id};
 pub use thailand::{find_thailand_tnins_in_text, is_thailand_tnin};
@@ -127,6 +131,10 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::AustraliaTfn)
     } else if is_australia_abn(value) {
         Some(IdentifierType::AustraliaAbn)
+    } else if is_australia_acn(value) {
+        Some(IdentifierType::AustraliaAcn)
+    } else if is_australia_medicare(value) {
+        Some(IdentifierType::AustraliaMedicare)
     } else if is_india_aadhaar(value) {
         Some(IdentifierType::IndiaAadhaar)
     } else if is_india_pan(value) {
@@ -148,6 +156,8 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::NigeriaNin)
     } else if is_singapore_nric(value) {
         Some(IdentifierType::SingaporeNric)
+    } else if is_singapore_uen(value) {
+        Some(IdentifierType::SingaporeUen)
     } else if is_finland_hetu(value) {
         Some(IdentifierType::FinlandHetu)
     } else if is_poland_pesel(value) {
@@ -207,6 +217,8 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_korea_rrns_in_text(text));
     all_matches.extend(find_australia_tfns_in_text(text));
     all_matches.extend(find_australia_abns_in_text(text));
+    all_matches.extend(find_australia_acns_in_text(text));
+    all_matches.extend(find_australia_medicares_in_text(text));
     all_matches.extend(find_india_aadhaars_in_text(text));
     all_matches.extend(find_india_pans_in_text(text));
     all_matches.extend(find_india_gstins_in_text(text));
@@ -221,6 +233,7 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_nigeria_vehicle_registrations_in_text(text));
     all_matches.extend(find_thailand_tnins_in_text(text));
     all_matches.extend(find_singapore_nrics_in_text(text));
+    all_matches.extend(find_singapore_uens_in_text(text));
     all_matches.extend(find_finland_hetus_in_text(text));
     all_matches.extend(find_poland_pesels_in_text(text));
     all_matches.extend(find_italy_fiscal_codes_in_text(text));

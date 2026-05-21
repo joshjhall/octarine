@@ -1,7 +1,10 @@
-//! Australian Tax File Number (TFN) and Business Number (ABN) validation
+//! Australian Tax File Number (TFN), Business Number (ABN), Medicare, and ACN validation
 //!
 //! TFN: 8-9 digit number with mod-11 weighted checksum
 //! ABN: 11 digit number with mod-89 weighted checksum (first digit adjusted)
+//! Medicare: 10 digits (optional 11th individual reference); first digit 2-6;
+//!   weighted mod-10 checksum using `[1, 3, 7, 9, 1, 3, 7, 9]`.
+//! ACN: 9 digits; weighted mod-10 checksum using `[8, 7, 6, 5, 4, 3, 2, 1]`.
 
 use crate::primitives::types::Problem;
 
@@ -10,6 +13,12 @@ const TFN_WEIGHTS: [u32; 9] = [1, 4, 3, 7, 5, 8, 6, 9, 10];
 
 /// Checksum weights for ABN validation
 const ABN_WEIGHTS: [u32; 11] = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+
+/// Checksum weights for Medicare (applied to first 8 digits, compared to 9th)
+const MEDICARE_WEIGHTS: [u32; 8] = [1, 3, 7, 9, 1, 3, 7, 9];
+
+/// Checksum weights for ACN (applied to first 8 digits, used in 10-sum%10 against 9th)
+const ACN_WEIGHTS: [u32; 8] = [8, 7, 6, 5, 4, 3, 2, 1];
 
 // ============================================================================
 // TFN Validation
@@ -143,6 +152,144 @@ pub fn validate_australia_abn_with_checksum(value: &str) -> Result<(), Problem> 
 /// Check if an ABN is a test/dummy pattern
 #[must_use]
 pub fn is_test_australia_abn(value: &str) -> bool {
+    let clean: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
+    is_test_pattern(&clean)
+}
+
+// ============================================================================
+// Medicare Validation
+// ============================================================================
+
+/// Validate Australian Medicare format (without checksum)
+///
+/// Accepts 10 digits (with optional 11th individual reference number).
+/// First digit must be 2-6 (issuer code).
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid.
+pub fn validate_australia_medicare(value: &str) -> Result<(), Problem> {
+    let digits = extract_digits(value, "Medicare")?;
+    let len = digits.len();
+
+    if len != 10 && len != 11 {
+        return Err(Problem::Validation(format!(
+            "Australian Medicare must be 10 or 11 digits, got {}",
+            len
+        )));
+    }
+
+    let first = digits.first().copied().unwrap_or(0);
+    if !(2..=6).contains(&first) {
+        return Err(Problem::Validation(format!(
+            "Australian Medicare first digit must be 2-6, got {}",
+            first
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate Australian Medicare with weighted mod-10 checksum
+///
+/// Algorithm: weighted sum of first 8 digits using `[1, 3, 7, 9, 1, 3, 7, 9]`,
+/// then `sum % 10` must equal the 9th digit. The 10th digit is the card
+/// issue number (not part of checksum); an optional 11th individual reference
+/// number is not validated.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid or checksum fails.
+pub fn validate_australia_medicare_with_checksum(value: &str) -> Result<(), Problem> {
+    validate_australia_medicare(value)?;
+
+    let digits = extract_digits(value, "Medicare")?;
+
+    let mut sum: u32 = 0;
+    for (i, &weight) in MEDICARE_WEIGHTS.iter().enumerate() {
+        let digit = digits.get(i).copied().unwrap_or(0);
+        sum = sum.saturating_add(digit.saturating_mul(weight));
+    }
+
+    let expected = sum % 10;
+    let actual = digits.get(8).copied().unwrap_or(0);
+
+    if expected != actual {
+        return Err(Problem::Validation(format!(
+            "Australian Medicare checksum failed: expected {}, got {}",
+            expected, actual
+        )));
+    }
+
+    Ok(())
+}
+
+/// Check if a Medicare value is a test/dummy pattern
+#[must_use]
+pub fn is_test_australia_medicare(value: &str) -> bool {
+    let clean: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
+    is_test_pattern(&clean)
+}
+
+// ============================================================================
+// ACN Validation
+// ============================================================================
+
+/// Validate Australian Company Number format (without checksum)
+///
+/// Checks that the value contains exactly 9 digits.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid.
+pub fn validate_australia_acn(value: &str) -> Result<(), Problem> {
+    let digits = extract_digits(value, "ACN")?;
+
+    if digits.len() != 9 {
+        return Err(Problem::Validation(format!(
+            "Australian ACN must be 9 digits, got {}",
+            digits.len()
+        )));
+    }
+
+    Ok(())
+}
+
+/// Validate Australian Company Number with weighted mod-10 checksum
+///
+/// Algorithm: weighted sum of first 8 digits using `[8, 7, 6, 5, 4, 3, 2, 1]`,
+/// then `(10 - sum % 10) % 10` must equal the 9th digit.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the format is invalid or checksum fails.
+pub fn validate_australia_acn_with_checksum(value: &str) -> Result<(), Problem> {
+    validate_australia_acn(value)?;
+
+    let digits = extract_digits(value, "ACN")?;
+
+    let mut sum: u32 = 0;
+    for (i, &weight) in ACN_WEIGHTS.iter().enumerate() {
+        let digit = digits.get(i).copied().unwrap_or(0);
+        sum = sum.saturating_add(digit.saturating_mul(weight));
+    }
+
+    let expected = (10u32.saturating_sub(sum % 10)) % 10;
+    let actual = digits.get(8).copied().unwrap_or(0);
+
+    if expected != actual {
+        return Err(Problem::Validation(format!(
+            "Australian ACN checksum failed: expected {}, got {}",
+            expected, actual
+        )));
+    }
+
+    Ok(())
+}
+
+/// Check if an ACN value is a test/dummy pattern
+#[must_use]
+pub fn is_test_australia_acn(value: &str) -> bool {
     let clean: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
     is_test_pattern(&clean)
 }
@@ -322,5 +469,160 @@ mod tests {
         assert!(is_test_australia_abn("00 000 000 000"));
         assert!(is_test_australia_abn("11111111111"));
         assert!(!is_test_australia_abn("51 824 753 556"));
+    }
+
+    // ===== Medicare Tests =====
+
+    // Build a valid 10-digit Medicare value from the first 8 digits by computing
+    // the 9th (checksum) digit and appending an arbitrary issue digit.
+    fn make_valid_medicare(first_eight: [u32; 8], issue: u32) -> String {
+        let mut sum: u32 = 0;
+        for (i, &weight) in MEDICARE_WEIGHTS.iter().enumerate() {
+            sum = sum.saturating_add(
+                first_eight
+                    .get(i)
+                    .copied()
+                    .unwrap_or(0)
+                    .saturating_mul(weight),
+            );
+        }
+        let check = sum % 10;
+        let mut out = String::new();
+        for d in first_eight.iter() {
+            out.push(char::from_digit(*d, 10).unwrap_or('0'));
+        }
+        out.push(char::from_digit(check, 10).unwrap_or('0'));
+        out.push(char::from_digit(issue % 10, 10).unwrap_or('0'));
+        out
+    }
+
+    #[test]
+    fn test_validate_medicare_valid_10_digits() {
+        assert!(validate_australia_medicare("2123456701").is_ok());
+    }
+
+    #[test]
+    fn test_validate_medicare_valid_with_spaces() {
+        assert!(validate_australia_medicare("2123 45670 1").is_ok());
+    }
+
+    #[test]
+    fn test_validate_medicare_with_11_digit_irn() {
+        assert!(validate_australia_medicare("21234567019").is_ok());
+    }
+
+    #[test]
+    fn test_validate_medicare_wrong_first_digit() {
+        assert!(validate_australia_medicare("1123456701").is_err());
+        assert!(validate_australia_medicare("7123456701").is_err());
+    }
+
+    #[test]
+    fn test_validate_medicare_wrong_length() {
+        assert!(validate_australia_medicare("212345670").is_err());
+        assert!(validate_australia_medicare("212345670199").is_err());
+    }
+
+    #[test]
+    fn test_validate_medicare_empty() {
+        assert!(validate_australia_medicare("").is_err());
+    }
+
+    #[test]
+    fn test_validate_medicare_with_checksum_valid() {
+        // Computed: digits [2,9,5,4,4,3,2,5] with check 9 -> 2954432595
+        let medicare = make_valid_medicare([2, 9, 5, 4, 4, 3, 2, 5], 5);
+        assert!(
+            validate_australia_medicare_with_checksum(&medicare).is_ok(),
+            "Generated valid Medicare should pass: {}",
+            medicare
+        );
+    }
+
+    #[test]
+    fn test_validate_medicare_with_checksum_invalid() {
+        let medicare = make_valid_medicare([2, 9, 5, 4, 4, 3, 2, 5], 5);
+        // Tamper the 9th digit (checksum position)
+        let mut chars: Vec<char> = medicare.chars().collect();
+        if let Some(c) = chars.get_mut(8) {
+            *c = if *c == '0' { '1' } else { '0' };
+        }
+        let tampered: String = chars.into_iter().collect();
+        assert!(validate_australia_medicare_with_checksum(&tampered).is_err());
+    }
+
+    #[test]
+    fn test_validate_medicare_with_checksum_all_prefixes() {
+        // All allowed first digits (2-6) compute valid Medicare numbers
+        for first in 2u32..=6 {
+            let medicare = make_valid_medicare([first, 1, 2, 3, 4, 5, 6, 7], 1);
+            assert!(
+                validate_australia_medicare_with_checksum(&medicare).is_ok(),
+                "First digit {} should produce a valid Medicare: {}",
+                first,
+                medicare
+            );
+        }
+    }
+
+    #[test]
+    fn test_is_test_medicare() {
+        assert!(is_test_australia_medicare("0000000000"));
+        assert!(is_test_australia_medicare("2222 22222 2"));
+        assert!(!is_test_australia_medicare("2123 45670 1"));
+    }
+
+    // ===== ACN Tests =====
+
+    #[test]
+    fn test_validate_acn_valid() {
+        assert!(validate_australia_acn("004 085 616").is_ok());
+        assert!(validate_australia_acn("123456789").is_ok());
+    }
+
+    #[test]
+    fn test_validate_acn_wrong_length() {
+        assert!(validate_australia_acn("12345678").is_err()); // 8 digits
+        assert!(validate_australia_acn("1234567890").is_err()); // 10 digits
+    }
+
+    #[test]
+    fn test_validate_acn_empty() {
+        assert!(validate_australia_acn("").is_err());
+    }
+
+    #[test]
+    fn test_validate_acn_with_checksum_valid_asic_example() {
+        // ASIC published example ACN: 004 085 616
+        // Weights [8, 7, 6, 5, 4, 3, 2, 1] applied to 00408561:
+        // 0*8 + 0*7 + 4*6 + 0*5 + 8*4 + 5*3 + 6*2 + 1*1 = 24 + 32 + 15 + 12 + 1 = 84
+        // (10 - 84 % 10) % 10 = (10 - 4) % 10 = 6 ✓
+        assert!(validate_australia_acn_with_checksum("004 085 616").is_ok());
+    }
+
+    #[test]
+    fn test_validate_acn_with_checksum_valid_no_spaces() {
+        assert!(validate_australia_acn_with_checksum("004085616").is_ok());
+    }
+
+    #[test]
+    fn test_validate_acn_with_checksum_invalid() {
+        // Tamper the last digit
+        assert!(validate_australia_acn_with_checksum("004 085 617").is_err());
+    }
+
+    #[test]
+    fn test_validate_acn_with_checksum_zero_check_case() {
+        // Construct first 8 digits that yield sum % 10 == 0, so check = 0.
+        // [1,2,3,4,5,6,7,8] -> 1*8+2*7+3*6+4*5+5*4+6*3+7*2+8*1 = 8+14+18+20+20+18+14+8 = 120
+        // (10 - 0) % 10 = 0 ✓
+        assert!(validate_australia_acn_with_checksum("123456780").is_ok());
+    }
+
+    #[test]
+    fn test_is_test_acn() {
+        assert!(is_test_australia_acn("000 000 000"));
+        assert!(is_test_australia_acn("111111111"));
+        assert!(!is_test_australia_acn("004 085 616"));
     }
 }

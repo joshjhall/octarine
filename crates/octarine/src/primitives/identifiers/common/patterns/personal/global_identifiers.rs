@@ -101,6 +101,54 @@ pub(crate) mod australia_abn {
     }
 }
 
+/// Australian Medicare number patterns
+///
+/// Format: 10 digits (with optional 11th individual reference number).
+/// First digit must be 2-6 (issuer code).
+pub(crate) mod australia_medicare {
+    use super::*;
+
+    /// Medicare with spaces: NNNN NNNNN N (with optional /N suffix)
+    pub static WITH_SPACES: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b[2-6]\d{3}\s\d{5}\s\d(?:\s?/\s?\d)?\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Medicare with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:medicare(?:[\s-]?(?:card|number))?)[\s:#-]*([2-6]\d{3}\s?\d{5}\s?\d(?:\s?/\s?\d)?)\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_SPACES]
+    }
+}
+
+/// Australian Company Number (ACN) patterns
+///
+/// Format: 9 digits, typically formatted as NNN NNN NNN.
+pub(crate) mod australia_acn {
+    use super::*;
+
+    /// ACN with spaces: NNN NNN NNN (9 digits)
+    pub static WITH_SPACES: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{3}\s\d{3}\s\d{3}\b").expect("BUG: Invalid regex pattern"));
+
+    /// ACN with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:ACN|australian[\s-]?company[\s-]?number)[\s:#-]*(\d{3}\s?\d{3}\s?\d{3})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_SPACES]
+    }
+}
+
 /// India Aadhaar number patterns (12 digits, starts with 2-9)
 pub(crate) mod india_aadhaar {
     use super::*;

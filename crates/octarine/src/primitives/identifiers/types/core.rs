@@ -67,6 +67,8 @@ pub enum IdentifierType {
     KoreaRrn,          // South Korea Resident Registration Number
     AustraliaTfn,      // Australian Tax File Number
     AustraliaAbn,      // Australian Business Number
+    AustraliaMedicare, // Australian Medicare number (10-digit, weighted mod-10 check)
+    AustraliaAcn,      // Australian Company Number (9-digit, weighted mod-10 check)
     IndiaAadhaar,      // Indian Aadhaar number (Verhoeff checksum)
     IndiaPan,          // Indian Permanent Account Number
     IndiaGstin,        // Indian Goods and Services Tax Identification Number (MOD-36 checksum)
@@ -81,6 +83,7 @@ pub enum IdentifierType {
     NigeriaVehicleReg, // Nigerian vehicle registration (XXX-NNN-XX current, AA999-AAA legacy)
     ThailandTnin,      // Thai National Identification Number (13 digits, mod-11 check)
     SingaporeNric,     // Singapore NRIC/FIN
+    SingaporeUen,      // Singapore Unique Entity Number (3 layout variants, opaque check letter)
     FinlandHetu,       // Finnish personal identity code
     PolandPesel,       // Polish personal identity number (PESEL)
     ItalyFiscalCode,   // Italian Codice Fiscale

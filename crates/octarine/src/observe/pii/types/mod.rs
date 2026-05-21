@@ -91,6 +91,10 @@ pub enum PiiType {
     AustraliaTfn,
     /// Australian Business Number (ABN)
     AustraliaAbn,
+    /// Australian Medicare number (10 digits, weighted mod-10 check digit)
+    AustraliaMedicare,
+    /// Australian Company Number (ACN, 9 digits, weighted mod-10 check digit)
+    AustraliaAcn,
     /// Indian Aadhaar number (Verhoeff checksum)
     IndiaAadhaar,
     /// Indian Permanent Account Number (PAN)
@@ -119,6 +123,8 @@ pub enum PiiType {
     ThailandTnin,
     /// Singapore NRIC / FIN
     SingaporeNric,
+    /// Singapore Unique Entity Number (UEN, 3 layout variants, opaque check letter)
+    SingaporeUen,
     /// Finnish personal identity code (HETU)
     FinlandHetu,
     /// Polish personal identity number (PESEL)

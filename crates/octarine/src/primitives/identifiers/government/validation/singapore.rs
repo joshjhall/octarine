@@ -1,11 +1,14 @@
-//! Singapore NRIC/FIN validation
+//! Singapore NRIC/FIN and UEN validation
 //!
-//! Format: [STFGM] + 7 digits + check letter
+//! NRIC/FIN format: [STFGM] + 7 digits + check letter
 //! - S/T: citizen (born before/after 2000)
 //! - F/G: permanent resident (before/after 2000)
 //! - M: foreign worker (2022+)
 //! - Weights: [2, 7, 6, 5, 4, 3, 2]
 //! - Check letter: prefix-dependent lookup tables
+//!
+//! UEN (Unique Entity Number) — three layout variants. The trailing check
+//! letter has no publicly published algorithm, so validation is layout-only.
 
 use crate::primitives::types::Problem;
 
@@ -178,6 +181,100 @@ pub fn is_test_singapore_nric(value: &str) -> bool {
 }
 
 // ============================================================================
+// UEN Validation
+// ============================================================================
+
+/// Validate Singapore UEN layout
+///
+/// Accepts the three published layouts:
+/// - Business (ROB): 8 digits + uppercase check letter
+/// - Local company (ROC): 9 digits + uppercase check letter
+/// - Other entity: T + 2 digits + 2 uppercase letters + 4 digits + uppercase check letter
+///
+/// The check letter has no publicly documented algorithm, so it is not verified.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the value does not match any layout.
+pub fn validate_singapore_uen(value: &str) -> Result<(), Problem> {
+    let trimmed = value.trim().to_uppercase();
+    if trimmed.is_empty() {
+        return Err(Problem::Validation(
+            "Singapore UEN cannot be empty".to_string(),
+        ));
+    }
+
+    if is_business_uen(&trimmed) || is_local_company_uen(&trimmed) || is_other_entity_uen(&trimmed)
+    {
+        Ok(())
+    } else {
+        Err(Problem::Validation(format!(
+            "Singapore UEN does not match any known layout (business / local company / other entity): '{}'",
+            trimmed
+        )))
+    }
+}
+
+/// Check if a Singapore UEN is a test/dummy pattern
+#[must_use]
+pub fn is_test_singapore_uen(value: &str) -> bool {
+    let upper = value.trim().to_uppercase();
+    if !(is_business_uen(&upper) || is_local_company_uen(&upper) || is_other_entity_uen(&upper)) {
+        return false;
+    }
+
+    let chars: Vec<char> = upper.chars().collect();
+    // All-zero digits or all-same digits within the digit portion
+    let digit_chars: String = chars.iter().filter(|c| c.is_ascii_digit()).collect();
+    if digit_chars.is_empty() {
+        return false;
+    }
+    if digit_chars.chars().all(|c| c == '0') {
+        return true;
+    }
+    if let Some(first) = digit_chars.chars().next()
+        && digit_chars.chars().all(|c| c == first)
+    {
+        return true;
+    }
+    false
+}
+
+fn is_business_uen(value: &str) -> bool {
+    // 8 digits + uppercase letter
+    if value.len() != 9 {
+        return false;
+    }
+    let chars: Vec<char> = value.chars().collect();
+    chars.iter().take(8).all(|c| c.is_ascii_digit())
+        && chars.get(8).is_some_and(|c| c.is_ascii_uppercase())
+}
+
+fn is_local_company_uen(value: &str) -> bool {
+    // 9 digits + uppercase letter
+    if value.len() != 10 {
+        return false;
+    }
+    let chars: Vec<char> = value.chars().collect();
+    chars.iter().take(9).all(|c| c.is_ascii_digit())
+        && chars.get(9).is_some_and(|c| c.is_ascii_uppercase())
+}
+
+fn is_other_entity_uen(value: &str) -> bool {
+    // T + 2 digits + 2 letters + 4 digits + check letter
+    if value.len() != 10 {
+        return false;
+    }
+    let chars: Vec<char> = value.chars().collect();
+    let head_t = chars.first() == Some(&'T');
+    let year_digits = chars.iter().skip(1).take(2).all(|c| c.is_ascii_digit());
+    let two_letters = chars.iter().skip(3).take(2).all(|c| c.is_ascii_uppercase());
+    let four_digits = chars.iter().skip(5).take(4).all(|c| c.is_ascii_digit());
+    let check = chars.get(9).is_some_and(|c| c.is_ascii_uppercase());
+    head_t && year_digits && two_letters && four_digits && check
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -334,5 +431,62 @@ mod tests {
     fn test_is_test_nric_wrong_length() {
         assert!(!is_test_singapore_nric("S12345"));
         assert!(!is_test_singapore_nric(""));
+    }
+
+    // ===== UEN Tests =====
+
+    #[test]
+    fn test_validate_uen_business_layout() {
+        assert!(validate_singapore_uen("12345678K").is_ok());
+    }
+
+    #[test]
+    fn test_validate_uen_local_company_layout() {
+        assert!(validate_singapore_uen("201912345K").is_ok());
+    }
+
+    #[test]
+    fn test_validate_uen_other_entity_layout() {
+        assert!(validate_singapore_uen("T12LL1234A").is_ok());
+    }
+
+    #[test]
+    fn test_validate_uen_lowercase_accepted() {
+        assert!(validate_singapore_uen("12345678k").is_ok());
+        assert!(validate_singapore_uen("t12ll1234a").is_ok());
+    }
+
+    #[test]
+    fn test_validate_uen_rejects_empty() {
+        assert!(validate_singapore_uen("").is_err());
+        assert!(validate_singapore_uen("   ").is_err());
+    }
+
+    #[test]
+    fn test_validate_uen_rejects_wrong_shape() {
+        assert!(validate_singapore_uen("ABCDEFGH").is_err());
+        assert!(validate_singapore_uen("1234567K").is_err()); // 7 digits + letter (too short)
+        assert!(validate_singapore_uen("T12LL123A").is_err()); // other-entity with 3 digits
+    }
+
+    #[test]
+    fn test_is_test_uen_all_zeros() {
+        assert!(is_test_singapore_uen("00000000A"));
+        assert!(is_test_singapore_uen("000000000A"));
+    }
+
+    #[test]
+    fn test_is_test_uen_all_same_digit() {
+        assert!(is_test_singapore_uen("11111111K"));
+    }
+
+    #[test]
+    fn test_is_test_uen_real_value() {
+        assert!(!is_test_singapore_uen("201912345K"));
+    }
+
+    #[test]
+    fn test_is_test_uen_rejects_invalid_layout() {
+        assert!(!is_test_singapore_uen("not a uen"));
     }
 }

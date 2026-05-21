@@ -228,6 +228,44 @@ pub(crate) mod singapore_nric {
     }
 }
 
+/// Singapore UEN (Unique Entity Number) patterns
+///
+/// Three layout variants:
+/// - Business (ROB): 8 digits + check letter, e.g. `12345678A`
+/// - Local company (ROC): 9 digits + check letter (YYYY + 5 digits), e.g. `201912345K`
+/// - Other entity: `T` + 2-digit year + 2 letters + 4 digits + check letter, e.g. `T12LL1234A`
+///
+/// The check letter has no publicly published algorithm (Presidio treats it as
+/// opaque); detection is shape-only.
+pub(crate) mod singapore_uen {
+    use super::*;
+
+    /// Business (ROB) layout: 8 digits + uppercase letter
+    pub static BUSINESS: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{8}[A-Z]\b").expect("BUG: Invalid regex pattern"));
+
+    /// Local company (ROC) layout: 9 digits + uppercase letter
+    pub static LOCAL_COMPANY: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{9}[A-Z]\b").expect("BUG: Invalid regex pattern"));
+
+    /// Other entity layout: T + YY + 2 letters + 4 digits + check letter
+    pub static OTHER: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\bT\d{2}[A-Z]{2}\d{4}[A-Z]\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// UEN with explicit label, captures any of the three layouts
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:UEN|unique[\s-]?entity[\s-]?number)[\s:#-]*(\d{8}[A-Z]|\d{9}[A-Z]|T\d{2}[A-Z]{2}\d{4}[A-Z])\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*OTHER, &*LOCAL_COMPANY, &*BUSINESS]
+    }
+}
+
 /// Finland HETU (personal identity code) patterns
 pub(crate) mod finland_hetu {
     use super::*;
