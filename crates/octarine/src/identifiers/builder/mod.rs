@@ -114,10 +114,10 @@ use crate::primitives::identifiers::confidence::ConfidenceBuilder as PrimitiveCo
 use super::types::{IdentifierMatch, IdentifierType};
 
 crate::define_metrics! {
-    detect_ms => "data.identifiers.detect_ms",
-    scan_ms => "data.identifiers.scan_ms",
-    detected => "data.identifiers.detected",
-    pii_found => "data.identifiers.pii_found",
+    detect_ms => "data.identifiers.unified.detect_ms",
+    scan_ms => "data.identifiers.unified.scan_ms",
+    detected => "data.identifiers.unified.detected",
+    pii_found => "data.identifiers.unified.pii_found",
 }
 
 /// Unified identifier operations builder with observability

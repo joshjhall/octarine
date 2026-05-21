@@ -24,7 +24,7 @@ use crate::primitives::identifiers::crypto::{KeyFormat, KeyType, SignatureAlgori
 use crate::primitives::security::crypto::{CryptoAuditResult, CryptoPolicy, CryptoSecurityBuilder};
 
 crate::define_metrics! {
-    validate_cert_ms => "crypto.validation.certificate_ms",
+    validate_cert_ms => "crypto.validation.validate_cert_ms",
     validate_ssh_ms => "crypto.validation.ssh_key_ms",
     audit_ms => "crypto.validation.audit_ms",
     validated_count => "crypto.validation.validated",
@@ -194,7 +194,7 @@ impl CryptoValidationBuilder {
     /// Validated certificate or error if parsing fails or blocking threats found
     ///
     /// # Metrics
-    /// - `crypto.validation.certificate_ms` - Validation duration
+    /// - `crypto.validation.validate_cert_ms` - Validation duration
     /// - `crypto.validation.validated` - Incremented on success
     /// - `crypto.validation.threats_blocked` - Count of blocking threats
     /// - `crypto.validation.warnings` - Count of warnings
@@ -250,7 +250,7 @@ impl CryptoValidationBuilder {
     /// Validate a DER-encoded certificate
     ///
     /// # Metrics
-    /// - `crypto.validation.certificate_ms` - Validation duration
+    /// - `crypto.validation.validate_cert_ms` - Validation duration
     /// - `crypto.validation.validated` - Incremented on success
     /// - `crypto.validation.threats_blocked` - Count of blocking threats
     #[cfg(feature = "crypto-validation")]

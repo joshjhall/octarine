@@ -72,10 +72,10 @@ impl FormatSecurityBuilder {
         let result = self.inner.is_xxe_present(input);
         if self.emit_events {
             if result {
-                warn("security.format", "XXE pattern detected in XML input");
+                warn("security.formats", "XXE pattern detected in XML input");
                 increment_by(metric_names::threats_detected(), 1);
             } else {
-                debug("security.format", "No XXE patterns found");
+                debug("security.formats", "No XXE patterns found");
             }
         }
         result
@@ -86,7 +86,7 @@ impl FormatSecurityBuilder {
     pub fn is_dtd_present(&self, input: &str) -> bool {
         let result = self.inner.is_dtd_present(input);
         if self.emit_events && result {
-            debug("security.format", "DTD declaration found in XML");
+            debug("security.formats", "DTD declaration found in XML");
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -97,7 +97,7 @@ impl FormatSecurityBuilder {
     pub fn is_external_entity_present(&self, input: &str) -> bool {
         let result = self.inner.is_external_entity_present(input);
         if self.emit_events && result {
-            warn("security.format", "External entity declaration detected");
+            warn("security.formats", "External entity declaration detected");
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -115,7 +115,7 @@ impl FormatSecurityBuilder {
             );
             if !threats.is_empty() {
                 warn(
-                    "security.format",
+                    "security.formats",
                     format!("Detected {} XML threat(s)", threats.len()),
                 );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
@@ -129,13 +129,13 @@ impl FormatSecurityBuilder {
         let start = Instant::now();
         let result = self.inner.validate_xml(input, policy);
         if self.emit_events {
-            debug("security.format", "Validating XML against policy");
+            debug("security.formats", "Validating XML against policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                warn("security.format", "XML validation failed");
+                warn("security.formats", "XML validation failed");
             }
         }
         result
@@ -151,7 +151,7 @@ impl FormatSecurityBuilder {
         let result = self.inner.is_json_depth_exceeded(input, max_depth);
         if self.emit_events && result {
             warn(
-                "security.format",
+                "security.formats",
                 format!("JSON exceeds depth limit of {}", max_depth),
             );
             increment_by(metric_names::threats_detected(), 1);
@@ -165,7 +165,7 @@ impl FormatSecurityBuilder {
         let result = self.inner.is_json_size_exceeded(input, max_size);
         if self.emit_events && result {
             warn(
-                "security.format",
+                "security.formats",
                 format!("JSON exceeds size limit of {} bytes", max_size),
             );
             increment_by(metric_names::threats_detected(), 1);
@@ -185,7 +185,7 @@ impl FormatSecurityBuilder {
             );
             if !threats.is_empty() {
                 warn(
-                    "security.format",
+                    "security.formats",
                     format!("Detected {} JSON threat(s)", threats.len()),
                 );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
@@ -199,13 +199,13 @@ impl FormatSecurityBuilder {
         let start = Instant::now();
         let result = self.inner.validate_json(input, policy);
         if self.emit_events {
-            debug("security.format", "Validating JSON against policy");
+            debug("security.formats", "Validating JSON against policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                warn("security.format", "JSON validation failed");
+                warn("security.formats", "JSON validation failed");
             }
         }
         result
@@ -221,10 +221,10 @@ impl FormatSecurityBuilder {
         let result = self.inner.is_yaml_unsafe(input);
         if self.emit_events {
             if result {
-                warn("security.format", "Unsafe pattern detected in YAML input");
+                warn("security.formats", "Unsafe pattern detected in YAML input");
                 increment_by(metric_names::threats_detected(), 1);
             } else {
-                debug("security.format", "No unsafe patterns found in YAML");
+                debug("security.formats", "No unsafe patterns found in YAML");
             }
         }
         result
@@ -236,7 +236,7 @@ impl FormatSecurityBuilder {
         let result = self.inner.is_unsafe_yaml_tag_present(input);
         if self.emit_events && result {
             warn(
-                "security.format",
+                "security.formats",
                 "Unsafe YAML tag detected (code execution risk)",
             );
             increment_by(metric_names::threats_detected(), 1);
@@ -250,7 +250,7 @@ impl FormatSecurityBuilder {
         let result = self.inner.is_yaml_anchor_bomb_present(input);
         if self.emit_events && result {
             warn(
-                "security.format",
+                "security.formats",
                 "YAML anchor bomb pattern detected (DoS risk)",
             );
             increment_by(metric_names::threats_detected(), 1);
@@ -270,7 +270,7 @@ impl FormatSecurityBuilder {
             );
             if !threats.is_empty() {
                 warn(
-                    "security.format",
+                    "security.formats",
                     format!("Detected {} YAML threat(s)", threats.len()),
                 );
                 increment_by(metric_names::threats_detected(), threats.len() as u64);
@@ -284,13 +284,13 @@ impl FormatSecurityBuilder {
         let start = Instant::now();
         let result = self.inner.validate_yaml(input, policy);
         if self.emit_events {
-            debug("security.format", "Validating YAML against policy");
+            debug("security.formats", "Validating YAML against policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if result.is_err() {
-                warn("security.format", "YAML validation failed");
+                warn("security.formats", "YAML validation failed");
             }
         }
         result
@@ -306,7 +306,7 @@ impl FormatSecurityBuilder {
         let start = Instant::now();
         let threats = self.inner.detect_threats(input, format);
         if self.emit_events {
-            debug("security.format", "Detecting format threats");
+            debug("security.formats", "Detecting format threats");
             record(
                 metric_names::detect_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
@@ -323,7 +323,7 @@ impl FormatSecurityBuilder {
     pub fn is_dangerous(&self, input: &str, format: FormatType) -> bool {
         let result = self.inner.is_dangerous(input, format);
         if self.emit_events && result {
-            warn("security.format", "Dangerous content detected");
+            warn("security.formats", "Dangerous content detected");
             increment_by(metric_names::threats_detected(), 1);
         }
         result
@@ -334,7 +334,7 @@ impl FormatSecurityBuilder {
         let start = Instant::now();
         let result = self.inner.validate_strict(input, format);
         if self.emit_events {
-            debug("security.format", "Validating with strict policy");
+            debug("security.formats", "Validating with strict policy");
             record(
                 metric_names::validate_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
