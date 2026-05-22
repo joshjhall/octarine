@@ -30,7 +30,8 @@ pub(crate) mod us_identifiers;
 
 pub(crate) use global_identifiers::{
     australia_abn, australia_acn, australia_medicare, australia_tfn, india_aadhaar, india_gstin,
-    india_pan, india_passport, india_vehicle_reg, india_voter_id, korea_rrn, national_id,
+    india_pan, india_passport, india_vehicle_reg, india_voter_id, korea_brn, korea_driver_license,
+    korea_frn, korea_passport, korea_rrn, national_id,
 };
 pub(crate) use regional_identifiers::{
     birthdate, brazil_cnpj, brazil_cpf, finland_hetu, italy_fiscal_code, mexico_curp, nigeria_bvn,

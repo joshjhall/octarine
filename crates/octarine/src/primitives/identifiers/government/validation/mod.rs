@@ -44,6 +44,10 @@ mod ein;
 mod finland;
 mod india;
 mod italy;
+mod korea_brn;
+mod korea_driver_license;
+mod korea_frn;
+mod korea_passport;
 mod korea_rrn;
 mod mexico;
 mod national_id;
@@ -123,6 +127,18 @@ pub use singapore::{
 
 // Re-export Korea RRN functions
 pub use korea_rrn::{is_test_korea_rrn, validate_korea_rrn, validate_korea_rrn_with_checksum};
+
+// Re-export Korea FRN functions (Foreign Registration Number — reuses RRN checksum)
+pub use korea_frn::{is_test_korea_frn, validate_korea_frn, validate_korea_frn_with_checksum};
+
+// Re-export Korea Driver License functions
+pub use korea_driver_license::{is_test_korea_driver_license, validate_korea_driver_license};
+
+// Re-export Korea Passport functions
+pub use korea_passport::{is_test_korea_passport, validate_korea_passport};
+
+// Re-export Korea BRN functions (Business Registration Number)
+pub use korea_brn::{is_test_korea_brn, validate_korea_brn, validate_korea_brn_with_checksum};
 
 // Re-export Brazil functions
 pub use brazil::{

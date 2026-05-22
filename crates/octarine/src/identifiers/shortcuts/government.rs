@@ -137,6 +137,115 @@ pub fn validate_australia_acn(acn: &str) -> Result<(), Problem> {
     GovernmentBuilder::new().validate_australia_acn(acn)
 }
 
+// =============================================================================
+// South Korea — RRN, FRN, Driver License, Passport, BRN
+// =============================================================================
+
+/// Check if value is a South Korea RRN (Resident Registration Number)
+#[must_use]
+pub fn is_korea_rrn(value: &str) -> bool {
+    GovernmentBuilder::new().is_korea_rrn(value)
+}
+
+/// Find all South Korea RRNs in text
+#[must_use]
+pub fn find_korea_rrns(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_korea_rrns_in_text(text)
+}
+
+/// Validate a South Korea RRN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the RRN format is invalid.
+pub fn validate_korea_rrn(rrn: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_korea_rrn(rrn)
+}
+
+/// Check if value is a South Korea FRN (Foreign Registration Number)
+#[must_use]
+pub fn is_korea_frn(value: &str) -> bool {
+    GovernmentBuilder::new().is_korea_frn(value)
+}
+
+/// Find all South Korea FRNs in text
+#[must_use]
+pub fn find_korea_frns(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_korea_frns_in_text(text)
+}
+
+/// Validate a South Korea FRN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the FRN format is invalid.
+pub fn validate_korea_frn(frn: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_korea_frn(frn)
+}
+
+/// Check if value is a South Korea Driver License
+#[must_use]
+pub fn is_korea_driver_license(value: &str) -> bool {
+    GovernmentBuilder::new().is_korea_driver_license(value)
+}
+
+/// Find all South Korea Driver Licenses in text
+#[must_use]
+pub fn find_korea_driver_licenses(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_korea_driver_licenses_in_text(text)
+}
+
+/// Validate a South Korea Driver License format
+///
+/// # Errors
+///
+/// Returns `Problem` if the license format or region is invalid.
+pub fn validate_korea_driver_license(dl: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_korea_driver_license(dl)
+}
+
+/// Check if value is a South Korea Passport
+#[must_use]
+pub fn is_korea_passport(value: &str) -> bool {
+    GovernmentBuilder::new().is_korea_passport(value)
+}
+
+/// Find all South Korea passports in text
+#[must_use]
+pub fn find_korea_passports(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_korea_passports_in_text(text)
+}
+
+/// Validate a South Korea Passport format
+///
+/// # Errors
+///
+/// Returns `Problem` if the passport format is invalid.
+pub fn validate_korea_passport(passport: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_korea_passport(passport)
+}
+
+/// Check if value is a South Korea BRN (Business Registration Number)
+#[must_use]
+pub fn is_korea_brn(value: &str) -> bool {
+    GovernmentBuilder::new().is_korea_brn(value)
+}
+
+/// Find all South Korea BRNs in text
+#[must_use]
+pub fn find_korea_brns(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_korea_brns_in_text(text)
+}
+
+/// Validate a South Korea BRN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the BRN format is invalid.
+pub fn validate_korea_brn(brn: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_korea_brn(brn)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -176,5 +285,51 @@ mod tests {
         assert!(validate_australia_acn("004085616").is_ok());
         assert!(validate_australia_acn("").is_err());
         assert!(!find_australia_acns("ACN 004 085 616 active").is_empty());
+    }
+
+    #[test]
+    fn test_korea_rrn_shortcuts() {
+        assert!(is_korea_rrn("900115-1234567"));
+        assert!(!is_korea_rrn("900115-5234567")); // gender 5 is FRN, not RRN
+        assert!(validate_korea_rrn("900115-1234567").is_ok());
+        assert!(validate_korea_rrn("").is_err());
+        assert!(!find_korea_rrns("RRN: 900115-1234567").is_empty());
+    }
+
+    #[test]
+    fn test_korea_frn_shortcuts() {
+        assert!(is_korea_frn("900115-5234567"));
+        assert!(!is_korea_frn("900115-1234567")); // gender 1 is RRN, not FRN
+        assert!(validate_korea_frn("900115-5234567").is_ok());
+        assert!(validate_korea_frn("").is_err());
+        assert!(!find_korea_frns("FRN: 900115-5234567").is_empty());
+    }
+
+    #[test]
+    fn test_korea_driver_license_shortcuts() {
+        assert!(is_korea_driver_license("11-90-123456-78"));
+        assert!(!is_korea_driver_license("10-90-123456-78")); // region 10 out of range
+        assert!(validate_korea_driver_license("11-90-123456-78").is_ok());
+        assert!(validate_korea_driver_license("").is_err());
+        assert!(!find_korea_driver_licenses("Driver License: 11-90-123456-78 issued").is_empty());
+    }
+
+    #[test]
+    fn test_korea_passport_shortcuts() {
+        assert!(is_korea_passport("M12345678"));
+        assert!(is_korea_passport("MA12345678"));
+        assert!(!is_korea_passport("A12345678")); // wrong prefix
+        assert!(validate_korea_passport("M12345678").is_ok());
+        assert!(validate_korea_passport("").is_err());
+        assert!(!find_korea_passports("KR passport: M12345678 valid").is_empty());
+    }
+
+    #[test]
+    fn test_korea_brn_shortcuts() {
+        assert!(is_korea_brn("123-45-67890"));
+        assert!(!is_korea_brn("12-345-6789")); // wrong shape (SSN-like)
+        assert!(validate_korea_brn("123-45-67890").is_ok());
+        assert!(validate_korea_brn("").is_err());
+        assert!(!find_korea_brns("BRN: 123-45-67890 registered").is_empty());
     }
 }
