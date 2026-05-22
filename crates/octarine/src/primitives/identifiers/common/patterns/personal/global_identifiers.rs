@@ -38,19 +38,117 @@ pub(crate) mod national_id {
         vec![&*UK_NI, &*CANADA_SIN, &*GENERIC]
     }
 }
-/// South Korea Resident Registration Number patterns
+/// South Korea Resident Registration Number patterns (citizens)
 pub(crate) mod korea_rrn {
     use super::*;
 
     /// Korea RRN with dash: YYMMDD-GNNNNNN (13 digits total)
-    /// Gender digit 1-8 follows the dash
+    /// Gender digit 1-4 follows the dash (citizens — foreigners use FRN with 5-8)
     pub static WITH_DASH: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"\b\d{6}-[1-8]\d{6}\b").expect("BUG: Invalid regex pattern"));
+        Lazy::new(|| Regex::new(r"\b\d{6}-[1-4]\d{6}\b").expect("BUG: Invalid regex pattern"));
 
     /// Korea RRN with explicit label (with or without dash)
     pub static LABELED: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r"(?i)\b(?:RRN|주민등록번호|resident[\s-]?registration)[\s:#-]*(\d{6}-?[1-8]\d{6})\b",
+            r"(?i)\b(?:RRN|주민등록번호|resident[\s-]?registration)[\s:#-]*(\d{6}-?[1-4]\d{6})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_DASH]
+    }
+}
+
+/// South Korea Foreign Registration Number patterns (foreigners)
+///
+/// Same shape as RRN (`YYMMDD-GNNNNNN`) but the gender/century digit is 5-8.
+/// Reuses the RRN weighted checksum — see `validation/korea_frn.rs`.
+pub(crate) mod korea_frn {
+    use super::*;
+
+    /// Korea FRN with dash: YYMMDD-GNNNNNN, gender digit 5-8
+    pub static WITH_DASH: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{6}-[5-8]\d{6}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Korea FRN with explicit label (with or without dash)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:FRN|외국인등록번호|foreign[\s-]?registration)[\s:#-]*(\d{6}-?[5-8]\d{6})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_DASH]
+    }
+}
+
+/// South Korea Driver License patterns
+///
+/// Format: `NN-NN-NNNNNN-NN` where the first two digits are a region code
+/// (11-28; 11=Seoul, 21=Busan, etc.). Region validation lives in the
+/// validation layer.
+pub(crate) mod korea_driver_license {
+    use super::*;
+
+    /// Korea Driver License with dashes: RR-YY-SSSSSS-CC
+    pub static WITH_DASH: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b(?:1[1-9]|2[0-8])-\d{2}-\d{6}-\d{2}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Korea Driver License with explicit label (dashes optional)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:driver[\s-]?license|운전면허)[\s:#-]*((?:1[1-9]|2[0-8])-?\d{2}-?\d{6}-?\d{2})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*WITH_DASH]
+    }
+}
+
+/// South Korea Passport patterns
+///
+/// Format: `[MRS][A-Z]?[0-9]{7,8}` (M=multiple, R=resident, S=single;
+/// optional second letter for newer format).
+pub(crate) mod korea_passport {
+    use super::*;
+
+    /// Bare Korea passport (one or two letters + 7-8 digits)
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b[MRS][A-Z]?\d{7,8}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Korea passport with explicit label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:KR[\s-]?passport|korean?[\s-]?passport|여권)[\s:#-]*([MRS][A-Z]?\d{7,8})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+}
+
+/// South Korea Business Registration Number patterns
+///
+/// Format: `NNN-NN-NNNNN` (10 digits total). Validated via a weighted
+/// mod-10 checksum — see `validation/korea_brn.rs`.
+pub(crate) mod korea_brn {
+    use super::*;
+
+    /// Korea BRN with dashes: NNN-NN-NNNNN
+    pub static WITH_DASH: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{3}-\d{2}-\d{5}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Korea BRN with explicit label (dashes optional)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:BRN|business[\s-]?registration|사업자등록번호)[\s:#-]*(\d{3}-?\d{2}-?\d{5})\b",
         )
         .expect("BUG: Invalid regex pattern")
     });

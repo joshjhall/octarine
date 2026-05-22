@@ -169,6 +169,10 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::TaxId
             | PiiType::NationalId
             | PiiType::KoreaRrn
+            | PiiType::KoreaFrn
+            | PiiType::KoreaDriverLicense
+            | PiiType::KoreaPassport
+            | PiiType::KoreaBrn
             | PiiType::AustraliaTfn
             | PiiType::AustraliaAbn
             | PiiType::AustraliaMedicare

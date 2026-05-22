@@ -49,6 +49,10 @@ mod driver_license;
 mod europe;
 mod helpers;
 mod india;
+mod korea_brn;
+mod korea_driver_license;
+mod korea_frn;
+mod korea_passport;
 mod korea_rrn;
 mod mexico;
 mod national_id;
@@ -80,6 +84,10 @@ pub use india::{
     find_india_voter_ids_in_text, is_india_aadhaar, is_india_gstin, is_india_pan,
     is_india_passport, is_india_vehicle_registration, is_india_voter_id,
 };
+pub use korea_brn::{find_korea_brns_in_text, is_korea_brn};
+pub use korea_driver_license::{find_korea_driver_licenses_in_text, is_korea_driver_license};
+pub use korea_frn::{find_korea_frns_in_text, is_korea_frn};
+pub use korea_passport::{find_korea_passports_in_text, is_korea_passport};
 pub use korea_rrn::{find_korea_rrns_in_text, is_korea_rrn};
 pub use mexico::{find_mexico_curps_in_text, is_mexico_curp};
 pub use national_id::{find_national_ids_in_text, find_uk_nis_in_text, is_national_id, is_uk_ni};
@@ -115,7 +123,22 @@ pub use vehicle_id::{find_vehicle_ids_in_text, is_vehicle_id};
 #[must_use]
 #[allow(clippy::cognitive_complexity)]
 pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
-    if is_ssn(value) {
+    // Korea-specific checks run BEFORE their generic siblings (driver license,
+    // passport) because the generic patterns are looser and would otherwise
+    // shadow the dedicated Korean variants. BRN must also come before SSN —
+    // BRN's 10-digit shape would otherwise be misclassified as a 9-digit SSN
+    // prefix.
+    if is_korea_brn(value) {
+        Some(IdentifierType::KoreaBrn)
+    } else if is_korea_driver_license(value) {
+        Some(IdentifierType::KoreaDriverLicense)
+    } else if is_korea_passport(value) {
+        Some(IdentifierType::KoreaPassport)
+    } else if is_korea_rrn(value) {
+        Some(IdentifierType::KoreaRrn)
+    } else if is_korea_frn(value) {
+        Some(IdentifierType::KoreaFrn)
+    } else if is_ssn(value) {
         Some(IdentifierType::Ssn)
     } else if is_ein(value) {
         Some(IdentifierType::Ein)
@@ -125,8 +148,6 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::DriverLicense)
     } else if is_passport(value) {
         Some(IdentifierType::Passport)
-    } else if is_korea_rrn(value) {
-        Some(IdentifierType::KoreaRrn)
     } else if is_australia_tfn(value) {
         Some(IdentifierType::AustraliaTfn)
     } else if is_australia_abn(value) {
@@ -215,6 +236,10 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_driver_licenses_in_text(text));
     all_matches.extend(find_passports_in_text(text));
     all_matches.extend(find_korea_rrns_in_text(text));
+    all_matches.extend(find_korea_frns_in_text(text));
+    all_matches.extend(find_korea_driver_licenses_in_text(text));
+    all_matches.extend(find_korea_passports_in_text(text));
+    all_matches.extend(find_korea_brns_in_text(text));
     all_matches.extend(find_australia_tfns_in_text(text));
     all_matches.extend(find_australia_abns_in_text(text));
     all_matches.extend(find_australia_acns_in_text(text));
@@ -289,6 +314,11 @@ mod tests {
             "C12345678",         // Passport
             "AB123456C",         // National ID
             "1HGBH41JXMN109186", // VIN
+            "900115-1234567",    // Korea RRN
+            "900115-5234567",    // Korea FRN
+            "11-90-123456-78",   // Korea Driver License
+            "M12345678",         // Korea Passport
+            "123-45-67890",      // Korea BRN
             "not an id",         // Invalid
             "",                  // Empty
         ];
@@ -301,6 +331,32 @@ mod tests {
                 value
             );
         }
+    }
+
+    #[test]
+    fn test_detect_korea_extended_identifiers() {
+        // Each Korean identifier dispatches to its dedicated variant.
+        assert_eq!(
+            detect_government_identifier("900115-1234567"),
+            Some(IdentifierType::KoreaRrn)
+        );
+        assert_eq!(
+            detect_government_identifier("900115-5234567"),
+            Some(IdentifierType::KoreaFrn)
+        );
+        assert_eq!(
+            detect_government_identifier("11-90-123456-78"),
+            Some(IdentifierType::KoreaDriverLicense)
+        );
+        assert_eq!(
+            detect_government_identifier("M12345678"),
+            Some(IdentifierType::KoreaPassport)
+        );
+        // BRN must win over SSN because it is checked first in the dispatcher.
+        assert_eq!(
+            detect_government_identifier("123-45-67890"),
+            Some(IdentifierType::KoreaBrn)
+        );
     }
 
     #[test]

@@ -85,8 +85,16 @@ pub enum PiiType {
     TaxId,
     /// National ID number (non-US government identifiers)
     NationalId,
-    /// South Korea Resident Registration Number (RRN)
+    /// South Korea Resident Registration Number (RRN, citizens — gender digit 1-4)
     KoreaRrn,
+    /// South Korea Foreign Registration Number (FRN, foreigners — gender digit 5-8)
+    KoreaFrn,
+    /// South Korea Driver License (NN-NN-NNNNNN-NN, regions 11-28)
+    KoreaDriverLicense,
+    /// South Korea Passport (MRS prefix + optional letter + 7-8 digits)
+    KoreaPassport,
+    /// South Korea Business Registration Number (BRN, NNN-NN-NNNNN, weighted mod-10)
+    KoreaBrn,
     /// Australian Tax File Number (TFN)
     AustraliaTfn,
     /// Australian Business Number (ABN)

@@ -21,7 +21,8 @@ impl PiiType {
             Self::Iban | Self::CryptoAddress |
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
-            Self::KoreaRrn | Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
+            Self::KoreaRrn | Self::KoreaFrn | Self::KoreaDriverLicense | Self::KoreaPassport | Self::KoreaBrn |
+            Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
             Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
             Self::BrazilCpf | Self::BrazilCnpj | Self::MexicoCurp | Self::NigeriaNin | Self::NigeriaBvn | Self::NigeriaVehicleReg | Self::ThailandTnin |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
@@ -58,6 +59,7 @@ impl PiiType {
             // Government IDs
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::TaxId | Self::NationalId |
             // EU-member country-specific government IDs (non-EU IDs like KoreaRrn,
+            // KoreaFrn, KoreaDriverLicense, KoreaPassport, KoreaBrn,
             // AustraliaTfn/Abn, IndiaAadhaar/Pan/Gstin/VehicleReg/VoterId/Passport,
             // SingaporeNric are protected by their own regimes —
             // PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)

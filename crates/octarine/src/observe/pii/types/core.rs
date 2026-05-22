@@ -28,6 +28,10 @@ impl PiiType {
             Self::TaxId => "tax_id",
             Self::NationalId => "national_id",
             Self::KoreaRrn => "korea_rrn",
+            Self::KoreaFrn => "korea_frn",
+            Self::KoreaDriverLicense => "korea_driver_license",
+            Self::KoreaPassport => "korea_passport",
+            Self::KoreaBrn => "korea_brn",
             Self::AustraliaTfn => "australia_tfn",
             Self::AustraliaAbn => "australia_abn",
             Self::AustraliaMedicare => "australia_medicare",
@@ -160,6 +164,10 @@ impl PiiType {
             | Self::TaxId
             | Self::NationalId
             | Self::KoreaRrn
+            | Self::KoreaFrn
+            | Self::KoreaDriverLicense
+            | Self::KoreaPassport
+            | Self::KoreaBrn
             | Self::AustraliaTfn
             | Self::AustraliaAbn
             | Self::AustraliaMedicare

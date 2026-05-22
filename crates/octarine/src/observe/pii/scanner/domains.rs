@@ -94,6 +94,22 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::KoreaRrn,
         ),
         (
+            GovernmentIdentifierBuilder::find_korea_frns_in_text,
+            PiiType::KoreaFrn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_driver_licenses_in_text,
+            PiiType::KoreaDriverLicense,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_passports_in_text,
+            PiiType::KoreaPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_brns_in_text,
+            PiiType::KoreaBrn,
+        ),
+        (
             GovernmentIdentifierBuilder::find_australia_tfns_in_text,
             PiiType::AustraliaTfn,
         ),

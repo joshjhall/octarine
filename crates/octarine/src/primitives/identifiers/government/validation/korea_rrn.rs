@@ -2,7 +2,8 @@
 //!
 //! Validates Korean RRN format: YYMMDD-GNNNNNN
 //! - First 6 digits: birth date (YYMMDD)
-//! - 7th digit (G): gender/century code (1-8)
+//! - 7th digit (G): gender/century code (1-4 for citizens; foreigners use FRN
+//!   with 5-8 — see `korea_frn.rs`)
 //! - Last 6 digits: registration sequence + check digit
 //! - Weighted checksum: weights [2,3,4,5,6,7,8,9,2,3,4,5], check = (11 - sum%11) % 10
 
@@ -143,12 +144,15 @@ fn validate_birth_date(digits: &[u32]) -> Result<(), Problem> {
 }
 
 /// Validate gender/century digit (7th digit, index 6)
+///
+/// Citizens use 1-4; foreigners use 5-8 (handled by `korea_frn`). Values
+/// outside `1..=4` are rejected here.
 fn validate_gender_digit(digits: &[u32]) -> Result<(), Problem> {
     let gender = digits.get(6).copied().unwrap_or(0);
 
-    if !(1..=8).contains(&gender) {
+    if !(1..=4).contains(&gender) {
         return Err(Problem::Validation(format!(
-            "Korea RRN gender/century digit must be 1-8, got {}",
+            "Korea RRN gender/century digit must be 1-4 (use korea_frn for 5-8), got {}",
             gender
         )));
     }
@@ -218,12 +222,25 @@ mod tests {
 
     #[test]
     fn test_validate_korea_rrn_all_gender_codes() {
-        // Gender/century codes 1-8
-        for code in 1..=8 {
+        // Citizen gender/century codes 1-4 (foreigners 5-8 use korea_frn)
+        for code in 1..=4 {
             let rrn = format!("900115-{}234567", code);
             assert!(
                 validate_korea_rrn(&rrn).is_ok(),
                 "Gender code {} should be valid",
+                code
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_korea_rrn_rejects_frn_gender_codes() {
+        // Foreigner codes 5-8 belong to FRN, not RRN
+        for code in 5..=8 {
+            let rrn = format!("900115-{}234567", code);
+            assert!(
+                validate_korea_rrn(&rrn).is_err(),
+                "Gender code {} is FRN and must be rejected by RRN validator",
                 code
             );
         }
@@ -298,13 +315,6 @@ mod tests {
     fn test_validate_korea_rrn_with_checksum_2000s_female() {
         // Female born 2005-11-28, gender digit 4
         let rrn = make_valid_rrn("051128-456789");
-        assert!(validate_korea_rrn_with_checksum(&rrn).is_ok());
-    }
-
-    #[test]
-    fn test_validate_korea_rrn_with_checksum_foreign() {
-        // Foreign 1900s male, gender digit 5
-        let rrn = make_valid_rrn("850715-567890");
         assert!(validate_korea_rrn_with_checksum(&rrn).is_ok());
     }
 

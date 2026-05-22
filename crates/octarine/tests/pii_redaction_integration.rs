@@ -497,6 +497,78 @@ fn test_scan_detects_korea_rrn() {
 }
 
 #[test]
+fn test_scan_detects_korea_frn() {
+    // Gender digit 5 — foreigner. RRN (1-4) must NOT also fire on this value.
+    let text = "FRN: 900115-5234567";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::KoreaFrn),
+        "Expected KoreaFrn in {pii_types:?}"
+    );
+    assert!(
+        !pii_types.contains(&PiiType::KoreaRrn),
+        "Gender-5 value must not be classified as RRN, got {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_korea_driver_license() {
+    // Region 11 = Seoul; full format with dashes
+    let text = "Korean driver license: 11-90-123456-78";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::KoreaDriverLicense),
+        "Expected KoreaDriverLicense in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_korea_passport() {
+    // M = multiple-entry passport
+    let text = "KR passport: M12345678";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::KoreaPassport),
+        "Expected KoreaPassport in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_korea_brn() {
+    let text = "BRN: 123-45-67890";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::KoreaBrn),
+        "Expected KoreaBrn in {pii_types:?}"
+    );
+}
+
+#[test]
+fn test_scan_detects_all_korea_identifiers_in_one_doc() {
+    // Mixed document containing all 5 Korean identifier types.
+    let text = "\
+        Citizen RRN: 900115-1234567\n\
+        Foreigner FRN: 900115-5234567\n\
+        Driver license: 11-90-123456-78\n\
+        Passport: M12345678\n\
+        Business BRN: 123-45-67890\n\
+    ";
+    let pii_types = scan_for_pii(text);
+    for expected in [
+        PiiType::KoreaRrn,
+        PiiType::KoreaFrn,
+        PiiType::KoreaDriverLicense,
+        PiiType::KoreaPassport,
+        PiiType::KoreaBrn,
+    ] {
+        assert!(
+            pii_types.contains(&expected),
+            "Expected {expected:?} in {pii_types:?}"
+        );
+    }
+}
+
+#[test]
 fn test_scan_detects_italy_fiscal_code() {
     // RSSMRA85M01H501Z — canonical sample from validation tests
     let text = "CF: RSSMRA85M01H501Z";
@@ -560,6 +632,10 @@ fn test_non_eu_country_ids_high_risk_only() {
     // so these are high-risk but NOT GDPR-protected
     for pii in [
         PiiType::KoreaRrn,
+        PiiType::KoreaFrn,
+        PiiType::KoreaDriverLicense,
+        PiiType::KoreaPassport,
+        PiiType::KoreaBrn,
         PiiType::AustraliaTfn,
         PiiType::AustraliaAbn,
         PiiType::IndiaAadhaar,
