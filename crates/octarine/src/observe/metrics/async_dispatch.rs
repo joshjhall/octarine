@@ -135,6 +135,12 @@ impl MetricsDispatcher {
     }
 
     /// Flush all pending metrics (blocking, for testing only)
+    ///
+    /// Also invalidates the registry's snapshot cache so the next
+    /// `snapshot()` call reflects the writes that were just flushed.
+    /// Without this, tests that call `flush_for_testing()` then
+    /// `snapshot()` could be served a stale cached snapshot from an
+    /// earlier test in the same process.
     #[cfg(any(test, feature = "testing"))]
     fn flush_sync(&self) {
         let (tx, rx) = oneshot::channel();
@@ -146,6 +152,7 @@ impl MetricsDispatcher {
             // Block until flush is complete
             let _ = rx.blocking_recv();
         }
+        global().invalidate_snapshot_cache();
     }
 }
 
