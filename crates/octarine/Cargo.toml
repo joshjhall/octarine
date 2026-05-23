@@ -231,6 +231,10 @@ rexpect = "0.7"
 name = "pii_redaction"
 harness = false
 
+[[bench]]
+name = "correlation_id"
+harness = false
+
 [[test]]
 name = "metrics_integration"
 required-features = ["testing"]

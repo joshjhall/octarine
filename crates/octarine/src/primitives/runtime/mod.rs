@@ -82,7 +82,8 @@ pub(crate) mod http;
 use r#async::{
     TaskContext, TaskLocal, clear_thread_context, clear_thread_correlation_id,
     clear_thread_session_id, clear_thread_tenant_id, clear_thread_user_id,
-    get_thread_correlation_id, get_thread_session_id, get_thread_tenant_id, get_thread_user_id,
+    get_thread_correlation_fallback, get_thread_correlation_id, get_thread_session_id,
+    get_thread_tenant_id, get_thread_user_id, set_thread_correlation_fallback,
     set_thread_correlation_id, set_thread_session_id, set_thread_tenant_id, set_thread_user_id,
 };
 
@@ -97,13 +98,30 @@ use r#async::{
 ///
 /// Checks in order:
 /// 1. Task-local storage (for async code)
-/// 2. Thread-local storage (for sync code)
-/// 3. Generates a new UUID if neither is set
+/// 2. Thread-local storage (for sync code, explicitly set)
+/// 3. Thread-local fallback cache (auto-generated, populated on first miss)
+/// 4. Generates a new UUID, stores it in the fallback cache, and returns it
 ///
 /// # Performance
 ///
-/// This function is designed to be fast (<100ns) when context is set.
-/// UUID generation is only used as a fallback.
+/// This function is O(1) for the common cases (task-local hit, thread-local
+/// hit, fallback cache hit). The first call on a thread with no explicit
+/// context setup generates one UUID and caches it; every subsequent call on
+/// the same thread is then a thread-local read.
+///
+/// # Semantic Continuity
+///
+/// Because the fallback path caches its generated UUID per-thread, multiple
+/// events emitted from the same thread without explicit context setup share
+/// a correlation ID. This gives implicit trace continuity to code that
+/// hasn't wired up an HTTP middleware or `TaskContextBuilder` scope. To
+/// reset the implicit ID (for example between logical operations on a
+/// long-lived worker thread) call `clear_correlation_id()`.
+///
+/// The fallback cache is intentionally invisible to `try_correlation_id()`
+/// so callers can still distinguish "explicitly configured" from
+/// "auto-generated" — useful for HTTP error responses that should only
+/// include a request ID when one was actually set via middleware.
 ///
 /// # Example
 ///
@@ -119,19 +137,34 @@ pub fn correlation_id() -> Uuid {
         return ctx.correlation_id;
     }
 
-    // Second, try thread-local (for sync code)
+    // Second, try thread-local — explicitly set via set_correlation_id().
     if let Some(id) = get_thread_correlation_id() {
         return id;
     }
 
-    // Fallback: generate new UUID
-    Uuid::new_v4()
+    // Third, try the per-thread fallback cache. This is populated by a
+    // previous call to correlation_id() on this thread and gives semantic
+    // continuity to events emitted without explicit context setup.
+    if let Some(id) = get_thread_correlation_fallback() {
+        return id;
+    }
+
+    // Fourth, generate a new UUID and seed the fallback cache so subsequent
+    // calls on this thread return the same ID. Avoids repeated UUID
+    // generation in the common "no context configured" case.
+    let id = Uuid::new_v4();
+    set_thread_correlation_fallback(id);
+    id
 }
 
 /// Get the current correlation ID if one is set
 ///
 /// Unlike `correlation_id()`, this returns `None` if no context is set
-/// rather than generating a new UUID.
+/// rather than generating a new UUID. It also does NOT observe the
+/// per-thread fallback cache, so it is the right choice when you need to
+/// know whether the caller explicitly configured a correlation ID (for
+/// example, an HTTP error handler that should only include a request ID
+/// when middleware has set one).
 ///
 /// # Example
 ///
@@ -452,12 +485,11 @@ mod shortcut_tests {
         // Clear any existing context
         clear_correlation_id();
 
-        // Without context set, should generate new UUID each time
+        // Calling correlation_id() seeds thread-local with a generated UUID.
+        // After clear_correlation_id(), the next call generates a fresh one.
         let _id1 = correlation_id();
         clear_correlation_id();
         let _id2 = correlation_id();
-        // These are likely different (generated UUIDs)
-        // We can't assert inequality because they're random
 
         // Set a specific ID
         let specific_id = Uuid::new_v4();
@@ -467,6 +499,94 @@ mod shortcut_tests {
         // Clear and verify fallback behavior
         clear_correlation_id();
         assert!(try_correlation_id().is_none());
+    }
+
+    #[test]
+    fn test_correlation_id_fallback_is_cached() {
+        // Without explicit setup, two consecutive calls on the same thread
+        // must return the SAME UUID. The first call seeds thread-local;
+        // the second is a thread-local hit.
+        clear_correlation_id();
+
+        let id_first = correlation_id();
+        let id_second = correlation_id();
+
+        assert_eq!(
+            id_first, id_second,
+            "fallback path must cache via thread-local"
+        );
+
+        // clear_correlation_id() resets the cache; next call generates a
+        // fresh ID, distinct from the previously cached one.
+        clear_correlation_id();
+        let id_after_clear = correlation_id();
+        assert_ne!(
+            id_first, id_after_clear,
+            "clear_correlation_id() must reset the fallback cache"
+        );
+
+        clear_correlation_id();
+    }
+
+    #[test]
+    fn test_correlation_id_fallback_seeds_try_get() {
+        // The per-thread fallback cache MUST be invisible to
+        // try_correlation_id() so callers can distinguish "explicitly
+        // configured" from "auto-generated". This is the contract that
+        // lets HTTP error handlers (http/error.rs) decide whether to
+        // include a request_id in the response body.
+        clear_correlation_id();
+
+        assert!(try_correlation_id().is_none());
+
+        // Take the fallback path — caches generated ID, but does NOT
+        // populate the explicit thread-local slot.
+        let _generated = correlation_id();
+        assert!(
+            try_correlation_id().is_none(),
+            "fallback cache must NOT make try_correlation_id() return Some"
+        );
+
+        clear_correlation_id();
+    }
+
+    #[test]
+    fn test_correlation_id_fast_path_unchanged() {
+        // When thread-local IS explicitly set, correlation_id() must still
+        // return it directly without re-seeding or generating.
+        clear_correlation_id();
+
+        let explicit = Uuid::new_v4();
+        set_correlation_id(explicit);
+
+        assert_eq!(correlation_id(), explicit);
+        assert_eq!(correlation_id(), explicit); // stable across calls
+        assert_eq!(try_correlation_id(), Some(explicit));
+
+        clear_correlation_id();
+    }
+
+    #[tokio::test]
+    async fn test_task_local_still_takes_precedence_after_fallback_seed() {
+        // Seeding thread-local via the fallback path must NOT affect
+        // task-local precedence. Inside with_correlation_id() the task-local
+        // value wins; outside the scope the seeded thread-local value is
+        // still visible.
+        clear_correlation_id();
+
+        let seeded = correlation_id();
+        let task_id = Uuid::new_v4();
+        assert_ne!(seeded, task_id);
+
+        with_correlation_id(task_id, async {
+            assert_eq!(correlation_id(), task_id);
+        })
+        .await;
+
+        // Back out of the task scope, the seeded thread-local value persists.
+        assert_eq!(correlation_id(), seeded);
+
+        clear_correlation_id();
     }
 
     #[test]

@@ -40,6 +40,14 @@ thread_local! {
     /// Thread-local correlation ID for sync code
     static THREAD_CORRELATION_ID: RefCell<Option<Uuid>> = const { RefCell::new(None) };
 
+    /// Thread-local cache for auto-generated correlation IDs
+    ///
+    /// Separate from THREAD_CORRELATION_ID so callers can still distinguish
+    /// "explicitly configured" from "auto-generated" via `try_correlation_id()`
+    /// (which checks only the explicit cell). `correlation_id()` consults
+    /// both — explicit first, then this cache, then generates and stores here.
+    static THREAD_CORRELATION_FALLBACK: RefCell<Option<Uuid>> = const { RefCell::new(None) };
+
     /// Thread-local tenant ID for sync code
     static THREAD_TENANT_ID: RefCell<Option<String>> = const { RefCell::new(None) };
 
@@ -70,6 +78,27 @@ pub(crate) fn get_thread_correlation_id() -> Option<Uuid> {
 pub(crate) fn clear_thread_correlation_id() {
     THREAD_CORRELATION_ID.with(|cell| {
         *cell.borrow_mut() = None;
+    });
+    // Also clear the fallback cache so the next correlation_id() call
+    // generates a fresh ID instead of returning a stale cached one.
+    THREAD_CORRELATION_FALLBACK.with(|cell| {
+        *cell.borrow_mut() = None;
+    });
+}
+
+/// Get the cached fallback correlation ID (auto-generated, not explicit)
+///
+/// Used internally by `correlation_id()` only. NOT visible to
+/// `try_correlation_id()`, which must distinguish explicit configuration
+/// from implicit generation.
+pub(crate) fn get_thread_correlation_fallback() -> Option<Uuid> {
+    THREAD_CORRELATION_FALLBACK.with(|cell| *cell.borrow())
+}
+
+/// Cache a fallback correlation ID in thread-local storage
+pub(crate) fn set_thread_correlation_fallback(id: Uuid) {
+    THREAD_CORRELATION_FALLBACK.with(|cell| {
+        *cell.borrow_mut() = Some(id);
     });
 }
 
