@@ -83,7 +83,8 @@ pub use context::{TaskContext, TaskLocal};
 // Re-export context internal functions for parent module shortcut functions
 pub(crate) use context::{
     clear_thread_context, clear_thread_correlation_id, clear_thread_session_id,
-    clear_thread_tenant_id, clear_thread_user_id, get_thread_correlation_id, get_thread_session_id,
-    get_thread_tenant_id, get_thread_user_id, set_thread_correlation_id, set_thread_session_id,
+    clear_thread_tenant_id, clear_thread_user_id, get_thread_correlation_fallback,
+    get_thread_correlation_id, get_thread_session_id, get_thread_tenant_id, get_thread_user_id,
+    set_thread_correlation_fallback, set_thread_correlation_id, set_thread_session_id,
     set_thread_tenant_id, set_thread_user_id,
 };
