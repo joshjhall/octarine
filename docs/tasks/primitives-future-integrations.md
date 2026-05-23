@@ -4,21 +4,10 @@ Ideas for leveraging `primitives/common` (RingBuffer, LruCache) that require mor
 
 ## 1. Metrics Snapshot Caching (LruCache)
 
-**Location:** `src/observe/metrics/aggregation/mod.rs:62-83`
-
-**Current Issue:** `snapshot()` creates full clones of all metrics every call, which is expensive for high-frequency
-exports.
-
-**Proposed Solution:** Use LruCache to cache recent snapshots with short TTL (1-5 seconds).
-
-**Design Questions:**
-
-- What TTL is appropriate? Too short = no benefit, too long = stale data
-- Should cache be invalidated on any metric write? (defeats purpose)
-- Should we track "dirty" state and only regenerate when needed?
-- How to handle concurrent snapshot requests during regeneration?
-
-**Benefit:** Reduce allocation overhead on frequent metric exports.
+**Status:** Implemented in #4 (single-slot TTL cache rather than LruCache —
+the registry only ever produces one global snapshot, so an LRU key dimension
+adds no value). Default TTL 1s, invalidated by `Registry::clear()` and
+`flush_for_testing()`. See `src/observe/metrics/aggregation/mod.rs`.
 
 ______________________________________________________________________
 
