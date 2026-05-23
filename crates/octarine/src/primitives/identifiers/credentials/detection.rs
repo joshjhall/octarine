@@ -429,14 +429,17 @@ const DB_SCHEMES: &[&str] = &[
 /// Check if value is a connection string with embedded credentials
 ///
 /// Detects URL-based connection strings (postgres://, mysql://, etc.),
-/// MSSQL key-value format (Server=...;Password=...), and JDBC with
-/// password parameters.
+/// MSSQL key-value format (Server=...;Password=...), JDBC with `?password=`
+/// query parameters, JDBC Oracle thin (`scott/tiger@host`), and JDBC SQL
+/// Server semicolon format.
 #[must_use]
 pub fn is_connection_string_with_credentials(value: &str) -> bool {
     let trimmed = value.trim();
     network::CONNECTION_STRING_DB_URL.is_match(trimmed)
         || network::CONNECTION_STRING_MSSQL.is_match(trimmed)
         || network::CONNECTION_STRING_JDBC.is_match(trimmed)
+        || network::CONNECTION_STRING_JDBC_ORACLE.is_match(trimmed)
+        || network::CONNECTION_STRING_JDBC_SQLSERVER.is_match(trimmed)
 }
 
 /// Check if value is a database connection string (URL-based)
@@ -482,6 +485,34 @@ pub fn find_connection_strings_in_text(text: &str) -> Vec<CredentialMatch> {
 
     // JDBC connection strings
     for m in network::CONNECTION_STRING_JDBC.find_iter(text) {
+        let start = m.start();
+        if !matches.iter().any(|existing| existing.start == start) {
+            matches.push(CredentialMatch {
+                start,
+                end: m.end(),
+                value: m.as_str().to_string(),
+                credential_type: CredentialType::Generic,
+                label: "connection_string".to_string(),
+            });
+        }
+    }
+
+    // JDBC Oracle thin (slash-separated credentials, no '?')
+    for m in network::CONNECTION_STRING_JDBC_ORACLE.find_iter(text) {
+        let start = m.start();
+        if !matches.iter().any(|existing| existing.start == start) {
+            matches.push(CredentialMatch {
+                start,
+                end: m.end(),
+                value: m.as_str().to_string(),
+                credential_type: CredentialType::Generic,
+                label: "connection_string".to_string(),
+            });
+        }
+    }
+
+    // JDBC SQL Server (semicolon-separated params)
+    for m in network::CONNECTION_STRING_JDBC_SQLSERVER.find_iter(text) {
         let start = m.start();
         if !matches.iter().any(|existing| existing.start == start) {
             matches.push(CredentialMatch {
@@ -1140,5 +1171,62 @@ mod tests {
         // Real passphrases should not match
         assert!(!is_weak_passphrase("purple elephant dancing gracefully"));
         assert!(!is_weak_passphrase("my favorite coffee shop downtown"));
+    }
+
+    // ========================================================================
+    // JDBC variant detection (issue #30)
+    // ========================================================================
+
+    #[test]
+    fn test_jdbc_oracle_thin_detected() {
+        assert!(is_connection_string_with_credentials(
+            "jdbc:oracle:thin:scott/tiger@dbhost:1521:orcl"
+        ));
+        assert!(is_connection_string_with_credentials(
+            "jdbc:oracle:oci:user/p@ssw0rd@host:1521:sid"
+        ));
+        // No credentials -> should not match Oracle thin pattern
+        assert!(!is_connection_string_with_credentials(
+            "jdbc:oracle:thin:@host:1521:orcl"
+        ));
+    }
+
+    #[test]
+    fn test_jdbc_sqlserver_semicolon_detected() {
+        assert!(is_connection_string_with_credentials(
+            "jdbc:sqlserver://server:1433;user=sa;password=secret"
+        ));
+        assert!(is_connection_string_with_credentials(
+            "jdbc:sqlserver://server;databaseName=db;pwd=hunter2"
+        ));
+        // Missing password -> no match
+        assert!(!is_connection_string_with_credentials(
+            "jdbc:sqlserver://server;user=sa;databaseName=db"
+        ));
+    }
+
+    #[test]
+    fn test_find_connection_strings_includes_new_jdbc_variants() {
+        let text = "primary: jdbc:oracle:thin:scott/tiger@h:1521:o\n\
+                    replica: jdbc:sqlserver://r;user=sa;password=x";
+        let matches = find_connection_strings_in_text(text);
+        assert_eq!(matches.len(), 2);
+        assert!(matches.iter().all(|m| m.label == "connection_string"));
+    }
+
+    // ========================================================================
+    // Framework credential detection routing (issue #30)
+    // ========================================================================
+    //
+    // Framework-specific detection lives in the `framework` sibling module;
+    // its tests are co-located there. The test below verifies that DATABASE_URL
+    // (a common .env-style key carrying a URL) still routes through the
+    // existing URL-based connection-string detection rather than the
+    // framework detector.
+
+    #[test]
+    fn test_database_url_still_routes_through_connection_string() {
+        let text = "DATABASE_URL=postgres://u:p@h/db";
+        assert!(is_connection_string_with_credentials(text));
     }
 }

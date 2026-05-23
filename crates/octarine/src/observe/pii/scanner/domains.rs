@@ -415,6 +415,15 @@ pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
         pii_types.push(PiiType::ConnectionString);
     }
 
+    // Framework-style credentials (Django, Rails YAML, .env, Docker Compose).
+    // Mapped to ConnectionString since they identify the same kind of secret —
+    // database access credentials in application configuration.
+    if credential.is_framework_credential_present(text)
+        && !pii_types.contains(&PiiType::ConnectionString)
+    {
+        pii_types.push(PiiType::ConnectionString);
+    }
+
     if credential.is_passwords_present(text) {
         pii_types.push(PiiType::Password);
     }

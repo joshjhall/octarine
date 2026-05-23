@@ -4,7 +4,7 @@
 
 use std::borrow::Cow;
 
-use super::{detection, redaction, sanitization, validation};
+use super::{detection, framework, redaction, sanitization, validation};
 
 /// Builder for credential identifier operations
 ///
@@ -129,6 +129,38 @@ impl CredentialIdentifierBuilder {
     #[must_use]
     pub fn redact_connection_strings_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
         sanitization::redact_connection_strings_in_text(text)
+    }
+
+    // Framework credential detection methods
+
+    /// Check if text contains framework-style credential assignments
+    ///
+    /// Detects Django settings.py, Rails YAML, `.env`, and Docker Compose
+    /// password patterns. Commented-out credentials are also flagged.
+    #[must_use]
+    pub fn is_framework_credential_present(&self, text: &str) -> bool {
+        framework::is_framework_credential_present(text)
+    }
+
+    /// Find all framework-style credential matches in text
+    #[must_use]
+    pub fn find_framework_credentials_in_text(
+        &self,
+        text: &str,
+    ) -> Vec<detection::CredentialMatch> {
+        framework::find_framework_credentials_in_text(text)
+    }
+
+    /// Redact the value of a framework credential while preserving the key
+    #[must_use]
+    pub fn redact_framework_credential(&self, value: &str) -> String {
+        sanitization::redact_framework_credential(value)
+    }
+
+    /// Redact all framework-style credentials in text
+    #[must_use]
+    pub fn redact_framework_credentials_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        sanitization::redact_framework_credentials_in_text(text)
     }
 
     // Validation methods
