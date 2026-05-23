@@ -330,6 +330,74 @@ impl CredentialsBuilder {
     }
 
     // =========================================================================
+    // Framework Credential Detection Methods
+    // =========================================================================
+
+    /// Check if text contains framework-style credential assignments
+    ///
+    /// Detects Django settings.py, Rails YAML, `.env`, and Docker Compose
+    /// password patterns. Commented-out credentials are also flagged.
+    #[must_use]
+    pub fn is_framework_credential_present(&self, text: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_framework_credential_present(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+
+            if result {
+                increment_by(metric_names::secrets_found(), 1);
+                observe::warn(
+                    "framework_credential_detected",
+                    "Framework-style credential detected in text",
+                );
+            }
+        }
+
+        result
+    }
+
+    /// Find all framework-style credential matches in text
+    #[must_use]
+    pub fn find_framework_credentials_in_text(&self, text: &str) -> Vec<CredentialMatch> {
+        let matches = self.inner.find_framework_credentials_in_text(text);
+
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::secrets_found(), matches.len() as u64);
+            observe::warn(
+                "framework_credentials_in_text",
+                format!("Found {} framework credential(s)", matches.len()),
+            );
+        }
+
+        matches
+    }
+
+    /// Redact the value of a framework credential while preserving the key
+    #[must_use]
+    pub fn redact_framework_credential(&self, value: &str) -> String {
+        self.inner.redact_framework_credential(value)
+    }
+
+    /// Redact all framework-style credentials in text
+    #[must_use]
+    pub fn redact_framework_credentials_in_text<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        let result = self.inner.redact_framework_credentials_in_text(text);
+
+        if self.emit_events && result != text {
+            observe::info(
+                "framework_credentials_redacted",
+                "Framework credentials redacted from text",
+            );
+        }
+
+        result
+    }
+
+    // =========================================================================
     // Weak Pattern Detection Methods
     // =========================================================================
 
@@ -566,5 +634,53 @@ mod tests {
         let builder = CredentialsBuilder::silent();
         assert!(builder.is_weak_passphrase("correct horse battery staple"));
         assert!(!builder.is_weak_passphrase("purple elephant dancing gracefully"));
+    }
+
+    // ========================================================================
+    // Framework credential detection (issue #30)
+    // ========================================================================
+
+    #[test]
+    fn test_is_framework_credential_present_layer3() {
+        let builder = CredentialsBuilder::silent();
+        assert!(builder.is_framework_credential_present("DB_PASSWORD=secret"));
+        assert!(builder.is_framework_credential_present("'PASSWORD': 'sv'"));
+        assert!(!builder.is_framework_credential_present("APP_HOST=localhost"));
+    }
+
+    #[test]
+    fn test_find_framework_credentials_in_text_layer3() {
+        let builder = CredentialsBuilder::silent();
+        let matches =
+            builder.find_framework_credentials_in_text("DB_PASSWORD=secret\nREDIS_PASSWORD=foo");
+        assert_eq!(matches.len(), 2);
+        assert!(matches.iter().all(|m| m.label == "env_db_password"));
+    }
+
+    #[test]
+    fn test_redact_framework_credential_layer3() {
+        let builder = CredentialsBuilder::silent();
+        assert_eq!(
+            builder.redact_framework_credential("DB_PASSWORD=secret"),
+            "DB_PASSWORD=****"
+        );
+    }
+
+    #[test]
+    fn test_redact_framework_credentials_in_text_layer3() {
+        let builder = CredentialsBuilder::silent();
+        let text = "MYSQL_PASSWORD=secret123\nAPP_HOST=localhost";
+        let result = builder.redact_framework_credentials_in_text(text);
+        assert!(result.contains("MYSQL_PASSWORD=****"));
+        assert!(result.contains("APP_HOST=localhost"));
+        assert!(!result.contains("secret123"));
+    }
+
+    #[test]
+    fn test_redact_connection_string_jdbc_oracle_layer3() {
+        let builder = CredentialsBuilder::silent();
+        let result = builder.redact_connection_string("jdbc:oracle:thin:scott/tiger@h:1521:o");
+        assert!(result.contains("scott/****@"));
+        assert!(!result.contains("tiger"));
     }
 }

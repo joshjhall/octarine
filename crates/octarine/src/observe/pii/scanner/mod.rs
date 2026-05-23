@@ -304,6 +304,27 @@ mod tests {
     }
 
     #[test]
+    fn test_scan_for_pii_framework_credentials_env() {
+        let text = "DB_PASSWORD=secret123";
+        let types = scan_for_pii(text);
+        assert!(types.contains(&PiiType::ConnectionString));
+    }
+
+    #[test]
+    fn test_scan_for_pii_framework_credentials_docker_compose() {
+        let text = "environment:\n  - MYSQL_ROOT_PASSWORD=hunter2";
+        let types = scan_for_pii(text);
+        assert!(types.contains(&PiiType::ConnectionString));
+    }
+
+    #[test]
+    fn test_scan_for_pii_framework_credentials_django() {
+        let text = "DATABASES = {'default': {'PASSWORD': 'sv'}}";
+        let types = scan_for_pii(text);
+        assert!(types.contains(&PiiType::ConnectionString));
+    }
+
+    #[test]
     fn test_scan_for_pii_biometric_template_iso_19794() {
         // ISO/IEC 19794 template with FMR header marker and 54 base64-like chars.
         // scan_biometric is off by default; enable it explicitly.

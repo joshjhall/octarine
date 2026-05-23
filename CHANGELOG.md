@@ -6,6 +6,13 @@ All notable changes to octarine will be documented in this file.
 
 ### Added
 
+- feat(identifiers): add framework database credential detection (#30)
+  - JDBC variants: Oracle thin (`jdbc:oracle:thin:user/pass@host`) and SQL Server semicolon format (`jdbc:sqlserver://host;user=X;password=Y`) extend the existing `is_connection_string_with_credentials` / `find_connection_strings_in_text` story
+  - New umbrella functions `is_framework_credential_present` / `find_framework_credentials_in_text` (+ Layer 3 builder methods and shortcuts) detect credentials in Django `'PASSWORD': 'value'` settings, Rails `password: value` YAML, `.env` keys (`DB_PASSWORD`, `MYSQL_PASSWORD`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `MONGO_PASSWORD`, `DATABASE_PASSWORD`, `POSTGRESQL_PASSWORD`), and Docker Compose env (`MYSQL_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, `MONGO_INITDB_ROOT_PASSWORD`, `RABBITMQ_DEFAULT_PASS`, `REDIS_PASSWORD`)
+  - Redaction primitives `redact_framework_credential` / `redact_framework_credentials_in_text` preserve the key and replace the value with `****`; `redact_connection_string` extended to handle Oracle thin (`user/****@host`)
+  - PII scanner (`scan_for_pii`) maps framework matches to `PiiType::ConnectionString` — no new PII type variants needed
+  - Commented-out credentials (`# DB_PASSWORD=secret`) are also flagged since comments can be uncommented
+
 - feat(identifiers): add international postal codes (DE, FR, AU, JP, IN, NL, BR) (#37)
   - Per-country detection functions: `is_german_postal_code`, `is_french_postal_code`, `is_australian_postal_code`, `is_japanese_postal_code`, `is_indian_postal_code`, `is_dutch_postal_code`, `is_brazilian_postal_code`
   - `PostalCodeType` gains `GermanPostal`, `FrenchPostal`, `AustralianPostal`, `JapanesePostal`, `IndianPostal`, `DutchPostal`, `BrazilianPostal` variants

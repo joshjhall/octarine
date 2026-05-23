@@ -124,6 +124,7 @@ pub(crate) mod redaction;
 
 // Internal modules - not directly accessible outside credentials/
 mod detection;
+mod framework;
 mod sanitization;
 mod validation;
 

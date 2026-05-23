@@ -422,3 +422,58 @@ pub static CONNECTION_STRING_DB_URL: Lazy<Regex> = Lazy::new(|| {
     )
     .expect("BUG: Invalid regex pattern")
 });
+
+/// JDBC Oracle thin driver connection string with slash-separated credentials
+/// Example: "jdbc:oracle:thin:scott/tiger@dbhost:1521:orcl"
+pub static CONNECTION_STRING_JDBC_ORACLE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)jdbc:oracle:[a-z]+:[^/\s:@]+/[^@\s]+@[^\s]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// JDBC SQL Server connection string with semicolon-separated user/password params
+/// Example: "jdbc:sqlserver://host:1433;databaseName=db;user=sa;password=secret"
+pub static CONNECTION_STRING_JDBC_SQLSERVER: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)jdbc:sqlserver://[^\s;]+(?:;[^;\s]+)*;(?:password|pwd)=[^;\s]+")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Django settings.py PASSWORD dict-literal entry
+/// Matches both single-quoted and double-quoted forms.
+/// Example: `'PASSWORD': 'secret_value'` or `"PASSWORD": "secret_value"`
+/// Capture groups: (1) single-quoted value, (2) double-quoted value (exactly
+/// one of the two will be non-empty for any given match).
+pub static FRAMEWORK_DJANGO_PASSWORD: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?:'PASSWORD'\s*:\s*'([^']+)'|"PASSWORD"\s*:\s*"([^"]+)")"#)
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// Rails / generic YAML `password: value` entries
+/// Capture groups: (1) value. Allows optional `#` to flag commented lines.
+/// Example: `  password: secret_value` or `# password: secret_value`
+pub static FRAMEWORK_RAILS_YAML_PASSWORD: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?im)^[ \t]*#?[ \t]*password[ \t]*:[ \t]+(\S+)")
+        .expect("BUG: Invalid regex pattern")
+});
+
+/// .env file database password keys
+/// Capture groups: (1) key name, (2) value.
+/// Matches: DB_PASSWORD, DATABASE_PASSWORD, REDIS_PASSWORD, MYSQL_PASSWORD,
+/// POSTGRES_PASSWORD, POSTGRESQL_PASSWORD, MONGO_PASSWORD.
+/// Allows optional `#` to flag commented lines.
+pub static FRAMEWORK_ENV_DB_PASSWORD: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?m)^[ \t]*#?[ \t]*(DB_PASSWORD|DATABASE_PASSWORD|REDIS_PASSWORD|MYSQL_PASSWORD|POSTGRES_PASSWORD|POSTGRESQL_PASSWORD|MONGO_PASSWORD)[ \t]*=[ \t]*(\S+)"
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
+/// Docker Compose root-password environment variables
+/// Capture groups: (1) key name, (2) value.
+/// Matches both `KEY=value` (compose list-with-dash form) and `KEY: value`
+/// (compose dict form). Allows optional `#` to flag commented lines.
+pub static FRAMEWORK_DOCKER_COMPOSE_PASSWORD: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?m)^[ \t]*#?[ \t]*-?[ \t]*(MYSQL_ROOT_PASSWORD|POSTGRES_PASSWORD|MONGO_INITDB_ROOT_PASSWORD|RABBITMQ_DEFAULT_PASS|REDIS_PASSWORD)[ \t]*[=:][ \t]*(\S+)"
+    )
+    .expect("BUG: Invalid regex pattern")
+});
