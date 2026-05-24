@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from typing import Sequence
 
-from scripts.arch_check.checks import CHECK_ORDER, CHECKS
+from scripts.arch_check.checks import CHECK_ORDER, CHECKS, DEFAULT_CHECKS
 from scripts.arch_check.core import Finding, format_finding, repo_root
 
 
@@ -22,7 +22,8 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
         prog="arch_check",
         description=(
             "Architecture enforcement checks for octarine. "
-            "By default runs all checks on all .rs files in crates/octarine/src."
+            "By default runs the gating checks on all .rs files in "
+            "crates/octarine/src; opt-in checks must be requested explicitly."
         ),
     )
     parser.add_argument(
@@ -45,7 +46,7 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
-    selected = args.checks or CHECK_ORDER
+    selected = args.checks or DEFAULT_CHECKS
     root = repo_root()
 
     errors = 0
