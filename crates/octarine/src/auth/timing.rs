@@ -16,6 +16,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::auth::timing::{constant_time_response, ConstantTimeConfig};
 //!
@@ -129,6 +130,7 @@ impl ConstantTimeConfigBuilder {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::auth::timing::{constant_time_response, ConstantTimeConfig};
 ///

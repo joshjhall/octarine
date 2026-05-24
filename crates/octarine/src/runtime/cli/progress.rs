@@ -22,6 +22,7 @@ pub enum ProgressStyle {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::ProgressBar;
 ///
@@ -253,6 +254,7 @@ impl ProgressBar {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::Spinner;
 ///

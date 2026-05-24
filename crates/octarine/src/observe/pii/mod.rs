@@ -31,6 +31,7 @@
 //!
 //! ## Automatic (via Event builder)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::ObserveBuilder;
 //!
@@ -48,6 +49,7 @@
 //!
 //! ## Manual (direct API)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::pii::{scan_for_pii, redact_pii};
 //! use octarine::pii::RedactionProfile;
@@ -82,6 +84,7 @@
 //!
 //! The scanner provides health metrics for production monitoring:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::pii::{scanner_stats, scanner_health_score, scanner_is_healthy};
 //!

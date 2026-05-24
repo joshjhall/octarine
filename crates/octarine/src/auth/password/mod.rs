@@ -63,6 +63,7 @@ pub use hibp::{HibpClient, HibpConfig, HibpConfigBuilder, detect_password_breach
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::auth::{PasswordPolicy, validate_password};
 ///
@@ -149,6 +150,7 @@ pub fn validate_password_with_history(
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::auth::estimate_strength;
 ///

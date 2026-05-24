@@ -51,6 +51,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{Secret, SecretString, ExposeSecret};
 //!
@@ -66,6 +67,7 @@
 //!
 //! # Typed Secrets with Audit Trails
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{TypedSecret, SecretType, Classification};
 //! use std::time::Duration;

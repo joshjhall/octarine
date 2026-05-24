@@ -22,6 +22,7 @@
 //!
 //! ## Basic HMAC
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::auth;
 //!
@@ -36,6 +37,7 @@
 //!
 //! ## Domain-Separated HMAC
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::auth;
 //!

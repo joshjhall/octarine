@@ -28,6 +28,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::process::SecureCommand;
 /// use std::time::Duration;
@@ -50,6 +51,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 ///
 /// For untrusted input, always use `arg_validated`:
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// SecureCommand::new("git")
 ///     .arg("clone")
@@ -88,6 +90,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let cmd = SecureCommand::new("git");
     /// ```
@@ -120,6 +123,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureCommand::new("git")
     ///     .arg("--version")  // Trusted flag
@@ -158,6 +162,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureCommand::new("git")
     ///     .arg("clone")
@@ -177,6 +182,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::runtime::process::ArgumentPolicy;
     ///
@@ -207,6 +213,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureCommand::new("ls")
     ///     .current_dir("/tmp")
@@ -271,6 +278,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureCommand::new("slow-command")
     ///     .timeout(Duration::from_secs(60))
@@ -286,6 +294,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureCommand::new("cat")
     ///     .stdin(b"hello world")
@@ -314,6 +323,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::runtime::process::{SecureCommand, AllowList};
     ///
@@ -350,6 +360,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::runtime::process::{SecureCommand, AllowList};
     ///
@@ -410,6 +421,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let output = SecureCommand::new("ls")
     ///     .arg("-la")
@@ -521,6 +533,7 @@ impl SecureCommand {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let output = SecureCommand::new("test")
     ///     .arg("-f")

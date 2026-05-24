@@ -15,6 +15,7 @@ use crate::observe::pii::{PiiType, scan_for_pii};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::config::ConfigValue;
 ///
@@ -375,6 +376,7 @@ impl ConfigValue {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::runtime::config::{ConfigBuilder, SecretType, Classification};
     ///
@@ -410,6 +412,7 @@ impl ConfigValue {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::runtime::config::ConfigBuilder;
     ///

@@ -12,6 +12,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::{write_atomic, WriteOptions, FileMode};
 //!
@@ -47,6 +48,7 @@ pub use prim::{FileMode, WriteOptions};
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::{write_atomic, WriteOptions};
 ///
@@ -103,6 +105,7 @@ pub fn write_atomic(
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::{set_mode, FileMode};
 ///

@@ -18,6 +18,7 @@ use super::output::OutputFormat;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::{CliApp, ExitCode};
 ///
@@ -386,6 +387,7 @@ impl CliApp {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::{run_cli, ExitCode};
 ///

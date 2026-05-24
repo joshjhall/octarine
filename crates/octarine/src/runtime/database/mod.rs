@@ -13,6 +13,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::runtime::database::{DatabaseConfig, ManagedPool, PoolConfig};
 //! use octarine::runtime::shutdown::ShutdownCoordinator;
@@ -78,6 +79,7 @@
 //!
 //! # Multiple Pools
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::runtime::database::{DatabaseConfig, ManagedPool, PoolConfig};
 //!

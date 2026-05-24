@@ -9,6 +9,7 @@
 //! The token is stored in a cookie and must also be submitted via header or form.
 //! Simpler but relies on same-origin policy for cookie access.
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::auth::csrf::CsrfProtection;
 //!

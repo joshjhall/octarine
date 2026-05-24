@@ -11,6 +11,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::auth;
 //!
@@ -152,6 +153,7 @@ pub fn is_hex_valid(key: &[u8], message: &[u8], hex_mac: &str) -> bool {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::auth;
 ///
@@ -215,6 +217,7 @@ pub fn is_with_domain_valid(key: &[u8], domain: &str, message: &[u8], mac: &[u8]
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::auth;
 ///

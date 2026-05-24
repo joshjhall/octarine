@@ -19,6 +19,7 @@ use super::types::Outcome;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::audit::Audit;
 ///
@@ -91,6 +92,7 @@ impl AuditEvent {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// Audit::admin("config_change")
     ///     .target("security.toml")
@@ -114,6 +116,7 @@ impl AuditEvent {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// Audit::admin("config_change")
     ///     .target("security.toml")

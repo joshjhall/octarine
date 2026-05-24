@@ -10,6 +10,7 @@ use super::{CliError, CliResult};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::Input;
 ///
@@ -90,6 +91,7 @@ impl Input {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::Confirm;
 ///
@@ -167,6 +169,7 @@ impl Confirm {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::Password;
 ///
@@ -248,6 +251,7 @@ impl Password {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::cli::Select;
 ///

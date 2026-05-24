@@ -8,6 +8,7 @@
 //! The local network context captures all IP addresses and network interfaces
 //! on the host. This is refreshed with a TTL to handle DHCP changes.
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::context::get_local_network;
 //!
@@ -288,6 +289,7 @@ static LOCAL_NETWORK: Lazy<CachedLocalNetwork> = Lazy::new(CachedLocalNetwork::n
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::context::get_local_network;
 ///

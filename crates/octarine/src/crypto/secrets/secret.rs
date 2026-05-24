@@ -25,6 +25,7 @@ use crate::primitives::crypto::secrets::{ExposeSecretCore, SecretCore};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::{Secret, ExposeSecret};
 ///
@@ -60,6 +61,7 @@ pub trait ExposeSecret<T> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::{Secret, SecretString, ExposeSecret};
 ///
@@ -159,6 +161,7 @@ impl<T: Zeroize + Clone> Clone for Secret<T> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::{SecretString, ExposeSecret};
 ///
@@ -174,6 +177,7 @@ pub type SecretString = Secret<String>;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::{SecretBytes, ExposeSecret};
 ///

@@ -38,6 +38,7 @@
 //!
 //! ## Message Authentication (HMAC)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::auth;
 //!
@@ -52,6 +53,7 @@
 //!
 //! ## Password Hashing
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::password;
 //!
@@ -66,6 +68,7 @@
 //!
 //! ## Key Derivation
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::{kdf, DomainSeparator};
 //!
@@ -75,6 +78,7 @@
 //!
 //! ## Random Generation
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::random;
 //!
@@ -85,6 +89,7 @@
 //!
 //! ## SecureMap
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::SecureMap;
 //!
@@ -104,6 +109,7 @@
 //!
 //! ## SecureEnvBuilder
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{SecureEnvBuilder, SecureEnv};
 //!

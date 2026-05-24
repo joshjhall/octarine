@@ -23,6 +23,7 @@
 //!
 //! ## Ephemeral Encryption (Forward Secrecy)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::encryption::ephemeral;
 //!
@@ -35,6 +36,7 @@
 //!
 //! ## Persistent Encryption (Long-term Storage)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::encryption::persistent;
 //!
@@ -50,6 +52,7 @@
 //!
 //! ## Hybrid Encryption (Post-Quantum Key Exchange)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::encryption::hybrid;
 //!

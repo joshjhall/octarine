@@ -8,6 +8,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::SecureVar;
 //!
@@ -74,6 +75,7 @@ impl From<SecureVarError> for crate::observe::Problem {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::SecureVar;
 ///
@@ -108,6 +110,7 @@ impl SecureVar {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let api_key = SecureVar::from_env("OPENAI_API_KEY")?;
     /// assert_eq!(api_key.secret_type(), &SecretType::ApiKey);
@@ -154,6 +157,7 @@ impl SecureVar {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let db_pass = SecureVar::from_env_typed("DB_PASSWORD", SecretType::Password)?;
     /// ```
@@ -198,6 +202,7 @@ impl SecureVar {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use std::time::Duration;
     ///
@@ -283,6 +288,7 @@ impl SecureVar {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let value = api_key.expose_secret_audited("authenticate_api_request");
     /// ```

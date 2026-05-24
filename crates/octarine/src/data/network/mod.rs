@@ -40,6 +40,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::data::network::{normalize_url_path, NormalizeUrlPathOptions};
 //!

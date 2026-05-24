@@ -13,6 +13,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::EncryptedSecretStorage;
 //! use std::time::Duration;
@@ -209,6 +210,7 @@ impl Default for EncryptedStorageConfig {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// let storage = EncryptedSecretStorage::builder()
 ///     .with_id("my-secrets")
@@ -458,6 +460,7 @@ impl EncryptedSecretStorage {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let result = storage.with_secret("api_key", "make_request", |key| {
     ///     api_client.authenticate(key)

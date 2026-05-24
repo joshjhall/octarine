@@ -20,6 +20,7 @@
 //!
 //! ## Detect File Type
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::magic::{detect_file_type, MagicFileType};
 //!
@@ -31,6 +32,7 @@
 //!
 //! ## Validate Upload
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::magic::{validate_image, validate_not_dangerous};
 //!
@@ -43,6 +45,7 @@
 //!
 //! ## Check Data Directly
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::magic::{detect_magic, is_dangerous_magic};
 //!

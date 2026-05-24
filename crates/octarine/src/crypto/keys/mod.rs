@@ -30,6 +30,7 @@
 //!
 //! ## Password Hashing (Async - Recommended)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::password;
 //!
@@ -44,6 +45,7 @@
 //!
 //! ## Password Hashing (Sync)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::password;
 //!
@@ -58,6 +60,7 @@
 //!
 //! ## Key Derivation
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::{kdf, DomainSeparator};
 //!
@@ -67,6 +70,7 @@
 //!
 //! ## Random Generation
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::random;
 //!

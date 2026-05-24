@@ -7,6 +7,7 @@
 //!
 //! This module follows the async-first design pattern. The primary API is async:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::{SecureDelete, secure_delete, DeleteMethod};
 //!
@@ -104,6 +105,7 @@ impl DeleteMethod {
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::{SecureDelete, DeleteMethod};
 ///
@@ -226,6 +228,7 @@ impl SecureDelete {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureDelete::new(path).await?
     ///     .method(DeleteMethod::Dod522022M)
@@ -244,6 +247,7 @@ impl SecureDelete {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// SecureDelete::new(path).await?
     ///     .verify(true)
@@ -525,6 +529,7 @@ impl OverwritePattern {
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::secure_delete;
 ///
@@ -540,6 +545,7 @@ pub async fn secure_delete(path: impl AsRef<Path>) -> Result<SecureDeleteResult,
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::secure_delete_dod;
 ///

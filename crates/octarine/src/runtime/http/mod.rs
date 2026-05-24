@@ -24,6 +24,7 @@
 //!
 //! ## Basic Usage
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::runtime::http::HttpClient;
 //!
@@ -42,6 +43,7 @@
 //!
 //! ## With Custom Configuration
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::runtime::http::{HttpClient, HttpClientConfig};
 //! use std::time::Duration;

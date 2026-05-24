@@ -184,6 +184,7 @@ pub use query_types::{AuditQuery, QueryResult};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::writers::{Queryable, AuditQuery, QueryResult};
 ///

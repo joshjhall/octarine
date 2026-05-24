@@ -51,6 +51,7 @@ pub use tenant::TenantContext;
 /// to the runtime layer for task correlation.
 ///
 /// # Example
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::{tenant_set, TenantContext};
 ///
@@ -72,6 +73,7 @@ pub fn set_tenant(ctx: TenantContext) {
 /// For just the tenant ID string, use `tenant_id()` instead.
 ///
 /// # Example
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::tenant_get;
 ///
@@ -90,6 +92,7 @@ pub fn get_tenant() -> Option<TenantContext> {
 /// 2. Runtime task/thread context (set via `TaskContextBuilder`)
 ///
 /// # Example
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::tenant_id;
 ///
@@ -106,6 +109,7 @@ pub fn tenant_id() -> Option<String> {
 /// The tenant context is automatically cleared after the function executes.
 ///
 /// # Example
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::{tenant_with, TenantContext};
 ///
@@ -139,6 +143,7 @@ pub fn clear_tenant() {
 /// All events created in this thread will include this source IP.
 ///
 /// # Example
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::context::set_source_ip;
 ///

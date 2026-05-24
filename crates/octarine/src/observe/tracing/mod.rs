@@ -49,6 +49,7 @@
 //!
 //! For distributed tracing across services:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::tracing::{extract_from_headers, inject_to_headers};
 //!

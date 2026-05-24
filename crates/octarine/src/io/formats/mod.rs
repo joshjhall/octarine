@@ -12,6 +12,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::formats::{read_format_file, write_format_file, FormatType};
 //! use std::path::Path;

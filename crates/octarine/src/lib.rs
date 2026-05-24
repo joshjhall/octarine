@@ -110,6 +110,7 @@ pub mod runtime;
 ///
 /// # Quick Start
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::io::{SecureTempFile, write_atomic, WriteOptions};
 ///
@@ -125,6 +126,7 @@ pub mod io;
 ///
 /// # Quick Start
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::crypto::{SecureMap, SecureEnvBuilder};
 ///
@@ -241,6 +243,7 @@ pub mod http;
 ///
 /// # Quick Start
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::auth::{PasswordPolicy, validate_password, estimate_strength};
 ///
@@ -271,6 +274,7 @@ pub mod testing;
 ///
 /// # Quick Start
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::Config;
 ///

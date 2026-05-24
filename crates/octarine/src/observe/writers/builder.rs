@@ -17,6 +17,7 @@ use crate::primitives::io::file::FileMode;
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::writers::{FileWriterBuilder, LogDirectory, LogFilename, Severity};
 /// use octarine::writers::DurabilityMode;
@@ -60,6 +61,7 @@ impl FileWriterBuilder {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let builder = FileWriterBuilder::new(
     ///     LogDirectory::new("/var/log")?,
@@ -154,6 +156,7 @@ impl FileWriterBuilder {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let writer = FileWriterBuilder::new(log_dir, filename)
     ///     .with_format(LogFormat::JsonLines)

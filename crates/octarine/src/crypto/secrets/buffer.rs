@@ -14,6 +14,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::SecureBuffer;
 //!
@@ -55,6 +56,7 @@ use crate::primitives::crypto::secrets::PrimitiveSecureBuffer;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::SecureBuffer;
 ///
@@ -93,6 +95,7 @@ impl SecureBuffer {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::crypto::secrets::SecureBuffer;
     ///
@@ -191,6 +194,7 @@ impl SecureBuffer {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::crypto::secrets::SecureBuffer;
     ///
@@ -233,6 +237,7 @@ impl SecureBuffer {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::crypto::secrets::SecureBuffer;
     ///

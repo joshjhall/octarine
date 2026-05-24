@@ -5,6 +5,7 @@
 //!
 //! ## Quick Start
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::observe::audit::{Audit, ThreatLevel, DataClassification};
 //!
@@ -110,6 +111,7 @@ pub use types::{
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::audit::Audit;
 ///
@@ -128,6 +130,7 @@ impl Audit {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// Audit::auth()
     ///     .login("alice@example.com")
@@ -146,6 +149,7 @@ impl Audit {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// Audit::data_access()
     ///     .read("users")
@@ -165,6 +169,7 @@ impl Audit {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// Audit::admin("update_security_policy")
     ///     .target("rate_limits.toml")
@@ -183,6 +188,7 @@ impl Audit {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::observe::audit::ThreatLevel;
     ///
@@ -204,6 +210,7 @@ impl Audit {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::observe::audit::ComplianceFramework;
     ///

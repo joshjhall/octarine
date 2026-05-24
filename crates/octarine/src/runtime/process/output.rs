@@ -11,6 +11,7 @@ use std::time::Duration;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// let output = SecureCommand::new("ls")
 ///     .arg("-la")

@@ -205,6 +205,7 @@ pub(super) fn capture_source_ip_chain() -> Vec<String> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::{set_source_ip, get_source_ip};
 ///
@@ -222,6 +223,7 @@ pub fn get_source_ip() -> Option<String> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::{set_source_ip_chain, get_source_ip_chain};
 ///
@@ -239,6 +241,7 @@ pub fn get_source_ip_chain() -> Vec<String> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::set_source_ip;
 ///
@@ -266,6 +269,7 @@ pub fn set_source_ip(ip: impl Into<String>) {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::set_source_ip_chain;
 ///
@@ -304,6 +308,7 @@ pub fn clear_source_ip() {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::with_source_ip;
 ///

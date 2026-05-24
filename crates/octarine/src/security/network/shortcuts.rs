@@ -23,6 +23,7 @@ use super::NetworkSecurityBuilder;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::network::is_potential_ssrf;
 ///
@@ -66,6 +67,7 @@ pub fn is_url_shortener(url: &str) -> bool {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::network::validate_ssrf_safe;
 ///

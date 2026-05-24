@@ -12,6 +12,7 @@ impl ObserveBuilder {
     /// Add a SOC2 control tag
     ///
     /// # Example
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// ObserveBuilder::for_operation("user.login")
     ///     .message("User authenticated")
@@ -34,6 +35,7 @@ impl ObserveBuilder {
     /// Add a HIPAA safeguard tag
     ///
     /// # Example
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// ObserveBuilder::for_operation("phi.access")
     ///     .message("Accessed patient record")
@@ -59,6 +61,7 @@ impl ObserveBuilder {
     /// Set the GDPR lawful basis for data processing
     ///
     /// # Example
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// ObserveBuilder::for_operation("user.data.export")
     ///     .message("Exported user data")
@@ -73,6 +76,7 @@ impl ObserveBuilder {
     /// Add a PCI-DSS requirement tag
     ///
     /// # Example
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// ObserveBuilder::for_operation("card.access")
     ///     .message("Accessed cardholder data")
@@ -98,6 +102,7 @@ impl ObserveBuilder {
     /// Add an ISO 27001 control tag
     ///
     /// # Example
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// ObserveBuilder::for_operation("user.login")
     ///     .message("User authenticated")

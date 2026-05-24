@@ -15,6 +15,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::observe::tracing::otel::{init_otel, OtelConfig, shutdown_otel};
 //!
@@ -257,6 +258,7 @@ fn event_type_to_span_kind(event_type: EventType) -> SpanKind {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::observe::tracing::otel::export_event;
 /// use octarine::observe::Event;

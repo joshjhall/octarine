@@ -20,6 +20,7 @@ use super::types::{ValidatedCertificate, ValidatedSshKey, ValidationSummary};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::validation::validate_certificate_pem;
 ///
@@ -57,6 +58,7 @@ pub fn summarize_certificate(pem_data: &str) -> Result<ValidationSummary, Proble
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::validation::validate_ssh_key;
 ///

@@ -12,6 +12,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{TypedSecret, SecretType, Classification};
 //! use std::time::Duration;
@@ -56,6 +57,7 @@ use crate::primitives::crypto::secrets::{
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::{TypedSecret, SecretType};
 ///
@@ -227,6 +229,7 @@ impl<T: Zeroize> TypedSecret<T> {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// if secret.is_usable() {
     ///     let value = secret.expose_secret_audited("api_authentication");

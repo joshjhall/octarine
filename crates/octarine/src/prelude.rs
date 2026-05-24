@@ -35,6 +35,7 @@
 //!
 //! # Example: Hex (Ingestion Server)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::prelude::*;
 //!
@@ -59,6 +60,7 @@
 //!
 //! # Example: L-Space (Data Server)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::prelude::*;
 //!
@@ -80,6 +82,7 @@
 //!
 //! # Example: Vimes (CLI)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::prelude::*;
 //!
