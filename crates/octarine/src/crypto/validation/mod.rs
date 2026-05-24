@@ -9,6 +9,7 @@
 //!
 //! # Quick Start
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::validation::{validate_certificate_pem, validate_ssh_key};
 //!
@@ -36,6 +37,7 @@
 //!
 //! For more control, use the `CryptoValidationBuilder`:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::validation::{CryptoValidationBuilder, CryptoPolicy};
 //!
@@ -61,6 +63,7 @@
 //!
 //! For simple yes/no checks without parsing:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::validation::{
 //!     is_strong_key, is_safe_signature_algorithm, is_secure_hash

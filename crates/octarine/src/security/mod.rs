@@ -46,6 +46,7 @@
 //!
 //! ## Network Security (SSRF Protection)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::network::{validate_ssrf_safe, is_internal_host};
 //!
@@ -60,6 +61,7 @@
 //!
 //! ## Using Builders
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::network::NetworkSecurityBuilder;
 //!

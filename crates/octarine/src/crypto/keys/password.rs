@@ -22,6 +22,7 @@
 //!
 //! ## Async Usage (Recommended)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::password;
 //!
@@ -39,6 +40,7 @@
 //!
 //! ## Sync Usage
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::password;
 //!
@@ -71,6 +73,7 @@ pub use prim::{PasswordCharset, PasswordError, PasswordProfile, PasswordStrength
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// let hash = password::hash("my_password").await?;
 /// ```
@@ -118,6 +121,7 @@ pub async fn hash_with_profile(
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// if password::validate("user_input", &stored_hash).await? {
 ///     // Login successful

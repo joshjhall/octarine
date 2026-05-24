@@ -15,6 +15,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use axum::{Router, routing::post};
 //! use octarine::http::presets::rate_limit;
@@ -69,6 +70,7 @@ const WEBHOOK_BURST: u32 = 1500;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use axum::Router;
 /// use octarine::http::presets::rate_limit;
@@ -103,6 +105,7 @@ pub fn api<ReqBody>() -> tower_governor::GovernorLayer<
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use axum::Router;
 /// use octarine::http::presets::rate_limit;
@@ -136,6 +139,7 @@ pub fn auth<ReqBody>() -> tower_governor::GovernorLayer<
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use axum::Router;
 /// use octarine::http::presets::rate_limit;
@@ -169,6 +173,7 @@ pub fn search<ReqBody>() -> tower_governor::GovernorLayer<
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use axum::Router;
 /// use octarine::http::presets::rate_limit;
@@ -202,6 +207,7 @@ pub fn upload<ReqBody>() -> tower_governor::GovernorLayer<
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use axum::Router;
 /// use octarine::http::presets::rate_limit;
@@ -238,6 +244,7 @@ pub fn webhook<ReqBody>() -> tower_governor::GovernorLayer<
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::http::presets::rate_limit::RateLimitBuilder;
 ///

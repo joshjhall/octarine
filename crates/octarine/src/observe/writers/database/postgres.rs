@@ -4,6 +4,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::observe::writers::{
 //!     PostgresBackend, DatabaseWriter, DatabaseWriterConfig, DatabaseBackend

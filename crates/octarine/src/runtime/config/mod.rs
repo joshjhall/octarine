@@ -19,6 +19,7 @@
 //!
 //! ## Single-value API (environment variables)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::config::ConfigBuilder;
 //!
@@ -31,6 +32,7 @@
 //!
 //! ## Struct-based API (files + env vars)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::config::ConfigBuilder;
 //! use serde::{Deserialize, Serialize};
@@ -52,6 +54,7 @@
 //!
 //! Use `build_validated()` for cross-field validation that serde can't express:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::config::{ConfigBuilder, ConfigError};
 //!

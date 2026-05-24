@@ -17,6 +17,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::formats::{SecureJsonReader, SecureXmlReader, SecureYamlReader};
 //!

@@ -38,6 +38,7 @@
 //!
 //! # Quick Start
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::auth::{PasswordPolicy, validate_password, estimate_strength};
 //!

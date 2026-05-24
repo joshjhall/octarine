@@ -53,6 +53,7 @@ impl Default for ManagedStorageConfig {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::ManagedSecretStorage;
 /// use std::time::Duration;

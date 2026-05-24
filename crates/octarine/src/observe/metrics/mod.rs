@@ -185,6 +185,7 @@ fn global() -> &'static Registry {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::metrics::{increment, MetricName};
 ///
@@ -201,6 +202,7 @@ pub fn increment(name: MetricName) {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::metrics::{increment_by, MetricName};
 ///
@@ -217,6 +219,7 @@ pub fn increment_by(name: MetricName, amount: u64) {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::metrics::{gauge, MetricName};
 ///
@@ -233,6 +236,7 @@ pub fn gauge(name: MetricName, value: i64) {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::metrics::{record, MetricName};
 ///

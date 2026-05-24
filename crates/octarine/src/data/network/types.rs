@@ -11,6 +11,7 @@ use crate::primitives::data::network::PathPattern as PrimitivePathPattern;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::network::NormalizeUrlPathOptions;
 ///
@@ -99,6 +100,7 @@ impl From<PrimitiveOptions> for NormalizeUrlPathOptions {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::network::PathPattern;
 ///
@@ -122,6 +124,7 @@ impl PathPattern {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::data::network::PathPattern;
     ///

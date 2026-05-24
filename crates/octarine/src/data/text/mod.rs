@@ -37,6 +37,7 @@
 //!
 //! ## Quick Sanitization (Shortcuts)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::data::text::{sanitize_for_log, is_log_safe};
 //!
@@ -49,6 +50,7 @@
 //!
 //! ## Builder Pattern
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::data::TextBuilder;
 //!

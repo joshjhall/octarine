@@ -41,6 +41,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::network::{validate_ssrf_safe, validate_url};
 //!

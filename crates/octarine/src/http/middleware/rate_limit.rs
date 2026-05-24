@@ -12,6 +12,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use axum::{Router, routing::get};
 //! use octarine::http::middleware::{RateLimitLayer, RateLimitConfig};
@@ -29,6 +30,7 @@
 //!
 //! By default, rate limiting is applied per source IP:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::http::middleware::RateLimitConfig;
 //!
@@ -40,6 +42,7 @@
 //!
 //! For API-wide limits regardless of client:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::http::middleware::RateLimitConfig;
 //!
@@ -260,6 +263,7 @@ impl Clone for LimiterState {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use axum::{Router, routing::get};
 /// use octarine::http::middleware::RateLimitLayer;

@@ -14,6 +14,7 @@ use crate::primitives::types::Problem;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::queries::is_sql_injection_present;
 ///
@@ -36,6 +37,7 @@ pub fn detect_sql_threats(input: &str) -> Vec<QueryThreat> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::queries::validate_sql_parameter;
 ///

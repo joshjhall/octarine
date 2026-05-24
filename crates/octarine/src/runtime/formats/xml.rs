@@ -16,6 +16,7 @@ use crate::primitives::types::Result;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::runtime::formats::SecureXmlReader;
 ///

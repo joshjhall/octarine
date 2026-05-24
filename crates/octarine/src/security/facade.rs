@@ -173,6 +173,7 @@ impl Security {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::security::Security;
     ///
@@ -202,6 +203,7 @@ impl Security {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::security::Security;
     ///

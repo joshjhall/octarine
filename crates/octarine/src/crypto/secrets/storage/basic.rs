@@ -27,6 +27,7 @@ use crate::primitives::crypto::secrets::{Classification, SecretType};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::SecretStorage;
 ///
@@ -103,6 +104,7 @@ impl SecretStorage {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// storage.insert_typed(
     ///     "db_password",
@@ -169,6 +171,7 @@ impl SecretStorage {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// if let Some(api_key) = storage.get_audited("api_key", "send_request") {
     ///     // Use the key...

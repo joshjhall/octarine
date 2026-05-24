@@ -19,6 +19,7 @@ use super::types::SecurityThreat;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::paths::is_threat_present;
 ///

@@ -18,6 +18,7 @@
 //!
 //! Apply middleware in this order (outermost first):
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use axum::Router;
 //! use octarine::http::{RequestIdLayer, ContextLayer};
@@ -40,6 +41,7 @@
 //!
 //! Apply rate limiting to specific routes:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use axum::{Router, routing::{get, post}};
 //! use octarine::http::presets::rate_limit;
@@ -54,6 +56,7 @@
 //!
 //! When presets don't match your needs, use the builders or raw tower-http APIs:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::http::presets::rate_limit::RateLimitBuilder;
 //! use octarine::http::presets::limits;

@@ -12,6 +12,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::SecureMap;
 //!
@@ -50,6 +51,7 @@ use crate::primitives::crypto::secrets::PrimitiveSecureMap;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::SecureMap;
 ///
@@ -68,6 +70,7 @@ impl SecureMap {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::crypto::secrets::SecureMap;
     ///
@@ -113,6 +116,7 @@ impl SecureMap {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let mut secrets = SecureMap::new();
     /// secrets.insert("API_KEY", "sk-12345");

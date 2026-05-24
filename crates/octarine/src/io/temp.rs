@@ -10,6 +10,7 @@
 //!
 //! This module follows the async-first design pattern. The primary API is async:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::SecureTempFile;
 //!
@@ -56,6 +57,7 @@ use crate::primitives::runtime::r#async::spawn_blocking;
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::SecureTempFile;
 ///
@@ -91,6 +93,7 @@ impl SecureTempFile {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::new().await?;
     /// ```
@@ -108,6 +111,7 @@ impl SecureTempFile {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::at_path("/app/.env.tmp").await?;
     /// ```
@@ -171,6 +175,7 @@ impl SecureTempFile {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::new_sync()?;
     /// ```
@@ -236,6 +241,7 @@ impl SecureTempFile {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// // Async
     /// let temp = SecureTempFile::builder()
@@ -269,6 +275,7 @@ impl SecureTempFile {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// temp.write_all(b"secret data")?;
     /// ```
@@ -381,6 +388,7 @@ impl SecureTempFileBuilder {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::builder()
     ///     .prefix("myapp-")
@@ -395,6 +403,7 @@ impl SecureTempFileBuilder {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::builder()
     ///     .suffix(".env")
@@ -411,6 +420,7 @@ impl SecureTempFileBuilder {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::builder()
     ///     .in_dir("/secure/tmp")
@@ -427,6 +437,7 @@ impl SecureTempFileBuilder {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::builder()
     ///     .mode(FileMode::PRIVATE_GROUP_READ)
@@ -444,6 +455,7 @@ impl SecureTempFileBuilder {
     ///
     /// # Examples
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let temp = SecureTempFile::builder()
     ///     .secure_delete(true)

@@ -48,6 +48,7 @@ use crate::primitives::identifiers::crypto::CryptoIdentifierBuilder;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::validation::{CryptoValidationBuilder, CryptoPolicy};
 ///

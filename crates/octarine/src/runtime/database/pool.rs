@@ -40,6 +40,7 @@ use sqlx::{Pool, Postgres, postgres::PgConnectOptions, postgres::PgPoolOptions};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::runtime::database::{ManagedPool, DatabaseConfig, PoolConfig};
 /// use octarine::runtime::shutdown::ShutdownCoordinator;

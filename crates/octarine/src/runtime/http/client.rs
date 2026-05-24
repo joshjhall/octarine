@@ -35,6 +35,7 @@ use crate::primitives::runtime::rate_limiter::{Decision, RateLimiter};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::runtime::http::HttpClient;
 ///
@@ -77,6 +78,7 @@ impl HttpClient {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```rust,ignore
     /// use octarine::runtime::http::{HttpClient, HttpClientConfig};
     ///

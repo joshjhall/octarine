@@ -12,6 +12,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{SecureEnvBuilder, SecureEnv};
 //!
@@ -51,6 +52,7 @@ use crate::primitives::crypto::secrets::{PrimitiveSecureEnv, PrimitiveSecureEnvB
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// let env = SecureEnvBuilder::new()
 ///     .inherit_safe()
@@ -80,6 +82,7 @@ impl SecureEnvBuilder {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let env = SecureEnvBuilder::new()
     ///     .inherit_safe()

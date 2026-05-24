@@ -180,6 +180,7 @@ pub fn spawn_blocking_stats() -> SpawnBlockingStatistics {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::runtime::r#async::spawn_blocking;
 ///

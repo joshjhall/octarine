@@ -19,6 +19,7 @@ use std::path::{Path, PathBuf};
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::writers::LogDirectory;
 ///
@@ -114,6 +115,7 @@ impl AsRef<Path> for LogDirectory {
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::writers::LogFilename;
 ///

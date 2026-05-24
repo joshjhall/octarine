@@ -21,13 +21,13 @@ use super::types::{AllowList, CommandThreat};
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use octarine::security::commands::is_dangerous_arg;
+/// # let user_input = "safe";
 ///
 /// if is_dangerous_arg(user_input) {
 ///     // Block dangerous input
 /// }
-/// # let user_input = "safe";
 /// ```
 #[must_use]
 pub fn is_dangerous_arg(arg: &str) -> bool {
@@ -40,14 +40,14 @@ pub fn is_dangerous_arg(arg: &str) -> bool {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use octarine::security::commands::detect_threats;
+/// # let user_input = "safe";
 ///
 /// let threats = detect_threats(user_input);
 /// for threat in threats {
 ///     println!("Detected: {}", threat);
 /// }
-/// # let user_input = "safe";
 /// ```
 #[must_use]
 pub fn detect_threats(arg: &str) -> Vec<CommandThreat> {
@@ -100,12 +100,12 @@ pub fn is_glob_present(arg: &str) -> bool {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use octarine::security::commands::validate_safe_arg;
+/// # let user_input = "safe";
 ///
 /// validate_safe_arg(user_input)?;
 /// // Argument is safe to use
-/// # let user_input = "safe";
 /// # Ok::<(), octarine::observe::Problem>(())
 /// ```
 pub fn validate_safe_arg(arg: &str) -> Result<(), Problem> {
@@ -116,7 +116,7 @@ pub fn validate_safe_arg(arg: &str) -> Result<(), Problem> {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use octarine::security::commands::{validate_command_allowed, AllowList};
 ///
 /// let allowlist = AllowList::git_operations();
@@ -156,7 +156,7 @@ where
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use octarine::security::commands::escape_shell_arg;
 ///
 /// let safe = escape_shell_arg("user's input")?;

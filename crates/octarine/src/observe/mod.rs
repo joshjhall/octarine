@@ -214,6 +214,7 @@
 //!
 //! Events can be sent to multiple destinations:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::{Writer, MemoryWriter, LogFormat, LogDirectory, LogFilename};
 //!
@@ -243,6 +244,7 @@
 //!
 //! Writers implementing `Queryable` support event retrieval:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::{Queryable, AuditQuery};
 //!

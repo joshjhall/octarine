@@ -18,6 +18,7 @@ use super::FormatBuilder;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::formats::parse_json;
 ///
@@ -45,6 +46,7 @@ pub fn serialize_json_pretty<T: Serialize>(value: &T) -> Result<String> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::formats::parse_xml;
 ///
@@ -67,6 +69,7 @@ pub fn serialize_xml(doc: &XmlDocument) -> Result<String> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::formats::parse_yaml;
 ///
@@ -91,6 +94,7 @@ pub fn serialize_yaml<T: Serialize>(value: &T) -> Result<String> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::formats::{detect_format, FormatType};
 ///

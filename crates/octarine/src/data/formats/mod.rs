@@ -17,6 +17,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::data::formats::{parse_json, parse_xml, detect_format};
 //! use octarine::data::formats::FormatType;

@@ -20,6 +20,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::writers::{
 //!     configure_dispatcher, DispatcherConfig, OverflowStrategy
@@ -631,6 +632,7 @@ impl EventDispatcher {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```rust,ignore
 /// use octarine::writers::{configure_dispatcher, DispatcherConfig, OverflowStrategy};
 ///

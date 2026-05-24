@@ -37,6 +37,7 @@
 //!
 //! ## Shortcuts (Recommended)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::queries::{
 //!     validate_sql_parameter,
@@ -56,6 +57,7 @@
 //!
 //! ## QueryBuilder (Unified API)
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::queries::QueryBuilder;
 //!

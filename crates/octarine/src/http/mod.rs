@@ -31,6 +31,7 @@
 //!
 //! For production services, use the preset configurations:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use axum::Router;
 //! use octarine::http::{RequestIdLayer, ContextLayer};

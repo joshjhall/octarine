@@ -10,6 +10,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use axum::{Router, routing::get};
 //! use octarine::http::middleware::{AuthLayer, AuthConfig};
@@ -33,6 +34,7 @@
 //!
 //! For API keys, provide a validation function:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```rust,ignore
 //! use octarine::http::middleware::{AuthConfig, AuthLayer};
 //!
@@ -165,6 +167,7 @@ impl AuthConfig {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```rust,ignore
     /// use octarine::http::middleware::AuthConfig;
     ///
@@ -217,6 +220,7 @@ impl AuthConfig {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```rust,ignore
     /// use octarine::http::middleware::AuthConfig;
     ///

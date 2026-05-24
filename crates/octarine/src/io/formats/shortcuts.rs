@@ -17,6 +17,7 @@ use super::{FormatIoBuilder, ReadResult};
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::formats::read_format_file;
 /// use std::path::Path;
@@ -51,6 +52,7 @@ pub fn read_yaml_file(path: &Path) -> Result<ReadResult> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::io::formats::{write_format_file, FormatType};
 /// use std::path::Path;

@@ -18,6 +18,7 @@ use std::fmt;
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::metrics::MetricName;
 ///
@@ -141,6 +142,7 @@ impl fmt::Display for MetricName {
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::metrics::MetricLabel;
 ///

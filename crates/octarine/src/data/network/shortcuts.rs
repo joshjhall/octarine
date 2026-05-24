@@ -28,6 +28,7 @@ use super::types::{NormalizeUrlPathOptions, PathPattern};
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::network::normalize_url_path;
 ///
@@ -58,6 +59,7 @@ pub fn normalize_url_path(path: &str) -> Cow<'_, str> {
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::network::{normalize_url_path_with_options, NormalizeUrlPathOptions};
 ///
@@ -104,6 +106,7 @@ pub fn normalize_url_path_with_options<'a>(
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::network::normalize_path_segments;
 ///
@@ -143,6 +146,7 @@ pub fn normalize_path_segments(path: &str) -> Cow<'_, str> {
 ///
 /// # Examples
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::network::{normalize_path_segments_with_patterns, PathPattern};
 ///

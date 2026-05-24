@@ -17,6 +17,7 @@ use super::{FormatSecurityBuilder, FormatThreat, JsonPolicy, XmlPolicy, YamlPoli
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::formats::is_xxe_present;
 ///
@@ -83,6 +84,7 @@ pub fn detect_json_threats(input: &str, policy: &JsonPolicy) -> Vec<FormatThreat
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::security::formats::is_yaml_unsafe;
 ///

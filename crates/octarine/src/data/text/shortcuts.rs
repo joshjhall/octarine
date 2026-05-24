@@ -9,6 +9,7 @@
 //!
 //! Shortcuts are namespaced under `octarine::data::text`:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::data::text::{sanitize_for_log, is_log_safe};
 //!
@@ -35,6 +36,7 @@ use super::TextBuilder;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::is_log_safe;
 ///
@@ -55,6 +57,7 @@ pub fn is_log_safe(input: &str) -> bool {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::is_dangerous;
 ///
@@ -92,6 +95,7 @@ pub fn is_ansi_present(input: &str) -> bool {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::sanitize_for_log;
 ///
@@ -113,6 +117,7 @@ pub fn sanitize_for_log(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::sanitize_strict;
 ///
@@ -137,6 +142,7 @@ pub fn sanitize_strict(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::sanitize_relaxed;
 ///
@@ -160,6 +166,7 @@ pub fn sanitize_relaxed(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::sanitize_for_json;
 ///
@@ -183,6 +190,7 @@ pub fn sanitize_for_json(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::strip_ansi;
 ///
@@ -197,6 +205,7 @@ pub fn strip_ansi(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::strip_control_chars;
 ///
@@ -215,6 +224,7 @@ pub fn strip_control_chars(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::escape_line_breaks;
 ///
@@ -233,6 +243,7 @@ pub fn escape_line_breaks(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::truncate;
 ///
@@ -247,6 +258,7 @@ pub fn truncate(input: &str, max_length: usize) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::truncate_with_suffix;
 ///
@@ -269,6 +281,7 @@ pub fn truncate_with_suffix<'a>(input: &'a str, max_length: usize, suffix: &str)
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::sanitize_and_truncate;
 ///
@@ -287,6 +300,7 @@ pub fn sanitize_and_truncate(input: &str, max_length: usize) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::clean_terminal_output;
 ///
@@ -307,6 +321,7 @@ pub fn clean_terminal_output(input: &str) -> Cow<'_, str> {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::data::text::prepare_log_field;
 ///

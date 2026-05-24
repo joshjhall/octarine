@@ -15,6 +15,7 @@ use crate::observe::types::EventType;
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::observe::audit::{Audit, ComplianceFramework};
 ///

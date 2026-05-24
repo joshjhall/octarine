@@ -106,6 +106,7 @@ impl ObservableShell {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// let shell = ObservableShell::new()?;
     /// {

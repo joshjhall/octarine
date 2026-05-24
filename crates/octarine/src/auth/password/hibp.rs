@@ -13,6 +13,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::auth::password::HibpClient;
 //!
@@ -534,6 +535,7 @@ impl HibpClient {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::auth::password::detect_password_breach;
 ///

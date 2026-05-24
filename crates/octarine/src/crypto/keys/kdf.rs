@@ -16,6 +16,7 @@
 //!
 //! # Examples
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::keys::kdf;
 //! use octarine::crypto::keys::DomainSeparator;
@@ -96,6 +97,7 @@ pub fn derive(
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// let keys = kdf::derive_multiple(&master, &[
 ///     ("encryption", 32),

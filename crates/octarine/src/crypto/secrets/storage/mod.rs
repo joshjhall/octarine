@@ -22,6 +22,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{SecretStorage, SecretType, Classification};
 //! use std::time::Duration;
@@ -45,6 +46,7 @@
 //!
 //! # Managed Storage with Background Cleanup
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::ManagedSecretStorage;
 //! use std::time::Duration;

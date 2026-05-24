@@ -12,6 +12,7 @@
 //!
 //! # Usage
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::auth::reset::{ResetManager, MemoryResetStore, ResetConfig};
 //!

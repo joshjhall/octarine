@@ -12,6 +12,7 @@
 //!
 //! # Example
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::crypto::secrets::{LockedBox, LockedSecret};
 //!
@@ -60,6 +61,7 @@ pub use crate::primitives::crypto::secrets::{
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::LockedBox;
 ///
@@ -85,6 +87,7 @@ impl LockedBox {
     ///
     /// # Example
     ///
+    /// Pre-existing example - ignored at compile until adapted.
     /// ```ignore
     /// use octarine::crypto::secrets::LockedBox;
     ///
@@ -221,6 +224,7 @@ impl fmt::Debug for LockedBox {
 ///
 /// # Example
 ///
+/// Pre-existing example - ignored at compile until adapted.
 /// ```ignore
 /// use octarine::crypto::secrets::LockedSecret;
 ///

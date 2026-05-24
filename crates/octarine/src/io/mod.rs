@@ -52,6 +52,7 @@
 //!
 //! ## Atomic File Writes
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::{write_atomic, WriteOptions};
 //!
@@ -64,6 +65,7 @@
 //!
 //! ## Secure Temp Files
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::SecureTempFile;
 //!
@@ -83,6 +85,7 @@
 //!
 //! ## Secure File Deletion
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::io::{SecureDelete, DeleteMethod, secure_delete};
 //!

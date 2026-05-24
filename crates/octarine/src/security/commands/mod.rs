@@ -50,6 +50,7 @@
 //!
 //! ## Threat Detection
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::commands::is_dangerous_arg;
 //!
@@ -61,6 +62,7 @@
 //!
 //! ## Builder Pattern
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::commands::CommandSecurityBuilder;
 //!
@@ -81,6 +83,7 @@
 //!
 //! ## Shell Escaping
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::security::commands::escape_shell_arg;
 //!
@@ -95,6 +98,7 @@
 //!
 //! For command execution, use `runtime::process::SecureCommand`:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::process::SecureCommand;
 //!
@@ -107,6 +111,7 @@
 //!
 //! Restrict which commands can be executed:
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::process::{SecureCommand, AllowList};
 //!
@@ -128,6 +133,7 @@
 //!
 //! For symlink-aware checking (prevents `/tmp/git -> /bin/rm` attacks):
 //!
+//! Pre-existing example - ignored at compile until adapted.
 //! ```ignore
 //! use octarine::runtime::process::{SecureCommand, AllowList};
 //!
