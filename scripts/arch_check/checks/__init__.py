@@ -8,6 +8,7 @@ from typing import Callable, Iterator
 from scripts.arch_check.core import Finding, iter_files
 from scripts.arch_check.checks import (
     builder_visibility,
+    doctest_ignores,
     file_length,
     layer_boundary,
     naming_prefix,
@@ -56,8 +57,17 @@ def _run_file_length(*, staged_only: bool, root: Path) -> Iterator[Finding]:
     yield from file_length.run(staged_only=staged_only, root=root)
 
 
+def _run_doctest_ignores(*, staged_only: bool, root: Path) -> Iterator[Finding]:
+    files = iter_files(subdir=None, staged_only=staged_only, root=root)
+    yield from doctest_ignores.run(files=files, root=root)
+
+
 # Order matters: bash executes checks in this exact sequence.
-CHECK_ORDER: list[str] = [
+# DEFAULT_CHECKS is the set that runs when arch-check is invoked with no
+# arguments (the gating set used by `just preflight` and CI). CHECK_ORDER
+# is the full registry of valid check names — checks not in DEFAULT_CHECKS
+# can still be invoked explicitly (e.g. `just arch-check doctest-ignores`).
+DEFAULT_CHECKS: list[str] = [
     "layer-boundary",
     "unwrapped-fn",
     "naming-prefix",
@@ -66,6 +76,12 @@ CHECK_ORDER: list[str] = [
     "type-visibility",
     "builder-visibility",
     "file-length",
+]
+
+CHECK_ORDER: list[str] = [
+    *DEFAULT_CHECKS,
+    # Opt-in checks (not in default run until their remediation completes):
+    "doctest-ignores",
 ]
 
 CHECKS: dict[str, CheckRunner] = {
@@ -77,4 +93,5 @@ CHECKS: dict[str, CheckRunner] = {
     "type-visibility": _run_type_visibility,
     "builder-visibility": _run_builder_visibility,
     "file-length": _run_file_length,
+    "doctest-ignores": _run_doctest_ignores,
 }
