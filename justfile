@@ -411,15 +411,36 @@ release ARG:
         VERSION=$(python3 -m scripts.release bump "$ARG" --current "$CURRENT")
     fi
 
-    # Workspace member sync: octarine must inherit the workspace version OR
-    # already match it literally. octarine-derive is intentionally untouched
-    # (independent versioning policy).
+    # Workspace member sync: octarine and octarine-problem must inherit the
+    # workspace version OR already match it literally. octarine-derive is
+    # intentionally untouched (independent versioning policy) but its
+    # workspace-deps spec in root Cargo.toml must match its crate manifest
+    # — drift there would break `cargo publish`.
     OCTARINE_LINE=$(/usr/bin/awk '/^version/{print; exit}' crates/octarine/Cargo.toml)
     if [[ "$OCTARINE_LINE" != *"workspace = true"* ]] \
        && [[ "$OCTARINE_LINE" != "version = \"$CURRENT\""* ]]; then
         echo "ERROR: crates/octarine/Cargo.toml version is out of sync with workspace" >&2
         echo "       workspace: $CURRENT" >&2
         echo "       crate:     $OCTARINE_LINE" >&2
+        exit 1
+    fi
+
+    PROBLEM_LINE=$(/usr/bin/awk '/^version/{print; exit}' crates/octarine-problem/Cargo.toml)
+    if [[ "$PROBLEM_LINE" != *"workspace = true"* ]] \
+       && [[ "$PROBLEM_LINE" != "version = \"$CURRENT\""* ]]; then
+        echo "ERROR: crates/octarine-problem/Cargo.toml version is out of sync with workspace" >&2
+        echo "       workspace: $CURRENT" >&2
+        echo "       crate:     $PROBLEM_LINE" >&2
+        exit 1
+    fi
+
+    DERIVE_CRATE_VERSION=$(/usr/bin/awk '/^version/{gsub(/^version = "|"$/, "", $0); print; exit}' crates/octarine-derive/Cargo.toml)
+    DERIVE_WS_VERSION=$(/usr/bin/awk '/^octarine-derive = /{match($0, /version = "[^"]+"/); print substr($0, RSTART+11, RLENGTH-12); exit}' Cargo.toml)
+    if [ "$DERIVE_CRATE_VERSION" != "$DERIVE_WS_VERSION" ]; then
+        echo "ERROR: octarine-derive version drift between manifest and workspace deps" >&2
+        echo "       crates/octarine-derive/Cargo.toml: $DERIVE_CRATE_VERSION" >&2
+        echo "       Cargo.toml [workspace.dependencies]: $DERIVE_WS_VERSION" >&2
+        echo "       Fix by editing Cargo.toml so workspace dep matches the crate manifest." >&2
         exit 1
     fi
 
@@ -447,6 +468,16 @@ release ARG:
         sed -i "s/^version = \".*\"/version = \"$VERSION\"/" crates/octarine/Cargo.toml
         echo "  crates/octarine/Cargo.toml → $VERSION"
     fi
+    if [[ "$PROBLEM_LINE" != *"workspace = true"* ]]; then
+        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" crates/octarine-problem/Cargo.toml
+        echo "  crates/octarine-problem/Cargo.toml → $VERSION"
+    fi
+    # Workspace dep specs in root Cargo.toml carry literal versions alongside
+    # `path = ...` so `cargo publish` accepts the workspace. Keep them in
+    # lockstep with the crate manifests they point to. octarine-derive is
+    # independently versioned and never touched here.
+    sed -i "s|^octarine = { path = \"crates/octarine\", version = \"[^\"]*\" }|octarine = { path = \"crates/octarine\", version = \"$VERSION\" }|" Cargo.toml
+    sed -i "s|^octarine-problem = { path = \"crates/octarine-problem\", version = \"[^\"]*\" }|octarine-problem = { path = \"crates/octarine-problem\", version = \"$VERSION\" }|" Cargo.toml
     echo "  Cargo.toml → $VERSION"
 
     # Sweep version references in human-readable docs. The list is
@@ -539,13 +570,13 @@ release ARG:
     # Lefthook hooks may fix formatting (e.g., trailing newlines). If the first
     # commit fails because hooks modified files, re-stage and retry once.
     echo "── Committing ──"
-    git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
+    git add Cargo.toml crates/octarine/Cargo.toml crates/octarine-problem/Cargo.toml Cargo.lock CHANGELOG.md
     for f in "${DOC_FILES[@]}"; do
         if [ -f "$f" ]; then git add "$f"; fi
     done
     if ! git commit -m "release: v$VERSION"; then
         echo "  Lefthook hooks modified files, retrying..."
-        git add Cargo.toml crates/octarine/Cargo.toml Cargo.lock CHANGELOG.md
+        git add Cargo.toml crates/octarine/Cargo.toml crates/octarine-problem/Cargo.toml Cargo.lock CHANGELOG.md
         for f in "${DOC_FILES[@]}"; do
             if [ -f "$f" ]; then git add "$f"; fi
         done
@@ -555,11 +586,6 @@ release ARG:
     echo "  Tagged v$VERSION"
 
     # Determine if pre-release
-    PRERELEASE_FLAG=""
-    if [[ "$VERSION" == *-* ]]; then
-        PRERELEASE_FLAG=" --prerelease"
-    fi
-
     echo ""
     echo "═══ Release v$VERSION ready ═══"
     echo ""
@@ -568,7 +594,10 @@ release ARG:
     echo ""
     echo "Next steps:"
     echo "  git push && git push --tags"
-    echo "  gh release create v$VERSION$PRERELEASE_FLAG --generate-notes"
+    echo ""
+    echo "The release workflow takes over from there — it publishes all three"
+    echo "crates to crates.io and creates a GitHub Release. Monitor it at:"
+    echo "  https://github.com/joshjhall/octarine/actions/workflows/release.yml"
 
 # Preview a release without touching disk. Prints the proposed version, the
 # doc files that would be rewritten, and a snapshot of commits since the last

@@ -4,6 +4,14 @@ All notable changes to octarine will be documented in this file.
 
 ## [Unreleased]
 
+### CI
+
+- feat(ci): automate crates.io publishing and GitHub Release on tag push (#112)
+  - New `.github/workflows/release.yml` triggered on `v*` tags (and `workflow_dispatch` for re-runs) validates the tag against `Cargo.toml` and `CHANGELOG.md`, then publishes `octarine-derive`, `octarine-problem`, and `octarine` in dependency order. Each publish step is idempotent — re-running on a partial failure skips crates already on crates.io at the target version.
+  - Adds `scripts/release/changelog.py` `extract` subcommand that pulls a CHANGELOG section by version (used as the GitHub Release body, with the operator-only `<!-- TODO: review -->` marker stripped).
+  - Root `Cargo.toml` workspace deps now carry `version = ...` alongside `path = ...` so `cargo publish` accepts them. The `just release` recipe keeps these specs in lockstep with each crate's `[package].version` and fails fast if `octarine-derive`'s workspace dep drifts from its independently-versioned crate manifest.
+  - Operator's manual `gh release create` / `cargo publish` steps removed from docs and the release skill.
+
 ### Added
 
 - feat(identifiers): add framework database credential detection (#30)

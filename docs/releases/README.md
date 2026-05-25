@@ -16,12 +16,16 @@ Release process documentation for octarine.
 ```bash
 just release-preview <type>      # Read-only smoke test
 just release <type>              # Real release: preflight, bump, tag
-git push && git push --tags
-gh release create v<X.Y.Z> [--prerelease] --generate-notes
+git push && git push --tags      # The release workflow takes over from here
 ```
 
 Where `<type>` is one of `major | minor | patch | beta | rc` (computed) or a
 literal version like `0.4.0` or `0.4.0-beta.1`.
+
+Once the tag is pushed, the
+[release workflow](../../.github/workflows/release.yml) publishes all three
+crates to crates.io and creates the GitHub Release automatically. Pre-release
+tags (those with a `-` suffix) are marked as pre-release.
 
 ## See also
 

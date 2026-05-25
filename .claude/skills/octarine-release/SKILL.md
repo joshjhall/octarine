@@ -13,8 +13,8 @@ enforced. See `docs/releases/` for the operator-facing reference.
 
 ## Pre-1.0 SemVer Policy
 
-Octarine is on `0.x` and not yet published to crates.io. While we're pre-1.0,
-we follow the [Cargo SemVer convention](https://doc.rust-lang.org/cargo/reference/semver.html)
+Octarine is on `0.x`. While we're pre-1.0, we follow the
+[Cargo SemVer convention](https://doc.rust-lang.org/cargo/reference/semver.html)
 for `0.y.z`:
 
 | Version part | Meaning while 0.x | After 1.0 |
@@ -108,9 +108,16 @@ just release <type>              # Run preflight-full, bump versions, sweep
 # Review the new CHANGELOG entry — look for the "TODO: review" marker.
 # Amend the commit if curation is needed.
 
-git push && git push --tags
-gh release create vX.Y.Z [--prerelease] --generate-notes
+git push && git push --tags      # The release workflow takes over from here
 ```
+
+Once the tag is pushed, the
+[release workflow](../../../.github/workflows/release.yml) publishes all
+three workspace crates to crates.io in dependency order and creates a
+GitHub Release with the CHANGELOG section as the body. Pre-release tags
+(any version with a `-` suffix) are marked as pre-release. The workflow
+is idempotent — re-running on a partial failure skips crates already
+published at the target version.
 
 See `docs/releases/checklist.md` for the full step-by-step.
 
@@ -119,16 +126,19 @@ See `docs/releases/checklist.md` for the full step-by-step.
 - **`rc` from stable**: nothing to promote. The state machine errors.
   Cut a beta first.
 - **Forgetting `git push --tags`**: a bare `git push` ships the commit but
-  not the tag, so `gh release create` will fail.
+  not the tag, so the release workflow won't fire.
 - **Manually editing `crates/octarine-derive/Cargo.toml`**: the derive crate
   is intentionally on independent versioning. The release recipe never
-  touches it.
+  touches its version, but it does validate the workspace dep spec in
+  the root `Cargo.toml` matches — drift fails the release.
 - **Skipping `release-preview`**: the keyword bumps look obvious until they
   aren't (e.g. `minor` from a prerelease finalizes — surprising the first
   time). Preview to confirm.
 - **Mass-editing CHANGELOG entries after tag**: amending the release commit
   works only before push. After push, follow up with a plain `chore(docs):`
-  commit.
+  commit. Note that the published GitHub Release body is generated from
+  the CHANGELOG section at tag-push time — later CHANGELOG edits won't
+  propagate unless you re-run the `workflow_dispatch` event.
 
 ## Verification
 
@@ -154,4 +164,5 @@ See `docs/releases/checklist.md` for the full step-by-step.
 - Day-to-day commits (no release context)
 - `octarine-derive` versioning — that crate is independently versioned and
   not in scope here
-- Publishing to crates.io — not yet automated; track separately
+- Publishing to crates.io — fully automated by `.github/workflows/release.yml`
+  on tag push, no manual action required

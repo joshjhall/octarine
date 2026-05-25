@@ -35,9 +35,11 @@ clap = { version = "4.0", features = ["derive", "env"] }
 reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
 
 # Internal crates
-octarine = { path = "crates/octarine" }
-octarine-derive = { path = "crates/octarine-derive" }
-octarine-problem = { path = "crates/octarine-problem" }
+# `version` alongside `path` is required so `cargo publish` accepts the
+# workspace. Kept in sync with each crate manifest by `just release`.
+octarine = { path = "crates/octarine", version = "0.3.0-beta.3" }
+octarine-derive = { path = "crates/octarine-derive", version = "0.1.0" }
+octarine-problem = { path = "crates/octarine-problem", version = "0.3.0-beta.3" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
