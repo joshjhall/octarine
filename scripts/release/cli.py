@@ -1,12 +1,14 @@
 """CLI for the release helper.
 
-Two subcommands:
+Three subcommands:
 
 - `bump <kind> --current X.Y.Z` — print the computed next version to stdout.
   The `release` justfile recipe captures this with `$(...)` to drive
   Cargo.toml updates.
 - `parse X.Y.Z` — validate a version string; exits 0 on success, non-zero
   with a message on failure. Used by `release` for literal-version input.
+- `extract X.Y.Z` — print the CHANGELOG section for `X.Y.Z` to stdout.
+  Used by the release workflow as the GitHub Release body.
 
 All errors print to stderr and exit non-zero, so failures are visible in the
 recipe output without polluting the captured stdout.
@@ -18,6 +20,7 @@ import argparse
 import sys
 from typing import Sequence
 
+from scripts.release.changelog import ChangelogError, extract
 from scripts.release.version import VersionError, bump, parse
 
 BUMP_KINDS = ("major", "minor", "patch", "beta", "rc")
@@ -47,6 +50,17 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     )
     parse_p.add_argument("version", help="Version string to validate.")
 
+    extract_p = sub.add_parser(
+        "extract",
+        help="Print the CHANGELOG section for the given version.",
+    )
+    extract_p.add_argument("version", help="Version whose section to extract.")
+    extract_p.add_argument(
+        "--changelog",
+        default="CHANGELOG.md",
+        help="Path to CHANGELOG.md (default: CHANGELOG.md).",
+    )
+
     return parser.parse_args(argv)
 
 
@@ -63,7 +77,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             v = parse(args.version)
             print(v.format())
             return 0
-    except VersionError as e:
+        if args.command == "extract":
+            print(extract(args.version, args.changelog))
+            return 0
+    except (VersionError, ChangelogError) as e:
         print(f"release: {e}", file=sys.stderr)
         return 1
 

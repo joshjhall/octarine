@@ -18,9 +18,14 @@ In order:
    non-empty so unrelated edits don't get rolled into the release commit.
 4. **Runs `just preflight-full`** — fmt-check, clippy, shellcheck,
    arch-check, all tests, and perf tests.
-5. **Updates Cargo.toml versions** — root `Cargo.toml`, plus
-   `crates/octarine/Cargo.toml` if it carries a literal version (skipped
-   when `version.workspace = true`).
+5. **Updates Cargo.toml versions** — root `Cargo.toml`
+   (`[workspace.package]` and the `octarine` / `octarine-problem`
+   `[workspace.dependencies]` specs), plus `crates/octarine/Cargo.toml`
+   and `crates/octarine-problem/Cargo.toml` if they carry literal
+   versions (skipped when `version.workspace = true`).
+   `crates/octarine-derive/Cargo.toml` is **not** touched (independent
+   versioning), but the recipe verifies the workspace dep spec for
+   `octarine-derive` matches its crate manifest and bails on drift.
 6. **Sweeps doc references** — rewrites `vX.Y.Z` → `vNEW` in:
    - `README.md`
    - `CONTRIBUTING.md`
@@ -36,9 +41,9 @@ In order:
    Prepends an HTML comment marker `<!-- TODO: review and curate before
    push -->` so the operator sees it in the diff. See
    [`changelog-format.md`](changelog-format.md) for the schema.
-9. **Commits as `release: vX.Y.Z`** — staging Cargo.toml, Cargo.lock,
-   CHANGELOG.md, and any of the 5 doc files that changed. Retries once if
-   lefthook reformats.
+9. **Commits as `release: vX.Y.Z`** — staging Cargo.toml,
+   crates/*/Cargo.toml, Cargo.lock, CHANGELOG.md, and any of the doc
+   files that changed. Retries once if lefthook reformats.
 10. **Tags `vX.Y.Z`** — annotated tag with message `Release vX.Y.Z`.
 
 ## What you do manually
@@ -68,18 +73,31 @@ git push                    # commit
 git push --tags             # the annotated tag — easy to forget
 ```
 
-A bare `git push` ships the commit but not the tag, so `gh release create`
-will fail with "tag does not exist" until you push tags.
+A bare `git push` ships the commit but not the tag, so the release
+workflow won't fire.
 
-### GitHub release
+### After the push: the workflow takes over
 
-```bash
-gh release create vX.Y.Z [--prerelease] --generate-notes
-```
+The `.github/workflows/release.yml` workflow triggers on any `v*` tag
+push. It:
 
-Use `--prerelease` for any version with a `-` suffix (alpha/beta/rc).
-`--generate-notes` writes the GitHub release body from the same commit
-range; you can edit it via the web UI afterwards.
+1. Validates the tag matches `Cargo.toml`, `CHANGELOG.md` has the
+   expected section, and `CARGO_REGISTRY_TOKEN` is configured.
+2. Publishes `octarine-derive` and `octarine-problem` to crates.io in
+   parallel.
+3. Publishes `octarine` (waits for the two dep crates to index first).
+4. Creates a GitHub Release at `vX.Y.Z` with the CHANGELOG section as
+   the body. Pre-release versions (anything with a `-` suffix) are
+   marked as pre-release.
+
+Monitor the run at:
+<https://github.com/joshjhall/octarine/actions/workflows/release.yml>
+
+If a publish step fails partway through, just re-run the workflow — each
+publish job is idempotent and skips crates already on crates.io at the
+target version. You can also manually re-trigger via the
+`workflow_dispatch` event with an existing tag, useful when the
+workflow ran on an outdated commit or its CI flake needs replaying.
 
 ## Recommended pre-merge dry run
 
@@ -119,9 +137,10 @@ future work:
   pointers. Edit manually if their meaning changes.
 - **`crates/octarine-derive`** versions independently. Bumping the workspace
   does not touch it. Coordinate manually if the two crates need a coupled
-  release.
-- **`cargo publish`** to crates.io is not yet automated. Octarine is git-
-  dependency-only at present.
+  release. The release recipe validates that the version in
+  `crates/octarine-derive/Cargo.toml` matches the spec in the root
+  `Cargo.toml [workspace.dependencies]` block — drift there will fail
+  fast with a clear error.
 - **Recipe pause for CHANGELOG curation** — the recipe does not pause
   between writing the CHANGELOG and tagging. The TODO marker is the prompt
   to review-and-amend before push, not before tag.

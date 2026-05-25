@@ -1,0 +1,225 @@
+name: Release
+
+# Publishes workspace crates to crates.io and creates a GitHub Release when a
+# `v*` tag is pushed. The companion local pipeline is `just release` in the
+# justfile — it bumps versions, generates the CHANGELOG entry, commits, and
+# creates the annotated tag. This workflow takes over from `git push --tags`.
+#
+# Publish ordering: `octarine-derive` and `octarine-problem` ship first
+# (no inter-dep), then `octarine` (depends on both via optional/required
+# features). Each publish job is idempotent — re-running on a partial failure
+# skips crates already on crates.io at the target version.
+#
+# Required secret: `CARGO_REGISTRY_TOKEN` (crates.io API token with publish
+# scope for all three crates). The `validate` job fails fast if it's missing.
+#
+# Security note: workflow_dispatch.inputs.tag is user-supplied — every use
+# in a `run:` block goes through an env var to prevent script injection.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish (e.g. v0.3.0-beta.4)"
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      tag: ${{ steps.parse.outputs.tag }}
+      is_prerelease: ${{ steps.parse.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Parse version from tag
+        id: parse
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${INPUT_TAG:-$REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not a valid release tag (expected vX.Y.Z or vX.Y.Z-{alpha,beta,rc}.N)"
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            if [[ "$VERSION" == *-* ]]; then
+              echo "is_prerelease=true"
+            else
+              echo "is_prerelease=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+          echo "Tag $TAG → version $VERSION"
+
+      - name: Assert Cargo.toml matches tag
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          WORKSPACE_VERSION=$(awk '/^\[workspace\.package\]/{f=1} f && /^version = /{gsub(/"/, "", $3); print $3; exit}' Cargo.toml)
+          if [ "$WORKSPACE_VERSION" != "$VERSION" ]; then
+            echo "::error::Tag version ($VERSION) does not match Cargo.toml workspace version ($WORKSPACE_VERSION)"
+            exit 1
+          fi
+          echo "Cargo.toml version matches tag: $VERSION"
+
+      - name: Assert CHANGELOG entry exists
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+            echo "::error::No '## [$VERSION]' section found in CHANGELOG.md"
+            exit 1
+          fi
+          echo "CHANGELOG entry present for $VERSION"
+
+      - name: Assert CARGO_REGISTRY_TOKEN is set
+        env:
+          TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Repository secret CARGO_REGISTRY_TOKEN is not configured. See https://crates.io/me for an API token."
+            exit 1
+          fi
+          echo "CARGO_REGISTRY_TOKEN is configured"
+
+  publish-derive:
+    name: Publish octarine-derive
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+      - name: Publish (skip if already on crates.io)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          DERIVE_VERSION=$(awk '/^\[package\]/{f=1} f && /^version = /{gsub(/"/, "", $3); print $3; exit}' crates/octarine-derive/Cargo.toml)
+          if cargo search octarine-derive --limit 1 | grep -qE "^octarine-derive = \"$DERIVE_VERSION\""; then
+            echo "octarine-derive $DERIVE_VERSION already on crates.io — skipping"
+            exit 0
+          fi
+          cargo publish -p octarine-derive --token "$CARGO_REGISTRY_TOKEN"
+
+  publish-problem:
+    name: Publish octarine-problem
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+      - name: Publish (skip if already on crates.io)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          if cargo search octarine-problem --limit 1 | grep -qE "^octarine-problem = \"$VERSION\""; then
+            echo "octarine-problem $VERSION already on crates.io — skipping"
+            exit 0
+          fi
+          cargo publish -p octarine-problem --token "$CARGO_REGISTRY_TOKEN"
+
+  publish-octarine:
+    name: Publish octarine
+    needs: [publish-derive, publish-problem, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.94"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+      - name: Wait for deps to appear on crates.io
+        env:
+          PROBLEM_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          # crates.io's index propagation can lag a few seconds after a fresh
+          # publish. Poll for both deps before attempting the dependent publish.
+          DERIVE_VERSION=$(awk '/^\[package\]/{f=1} f && /^version = /{gsub(/"/, "", $3); print $3; exit}' crates/octarine-derive/Cargo.toml)
+          for crate_version in "octarine-derive:$DERIVE_VERSION" "octarine-problem:$PROBLEM_VERSION"; do
+            CRATE="${crate_version%:*}"
+            WANTED="${crate_version#*:}"
+            for attempt in 1 2 3 4 5 6; do
+              if cargo search "$CRATE" --limit 1 | grep -qE "^$CRATE = \"$WANTED\""; then
+                echo "$CRATE $WANTED is indexed"
+                break
+              fi
+              echo "Attempt $attempt: $CRATE $WANTED not yet indexed, waiting 15s..."
+              sleep 15
+            done
+          done
+      - name: Publish (skip if already on crates.io)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          if cargo search octarine --limit 1 | grep -qE "^octarine = \"$VERSION\""; then
+            echo "octarine $VERSION already on crates.io — skipping"
+            exit 0
+          fi
+          cargo publish -p octarine --token "$CARGO_REGISTRY_TOKEN"
+
+  github-release:
+    name: GitHub Release
+    needs: [publish-octarine, validate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+      - name: Extract CHANGELOG section
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          python3 -m scripts.release extract "$VERSION" > /tmp/release-notes.md
+          echo "── Release notes ──"
+          cat /tmp/release-notes.md
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          IS_PRERELEASE: ${{ needs.validate.outputs.is_prerelease }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — updating notes"
+            gh release edit "$TAG" --notes-file /tmp/release-notes.md $PRERELEASE_FLAG
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file /tmp/release-notes.md $PRERELEASE_FLAG
+          fi
