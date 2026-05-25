@@ -12,6 +12,8 @@ Guidance for developing, testing, and contributing to octarine.
   unit tests, integration tests, fixtures, and timing-resilient patterns
 - [`../api/naming-conventions.md`](../api/naming-conventions.md) — prefix rules
   and API style
+- [`./doctest-fences.md`](./doctest-fences.md) — when to use ` ```rust `,
+  ` ```no_run `, or ` ```ignore ` for doctest examples
 
 ## Common Commands
 

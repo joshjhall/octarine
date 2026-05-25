@@ -1,7 +1,7 @@
 """Tests for the doctest-ignores check.
 
 Rules under test:
-1. Bare ```ignore on a doc-comment fence yields a WARN finding.
+1. Bare ```ignore on a doc-comment fence yields an ERROR finding.
 2. A justification comment within the preceding 3 doc lines suppresses it.
 3. An `// arch-check: allow doctest-ignores` directive suppresses it.
 4. Files under `primitives/` and `testing/` are skipped entirely.
@@ -20,7 +20,7 @@ def _files(tmp_repo: Path, rel: str) -> list[Path]:
     return [tmp_repo / "crates/octarine/src" / rel]
 
 
-def test_bare_ignore_yields_warning(write_rs, tmp_repo: Path):
+def test_bare_ignore_yields_error(write_rs, tmp_repo: Path):
     content = (
         "/// Example using the API.\n"
         "///\n"
@@ -33,7 +33,7 @@ def test_bare_ignore_yields_warning(write_rs, tmp_repo: Path):
     findings = list(doctest_ignores.run(files=_files(tmp_repo, "data/foo.rs"), root=tmp_repo))
     assert len(findings) == 1
     f = findings[0]
-    assert f.severity == "WARN"
+    assert f.severity == "ERROR"
     assert f.check == "doctest-ignores"
     assert f.line == 3
     assert "unexplained" in f.message
