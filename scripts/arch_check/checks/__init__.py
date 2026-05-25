@@ -65,8 +65,9 @@ def _run_doctest_ignores(*, staged_only: bool, root: Path) -> Iterator[Finding]:
 # Order matters: bash executes checks in this exact sequence.
 # DEFAULT_CHECKS is the set that runs when arch-check is invoked with no
 # arguments (the gating set used by `just preflight` and CI). CHECK_ORDER
-# is the full registry of valid check names — checks not in DEFAULT_CHECKS
-# can still be invoked explicitly (e.g. `just arch-check doctest-ignores`).
+# is the full registry of valid check names — they currently match, but
+# the split lets future opt-in checks land without touching the default
+# gate.
 DEFAULT_CHECKS: list[str] = [
     "layer-boundary",
     "unwrapped-fn",
@@ -76,13 +77,10 @@ DEFAULT_CHECKS: list[str] = [
     "type-visibility",
     "builder-visibility",
     "file-length",
-]
-
-CHECK_ORDER: list[str] = [
-    *DEFAULT_CHECKS,
-    # Opt-in checks (not in default run until their remediation completes):
     "doctest-ignores",
 ]
+
+CHECK_ORDER: list[str] = [*DEFAULT_CHECKS]
 
 CHECKS: dict[str, CheckRunner] = {
     "layer-boundary": _run_layer_boundary,

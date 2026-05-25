@@ -16,9 +16,10 @@ the substring `ignore` (case-insensitive) — e.g.
 This is intentionally generous: the goal is to force authors to write
 *something*, not to police phrasing.
 
-This check is not part of the default `CHECK_ORDER` run; it's invoked
-explicitly via `just arch-check doctest-ignores`. It will move into the
-default set once remediation reaches zero findings (see issue #191).
+This check is part of the default gating set (ERROR severity); a new
+unjustified ```ignore fence will fail `just arch-check` and CI. See
+`docs/development/doctest-fences.md` for the ignore vs no_run vs plain
+rust decision guide.
 """
 
 from __future__ import annotations
@@ -83,7 +84,7 @@ def run(*, files: Iterable[Path], root: Path) -> Iterator[Finding]:
                 recent = comment_window[-_LOOKBACK:]
                 if not _has_justification(recent):
                     yield Finding(
-                        severity="WARN",
+                        severity="ERROR",
                         check="doctest-ignores",
                         rel_path=rel(path, root),
                         line=lineno,
