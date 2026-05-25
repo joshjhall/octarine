@@ -101,7 +101,7 @@ getrandom = { version = "0.4", features = ["sys_rng"] }
 x25519-dalek = { version = "2.0", features = ["static_secrets", "getrandom", "zeroize"] }
 
 # Database support (optional)
-sqlx = { version = "0.8", optional = true, default-features = false, features = [
+sqlx = { version = "0.9", optional = true, default-features = false, features = [
   "runtime-tokio",
   "chrono",
   "uuid",
