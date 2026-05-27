@@ -78,6 +78,68 @@ impl PersonalIdentifierBuilder {
         detection::detect_usernames_in_text(text)
     }
 
+    /// Check if value contains an age expression
+    #[must_use]
+    pub fn is_age(&self, value: &str) -> bool {
+        detection::is_age(value)
+    }
+
+    /// Detect all age expressions in text
+    #[must_use]
+    pub fn detect_ages_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_ages_in_text(text)
+    }
+
+    /// Extract the first numeric age value from text (decade words map to
+    /// the start of the decade — `"eighties"` → 80).
+    #[must_use]
+    pub fn find_age_value(&self, text: &str) -> Option<u8> {
+        detection::find_age_value(text)
+    }
+
+    /// HIPAA Safe Harbor §164.514(b)(2)(i)(B): returns `true` when the
+    /// input contains an age > 89.
+    #[must_use]
+    pub fn is_age_over_89(&self, value: &str) -> bool {
+        detection::is_age_over_89(value)
+    }
+
+    /// Check if value contains a nationality reference
+    #[must_use]
+    pub fn is_nationality(&self, value: &str) -> bool {
+        detection::is_nationality(value)
+    }
+
+    /// Detect all nationality references in text
+    #[must_use]
+    pub fn detect_nationalities_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_nationalities_in_text(text)
+    }
+
+    /// Check if value contains a religion reference
+    #[must_use]
+    pub fn is_religion(&self, value: &str) -> bool {
+        detection::is_religion(value)
+    }
+
+    /// Detect all religion references in text
+    #[must_use]
+    pub fn detect_religions_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_religions_in_text(text)
+    }
+
+    /// Check if value contains a political-affiliation reference
+    #[must_use]
+    pub fn is_political_affiliation(&self, value: &str) -> bool {
+        detection::is_political_affiliation(value)
+    }
+
+    /// Detect all political-affiliation references in text
+    #[must_use]
+    pub fn detect_political_affiliations_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_political_affiliations_in_text(text)
+    }
+
     /// Find phone number region from phone number
     #[must_use]
     pub fn find_phone_region(&self, phone: &str) -> Option<PhoneRegion> {

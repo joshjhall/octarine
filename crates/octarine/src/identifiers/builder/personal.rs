@@ -11,7 +11,8 @@ use crate::observe;
 use crate::observe::Problem;
 use crate::observe::metrics::{increment_by, record};
 use crate::primitives::identifiers::{
-    BirthdateRedactionStrategy, EmailRedactionStrategy, NameRedactionStrategy,
+    AgeRedactionStrategy, BirthdateRedactionStrategy, EmailRedactionStrategy,
+    NameRedactionStrategy, NrpRedactionStrategy,
     PersonalIdentifierBuilder as PrimitivePersonalBuilder, PersonalTextPolicy, PhoneFormatStyle,
     PhoneRedactionStrategy, UsernameRedactionStrategy,
 };
@@ -198,6 +199,114 @@ impl PersonalBuilder {
         self.inner.detect_birthdates_in_text(text)
     }
 
+    // ========================================================================
+    // Age detection
+    // ========================================================================
+
+    /// Check if value contains an age expression
+    #[must_use]
+    pub fn is_age(&self, value: &str) -> bool {
+        self.inner.is_age(value)
+    }
+
+    /// HIPAA Safe Harbor §164.514(b)(2)(i)(B): true when input contains an
+    /// age > 89.
+    #[must_use]
+    pub fn is_age_over_89(&self, value: &str) -> bool {
+        self.inner.is_age_over_89(value)
+    }
+
+    /// Extract the first numeric age value from text. Decade words map
+    /// to the start of the decade (`"eighties"` → 80).
+    #[must_use]
+    pub fn find_age_value(&self, text: &str) -> Option<u8> {
+        self.inner.find_age_value(text)
+    }
+
+    /// Find all age expressions in text.
+    #[must_use]
+    pub fn find_ages_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
+        let matches = self.inner.detect_ages_in_text(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !matches.is_empty() {
+                increment_by(metric_names::detected(), matches.len() as u64);
+            }
+        }
+
+        matches
+    }
+
+    // ========================================================================
+    // NRP detection (Nationality / Religion / Political Affiliation —
+    // GDPR Article 9 special-category data)
+    // ========================================================================
+
+    /// Check if value contains a nationality reference
+    #[must_use]
+    pub fn is_nationality(&self, value: &str) -> bool {
+        self.inner.is_nationality(value)
+    }
+
+    /// Find all nationality references in text.
+    #[must_use]
+    pub fn find_nationalities_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.detect_nationalities_in_text(text);
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            observe::warn(
+                "personal_nrp_detected",
+                "GDPR Article 9 nationality reference detected",
+            );
+        }
+        matches
+    }
+
+    /// Check if value contains a religion reference
+    #[must_use]
+    pub fn is_religion(&self, value: &str) -> bool {
+        self.inner.is_religion(value)
+    }
+
+    /// Find all religion references in text.
+    #[must_use]
+    pub fn find_religions_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.detect_religions_in_text(text);
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            observe::warn(
+                "personal_nrp_detected",
+                "GDPR Article 9 religion reference detected",
+            );
+        }
+        matches
+    }
+
+    /// Check if value contains a political-affiliation reference
+    #[must_use]
+    pub fn is_political_affiliation(&self, value: &str) -> bool {
+        self.inner.is_political_affiliation(value)
+    }
+
+    /// Find all political-affiliation references in text.
+    #[must_use]
+    pub fn find_political_affiliations_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.detect_political_affiliations_in_text(text);
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            observe::warn(
+                "personal_nrp_detected",
+                "GDPR Article 9 political affiliation reference detected",
+            );
+        }
+        matches
+    }
+
     /// Find all personal identifiers in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
@@ -273,6 +382,35 @@ impl PersonalBuilder {
         self.inner.validate_name(name)
     }
 
+    /// Validate age expression or bare numeric age (returns Result)
+    pub fn validate_age(&self, value: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_age(value);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+        result
+    }
+
+    /// Validate that input contains a nationality reference (returns Result)
+    pub fn validate_nationality(&self, value: &str) -> Result<(), Problem> {
+        self.inner.validate_nationality(value)
+    }
+
+    /// Validate that input contains a religion reference (returns Result)
+    pub fn validate_religion(&self, value: &str) -> Result<(), Problem> {
+        self.inner.validate_religion(value)
+    }
+
+    /// Validate that input contains a political-affiliation reference
+    /// (returns Result)
+    pub fn validate_political_affiliation(&self, value: &str) -> Result<(), Problem> {
+        self.inner.validate_political_affiliation(value)
+    }
+
     // ========================================================================
     // Sanitization Methods
     // ========================================================================
@@ -321,6 +459,54 @@ impl PersonalBuilder {
         strategy: BirthdateRedactionStrategy,
     ) -> String {
         self.inner.redact_birthdate_with_strategy(date, strategy)
+    }
+
+    /// Redact age value with explicit strategy.
+    ///
+    /// `AgeRedactionStrategy::Bucket10Year` and `OverEightyNine` implement
+    /// HIPAA Safe Harbor §164.514(b)(2)(i)(B).
+    #[must_use]
+    pub fn redact_age_with_strategy(&self, value: &str, strategy: AgeRedactionStrategy) -> String {
+        let start = Instant::now();
+        let result = self.inner.redact_age_with_strategy(value, strategy);
+        if self.emit_events {
+            record(
+                metric_names::redact_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+        result
+    }
+
+    /// Redact nationality value with explicit strategy.
+    #[must_use]
+    pub fn redact_nationality_with_strategy(
+        &self,
+        value: &str,
+        strategy: NrpRedactionStrategy,
+    ) -> String {
+        self.inner.redact_nationality_with_strategy(value, strategy)
+    }
+
+    /// Redact religion value with explicit strategy.
+    #[must_use]
+    pub fn redact_religion_with_strategy(
+        &self,
+        value: &str,
+        strategy: NrpRedactionStrategy,
+    ) -> String {
+        self.inner.redact_religion_with_strategy(value, strategy)
+    }
+
+    /// Redact political-affiliation value with explicit strategy.
+    #[must_use]
+    pub fn redact_political_affiliation_with_strategy(
+        &self,
+        value: &str,
+        strategy: NrpRedactionStrategy,
+    ) -> String {
+        self.inner
+            .redact_political_affiliation_with_strategy(value, strategy)
     }
 
     /// Sanitize email (validate and normalize)

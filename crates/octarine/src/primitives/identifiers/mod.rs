@@ -164,7 +164,8 @@ pub(crate) use personal::{EmailRedactionStrategy, PhoneRedactionStrategy};
 
 // Re-export all personal builder types for data layer
 pub(crate) use personal::{
-    BirthdateRedactionStrategy, NameRedactionStrategy, PhoneFormatStyle, UsernameRedactionStrategy,
+    AgeRedactionStrategy, BirthdateRedactionStrategy, NameRedactionStrategy, NrpRedactionStrategy,
+    PhoneFormatStyle, UsernameRedactionStrategy,
 };
 
 // Re-export medical builder types for data layer

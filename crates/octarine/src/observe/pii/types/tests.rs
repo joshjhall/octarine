@@ -110,6 +110,60 @@ fn test_is_secret() {
 }
 
 #[test]
+fn test_age_classifications() {
+    // HIPAA Safe Harbor §164.514(b)(2)(i)(B) — age is PHI.
+    assert!(PiiType::Age.is_hipaa_protected());
+    // GDPR — age is sensitive when combined with other identifiers.
+    assert!(PiiType::Age.is_gdpr_protected());
+    // Age is not in itself credential / financial / biometric high-risk.
+    assert!(!PiiType::Age.is_high_risk());
+    assert!(!PiiType::Age.is_pci_protected());
+    assert!(!PiiType::Age.is_secret());
+    assert_eq!(PiiType::Age.name(), "age");
+    assert_eq!(PiiType::Age.domain(), "personal");
+}
+
+#[test]
+fn test_nrp_classifications() {
+    // GDPR Article 9 special-category data — all three NRP types must be
+    // both GDPR-protected and flagged high-risk.
+    for pii in [
+        PiiType::Nationality,
+        PiiType::Religion,
+        PiiType::PoliticalAffiliation,
+    ] {
+        assert!(pii.is_gdpr_protected(), "{pii:?} must be GDPR protected");
+        assert!(pii.is_high_risk(), "{pii:?} must be high-risk");
+        // NRP is not in the medical / financial / credential domains
+        assert!(!pii.is_hipaa_protected(), "{pii:?} is not HIPAA");
+        assert!(!pii.is_pci_protected(), "{pii:?} is not PCI");
+        assert!(!pii.is_secret(), "{pii:?} is not a secret");
+        assert_eq!(pii.domain(), "personal");
+    }
+    assert_eq!(PiiType::Nationality.name(), "nationality");
+    assert_eq!(PiiType::Religion.name(), "religion");
+    assert_eq!(
+        PiiType::PoliticalAffiliation.name(),
+        "political_affiliation"
+    );
+}
+
+#[test]
+fn test_age_nrp_identifier_mapping() {
+    use crate::primitives::identifiers::IdentifierType;
+    assert_eq!(PiiType::from(IdentifierType::Age), PiiType::Age);
+    assert_eq!(
+        PiiType::from(IdentifierType::Nationality),
+        PiiType::Nationality
+    );
+    assert_eq!(PiiType::from(IdentifierType::Religion), PiiType::Religion);
+    assert_eq!(
+        PiiType::from(IdentifierType::PoliticalAffiliation),
+        PiiType::PoliticalAffiliation
+    );
+}
+
+#[test]
 fn test_iban_classifications() {
     assert_eq!(PiiType::Iban.name(), "iban");
     assert_eq!(PiiType::Iban.domain(), "financial");

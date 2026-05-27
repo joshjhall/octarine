@@ -12,6 +12,10 @@ impl PiiType {
             Self::Name => "name",
             Self::Birthdate => "birthdate",
             Self::Username => "username",
+            Self::Age => "age",
+            Self::Nationality => "nationality",
+            Self::Religion => "religion",
+            Self::PoliticalAffiliation => "political_affiliation",
             // Financial
             Self::CreditCard => "credit_card",
             Self::BankAccount => "bank_account",
@@ -149,7 +153,15 @@ impl PiiType {
     /// Returns the domain this PII type belongs to
     pub fn domain(&self) -> &'static str {
         match self {
-            Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username => "personal",
+            Self::Email
+            | Self::Phone
+            | Self::Name
+            | Self::Birthdate
+            | Self::Username
+            | Self::Age
+            | Self::Nationality
+            | Self::Religion
+            | Self::PoliticalAffiliation => "personal",
             Self::CreditCard
             | Self::BankAccount
             | Self::RoutingNumber

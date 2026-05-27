@@ -31,6 +31,10 @@ impl PiiType {
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
             Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId | Self::BiometricTemplate |
+            // GDPR Article 9 special-category data — racial origin (nationality),
+            // religious belief, political opinion. High-risk because disclosure
+            // can drive discrimination, persecution, or targeted advertising.
+            Self::Nationality | Self::Religion | Self::PoliticalAffiliation |
             // Authentication (security breach)
             Self::Password | Self::Pin | Self::SecurityAnswer | Self::Passphrase |
             Self::ApiKey | Self::Jwt | Self::SessionId | Self::OAuthToken | Self::SshKey |
@@ -56,6 +60,8 @@ impl PiiType {
             self,
             // Personal data
             Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username |
+            // Article 9 special-category data (sensitive attributes)
+            Self::Age | Self::Nationality | Self::Religion | Self::PoliticalAffiliation |
             // Government IDs
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::TaxId | Self::NationalId |
             // EU-member country-specific government IDs (non-EU IDs like KoreaRrn,
@@ -103,6 +109,7 @@ impl PiiType {
                 | Self::Ssn // SSN is also PHI in medical context
                 | Self::Name // Names in medical context
                 | Self::Birthdate // DOB in medical context
+                | Self::Age // Age in medical context — HIPAA Safe Harbor requires aggregating > 89
                 | Self::Address // Address in medical context
                 | Self::Phone // Phone in medical context
                 | Self::Email // Email in medical context

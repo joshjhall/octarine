@@ -2756,6 +2756,7 @@ version = "0.3.0-beta.3"
 dependencies = [
  "addr",
  "aes-gcm",
+ "aho-corasick",
  "arbitrary",
  "argon2",
  "assert_cmd",
