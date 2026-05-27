@@ -53,3 +53,6 @@ tables = false
 ".claude/memory/**" = ["MD013"]
 ".claude/skills/**" = ["MD013"]
 ".claude/agents/**" = ["MD013"]
+# Long-form reference / gap-analysis docs use dense paragraphs sourced
+# from external research; MD013/MD049 are not useful gating signals.
+"docs/presidio-gap-analysis.md" = ["MD013", "MD049"]

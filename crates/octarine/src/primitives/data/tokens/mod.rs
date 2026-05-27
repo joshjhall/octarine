@@ -56,6 +56,8 @@ pub(crate) enum RedactionTokenCore {
     RoutingNumber,
     /// Payment token (Stripe tok_, etc.)
     PaymentToken,
+    /// Cryptocurrency wallet address (Bitcoin, Ethereum)
+    CryptoAddress,
 
     // =========================================================================
     // Identifiers: Government
@@ -227,6 +229,7 @@ impl RedactionTokenCore {
             Self::BankAccount => "[BANK_ACCOUNT]",
             Self::RoutingNumber => "[ROUTING_NUMBER]",
             Self::PaymentToken => "[PAYMENT_TOKEN]",
+            Self::CryptoAddress => "[CRYPTO_ADDRESS]",
 
             // Government
             Self::Ssn => "[SSN]",
@@ -323,6 +326,7 @@ impl RedactionTokenCore {
             Self::BankAccount => "BANK_ACCOUNT",
             Self::RoutingNumber => "ROUTING_NUMBER",
             Self::PaymentToken => "PAYMENT_TOKEN",
+            Self::CryptoAddress => "CRYPTO_ADDRESS",
 
             // Government
             Self::Ssn => "SSN",
@@ -408,9 +412,11 @@ impl RedactionTokenCore {
 
             Self::Email | Self::Phone | Self::Name | Self::Birthdate | Self::Username => "personal",
 
-            Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken => {
-                "financial"
-            }
+            Self::CreditCard
+            | Self::BankAccount
+            | Self::RoutingNumber
+            | Self::PaymentToken
+            | Self::CryptoAddress => "financial",
 
             Self::Ssn
             | Self::DriverLicense

@@ -27,7 +27,10 @@ mod iban;
 mod routing;
 
 // Re-export cache utilities
-pub use cache::{aba_cache_stats, clear_financial_caches, luhn_cache_stats};
+pub use cache::{
+    aba_cache_stats, btc_checksum_cache_stats, clear_financial_caches, eth_eip55_cache_stats,
+    luhn_cache_stats,
+};
 
 // Re-export credit card functions
 pub use credit_card::{
@@ -49,7 +52,8 @@ pub use iban::{detect_iban_country, detect_ibans_in_text, is_iban, is_iban_check
 
 // Re-export crypto functions
 pub use crypto::{
-    detect_crypto_addresses_in_text, is_bitcoin_address, is_crypto_address, is_ethereum_address,
+    detect_crypto_addresses_in_text, is_bitcoin_address, is_bitcoin_checksum_valid,
+    is_crypto_address, is_ethereum_address, is_ethereum_eip55_valid,
 };
 
 // Re-export common/aggregate functions

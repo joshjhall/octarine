@@ -20,8 +20,8 @@ use crate::observe;
 use crate::observe::Problem;
 use crate::observe::metrics::{increment_by, record};
 use crate::primitives::identifiers::{
-    BankAccountRedactionStrategy, CreditCardRedactionStrategy, FinancialIdentifierBuilder,
-    RoutingNumberRedactionStrategy,
+    BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
+    CryptoAddressType, FinancialIdentifierBuilder, RoutingNumberRedactionStrategy,
 };
 
 use super::super::types::{
@@ -184,6 +184,24 @@ impl FinancialBuilder {
     #[must_use]
     pub fn is_crypto_address(&self, value: &str) -> bool {
         self.inner.is_crypto_address(value)
+    }
+
+    /// Verify a Bitcoin address checksum (Base58Check or Bech32/Bech32m).
+    ///
+    /// Stricter than [`Self::is_bitcoin_address`] — rejects single-char
+    /// typos and rebuilt-from-scratch fakes.
+    #[must_use]
+    pub fn is_bitcoin_checksum_valid(&self, value: &str) -> bool {
+        self.inner.is_bitcoin_checksum_valid(value)
+    }
+
+    /// Verify an Ethereum EIP-55 mixed-case checksum.
+    ///
+    /// All-lowercase and all-uppercase addresses are accepted as "no
+    /// checksum present". Mixed-case addresses must match keccak-256.
+    #[must_use]
+    pub fn is_ethereum_eip55_valid(&self, value: &str) -> bool {
+        self.inner.is_ethereum_eip55_valid(value)
     }
 
     /// Check if value is likely a credit card (less strict)
@@ -382,6 +400,31 @@ impl FinancialBuilder {
         self.inner.validate_bank_account(routing, account)
     }
 
+    /// Validate a cryptocurrency wallet address with full checksum verification.
+    ///
+    /// Emits `validate_ms` timing and a `debug` event on failure when
+    /// observe events are enabled (silent mode skips both).
+    pub fn validate_crypto_address(&self, addr: &str) -> Result<CryptoAddressType, Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_crypto_address(addr);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+
+            if result.is_err() {
+                observe::debug(
+                    "crypto_address_validation_failed",
+                    "Crypto address validation failed",
+                );
+            }
+        }
+
+        result
+    }
+
     // ========================================================================
     // Sanitization Methods (Strategy Required)
     // ========================================================================
@@ -431,6 +474,45 @@ impl FinancialBuilder {
     /// Sanitize account number (normalize + validate)
     pub fn sanitize_account_number(&self, account: &str) -> Result<String, Problem> {
         self.inner.sanitize_account_number(account)
+    }
+
+    /// Redact a cryptocurrency wallet address with explicit strategy.
+    #[must_use]
+    pub fn redact_crypto_address_with_strategy(
+        &self,
+        addr: &str,
+        strategy: CryptoAddressRedactionStrategy,
+    ) -> String {
+        self.inner
+            .redact_crypto_address_with_strategy(addr, strategy)
+    }
+
+    /// Sanitize a crypto address (trim + validate checksum).
+    ///
+    /// Emits `validate_ms` timing on every call.
+    pub fn sanitize_crypto_address(&self, addr: &str) -> Result<String, Problem> {
+        let start = Instant::now();
+        let result = self.inner.sanitize_crypto_address(addr);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
+    }
+
+    /// Redact all crypto addresses in text with explicit strategy.
+    #[must_use]
+    pub fn redact_crypto_addresses_in_text_with_strategy<'a>(
+        &self,
+        text: &'a str,
+        strategy: CryptoAddressRedactionStrategy,
+    ) -> Cow<'a, str> {
+        self.inner
+            .redact_crypto_addresses_in_text_with_strategy(text, strategy)
     }
 
     /// Redact all credit cards in text with explicit strategy
@@ -740,6 +822,66 @@ mod tests {
             matches
                 .iter()
                 .all(|m| m.identifier_type == IdentifierType::CryptoAddress)
+        );
+    }
+
+    #[test]
+    fn test_btc_checksum_validation() {
+        let builder = FinancialBuilder::silent();
+        assert!(builder.is_bitcoin_checksum_valid("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+        // Single-char typo (final `a` → `b`) breaks Base58Check.
+        assert!(!builder.is_bitcoin_checksum_valid("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb"));
+    }
+
+    #[test]
+    fn test_eip55_validation() {
+        let builder = FinancialBuilder::silent();
+        // All-lowercase bypass.
+        assert!(builder.is_ethereum_eip55_valid("0x742d35cc6634c0532925a3b844bc9e7595f2bd18"));
+        // Valid EIP-55 mixed case.
+        assert!(builder.is_ethereum_eip55_valid("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"));
+        // Flipped first letter case.
+        assert!(!builder.is_ethereum_eip55_valid("0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"));
+    }
+
+    #[test]
+    fn test_validate_crypto_address_builder() {
+        let builder = FinancialBuilder::silent();
+        let result = builder
+            .validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+            .expect("Satoshi address validates");
+        assert_eq!(result, CryptoAddressType::BitcoinP2PKH);
+
+        assert!(
+            builder
+                .validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_redact_crypto_address_builder() {
+        let builder = FinancialBuilder::silent();
+        let out = builder.redact_crypto_address_with_strategy(
+            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+            CryptoAddressRedactionStrategy::Token,
+        );
+        assert_eq!(out, "[CRYPTO_ADDRESS]");
+    }
+
+    #[test]
+    fn test_sanitize_crypto_address_builder() {
+        let builder = FinancialBuilder::silent();
+        assert_eq!(
+            builder
+                .sanitize_crypto_address("  1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa  ")
+                .expect("valid"),
+            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+        );
+        assert!(
+            builder
+                .sanitize_crypto_address("not-a-crypto-address")
+                .is_err()
         );
     }
 }

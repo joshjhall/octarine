@@ -3,10 +3,10 @@
 //! Convenience functions over [`FinancialBuilder`](super::super::FinancialBuilder).
 
 use crate::observe::Problem;
-use crate::primitives::identifiers::CreditCardRedactionStrategy;
+use crate::primitives::identifiers::{CreditCardRedactionStrategy, CryptoAddressRedactionStrategy};
 
 use super::super::FinancialBuilder;
-use super::super::types::{CreditCardType, IdentifierMatch};
+use super::super::types::{CreditCardType, CryptoAddressType, IdentifierMatch};
 
 // ============================================================
 // CREDIT CARD SHORTCUTS
@@ -112,6 +112,36 @@ pub fn detect_crypto_addresses(text: &str) -> Vec<IdentifierMatch> {
     FinancialBuilder::new().detect_crypto_addresses_in_text(text)
 }
 
+/// Validate a cryptocurrency wallet address (returns the chain type on success).
+pub fn validate_crypto_address(addr: &str) -> Result<CryptoAddressType, Problem> {
+    FinancialBuilder::new().validate_crypto_address(addr)
+}
+
+/// Sanitize a crypto address (trim + validate checksum).
+pub fn sanitize_crypto_address(addr: &str) -> Result<String, Problem> {
+    FinancialBuilder::new().sanitize_crypto_address(addr)
+}
+
+/// Redact a single crypto address using the bank-statement default
+/// (first 4 + last 4 characters visible).
+#[must_use]
+pub fn redact_crypto_address(addr: &str) -> String {
+    FinancialBuilder::new()
+        .redact_crypto_address_with_strategy(addr, CryptoAddressRedactionStrategy::ShowPrefix)
+}
+
+/// Redact all crypto addresses found in text with the bank-statement
+/// default (first 4 + last 4).
+#[must_use]
+pub fn redact_crypto_addresses(text: &str) -> String {
+    FinancialBuilder::new()
+        .redact_crypto_addresses_in_text_with_strategy(
+            text,
+            CryptoAddressRedactionStrategy::ShowPrefix,
+        )
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -141,5 +171,38 @@ mod tests {
     fn test_bank_account_shortcut() {
         assert!(is_bank_account("1234567890"));
         assert!(!is_bank_account("ab"));
+    }
+
+    #[test]
+    fn test_validate_crypto_address_shortcut() {
+        assert_eq!(
+            validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").expect("valid"),
+            CryptoAddressType::BitcoinP2PKH,
+        );
+        assert!(validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb").is_err());
+    }
+
+    #[test]
+    fn test_sanitize_crypto_address_shortcut() {
+        assert_eq!(
+            sanitize_crypto_address("  1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa  ").expect("valid"),
+            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+        );
+    }
+
+    #[test]
+    fn test_redact_crypto_address_shortcut() {
+        let out = redact_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+        assert!(out.starts_with("1A1z"));
+        assert!(out.ends_with("vfNa"));
+        assert!(out.contains("****"));
+    }
+
+    #[test]
+    fn test_redact_crypto_addresses_in_text_shortcut() {
+        let out = redact_crypto_addresses("Wallet: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+        assert!(out.contains("1A1z"));
+        assert!(out.contains("vfNa"));
+        assert!(!out.contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
     }
 }

@@ -21,8 +21,8 @@ use super::super::common::{masking, patterns};
 use super::conversion;
 use super::detection;
 use super::redaction::{
-    BankAccountRedactionStrategy, CreditCardRedactionStrategy, PaymentTokenRedactionStrategy,
-    RoutingNumberRedactionStrategy, TextRedactionPolicy,
+    BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
+    PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy, TextRedactionPolicy,
 };
 use super::validation;
 use crate::primitives::Problem;
@@ -320,6 +320,136 @@ pub fn redact_routing_number_with_strategy(
 }
 
 // ============================================================================
+// Cryptocurrency Address Sanitization
+// ============================================================================
+
+/// Redact a cryptocurrency wallet address with an explicit strategy.
+///
+/// Returns the type token `[CRYPTO_ADDRESS]` when the input does not
+/// match the shape of a known crypto address — keeps invalid input from
+/// leaking through unchanged. Otherwise the strategy decides what to
+/// reveal.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::financial::{
+///     CryptoAddressRedactionStrategy, sanitization,
+/// };
+///
+/// let satoshi = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+///
+/// // Token replacement
+/// assert_eq!(
+///     sanitization::redact_crypto_address_with_strategy(
+///         satoshi,
+///         CryptoAddressRedactionStrategy::Token,
+///     ),
+///     "[CRYPTO_ADDRESS]",
+/// );
+///
+/// // Bank-statement convention: first 4 + last 4
+/// assert_eq!(
+///     sanitization::redact_crypto_address_with_strategy(
+///         satoshi,
+///         CryptoAddressRedactionStrategy::ShowPrefix,
+///     ),
+///     "1A1z**************************vfNa",
+/// );
+/// ```
+#[must_use]
+pub fn redact_crypto_address_with_strategy(
+    addr: &str,
+    strategy: CryptoAddressRedactionStrategy,
+) -> String {
+    if matches!(strategy, CryptoAddressRedactionStrategy::Skip) {
+        return addr.to_string();
+    }
+
+    // Validate shape (no checksum required for redaction — the goal is
+    // to prevent leaking *any* address-shaped substring).
+    if !detection::is_crypto_address(addr) {
+        return RedactionTokenCore::CryptoAddress.into();
+    }
+
+    let trimmed = addr.trim();
+    let len = trimmed.chars().count();
+
+    match strategy {
+        CryptoAddressRedactionStrategy::Skip => addr.to_string(),
+        CryptoAddressRedactionStrategy::ShowPrefix => {
+            masking::show_first_and_last(trimmed, 4, 4, '*')
+        }
+        CryptoAddressRedactionStrategy::Token => RedactionTokenCore::CryptoAddress.into(),
+        CryptoAddressRedactionStrategy::Anonymous => RedactionTokenCore::Redacted.into(),
+        CryptoAddressRedactionStrategy::Asterisks => masking::create_mask(len, '*'),
+        CryptoAddressRedactionStrategy::Hashes => masking::create_mask(len, '#'),
+    }
+}
+
+/// Sanitize a crypto address strict (trim + validate checksum).
+///
+/// Returns the trimmed, canonical-case address on success. Errors carry
+/// the chain-specific failure reason from
+/// [`validation::validate_crypto_address`].
+///
+/// # Errors
+///
+/// - `Problem::Validation` when the address fails shape detection.
+/// - `Problem::Validation` when the checksum (Base58Check, Bech32/Bech32m,
+///   or EIP-55) is wrong.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::financial::sanitization;
+///
+/// assert_eq!(
+///     sanitization::sanitize_crypto_address_strict("  1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa  ")
+///         .expect("valid"),
+///     "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+/// );
+/// assert!(sanitization::sanitize_crypto_address_strict("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb").is_err());
+/// ```
+pub fn sanitize_crypto_address_strict(addr: &str) -> Result<String, Problem> {
+    let trimmed = addr.trim().to_string();
+    validation::validate_crypto_address(&trimmed)?;
+    Ok(trimmed)
+}
+
+/// Redact all cryptocurrency addresses in `text` with an explicit strategy.
+///
+/// Scans for Bitcoin (P2PKH, P2SH, Bech32/Bech32m) and Ethereum address
+/// patterns and replaces each match using
+/// [`redact_crypto_address_with_strategy`]. Returns `Cow::Borrowed` when
+/// no addresses are found so callers avoid an allocation on clean text.
+#[must_use]
+pub fn redact_crypto_addresses_in_text_with_strategy(
+    text: &str,
+    strategy: CryptoAddressRedactionStrategy,
+) -> Cow<'_, str> {
+    if matches!(strategy, CryptoAddressRedactionStrategy::Skip) {
+        return Cow::Borrowed(text);
+    }
+
+    let mut result = Cow::Borrowed(text);
+
+    for pattern in patterns::financial::crypto::all() {
+        if pattern.is_match(&result) {
+            let owned = pattern
+                .replace_all(&result, |caps: &regex::Captures<'_>| {
+                    let matched = caps.get(0).map_or("", |m| m.as_str());
+                    redact_crypto_address_with_strategy(matched, strategy)
+                })
+                .into_owned();
+            result = Cow::Owned(owned);
+        }
+    }
+
+    result
+}
+
+// ============================================================================
 // Payment Token Sanitization
 // ============================================================================
 
@@ -537,6 +667,9 @@ pub fn redact_all_financial_in_text_with_policy(text: &str, policy: TextRedactio
     // Apply bank account redaction with strategy
     let result =
         redact_bank_accounts_in_text_with_strategy(&result, policy.to_bank_account_strategy());
+    // Apply crypto address redaction with strategy
+    let result =
+        redact_crypto_addresses_in_text_with_strategy(&result, policy.to_crypto_address_strategy());
 
     result.into_owned()
 }
@@ -885,5 +1018,124 @@ mod tests {
             ),
             "************4242"
         );
+    }
+
+    // ===== Crypto Address Redaction Tests =====
+
+    const SATOSHI: &str = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+    const SATOSHI_TYPO: &str = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb";
+    const ETH_EIP55: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
+
+    #[test]
+    fn test_redact_crypto_address_show_prefix() {
+        let out = redact_crypto_address_with_strategy(
+            SATOSHI,
+            CryptoAddressRedactionStrategy::ShowPrefix,
+        );
+        // Should preserve length and show first 4 + last 4.
+        assert_eq!(out.len(), SATOSHI.len());
+        assert!(out.starts_with("1A1z"));
+        assert!(out.ends_with("vfNa"));
+        assert!(out.contains("****"));
+    }
+
+    #[test]
+    fn test_redact_crypto_address_token() {
+        assert_eq!(
+            redact_crypto_address_with_strategy(SATOSHI, CryptoAddressRedactionStrategy::Token),
+            "[CRYPTO_ADDRESS]"
+        );
+    }
+
+    #[test]
+    fn test_redact_crypto_address_anonymous() {
+        assert_eq!(
+            redact_crypto_address_with_strategy(SATOSHI, CryptoAddressRedactionStrategy::Anonymous),
+            "[REDACTED]"
+        );
+    }
+
+    #[test]
+    fn test_redact_crypto_address_asterisks_preserves_length() {
+        let out =
+            redact_crypto_address_with_strategy(SATOSHI, CryptoAddressRedactionStrategy::Asterisks);
+        assert_eq!(out.len(), SATOSHI.len());
+        assert!(out.chars().all(|c| c == '*'));
+    }
+
+    #[test]
+    fn test_redact_crypto_address_hashes() {
+        let out =
+            redact_crypto_address_with_strategy(SATOSHI, CryptoAddressRedactionStrategy::Hashes);
+        assert!(out.chars().all(|c| c == '#'));
+    }
+
+    #[test]
+    fn test_redact_crypto_address_skip() {
+        assert_eq!(
+            redact_crypto_address_with_strategy(SATOSHI, CryptoAddressRedactionStrategy::Skip),
+            SATOSHI
+        );
+    }
+
+    #[test]
+    fn test_redact_crypto_address_invalid_returns_token() {
+        // Doesn't match any crypto pattern → safe token fallback.
+        assert_eq!(
+            redact_crypto_address_with_strategy(
+                "not_an_address",
+                CryptoAddressRedactionStrategy::ShowPrefix
+            ),
+            "[CRYPTO_ADDRESS]"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_crypto_address_strict_valid() {
+        // Round-trips a valid Satoshi address (also trims whitespace).
+        assert_eq!(
+            sanitize_crypto_address_strict(&format!("  {}  ", SATOSHI)).expect("valid"),
+            SATOSHI
+        );
+        assert_eq!(
+            sanitize_crypto_address_strict(ETH_EIP55).expect("valid EIP-55"),
+            ETH_EIP55
+        );
+    }
+
+    #[test]
+    fn test_sanitize_crypto_address_strict_rejects_typo() {
+        let err = sanitize_crypto_address_strict(SATOSHI_TYPO).expect_err("typo should reject");
+        assert!(err.to_string().contains("checksum"));
+    }
+
+    #[test]
+    fn test_redact_crypto_addresses_in_text() {
+        let text = format!("Wallet: {}", SATOSHI);
+        let out = redact_crypto_addresses_in_text_with_strategy(
+            &text,
+            CryptoAddressRedactionStrategy::Token,
+        );
+        assert!(out.contains("[CRYPTO_ADDRESS]"));
+        assert!(!out.contains(SATOSHI));
+    }
+
+    #[test]
+    fn test_redact_crypto_addresses_in_text_skip_is_borrowed() {
+        let text = format!("Wallet: {}", SATOSHI);
+        let out = redact_crypto_addresses_in_text_with_strategy(
+            &text,
+            CryptoAddressRedactionStrategy::Skip,
+        );
+        assert!(matches!(out, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn test_redact_all_financial_in_text_covers_crypto() {
+        let text = format!("BTC {} and card 4242-4242-4242-4242", SATOSHI);
+        let out = redact_all_financial_in_text_with_policy(&text, TextRedactionPolicy::Complete);
+        assert!(out.contains("[CREDIT_CARD]"));
+        assert!(out.contains("[CRYPTO_ADDRESS]"));
+        assert!(!out.contains(SATOSHI));
     }
 }

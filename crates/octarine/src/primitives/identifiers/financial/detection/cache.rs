@@ -24,6 +24,21 @@ pub(super) static LUHN_CACHE: Lazy<LruCache<String, bool>> =
 pub(super) static ABA_CACHE: Lazy<LruCache<String, bool>> =
     Lazy::new(|| LruCache::new(5_000, Duration::from_secs(3600)));
 
+/// Cache for Bitcoin address checksum validation results
+///
+/// Caches up to 10,000 BTC address validations (Base58Check + Bech32/Bech32m) for 1 hour.
+pub(super) static BTC_CHECKSUM_CACHE: Lazy<LruCache<String, bool>> =
+    Lazy::new(|| LruCache::new(10_000, Duration::from_secs(3600)));
+
+/// Cache for Ethereum EIP-55 mixed-case checksum results
+///
+/// Caches up to 5,000 ETH address validations for 1 hour. Smaller than the
+/// BTC cache because keccak-256 is cheap enough that re-validation is not
+/// usually a hot path; the cache exists primarily for callers that re-scan
+/// the same document repeatedly.
+pub(super) static ETH_EIP55_CACHE: Lazy<LruCache<String, bool>> =
+    Lazy::new(|| LruCache::new(5_000, Duration::from_secs(3600)));
+
 // ============================================================================
 // Cache Statistics
 // ============================================================================
@@ -44,10 +59,24 @@ pub fn aba_cache_stats() -> CacheStats {
     ABA_CACHE.stats()
 }
 
+/// Get Bitcoin checksum cache statistics
+#[must_use]
+pub fn btc_checksum_cache_stats() -> CacheStats {
+    BTC_CHECKSUM_CACHE.stats()
+}
+
+/// Get Ethereum EIP-55 cache statistics
+#[must_use]
+pub fn eth_eip55_cache_stats() -> CacheStats {
+    ETH_EIP55_CACHE.stats()
+}
+
 /// Clear all financial detection caches
 ///
 /// Useful for testing or when memory pressure is high.
 pub fn clear_financial_caches() {
     LUHN_CACHE.clear();
     ABA_CACHE.clear();
+    BTC_CHECKSUM_CACHE.clear();
+    ETH_EIP55_CACHE.clear();
 }

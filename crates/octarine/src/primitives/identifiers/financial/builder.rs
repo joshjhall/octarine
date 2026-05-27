@@ -3,7 +3,8 @@
 //! Provides a fluent API for financial identifier operations.
 
 use super::super::types::{
-    CreditCardType, DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType,
+    CreditCardType, CryptoAddressType, DetectionConfidence, DetectionResult, IdentifierMatch,
+    IdentifierType,
 };
 use super::{conversion, detection, sanitization, validation};
 use crate::primitives::Problem;
@@ -98,6 +99,22 @@ impl FinancialIdentifierBuilder {
     #[must_use]
     pub fn is_crypto_address(&self, value: &str) -> bool {
         detection::is_crypto_address(value)
+    }
+
+    /// Verify a Bitcoin address checksum (Base58Check or Bech32/Bech32m).
+    #[must_use]
+    pub fn is_bitcoin_checksum_valid(&self, value: &str) -> bool {
+        detection::is_bitcoin_checksum_valid(value)
+    }
+
+    /// Verify an Ethereum EIP-55 mixed-case checksum.
+    ///
+    /// All-lowercase and all-uppercase addresses are accepted as "no
+    /// checksum present"; mixed-case addresses are verified via
+    /// keccak-256.
+    #[must_use]
+    pub fn is_ethereum_eip55_valid(&self, value: &str) -> bool {
+        detection::is_ethereum_eip55_valid(value)
     }
 
     /// Check if value is likely a credit card (less strict)
@@ -234,6 +251,17 @@ impl FinancialIdentifierBuilder {
         validation::validate_bank_account(routing, account)
     }
 
+    /// Validate a cryptocurrency wallet address with full checksum verification.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem::Validation` when the shape is unrecognized or
+    /// the chain-specific checksum (Base58Check, Bech32/Bech32m, or
+    /// EIP-55) fails.
+    pub fn validate_crypto_address(&self, addr: &str) -> Result<CryptoAddressType, Problem> {
+        validation::validate_crypto_address(addr)
+    }
+
     /// Check if text contains payment data
     #[must_use]
     pub fn is_payment_data_present(&self, text: &str) -> bool {
@@ -282,6 +310,31 @@ impl FinancialIdentifierBuilder {
         strategy: super::PaymentTokenRedactionStrategy,
     ) -> String {
         sanitization::redact_payment_token_with_strategy(token, strategy)
+    }
+
+    /// Redact a cryptocurrency wallet address with explicit strategy.
+    #[must_use]
+    pub fn redact_crypto_address_with_strategy(
+        &self,
+        addr: &str,
+        strategy: super::CryptoAddressRedactionStrategy,
+    ) -> String {
+        sanitization::redact_crypto_address_with_strategy(addr, strategy)
+    }
+
+    /// Sanitize a crypto address strict (trim + validate checksum).
+    pub fn sanitize_crypto_address(&self, addr: &str) -> Result<String, Problem> {
+        sanitization::sanitize_crypto_address_strict(addr)
+    }
+
+    /// Redact all crypto addresses in text with explicit strategy.
+    #[must_use]
+    pub fn redact_crypto_addresses_in_text_with_strategy<'a>(
+        &self,
+        text: &'a str,
+        strategy: super::CryptoAddressRedactionStrategy,
+    ) -> Cow<'a, str> {
+        sanitization::redact_crypto_addresses_in_text_with_strategy(text, strategy)
     }
 
     /// Sanitize credit card strict (normalize + validate)
