@@ -6,6 +6,9 @@
 //! - **Personal Names**: Full names in various formats (First Last, Last, First)
 //! - **Birthdates**: Date of birth in ISO, US, European, and month name formats
 //! - **Usernames**: Alphanumeric identifiers with common special characters
+//! - **Ages**: Age expressions in free text (HIPAA Safe Harbor §164.514)
+//! - **NRP**: Nationality / religion / political affiliation
+//!   (GDPR Article 9 special-category data)
 //!
 //! **Note**: SSN/Tax IDs are government-issued and handled in `government` module
 //!
@@ -17,6 +20,8 @@
 //! - `name` - Personal name detection
 //! - `birthdate` - Date of birth detection
 //! - `username` - Username detection
+//! - `age` - Age expression detection
+//! - `nrp` - Nationality / religion / political affiliation detection
 //! - `common` - Aggregate functions and utilities
 //!
 //! # Architecture
@@ -24,11 +29,13 @@
 //! This is part of **Layer 1 (primitives)** - pure functions with NO logging.
 //! Used by both observe/pii and security modules.
 
+mod age;
 mod birthdate;
 mod cache;
 mod common;
 mod email;
 mod name;
+mod nrp;
 mod phone;
 mod username;
 
@@ -49,6 +56,15 @@ pub use birthdate::{detect_birthdates_in_text, is_birthdate};
 
 // Re-export username functions
 pub use username::{detect_usernames_in_text, is_username};
+
+// Re-export age functions
+pub use age::{detect_ages_in_text, find_age_value, is_age, is_age_over_89};
+
+// Re-export NRP (nationality / religion / political affiliation) functions
+pub use nrp::{
+    detect_nationalities_in_text, detect_political_affiliations_in_text, detect_religions_in_text,
+    is_nationality, is_political_affiliation, is_religion,
+};
 
 // Re-export common/aggregate functions
 pub use common::{

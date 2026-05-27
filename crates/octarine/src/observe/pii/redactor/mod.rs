@@ -223,6 +223,18 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
                 // without false positives - they're detected but not automatically redacted
                 result
             }
+            PiiType::Age
+            | PiiType::Nationality
+            | PiiType::Religion
+            | PiiType::PoliticalAffiliation => {
+                // Detected but not automatically redacted by the generic
+                // pipeline. Callers needing GDPR Art 9 / HIPAA Safe Harbor
+                // redaction should use `PersonalBuilder::redact_age_with_strategy`
+                // or `redact_nationality_with_strategy` directly so they pick
+                // the appropriate per-type strategy (bucket-by-decade, token,
+                // anonymous).
+                result
+            }
             // Medical (PHI)
             PiiType::Mrn => redact_medical_record_numbers(&result, profile),
             PiiType::Npi => redact_provider_ids(&result, profile),

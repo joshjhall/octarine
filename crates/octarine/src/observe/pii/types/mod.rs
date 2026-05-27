@@ -51,6 +51,14 @@ pub enum PiiType {
     Birthdate,
     /// Username or handle
     Username,
+    /// Age expression (HIPAA Safe Harbor: ages > 89 require aggregation)
+    Age,
+    /// Nationality / ethnic group (GDPR Article 9 special category)
+    Nationality,
+    /// Religious belief (GDPR Article 9 special category)
+    Religion,
+    /// Political opinion / party (GDPR Article 9 special category)
+    PoliticalAffiliation,
 
     // =========================================================================
     // Financial Domain

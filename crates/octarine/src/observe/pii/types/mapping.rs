@@ -21,6 +21,10 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::PersonalName => Self::Name,
             IdentifierType::Birthdate => Self::Birthdate,
             IdentifierType::Username => Self::Username,
+            IdentifierType::Age => Self::Age,
+            IdentifierType::Nationality => Self::Nationality,
+            IdentifierType::Religion => Self::Religion,
+            IdentifierType::PoliticalAffiliation => Self::PoliticalAffiliation,
 
             // Credential
             IdentifierType::Password => Self::Password,

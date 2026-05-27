@@ -3,8 +3,9 @@
 use crate::primitives::Problem;
 
 use super::super::redaction::{
-    BirthdateRedactionStrategy, EmailRedactionStrategy, NameRedactionStrategy,
-    PhoneRedactionStrategy, TextRedactionPolicy, UsernameRedactionStrategy,
+    AgeRedactionStrategy, BirthdateRedactionStrategy, EmailRedactionStrategy,
+    NameRedactionStrategy, NrpRedactionStrategy, PhoneRedactionStrategy, TextRedactionPolicy,
+    UsernameRedactionStrategy,
 };
 use super::super::sanitization;
 use super::core::PersonalIdentifierBuilder;
@@ -144,6 +145,42 @@ impl PersonalIdentifierBuilder {
         policy: TextRedactionPolicy,
     ) -> String {
         sanitization::redact_all_in_text(text, policy)
+    }
+
+    /// Redact an age value with explicit redaction strategy
+    #[must_use]
+    pub fn redact_age_with_strategy(&self, value: &str, strategy: AgeRedactionStrategy) -> String {
+        sanitization::redact_age_with_strategy(value, strategy)
+    }
+
+    /// Redact a nationality value with explicit redaction strategy
+    #[must_use]
+    pub fn redact_nationality_with_strategy(
+        &self,
+        value: &str,
+        strategy: NrpRedactionStrategy,
+    ) -> String {
+        sanitization::redact_nationality_with_strategy(value, strategy)
+    }
+
+    /// Redact a religion value with explicit redaction strategy
+    #[must_use]
+    pub fn redact_religion_with_strategy(
+        &self,
+        value: &str,
+        strategy: NrpRedactionStrategy,
+    ) -> String {
+        sanitization::redact_religion_with_strategy(value, strategy)
+    }
+
+    /// Redact a political-affiliation value with explicit redaction strategy
+    #[must_use]
+    pub fn redact_political_affiliation_with_strategy(
+        &self,
+        value: &str,
+        strategy: NrpRedactionStrategy,
+    ) -> String {
+        sanitization::redact_political_affiliation_with_strategy(value, strategy)
     }
 }
 

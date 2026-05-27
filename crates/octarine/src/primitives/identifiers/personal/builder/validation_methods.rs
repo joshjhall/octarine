@@ -31,6 +31,27 @@ impl PersonalIdentifierBuilder {
     pub fn validate_name(&self, name: &str) -> Result<(), Problem> {
         validation::validate_name(name)
     }
+
+    /// Validate age expression or bare numeric age (returns Result)
+    pub fn validate_age(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_age(value)
+    }
+
+    /// Validate that input contains a nationality reference (returns Result)
+    pub fn validate_nationality(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_nationality(value)
+    }
+
+    /// Validate that input contains a religion reference (returns Result)
+    pub fn validate_religion(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_religion(value)
+    }
+
+    /// Validate that input contains a political-affiliation reference
+    /// (returns Result)
+    pub fn validate_political_affiliation(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_political_affiliation(value)
+    }
 }
 
 #[cfg(test)]

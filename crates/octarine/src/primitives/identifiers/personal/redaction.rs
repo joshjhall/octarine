@@ -116,6 +116,44 @@ pub enum UsernameRedactionStrategy {
     Hashes,
 }
 
+/// Age redaction strategies (HIPAA Safe Harbor §164.514(b)(2)(i)(B))
+///
+/// Numeric ages over 89 must be aggregated into a single category under
+/// HIPAA Safe Harbor. The `Bucket10Year` and `OverEightyNine` variants
+/// implement that requirement; `Token` and `Anonymous` are catch-all options
+/// for non-HIPAA contexts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgeRedactionStrategy {
+    /// Skip redaction - return as-is
+    Skip,
+    /// Replace the numeric age with its 10-year bucket (e.g. 42 → "40-49").
+    /// HIPAA Safe Harbor friendly for ages ≤ 89.
+    Bucket10Year,
+    /// Replace ages > 89 with the literal `"[90+]"` token; leave ages ≤ 89
+    /// untouched. Matches HIPAA Safe Harbor §164.514(b)(2)(i)(B) exactly.
+    OverEightyNine,
+    /// Replace with [AGE] token
+    Token,
+    /// Replace with generic [REDACTED]
+    Anonymous,
+}
+
+/// Nationality / religion / political-affiliation redaction strategies
+///
+/// GDPR Article 9 special-category data does not have meaningful partial
+/// reveals (showing the first character of "Catholic" or "American" leaks
+/// the category), so only full-replacement strategies are offered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NrpRedactionStrategy {
+    /// Skip redaction - return as-is
+    Skip,
+    /// Replace with a category token: `[NATIONALITY]`, `[RELIGION]`, or
+    /// `[POLITICAL_AFFILIATION]`
+    Token,
+    /// Replace with generic [REDACTED]
+    Anonymous,
+}
+
 /// Generic redaction policy for text scanning across multiple identifier types
 ///
 /// This simple enum provides a consistent policy when scanning text that may contain

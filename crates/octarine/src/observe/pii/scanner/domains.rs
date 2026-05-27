@@ -13,7 +13,7 @@ use crate::primitives::identifiers::{
     PersonalIdentifierBuilder, TokenIdentifierBuilder, TokenType,
 };
 
-/// Scan for personal PII (email, phone, name, birthdate)
+/// Scan for personal PII (email, phone, name, birthdate, username, age, NRP)
 pub(super) fn scan_personal(text: &str, pii_types: &mut Vec<PiiType>) {
     let personal = PersonalIdentifierBuilder::new();
 
@@ -33,6 +33,26 @@ pub(super) fn scan_personal(text: &str, pii_types: &mut Vec<PiiType>) {
         if !personal.detect_usernames_in_text(text).is_empty() {
             pii_types.push(PiiType::Username);
         }
+    }
+
+    // Age and NRP detectors run unconditionally — `is_pii_present` is
+    // a coarse pre-filter built around email/phone/name/etc. and may
+    // return `false` for text that contains only an age or nationality
+    // reference.
+    if !personal.detect_ages_in_text(text).is_empty() {
+        pii_types.push(PiiType::Age);
+    }
+    if !personal.detect_nationalities_in_text(text).is_empty() {
+        pii_types.push(PiiType::Nationality);
+    }
+    if !personal.detect_religions_in_text(text).is_empty() {
+        pii_types.push(PiiType::Religion);
+    }
+    if !personal
+        .detect_political_affiliations_in_text(text)
+        .is_empty()
+    {
+        pii_types.push(PiiType::PoliticalAffiliation);
     }
 }
 
@@ -643,4 +663,38 @@ pub(super) fn is_pii_present_with_config_impl(text: &str, config: &PiiScannerCon
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn test_scan_personal_detects_age_and_nrp() {
+        let text = "The 42-year-old American Catholic Democrat patient.";
+        let mut pii_types = Vec::new();
+        scan_personal(text, &mut pii_types);
+        assert!(pii_types.contains(&PiiType::Age), "expected Age");
+        assert!(
+            pii_types.contains(&PiiType::Nationality),
+            "expected Nationality"
+        );
+        assert!(pii_types.contains(&PiiType::Religion), "expected Religion");
+        assert!(
+            pii_types.contains(&PiiType::PoliticalAffiliation),
+            "expected PoliticalAffiliation"
+        );
+    }
+
+    #[test]
+    fn test_scan_personal_age_only_no_other_pii() {
+        // "in her eighties" — should trip Age but not email/phone/etc.
+        let text = "in her eighties";
+        let mut pii_types = Vec::new();
+        scan_personal(text, &mut pii_types);
+        assert!(pii_types.contains(&PiiType::Age));
+        assert!(!pii_types.contains(&PiiType::Email));
+        assert!(!pii_types.contains(&PiiType::Phone));
+    }
 }

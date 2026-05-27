@@ -108,8 +108,9 @@ mod validation;
 // Re-export the builder as primary API and redaction types
 pub use builder::PersonalIdentifierBuilder;
 pub use redaction::{
-    BirthdateRedactionStrategy, EmailRedactionStrategy, NameRedactionStrategy,
-    PhoneRedactionStrategy, TextRedactionPolicy, UsernameRedactionStrategy,
+    AgeRedactionStrategy, BirthdateRedactionStrategy, EmailRedactionStrategy,
+    NameRedactionStrategy, NrpRedactionStrategy, PhoneRedactionStrategy, TextRedactionPolicy,
+    UsernameRedactionStrategy,
 };
 
 // Export cache stats functions for performance monitoring

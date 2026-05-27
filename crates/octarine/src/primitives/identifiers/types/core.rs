@@ -15,6 +15,10 @@ pub enum IdentifierType {
     PersonalName, // Full names, first/last names
     Birthdate,    // Date of birth in various formats
     Username,
+    Age,                  // Age expression (HIPAA Safe Harbor: ages > 89 require aggregation)
+    Nationality,          // Nationality / ethnic group (GDPR Article 9 special category)
+    Religion,             // Religious belief (GDPR Article 9 special category)
+    PoliticalAffiliation, // Political opinion / party (GDPR Article 9 special category)
 
     // Credential identifiers (NIST 800-63 "something you know")
     Password,

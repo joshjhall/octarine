@@ -38,9 +38,11 @@
 //!
 //! Environment-aware defaults and compliance-ready options (GDPR, HIPAA, PCI-DSS).
 
+mod age;
 mod birthdate;
 mod email;
 mod name;
+mod nrp;
 mod phone;
 mod text;
 mod username;
@@ -59,6 +61,15 @@ pub use birthdate::{redact_birthdate_with_strategy, sanitize_birthdate};
 
 // Re-export username functions
 pub use username::redact_username_with_strategy;
+
+// Re-export age functions
+pub use age::redact_age_with_strategy;
+
+// Re-export NRP (nationality / religion / political affiliation) functions
+pub use nrp::{
+    redact_nationality_with_strategy, redact_political_affiliation_with_strategy,
+    redact_religion_with_strategy,
+};
 
 // Re-export text functions
 pub use text::{

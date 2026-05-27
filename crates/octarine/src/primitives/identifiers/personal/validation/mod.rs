@@ -41,9 +41,11 @@
 //! - [`birthdate`] - Birthdate validation and test pattern detection
 //! - [`name`] - Personal name validation
 
+mod age;
 mod birthdate;
 mod email;
 mod name;
+mod nrp;
 mod phone;
 mod username;
 
@@ -76,3 +78,15 @@ pub use birthdate::{is_test_birthdate, validate_birthdate};
 // ============================================================================
 
 pub use name::validate_name;
+
+// ============================================================================
+// Re-exports - Age
+// ============================================================================
+
+pub use age::validate_age;
+
+// ============================================================================
+// Re-exports - NRP (nationality / religion / political affiliation)
+// ============================================================================
+
+pub use nrp::{validate_nationality, validate_political_affiliation, validate_religion};
