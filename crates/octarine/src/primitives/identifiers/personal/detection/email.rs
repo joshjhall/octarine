@@ -17,6 +17,46 @@ const CODE_FILE_EXTENSIONS: &[&str] = &[
 ];
 
 // ============================================================================
+// PSL Post-Filter
+// ============================================================================
+
+/// Reject emails whose TLD is not on the Mozilla Public Suffix List.
+///
+/// Closes the "any 2+ ASCII letters is a TLD" gap in the regex layer. Under
+/// `not(email-strict)` this is a no-op so the regex's behavior is preserved
+/// for callers who opt out of the ~250KB PSL data (embedded/wasm).
+///
+/// The domain part is lowercased before consulting the PSL because DNS
+/// domains are case-insensitive (RFC 5321 § 2.3.11) and `addr`'s suffix
+/// matcher is case-sensitive against the lowercase PSL.
+#[cfg(feature = "email-strict")]
+fn psl_validates_email(email: &str) -> bool {
+    // RFC 5321: only the domain is case-insensitive — the local part is in
+    // principle case-sensitive, so lowercase only after the `@`.
+    let normalized = email.rfind('@').map_or_else(
+        || email.to_string(),
+        |at| {
+            let (local, domain) = email.split_at(at);
+            format!("{local}{}", domain.to_ascii_lowercase())
+        },
+    );
+    match addr::parse_email_address(&normalized) {
+        Ok(parsed) => match parsed.host() {
+            addr::email::Host::Domain(d) => d.has_known_suffix(),
+            // IP-literal hosts (`user@[10.0.0.1]`) are RFC 5321 valid and have
+            // no TLD to validate — accept them.
+            addr::email::Host::IpAddr(_) => true,
+        },
+        Err(_) => false,
+    }
+}
+
+#[cfg(not(feature = "email-strict"))]
+fn psl_validates_email(_email: &str) -> bool {
+    true
+}
+
+// ============================================================================
 // False Positive Filters
 // ============================================================================
 
@@ -66,10 +106,10 @@ pub fn is_email(value: &str) -> bool {
         return result;
     }
 
-    // Compute fresh
-    let result = patterns::email::EXACT.is_match(trimmed);
+    // Regex prefilter, then PSL post-filter (no-op under `not(email-strict)`).
+    let result = patterns::email::EXACT.is_match(trimmed) && psl_validates_email(trimmed);
 
-    // Cache the result
+    // Cache the final (post-PSL) result so the cached answer matches the API.
     EMAIL_CACHE.insert(trimmed.to_string(), result);
 
     result
@@ -165,6 +205,12 @@ pub fn detect_emails_in_text(text: &str) -> Vec<IdentifierMatch> {
 
             // Filter out code context false positives
             if is_code_context_false_positive(text, full_match.start(), matched_text) {
+                continue;
+            }
+
+            // Reject TLDs that aren't on the Public Suffix List (no-op under
+            // `not(email-strict)`).
+            if !psl_validates_email(matched_text) {
                 continue;
             }
 
@@ -366,5 +412,66 @@ mod tests {
         let stats2 = email_cache_stats();
 
         assert!(stats2.hits > stats1.hits);
+    }
+
+    // ── Public Suffix List validation (issue #429) ─────────────────────
+
+    #[cfg(feature = "email-strict")]
+    #[test]
+    #[serial]
+    fn test_psl_rejects_unknown_tld() {
+        clear_personal_caches();
+        // Made-up TLD — regex would accept it, PSL post-filter rejects it.
+        assert!(!is_email("user@example.notatld"));
+        assert!(!is_email("admin@foo.zz"));
+        // `.bar` is actually a registered ICANN TLD, so don't use it as a counter-example.
+    }
+
+    #[cfg(feature = "email-strict")]
+    #[test]
+    #[serial]
+    fn test_psl_accepts_psl_effective_tld() {
+        clear_personal_caches();
+        // `github.io` is a Public Suffix (private section) — should be accepted
+        // even though `.io` alone is also a TLD.
+        assert!(is_email("user@github.io"));
+        // Real TLDs still accepted.
+        assert!(is_email("user@example.com"));
+        assert!(is_email("user@example.museum"));
+    }
+
+    #[cfg(feature = "email-strict")]
+    #[test]
+    #[serial]
+    fn test_psl_detect_filters_made_up_tld_in_text() {
+        clear_personal_caches();
+        let text = "Contact user@example.com or fake@foo.notatld today";
+        let matches = detect_emails_in_text(text);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("first").matched_text,
+            "user@example.com"
+        );
+    }
+
+    #[cfg(feature = "email-strict")]
+    #[test]
+    #[serial]
+    fn test_psl_accepts_ip_literal_email() {
+        clear_personal_caches();
+        // IP-literal hosts have no TLD; RFC 5321 says they're valid emails.
+        assert!(is_email("user@[192.168.1.1]"));
+        assert!(is_email("admin@[10.0.0.1]"));
+    }
+
+    #[cfg(feature = "email-strict")]
+    #[test]
+    #[serial]
+    fn test_psl_handles_mixed_case_domain() {
+        // RFC 5321: email domains are case-insensitive. PSL is lowercase-only,
+        // so we must lowercase the domain before consulting it.
+        clear_personal_caches();
+        assert!(is_email("User@Example.COM"));
+        assert!(is_email("USER@GITHUB.IO"));
     }
 }

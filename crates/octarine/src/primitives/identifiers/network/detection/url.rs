@@ -11,6 +11,27 @@ use super::common::{
 };
 
 // ============================================================================
+// PSL Bare-Host Validation
+// ============================================================================
+
+/// Validate a bare hostname against the Public Suffix List.
+///
+/// Used under `url-strict` to accept bare URLs (`example.com`, `www.example.com`)
+/// while rejecting prose tokens that contain a dot (`map.contains`,
+/// `foo.notatld`).
+///
+/// The host is lowercased before consulting the PSL because DNS names are
+/// case-insensitive (RFC 1035 § 2.3.3) but `addr`'s matcher is
+/// case-sensitive against the lowercase PSL.
+#[cfg(feature = "url-strict")]
+fn is_bare_host_valid(host: &str) -> bool {
+    let lower = host.to_ascii_lowercase();
+    addr::parse_domain_name(&lower)
+        .map(|d| d.has_known_suffix())
+        .unwrap_or(false)
+}
+
+// ============================================================================
 // Single-Value Detection
 // ============================================================================
 
@@ -21,17 +42,35 @@ use super::common::{
 /// - FTP
 /// - WebSocket (ws://, wss://)
 /// - Generic URLs with other schemes
+///
+/// Under the default `url-strict` feature, also accepts bare hosts whose TLD
+/// is on the Public Suffix List (e.g., `example.com`, `www.example.com`).
 #[must_use]
 pub fn is_url(value: &str) -> bool {
     let trimmed = value.trim();
     if exceeds_safe_length(trimmed, MAX_IDENTIFIER_LENGTH) {
         return false;
     }
-    patterns::network::URL_HTTP.is_match(trimmed)
+
+    let scheme_match = patterns::network::URL_HTTP.is_match(trimmed)
         || patterns::network::URL_FTP.is_match(trimmed)
         || patterns::network::URL_WSS.is_match(trimmed)
         || patterns::network::URL_WS.is_match(trimmed)
-        || patterns::network::URL_GENERIC.is_match(trimmed)
+        || patterns::network::URL_GENERIC.is_match(trimmed);
+    if scheme_match {
+        return true;
+    }
+
+    // Bare-host fallback under `url-strict` only — preserves today's
+    // "scheme required" behavior for callers that opt out.
+    #[cfg(feature = "url-strict")]
+    {
+        is_bare_host_valid(trimmed)
+    }
+    #[cfg(not(feature = "url-strict"))]
+    {
+        false
+    }
 }
 
 // ============================================================================
@@ -39,6 +78,49 @@ pub fn is_url(value: &str) -> bool {
 // ============================================================================
 
 /// Find all URLs in text
+///
+/// Under the default `url-strict` feature, uses `linkify` for prose-aware
+/// boundary detection (e.g., trims trailing punctuation, balances parens)
+/// and accepts bare URLs. Candidates are post-filtered through
+/// `url::Url::parse` (scheme-prefixed) or the Public Suffix List
+/// (bare hosts) to reject prose tokens like `map.contains`.
+///
+/// Under `not(url-strict)`, falls back to the original regex-based scan.
+#[cfg(feature = "url-strict")]
+#[must_use]
+pub fn find_urls_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut finder = linkify::LinkFinder::new();
+    finder.url_must_have_scheme(false);
+    finder.kinds(&[linkify::LinkKind::Url]);
+
+    let mut matches = Vec::new();
+    for link in finder.links(text) {
+        let candidate = link.as_str();
+        let valid = if candidate.contains("://") {
+            url::Url::parse(candidate).is_ok()
+        } else {
+            is_bare_host_valid(candidate)
+        };
+        if !valid {
+            continue;
+        }
+        matches.push(IdentifierMatch::new(
+            link.start(),
+            link.end(),
+            candidate.to_string(),
+            IdentifierType::Url,
+            DetectionConfidence::Medium, // URLs are context-dependent
+        ));
+    }
+    deduplicate_matches(matches)
+}
+
+/// Find all URLs in text (regex fallback under `not(url-strict)`).
+#[cfg(not(feature = "url-strict"))]
 #[must_use]
 pub fn find_urls_in_text(text: &str) -> Vec<IdentifierMatch> {
     if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
@@ -54,7 +136,7 @@ pub fn find_urls_in_text(text: &str) -> Vec<IdentifierMatch> {
                 full_match.end(),
                 full_match.as_str().to_string(),
                 IdentifierType::Url,
-                DetectionConfidence::Medium, // URLs are context-dependent
+                DetectionConfidence::Medium,
             ));
         }
     }
@@ -157,7 +239,29 @@ mod tests {
         assert!(is_url("wss://example.com/socket"));
         // Invalid
         assert!(!is_url("not-a-url"));
-        assert!(!is_url("example.com")); // no protocol
+    }
+
+    /// Under `url-strict`, bare hostnames with a Public Suffix List TLD are
+    /// recognized as URLs (`example.com`, `www.example.com`), while prose
+    /// tokens that look like dotted names are not (`map.contains`,
+    /// `foo.notatld`).
+    #[cfg(feature = "url-strict")]
+    #[test]
+    fn test_is_url_bare_host_strict() {
+        assert!(is_url("example.com"));
+        assert!(is_url("www.example.com"));
+        assert!(is_url("github.io"));
+        // Prose tokens — must not validate.
+        assert!(!is_url("map.contains"));
+        assert!(!is_url("foo.notatld"));
+        assert!(!is_url("3.5.2"));
+    }
+
+    /// Under `not(url-strict)`, the legacy "scheme required" behavior holds.
+    #[cfg(not(feature = "url-strict"))]
+    #[test]
+    fn test_is_url_no_bare_host() {
+        assert!(!is_url("example.com"));
     }
 
     #[test]
@@ -165,6 +269,43 @@ mod tests {
         let text = "Visit https://example.com or http://test.org for more info";
         let matches = find_urls_in_text(text);
         assert_eq!(matches.len(), 2);
+    }
+
+    /// Bare-URL detection (issue #429): `linkify` extracts dotted hosts from
+    /// prose under `url-strict`, then the PSL post-filter keeps only the
+    /// real domains.
+    #[cfg(feature = "url-strict")]
+    #[test]
+    fn test_find_urls_bare_in_prose() {
+        let text = "visit example.com today";
+        let matches = find_urls_in_text(text);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches.first().expect("first").matched_text, "example.com");
+    }
+
+    /// Issue #429: URL extraction must not greedily eat trailing prose.
+    /// The legacy regex `https?://[^\s]+` happened to stop at whitespace
+    /// already, but apostrophes and trailing punctuation tested here can
+    /// confuse less careful extractors.
+    #[cfg(feature = "url-strict")]
+    #[test]
+    fn test_find_urls_does_not_over_match() {
+        let text = "Read https://example.com it's great";
+        let matches = find_urls_in_text(text);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("first").matched_text,
+            "https://example.com"
+        );
+
+        // Trailing punctuation is stripped by linkify.
+        let text = "Check https://example.com/foo.";
+        let matches = find_urls_in_text(text);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("first").matched_text,
+            "https://example.com/foo"
+        );
     }
 
     #[test]
