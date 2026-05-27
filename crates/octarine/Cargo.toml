@@ -50,6 +50,11 @@ chacha20poly1305 = "0.10.1"
 aes-gcm = "0.10.3"
 argon2 = "0.5"
 
+# Cryptocurrency address validation (BTC base58check, Bech32/Bech32m, ETH EIP-55)
+bs58 = { version = "0.5", features = ["check"] }
+bech32 = "0.11"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+
 # Async support
 async-trait = "0.1"
 tokio = { workspace = true }

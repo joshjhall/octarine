@@ -84,15 +84,18 @@ pub use builder::FinancialIdentifierBuilder;
 
 // Re-export redaction strategies for type-safe redaction API
 pub use redaction::{
-    BankAccountRedactionStrategy, CreditCardRedactionStrategy, PaymentTokenRedactionStrategy,
-    RoutingNumberRedactionStrategy, TextRedactionPolicy,
+    BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
+    PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy, TextRedactionPolicy,
 };
 
 // Re-export types from shared types module (needed for builder return types)
-pub use super::types::CreditCardType;
+pub use super::types::{CreditCardType, CryptoAddressType};
 
 // Export cache stats functions for performance monitoring
-pub use detection::{aba_cache_stats, clear_financial_caches, luhn_cache_stats};
+pub use detection::{
+    aba_cache_stats, btc_checksum_cache_stats, clear_financial_caches, eth_eip55_cache_stats,
+    luhn_cache_stats,
+};
 
 // Export test pattern detection functions (observe module testing)
 pub use detection::is_test_credit_card;
@@ -102,13 +105,16 @@ pub use detection::{is_financial_present, is_payment_data_present};
 
 // Export validation functions
 pub use validation::{
-    validate_account_number, validate_bank_account, validate_credit_card, validate_routing_number,
+    validate_account_number, validate_bank_account, validate_credit_card, validate_crypto_address,
+    validate_routing_number,
 };
 
 // Export sanitization functions with strategy support
 pub use sanitization::{
     redact_all_financial_in_text_with_policy, redact_bank_account_with_strategy,
     redact_bank_accounts_in_text_with_strategy, redact_credit_card_with_strategy,
-    redact_credit_cards_in_text_with_strategy, redact_payment_token_with_strategy,
+    redact_credit_cards_in_text_with_strategy, redact_crypto_address_with_strategy,
+    redact_crypto_addresses_in_text_with_strategy, redact_payment_token_with_strategy,
     redact_payment_tokens_in_text_with_strategy, redact_routing_number_with_strategy,
+    sanitize_crypto_address_strict,
 };

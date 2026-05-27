@@ -178,6 +178,45 @@ pub enum PaymentTokenRedactionStrategy {
     Hashes,
 }
 
+/// Cryptocurrency address redaction strategies.
+///
+/// Crypto addresses are pseudonymous public identifiers but, in
+/// combination with on-chain activity, reveal balance and transaction
+/// history. Showing the first and last few characters is the
+/// conventional way to display them on bank statements and exchange
+/// UIs — enough to recognize a known address, not enough to copy-paste
+/// for a transfer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CryptoAddressRedactionStrategy {
+    /// Skip redaction (⚠️ Use only in development/testing)
+    Skip,
+
+    /// Show first 4 and last 4 characters (bank-statement convention).
+    ///
+    /// Example: `1A1z****vfNa`
+    ShowPrefix,
+
+    /// Type token
+    ///
+    /// Example: `[CRYPTO_ADDRESS]`
+    Token,
+
+    /// Generic redaction token
+    ///
+    /// Example: `[REDACTED]`
+    Anonymous,
+
+    /// Asterisks (length-preserving)
+    ///
+    /// Example: `**********************************`
+    Asterisks,
+
+    /// Hashes (length-preserving)
+    ///
+    /// Example: `######################################`
+    Hashes,
+}
+
 /// Generic redaction policy for text scanning
 ///
 /// Provides a simplified API for scanning text and redacting all
@@ -259,6 +298,21 @@ impl TextRedactionPolicy {
             Self::Partial => PaymentTokenRedactionStrategy::ShowLast4,
             Self::Complete => PaymentTokenRedactionStrategy::Token,
             Self::Anonymous => PaymentTokenRedactionStrategy::Anonymous,
+        }
+    }
+
+    /// Map policy to crypto address strategy.
+    ///
+    /// `Partial` maps to `ShowPrefix` (first 4 + last 4) because that's
+    /// the standard bank-statement / exchange convention for displaying
+    /// wallet addresses.
+    #[must_use]
+    pub const fn to_crypto_address_strategy(self) -> CryptoAddressRedactionStrategy {
+        match self {
+            Self::Skip => CryptoAddressRedactionStrategy::Skip,
+            Self::Partial => CryptoAddressRedactionStrategy::ShowPrefix,
+            Self::Complete => CryptoAddressRedactionStrategy::Token,
+            Self::Anonymous => CryptoAddressRedactionStrategy::Anonymous,
         }
     }
 }

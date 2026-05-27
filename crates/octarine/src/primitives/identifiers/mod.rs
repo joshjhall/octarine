@@ -97,8 +97,8 @@ pub(crate) mod crypto;
 
 // Re-export types — pub so L3 modules can re-export them in the public API
 pub use types::{
-    CredentialMatch, CredentialType, CreditCardType, DetectionConfidence, DetectionResult,
-    IdentifierMatch, IdentifierType, PhoneRegion,
+    CredentialMatch, CredentialType, CreditCardType, CryptoAddressType, DetectionConfidence,
+    DetectionResult, IdentifierMatch, IdentifierType, PhoneRegion,
 };
 
 // Re-export correlation types — pub so L3 modules can re-export them
@@ -153,8 +153,8 @@ pub use personal::TextRedactionPolicy as PersonalTextPolicy;
 
 // Re-export domain-specific redaction strategies for observe/pii config
 pub(crate) use financial::{
-    BankAccountRedactionStrategy, CreditCardRedactionStrategy, PaymentTokenRedactionStrategy,
-    RoutingNumberRedactionStrategy,
+    BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
+    PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy,
 };
 pub(crate) use government::{
     DriverLicenseRedactionStrategy, NationalIdRedactionStrategy, PassportRedactionStrategy,

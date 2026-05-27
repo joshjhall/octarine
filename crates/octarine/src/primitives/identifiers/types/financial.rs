@@ -46,3 +46,39 @@ impl std::fmt::Display for CreditCardType {
         }
     }
 }
+
+/// Cryptocurrency address type/chain enumeration.
+///
+/// Returned by `validate_crypto_address` after both shape detection and
+/// checksum verification have succeeded. Distinguishes between Bitcoin
+/// address kinds (P2PKH, P2SH, SegWit, Taproot) and between the two
+/// flavors of Ethereum address (no-checksum vs EIP-55 mixed case).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CryptoAddressType {
+    /// Bitcoin P2PKH (legacy) — Base58Check, starts with `1`.
+    BitcoinP2PKH,
+    /// Bitcoin P2SH (script hash) — Base58Check, starts with `3`.
+    BitcoinP2SH,
+    /// Bitcoin SegWit v0 — Bech32, starts with `bc1q`.
+    BitcoinSegWit,
+    /// Bitcoin Taproot (SegWit v1) — Bech32m, starts with `bc1p`.
+    BitcoinTaproot,
+    /// Ethereum address with all-lowercase or all-uppercase hex
+    /// (EIP-55 checksum not enforced).
+    EthereumLowercase,
+    /// Ethereum address with valid EIP-55 mixed-case checksum.
+    EthereumChecksum,
+}
+
+impl std::fmt::Display for CryptoAddressType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BitcoinP2PKH => write!(f, "Bitcoin P2PKH"),
+            Self::BitcoinP2SH => write!(f, "Bitcoin P2SH"),
+            Self::BitcoinSegWit => write!(f, "Bitcoin SegWit"),
+            Self::BitcoinTaproot => write!(f, "Bitcoin Taproot"),
+            Self::EthereumLowercase => write!(f, "Ethereum (no checksum)"),
+            Self::EthereumChecksum => write!(f, "Ethereum (EIP-55)"),
+        }
+    }
+}

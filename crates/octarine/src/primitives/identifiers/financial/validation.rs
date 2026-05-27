@@ -17,7 +17,7 @@
 //! - Used by observe/pii and security modules
 
 use super::super::common::{luhn, patterns};
-use super::super::types::CreditCardType;
+use super::super::types::{CreditCardType, CryptoAddressType};
 use crate::primitives::Problem;
 
 use super::detection;
@@ -161,6 +161,91 @@ pub fn validate_bank_account(routing: &str, account: &str) -> Result<(), Problem
     validate_routing_number(routing)?;
     validate_account_number(account)?;
     Ok(())
+}
+
+// ============================================================================
+// Cryptocurrency Address Validation
+// ============================================================================
+
+/// Validate a cryptocurrency wallet address with full checksum verification.
+///
+/// Combines shape detection with cryptographic checksum verification:
+///
+/// - Bitcoin P2PKH / P2SH (`1...`, `3...`): Base58Check.
+/// - Bitcoin SegWit / Taproot (`bc1...`): Bech32 / Bech32m, plus witness
+///   program length validation.
+/// - Ethereum (`0x...`): EIP-55 mixed-case checksum (lowercase or
+///   uppercase addresses are accepted as "no checksum present").
+///
+/// Returns the specific [`CryptoAddressType`] on success so callers know
+/// which chain and which kind of address they accepted.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` with a chain-specific message when the
+/// shape is unrecognized or the checksum fails.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::financial::validation;
+///
+/// assert!(validation::validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").is_ok());
+/// assert!(validation::validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb").is_err()); // typo
+/// ```
+pub fn validate_crypto_address(addr: &str) -> Result<CryptoAddressType, Problem> {
+    let trimmed = addr.trim();
+
+    if detection::is_bitcoin_address(trimmed) {
+        if !detection::is_bitcoin_checksum_valid(trimmed) {
+            return Err(Problem::Validation(
+                "Invalid Bitcoin address checksum".into(),
+            ));
+        }
+        classify_bitcoin(trimmed)
+            .ok_or_else(|| Problem::Validation("Unrecognized Bitcoin address format".into()))
+    } else if detection::is_ethereum_address(trimmed) {
+        if !detection::is_ethereum_eip55_valid(trimmed) {
+            return Err(Problem::Validation(
+                "Invalid Ethereum EIP-55 checksum".into(),
+            ));
+        }
+        Ok(classify_ethereum(trimmed))
+    } else {
+        Err(Problem::Validation(
+            "Not a recognized crypto address format".into(),
+        ))
+    }
+}
+
+/// Classify a checksum-valid Bitcoin address by prefix.
+fn classify_bitcoin(addr: &str) -> Option<CryptoAddressType> {
+    if addr.starts_with("bc1p") {
+        Some(CryptoAddressType::BitcoinTaproot)
+    } else if addr.starts_with("bc1") {
+        Some(CryptoAddressType::BitcoinSegWit)
+    } else if addr.starts_with('3') {
+        Some(CryptoAddressType::BitcoinP2SH)
+    } else if addr.starts_with('1') {
+        Some(CryptoAddressType::BitcoinP2PKH)
+    } else {
+        None
+    }
+}
+
+/// Classify a checksum-valid Ethereum address by case profile.
+fn classify_ethereum(addr: &str) -> CryptoAddressType {
+    let hex = addr
+        .strip_prefix("0x")
+        .or_else(|| addr.strip_prefix("0X"))
+        .unwrap_or(addr);
+    let has_lower = hex.bytes().any(|b| b.is_ascii_lowercase());
+    let has_upper = hex.bytes().any(|b| b.is_ascii_uppercase());
+    if has_lower && has_upper {
+        CryptoAddressType::EthereumChecksum
+    } else {
+        CryptoAddressType::EthereumLowercase
+    }
 }
 
 #[cfg(test)]
@@ -470,5 +555,84 @@ mod tests {
         // 1111111111111111 and 2222222222222222 fail Luhn
         assert!(validate_credit_card("1111111111111111").is_err());
         assert!(validate_credit_card("2222222222222222").is_err());
+    }
+
+    // ===== Crypto Address Validation Tests =====
+
+    #[test]
+    fn test_validate_crypto_address_btc_p2pkh() {
+        let result = validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+        assert_eq!(
+            result.expect("Satoshi address should validate"),
+            CryptoAddressType::BitcoinP2PKH
+        );
+    }
+
+    #[test]
+    fn test_validate_crypto_address_btc_p2sh() {
+        let result = validate_crypto_address("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy");
+        assert_eq!(
+            result.expect("P2SH address should validate"),
+            CryptoAddressType::BitcoinP2SH
+        );
+    }
+
+    #[test]
+    fn test_validate_crypto_address_btc_segwit() {
+        let result = validate_crypto_address("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
+        assert_eq!(
+            result.expect("SegWit address should validate"),
+            CryptoAddressType::BitcoinSegWit
+        );
+    }
+
+    #[test]
+    fn test_validate_crypto_address_btc_taproot() {
+        let result = validate_crypto_address(
+            "bc1py3m7vwnghyne9gnvcjw82j7gqt2rafgdmlmwmqnn3hvcmdm09rjqcgrtxs",
+        );
+        assert_eq!(
+            result.expect("Taproot address should validate"),
+            CryptoAddressType::BitcoinTaproot
+        );
+    }
+
+    #[test]
+    fn test_validate_crypto_address_btc_typo_rejected() {
+        let result = validate_crypto_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb");
+        let err = result.expect_err("Typo should fail validation");
+        assert!(err.to_string().contains("checksum"));
+    }
+
+    #[test]
+    fn test_validate_crypto_address_eth_lowercase() {
+        let result = validate_crypto_address("0x742d35cc6634c0532925a3b844bc9e7595f2bd18");
+        assert_eq!(
+            result.expect("Lowercase ETH should validate"),
+            CryptoAddressType::EthereumLowercase
+        );
+    }
+
+    #[test]
+    fn test_validate_crypto_address_eth_eip55() {
+        let result = validate_crypto_address("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
+        assert_eq!(
+            result.expect("EIP-55 mixed case should validate"),
+            CryptoAddressType::EthereumChecksum
+        );
+    }
+
+    #[test]
+    fn test_validate_crypto_address_eth_eip55_typo_rejected() {
+        let result = validate_crypto_address("0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
+        let err = result.expect_err("EIP-55 case flip should fail");
+        assert!(err.to_string().contains("EIP-55"));
+    }
+
+    #[test]
+    fn test_validate_crypto_address_not_a_crypto_address() {
+        let result = validate_crypto_address("not_a_crypto_address");
+        let err = result.expect_err("Garbage should fail");
+        assert!(err.to_string().contains("format"));
     }
 }

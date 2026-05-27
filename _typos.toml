@@ -21,6 +21,10 @@ hsa = "hsa"
 hra = "hra"
 fsa = "fsa"
 
+# Electronic Health Record — surfaces in docs and identifier descriptions
+EHR = "EHR"
+ehr = "ehr"
+
 # US tax identifier — Employer ID Number (primitives/identifiers/government)
 ein = "ein"
 Ein = "Ein"
