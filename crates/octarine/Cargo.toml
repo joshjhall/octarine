@@ -37,6 +37,12 @@ unicode-security = "0.1"
 # URL and network validation
 url = { workspace = true }
 
+# Public Suffix List validation for emails and bare DNS names (optional, gated by `email-strict` / `url-strict`)
+addr = { workspace = true, optional = true }
+
+# Bare-URL extraction from prose (optional, gated by `url-strict`)
+linkify = { workspace = true, optional = true }
+
 # Unique identifiers
 uuid = { workspace = true }
 
@@ -177,13 +183,19 @@ libc = "0.2"
 rexpect = { version = "0.7", optional = true }
 
 [features]
-default = ["console", "full", "derive"]
+default = ["console", "full", "derive", "email-strict", "url-strict"]
 console = ["dep:console"]
 cli = ["dep:clap", "dep:indicatif", "console"]
 full = ["observe", "security", "cli"]
 derive = ["dep:octarine-derive"]
 observe = []
 security = []
+# Strict email TLD validation via the Mozilla Public Suffix List.
+# Adds ~250KB of embedded PSL data. Disable for embedded/wasm callers.
+email-strict = ["dep:addr"]
+# Bare-URL detection in prose (e.g., "visit example.com") via linkify + url::Url::parse,
+# plus bare-host acceptance in is_url via the Public Suffix List.
+url-strict = ["dep:addr", "dep:linkify"]
 database = ["dep:graphql-parser"]
 formats = ["dep:quick-xml", "dep:serde_yaml"]
 postgres = ["database", "dep:sqlx", "sqlx?/postgres"]

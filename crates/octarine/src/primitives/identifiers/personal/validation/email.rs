@@ -15,6 +15,11 @@ use super::super::detection;
 /// Uses simplified regex to avoid ReDoS attacks.
 /// Does not validate email deliverability, only format.
 ///
+/// Under the default `email-strict` feature, the TLD must appear on the
+/// Mozilla Public Suffix List — so `user@example.notatld` is rejected even
+/// though the regex matches it. Disable `email-strict` for embedded/wasm
+/// callers that cannot afford the ~250KB embedded PSL data.
+///
 /// # Examples
 ///
 /// ```ignore
@@ -30,6 +35,7 @@ use super::super::detection;
 /// - Email is shorter than 3 or longer than 254 characters
 /// - Local part is empty or longer than 64 characters
 /// - Email format doesn't match RFC pattern
+/// - Under `email-strict`, the TLD is not on the Public Suffix List
 /// - Email contains dangerous XSS patterns
 pub fn validate_email(email: &str) -> Result<(), Problem> {
     // Length limits to prevent DoS

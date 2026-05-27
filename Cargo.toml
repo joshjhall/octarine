@@ -28,6 +28,11 @@ url = { version = "2.0", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Public Suffix List for email + DNS validation (closest Rust analog to Python's tldextract)
+addr = "0.15"
+# Bare-URL extraction from prose with prose-aware boundary handling
+linkify = "0.10"
+
 # CLI
 clap = { version = "4.0", features = ["derive", "env"] }
 
