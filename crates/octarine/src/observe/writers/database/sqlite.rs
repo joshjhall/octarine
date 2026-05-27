@@ -441,7 +441,7 @@ impl DatabaseBackend for SqliteBackend {
             "SELECT * FROM audit_events {where_clause} ORDER BY timestamp {order} {limit_clause} {offset_clause}"
         );
 
-        let mut stmt = sqlx::query(&sql);
+        let mut stmt = sqlx::query(sqlx::AssertSqlSafe(sql));
         for p in &params {
             stmt = stmt.bind(p);
         }
@@ -453,9 +453,8 @@ impl DatabaseBackend for SqliteBackend {
         let events: Result<Vec<Event>, WriterError> = rows.iter().map(Self::row_to_event).collect();
         let events = events?;
 
-        // Get total count
         let count_sql = format!("SELECT COUNT(*) as count FROM audit_events {where_clause}");
-        let mut count_stmt = sqlx::query_scalar(&count_sql);
+        let mut count_stmt = sqlx::query_scalar(sqlx::AssertSqlSafe(count_sql));
         for p in &params {
             count_stmt = count_stmt.bind(p);
         }
