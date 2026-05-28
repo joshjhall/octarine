@@ -195,6 +195,8 @@ pub enum PiiType {
     Address,
     /// Postal/ZIP code
     PostalCode,
+    /// Free-text city, country, or region name (gazetteer-detected, no NER)
+    NamedLocation,
 
     // =========================================================================
     // Organizational Domain

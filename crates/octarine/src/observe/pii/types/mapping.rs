@@ -119,6 +119,7 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::GPSCoordinate => Self::GpsCoordinates,
             IdentifierType::StreetAddress => Self::Address,
             IdentifierType::PostalCode => Self::PostalCode,
+            IdentifierType::NamedLocation => Self::NamedLocation,
 
             // Medical
             IdentifierType::MedicalRecordNumber => Self::Mrn,

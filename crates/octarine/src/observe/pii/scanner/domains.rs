@@ -294,7 +294,7 @@ pub(super) fn scan_biometric(text: &str, pii_types: &mut Vec<PiiType>) {
     }
 }
 
-/// Scan for location data (GPS, address, postal code)
+/// Scan for location data (GPS, address, postal code, named location)
 pub(super) fn scan_location(text: &str, pii_types: &mut Vec<PiiType>) {
     let location = LocationIdentifierBuilder::new();
 
@@ -306,6 +306,9 @@ pub(super) fn scan_location(text: &str, pii_types: &mut Vec<PiiType>) {
     }
     if !location.find_postal_codes_in_text(text).is_empty() {
         pii_types.push(PiiType::PostalCode);
+    }
+    if !location.find_named_locations_in_text(text).is_empty() {
+        pii_types.push(PiiType::NamedLocation);
     }
 }
 

@@ -111,6 +111,27 @@ impl LocationIdentifierBuilder {
     }
 
     // =========================================================================
+    // Named-Location Detection (gazetteer)
+    // =========================================================================
+
+    /// Check if value contains a named location (city or country) from the
+    /// bundled gazetteer.
+    #[must_use]
+    pub fn is_named_location(&self, value: &str) -> bool {
+        detection::is_named_location(value)
+    }
+
+    /// Find all named locations (cities + countries) in text via the
+    /// bundled gazetteer.
+    ///
+    /// Returns matches with confidence levels reflecting context-keyword
+    /// presence (see [`detect_named_locations_in_text`][super::super::detection::named::detect_named_locations_in_text]).
+    #[must_use]
+    pub fn find_named_locations_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::detect_named_locations_in_text(text)
+    }
+
+    // =========================================================================
     // Test Data Detection Methods
     // =========================================================================
 

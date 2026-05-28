@@ -83,6 +83,26 @@ pub fn find_locations(text: &str) -> Vec<IdentifierMatch> {
     LocationBuilder::new().find_all_in_text(text)
 }
 
+/// Check if value contains a named location (city or country) from the
+/// bundled gazetteer. No-ML fallback path — covers free-text place names
+/// that aren't structured GPS coordinates, addresses, or postal codes.
+#[must_use]
+pub fn is_named_location(value: &str) -> bool {
+    LocationBuilder::new().is_named_location(value)
+}
+
+/// Find all named locations (free-text cities + countries) in text.
+///
+/// Returns matches with confidence levels: `High` when a location-context
+/// keyword (`live in`, `visiting`, `from`, `located in`, etc.) appears
+/// nearby; `Medium` when no context is found; `Low` for matches against
+/// common-English-word place names (e.g., `Reading`, `Mobile`) without
+/// surrounding context.
+#[must_use]
+pub fn find_named_locations(text: &str) -> Vec<IdentifierMatch> {
+    LocationBuilder::new().find_named_locations_in_text(text)
+}
+
 /// Redact all location identifiers in text
 #[must_use]
 pub fn redact_locations(text: &str) -> String {
@@ -148,5 +168,18 @@ mod tests {
 
         assert!(is_brazilian_postal_code("01001-000"));
         assert!(!is_brazilian_postal_code("01001000"));
+    }
+
+    #[test]
+    fn test_named_location_shortcut() {
+        assert!(is_named_location("flew to Paris"));
+        assert!(is_named_location("from Germany"));
+        assert!(!is_named_location("xyzzy plugh"));
+    }
+
+    #[test]
+    fn test_find_named_locations_shortcut() {
+        let matches = find_named_locations("I live in Tokyo and visit Berlin often");
+        assert!(matches.len() >= 2);
     }
 }

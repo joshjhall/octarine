@@ -42,8 +42,8 @@
 //! let matches = location::find_addresses_in_text(text);
 //! ```
 
-use super::super::common::patterns::location as patterns;
-use super::super::types::{IdentifierMatch, IdentifierType};
+use super::super::super::common::patterns::location as patterns;
+use super::super::super::types::{IdentifierMatch, IdentifierType};
 
 // ============================================================================
 // Constants
