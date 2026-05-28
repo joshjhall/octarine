@@ -84,6 +84,16 @@ nam = "nam"
 # project chooses `unparseable` for consistency with the surrounding text
 unparseable = "unparseable"
 
+# Geographic proper nouns from the location gazetteer (~280 countries +
+# ~1500 cities). These city/region names collide with typos' English
+# corpus suggestions. Each entry is a verified place name.
+Linz = "Linz"   # Austria
+sur = "sur"     # "sur" appears in Esch-sur-Alzette (Luxembourg)
+Sur = "Sur"     # Oman city
+Tema = "Tema"   # Ghana city
+Herat = "Herat" # Afghanistan city
+Ba = "Ba"       # Fiji city
+
 [files]
 extend-exclude = [
   "CHANGELOG.md",
@@ -96,4 +106,9 @@ extend-exclude = [
   "tests/results/**",
   "**/proptest-regressions/**",
   "**/fixtures/**",
+  # Gazetteer of ~280 countries + ~1500 cities — geographic proper nouns
+  # routinely collide with typos-corpus suggestions (e.g. "Herat" → "Heart",
+  # "Tema" → "Team"). Each entry is a verified place name; not subject to
+  # spell-checking.
+  "**/identifiers/common/patterns/location/gazetteer.rs",
 ]

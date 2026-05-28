@@ -1,9 +1,11 @@
 //! Location data redaction functions
 //!
-//! Redacts GPS coordinates, addresses, and postal codes.
+//! Redacts GPS coordinates, addresses, postal codes, and named locations.
 
 use super::super::config::RedactionProfile;
-use crate::primitives::identifiers::{LocationIdentifierBuilder, LocationTextPolicy};
+use crate::primitives::identifiers::{
+    DetectionConfidence, LocationIdentifierBuilder, LocationTextPolicy,
+};
 
 /// Get location text redaction policy from profile
 fn policy_from_profile(profile: RedactionProfile) -> LocationTextPolicy {
@@ -52,6 +54,40 @@ pub(super) fn redact_postal_codes(text: &str, profile: RedactionProfile) -> Stri
             builder
                 .redact_postal_codes_in_text_with_strategy(text, policy)
                 .into_owned()
+        }
+        RedactionProfile::Development | RedactionProfile::Testing => text.to_string(),
+    }
+}
+
+/// Redact named locations (cities + countries) based on profile.
+///
+/// In production profiles, replaces matches with `[NAMED_LOCATION]` for
+/// matches at Medium or High confidence. Low-confidence matches (ambiguous
+/// English words like "Reading", "Mobile" without nearby context) are left
+/// intact to avoid false-positive over-redaction of normal text.
+pub(super) fn redact_named_locations(text: &str, profile: RedactionProfile) -> String {
+    match profile {
+        RedactionProfile::ProductionStrict | RedactionProfile::ProductionLenient => {
+            let builder = LocationIdentifierBuilder::new();
+            let mut matches = builder.find_named_locations_in_text(text);
+            if matches.is_empty() {
+                return text.to_string();
+            }
+            // Replace from the end so earlier byte spans stay valid.
+            matches.sort_by(|a, b| b.start.cmp(&a.start));
+            let mut out = text.to_string();
+            for m in matches {
+                if m.confidence == DetectionConfidence::Low {
+                    continue;
+                }
+                if m.end <= out.len()
+                    && out.is_char_boundary(m.start)
+                    && out.is_char_boundary(m.end)
+                {
+                    out.replace_range(m.start..m.end, "[NAMED_LOCATION]");
+                }
+            }
+            out
         }
         RedactionProfile::Development | RedactionProfile::Testing => text.to_string(),
     }

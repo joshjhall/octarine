@@ -79,6 +79,7 @@ impl PiiType {
             Self::GpsCoordinates => "gps_coordinates",
             Self::Address => "address",
             Self::PostalCode => "postal_code",
+            Self::NamedLocation => "named_location",
             // Organizational
             Self::EmployeeId => "employee_id",
             Self::StudentId => "student_id",
@@ -217,7 +218,9 @@ impl PiiType {
             | Self::IrisId
             | Self::DnaId
             | Self::BiometricTemplate => "biometric",
-            Self::GpsCoordinates | Self::Address | Self::PostalCode => "location",
+            Self::GpsCoordinates | Self::Address | Self::PostalCode | Self::NamedLocation => {
+                "location"
+            }
             Self::EmployeeId | Self::StudentId | Self::BadgeNumber => "organizational",
             Self::IpAddress
             | Self::MacAddress

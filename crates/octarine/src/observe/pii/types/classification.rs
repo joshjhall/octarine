@@ -75,7 +75,7 @@ impl PiiType {
             // excluded unless linked to an identifiable person upstream.
             Self::Iban |
             // Location
-            Self::IpAddress | Self::GpsCoordinates | Self::Address | Self::PostalCode |
+            Self::IpAddress | Self::GpsCoordinates | Self::Address | Self::PostalCode | Self::NamedLocation |
             // Biometric
             Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId | Self::BiometricTemplate |
             // Medical
@@ -111,6 +111,7 @@ impl PiiType {
                 | Self::Birthdate // DOB in medical context
                 | Self::Age // Age in medical context — HIPAA Safe Harbor requires aggregating > 89
                 | Self::Address // Address in medical context
+                | Self::NamedLocation // City/country names — HIPAA Safe Harbor requires removing geographic subdivisions smaller than a state
                 | Self::Phone // Phone in medical context
                 | Self::Email // Email in medical context
                 | Self::BiometricTemplate // Biometric identifiers are PHI under HIPAA

@@ -253,6 +253,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::GpsCoordinates => redact_gps_coordinates(&result, profile),
             PiiType::Address => redact_addresses(&result, profile),
             PiiType::PostalCode => redact_postal_codes(&result, profile),
+            PiiType::NamedLocation => redact_named_locations(&result, profile),
             // Organizational
             PiiType::EmployeeId => redact_employee_ids(&result, profile),
             PiiType::StudentId => redact_student_ids(&result, profile),

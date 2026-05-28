@@ -109,6 +109,7 @@ pub enum IdentifierType {
     GPSCoordinate,
     StreetAddress,
     PostalCode,
+    NamedLocation, // Free-text city / country / region names (gazetteer-detected)
 
     // Medical/Health identifiers (HIPAA PHI)
     MedicalRecordNumber, // MRN, Patient ID

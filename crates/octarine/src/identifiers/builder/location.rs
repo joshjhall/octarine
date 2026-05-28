@@ -186,6 +186,40 @@ impl LocationBuilder {
         self.inner.find_postal_codes_in_text(text)
     }
 
+    /// Check if value contains a named location (city or country) from the
+    /// bundled gazetteer.
+    #[must_use]
+    pub fn is_named_location(&self, value: &str) -> bool {
+        self.inner.is_named_location(value)
+    }
+
+    /// Find all named locations (free-text cities + countries) in text.
+    ///
+    /// Returns matches with confidence levels reflecting context-keyword
+    /// presence. HIPAA Safe Harbor and Presidio CRIT-2 parity path.
+    #[must_use]
+    pub fn find_named_locations_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
+        let results = self.inner.find_named_locations_in_text(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !results.is_empty() {
+                increment_by(metric_names::detected(), results.len() as u64);
+                increment_by(metric_names::location_data_found(), results.len() as u64);
+                crate::observe::warn(
+                    "location_named_detected",
+                    format!("Named-location PII detected ({} match(es))", results.len()),
+                );
+            }
+        }
+
+        results
+    }
+
     /// Find all location identifiers in text
     #[must_use]
     pub fn find_all_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
