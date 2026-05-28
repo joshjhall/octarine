@@ -1,10 +1,14 @@
 //! Regional personal identifier patterns (Latin America, Africa, Europe, etc.)
 //!
 //! Brazil (CPF, CNPJ), Mexico (CURP), Nigeria (NIN), Thailand (TNIN),
-//! Singapore (NRIC), Finland (HETU), UK NI, Spain (NIF, NIE),
-//! Italy (codice fiscale), Poland (PESEL), plus generic personal names and
-//! birthdate patterns.
+//! Turkey (TCKN, License Plate), Singapore (NRIC), Finland (HETU), UK NI,
+//! Spain (NIF, NIE), Italy (codice fiscale), Poland (PESEL), plus generic
+//! personal names and birthdate patterns.
 
+// arch-check: allow file-length — country-specific regex registry that grows
+// by ~30 LOC per identifier. A follow-up should split into regional submodules
+// (europe/americas/apac) but the per-country pattern blocks should stay
+// adjacent for ease of comparison.
 #![allow(clippy::expect_used)]
 // SAFETY: All regex patterns in this module are hardcoded and verified at compile time.
 // Regex::new() only fails on invalid syntax, which would be caught during development/testing.
@@ -206,6 +210,68 @@ pub(crate) mod thailand_tnin {
     /// formatted or labeled occurrences are scanned.
     pub fn all() -> Vec<&'static Regex> {
         vec![&*LABELED, &*FORMATTED]
+    }
+}
+
+/// Turkey TCKN (T.C. Kimlik Numarası, National ID) patterns
+///
+/// Format: 11 digits, first digit non-zero. Mod-10 dual-check-digit (NVI).
+/// Bare 11-digit form collides with phone numbers, so text scanning uses
+/// `labeled_only()`.
+pub(crate) mod turkey_tckn {
+    use super::*;
+
+    /// Bare 11-digit form with non-zero leading digit
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b[1-9]\d{10}\b").expect("BUG: Invalid regex pattern"));
+
+    /// TCKN with explicit label
+    ///
+    /// Accepts: `TCKN`, `TC Kimlik No`, `T.C. Kimlik`, `Türk Kimlik`,
+    /// `Nüfus Cüzdanı`. Case-insensitive.
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:TCKN|TC[\s\-]?Kimlik(?:[\s\-]?No)?|T\.?C\.?[\s\-]?Kimlik|T[üu]rk[\s\-]?Kimlik|N[üu]fus[\s\-]?C[üu]zdan[ıi])[\s:#\-]*([1-9]\d{10})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners; bare `\d{11}` collides
+    /// with phone numbers and other identifiers.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Turkey License Plate patterns
+///
+/// Format: province code (01-81) + 1-3 letters from `[A-PR-VY-Z]` (Q/W/X
+/// excluded) + 2-4 digits. Optional spaces or hyphens between groups.
+/// Example: `34 ABC 123` (Istanbul = province 34).
+pub(crate) mod turkey_license_plate {
+    use super::*;
+
+    /// Standard plate format. Province bounds and letter class are tight
+    /// enough to scan without a label.
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b(?:0[1-9]|[1-7][0-9]|8[01])[\s\-]?[A-PR-VY-Z]{1,3}[\s\-]?\d{2,4}\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Plate with explicit Turkish label (`plaka`)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\bplaka[\s:#\-]*((?:0[1-9]|[1-7][0-9]|8[01])[\s\-]?[A-PR-VY-Z]{1,3}[\s\-]?\d{2,4})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
     }
 }
 

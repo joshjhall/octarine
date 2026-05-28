@@ -190,6 +190,8 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::NigeriaBvn
             | PiiType::NigeriaVehicleReg
             | PiiType::ThailandTnin
+            | PiiType::TurkeyTckn
+            | PiiType::TurkeyLicensePlate
             | PiiType::SingaporeNric
             | PiiType::SingaporeUen
             | PiiType::FinlandHetu

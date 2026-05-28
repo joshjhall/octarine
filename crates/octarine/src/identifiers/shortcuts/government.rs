@@ -428,6 +428,61 @@ pub fn validate_uk_driving_licence(licence: &str) -> Result<(), Problem> {
     GovernmentBuilder::new().validate_uk_driving_licence(licence)
 }
 
+// ============================================================================
+// Turkey
+// ============================================================================
+
+/// Check if value is a Turkey TCKN (T.C. Kimlik Numarası)
+#[must_use]
+pub fn is_turkey_tckn(value: &str) -> bool {
+    GovernmentBuilder::new().is_turkey_tckn(value)
+}
+
+/// Find all Turkey TCKNs in text (label-anchored only)
+#[must_use]
+pub fn find_turkey_tckns(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_turkey_tckns_in_text(text)
+}
+
+/// Validate a Turkey TCKN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format is invalid.
+pub fn validate_turkey_tckn(tckn: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_turkey_tckn(tckn)
+}
+
+/// Validate a Turkey TCKN with NVI mod-10 dual-check-digit verification
+///
+/// # Errors
+///
+/// Returns `Problem` if the format or either check digit is invalid.
+pub fn validate_turkey_tckn_with_checksum(tckn: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_turkey_tckn_with_checksum(tckn)
+}
+
+/// Check if value is a Turkey license plate
+#[must_use]
+pub fn is_turkey_license_plate(value: &str) -> bool {
+    GovernmentBuilder::new().is_turkey_license_plate(value)
+}
+
+/// Find all Turkey license plates in text
+#[must_use]
+pub fn find_turkey_license_plates(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_turkey_license_plates_in_text(text)
+}
+
+/// Validate a Turkey license plate format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format is invalid.
+pub fn validate_turkey_license_plate(plate: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_turkey_license_plate(plate)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -551,5 +606,29 @@ mod tests {
         assert!(validate_uk_driving_licence("99999753116AB1XY").is_err());
         // Text scanning requires label
         assert!(!find_uk_driving_licences("DVLA MORGA753116SM9IJ").is_empty());
+    }
+
+    #[test]
+    fn test_turkey_tckn_shortcuts() {
+        // Bare 11-digit shape passes the format check
+        assert!(is_turkey_tckn("12345678901"));
+        // Leading zero rejected at pattern level
+        assert!(!is_turkey_tckn("01234567890"));
+        assert!(validate_turkey_tckn("12345678901").is_ok());
+        assert!(validate_turkey_tckn("").is_err());
+        // All-same rejected
+        assert!(validate_turkey_tckn("11111111111").is_err());
+        // Text scanning requires a label — bare digits collide with phones
+        assert!(!find_turkey_tckns("TCKN: 12345678901").is_empty());
+        assert!(find_turkey_tckns("12345678901").is_empty());
+    }
+
+    #[test]
+    fn test_turkey_license_plate_shortcuts() {
+        assert!(is_turkey_license_plate("34 ABC 123"));
+        assert!(!is_turkey_license_plate("82 ABC 123")); // province out of range
+        assert!(validate_turkey_license_plate("34 ABC 123").is_ok());
+        assert!(validate_turkey_license_plate("34 QBC 123").is_err()); // reserved letter
+        assert!(!find_turkey_license_plates("Plaka: 34 ABC 123").is_empty());
     }
 }

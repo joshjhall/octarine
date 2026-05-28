@@ -137,6 +137,10 @@ pub enum PiiType {
     NigeriaVehicleReg,
     /// Thai National Identification Number (TNIN, mod-11 check digit)
     ThailandTnin,
+    /// Turkey TCKN (T.C. Kimlik Numarası, 11 digits, NVI mod-10 dual check)
+    TurkeyTckn,
+    /// Turkey license plate (province 01-81 + 1-3 letters + 2-4 digits)
+    TurkeyLicensePlate,
     /// Singapore NRIC / FIN
     SingaporeNric,
     /// Singapore Unique Entity Number (UEN, 3 layout variants, opaque check letter)

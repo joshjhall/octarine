@@ -69,6 +69,7 @@ mod ssn;
 mod tax_id;
 mod test_patterns;
 mod thailand;
+mod turkey;
 mod uk;
 mod vehicle_id;
 

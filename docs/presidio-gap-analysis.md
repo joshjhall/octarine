@@ -132,6 +132,14 @@ Each gap includes the source domain report reference. Severity rule: blocks a Pr
 
 ### CRIT-13. Turkey missing entirely — TR_NATIONAL_ID + TR_LICENSE_PLATE
 
+- **Status**: ✅ Closed in #434. `TurkeyTckn` (NVI mod-10 dual check) and
+  `TurkeyLicensePlate` (province 01-81 + `[A-PR-VY-Z]` letter class)
+  implemented in `primitives/identifiers/government/{detection,validation,
+  builder}/turkey.rs`, wired through the Layer 3 `GovernmentBuilder`,
+  shortcut module, PII bridge (`PiiType::TurkeyTckn`,
+  `PiiType::TurkeyLicensePlate`), and `scan_government()`. Classification:
+  `is_high_risk = true`; not `is_gdpr_protected` (Turkey is governed by
+  KVKK, not GDPR).
 - **Presidio**: `TrNationalIdRecognizer` (11-digit NVI mod-10: `10th digit = (odd_sum * 7 - even_sum) % 10`, `11th = sum of first 10 mod 10`). `TR_LICENSE_PLATE` (province codes 01-81, letters `[A-PR-VY-Z]` excluding Q/W/X). Turkish context: `tc kimlik, kimlik no, tckn, nüfus cüzdanı, türk kimlik, plaka`.
 - **Octarine**: No `TurkeyTckn` identifier, no `validation/turkey.rs`, no patterns.
 - **Impact**: Turkey's KVKK (Kişisel Verilerin Korunması Kanunu, Law 6698) is the local GDPR. TCKN is the most-cited personal identifier in KVKK enforcement actions. Cannot serve Turkish customers.

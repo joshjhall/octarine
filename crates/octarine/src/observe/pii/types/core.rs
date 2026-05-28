@@ -53,6 +53,8 @@ impl PiiType {
             Self::NigeriaBvn => "nigeria_bvn",
             Self::NigeriaVehicleReg => "nigeria_vehicle_reg",
             Self::ThailandTnin => "thailand_tnin",
+            Self::TurkeyTckn => "turkey_tckn",
+            Self::TurkeyLicensePlate => "turkey_license_plate",
             Self::SingaporeNric => "singapore_nric",
             Self::SingaporeUen => "singapore_uen",
             Self::FinlandHetu => "finland_hetu",
@@ -205,6 +207,8 @@ impl PiiType {
             | Self::NigeriaBvn
             | Self::NigeriaVehicleReg
             | Self::ThailandTnin
+            | Self::TurkeyTckn
+            | Self::TurkeyLicensePlate
             | Self::SingaporeNric
             | Self::SingaporeUen
             | Self::FinlandHetu
