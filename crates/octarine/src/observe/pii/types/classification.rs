@@ -28,6 +28,7 @@ impl PiiType {
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
+            Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
@@ -73,6 +74,7 @@ impl PiiType {
             Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
+            Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
             // Financial — IBAN identifies an EU account holder (Recital 30 /
             // Art. 4(1)). Crypto addresses are pseudonymous by design and are
             // excluded unless linked to an identifiable person upstream.
@@ -118,6 +120,7 @@ impl PiiType {
                 | Self::Phone // Phone in medical context
                 | Self::Email // Email in medical context
                 | Self::BiometricTemplate // Biometric identifiers are PHI under HIPAA
+                | Self::UkNhs // NHS Number is UK PHI under DPA 2018 Schedule 3 / GDPR Art 9; treated as HIPAA-equivalent
         )
     }
 

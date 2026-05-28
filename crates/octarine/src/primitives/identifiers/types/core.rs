@@ -102,6 +102,9 @@ pub enum IdentifierType {
     SpainNif,           // Spanish NIF (Numero de Identificacion Fiscal)
     SpainNie,           // Spanish NIE (Numero de Identidad de Extranjero)
     UkNi,               // UK National Insurance Number (NINO)
+    UkNhs,              // UK NHS Number (10 digits, mod-11 weighted checksum)
+    UkPassport,         // UK Passport (2 letters + 7 digits)
+    UkDrivingLicence,   // UK DVLA Driving Licence (16-char DVLA structural format)
 
     // Organizational identifiers
     EmployeeId,

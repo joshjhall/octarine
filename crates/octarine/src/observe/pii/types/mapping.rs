@@ -112,6 +112,9 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::SpainNif => Self::SpainNif,
             IdentifierType::SpainNie => Self::SpainNie,
             IdentifierType::UkNi => Self::UkNi,
+            IdentifierType::UkNhs => Self::UkNhs,
+            IdentifierType::UkPassport => Self::UkPassport,
+            IdentifierType::UkDrivingLicence => Self::UkDrivingLicence,
 
             // Organizational
             IdentifierType::EmployeeId => Self::EmployeeId,

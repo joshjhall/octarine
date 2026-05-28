@@ -201,7 +201,10 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::ItalyDriverLicense
             | PiiType::SpainNif
             | PiiType::SpainNie
-            | PiiType::UkNi => {
+            | PiiType::UkNi
+            | PiiType::UkNhs
+            | PiiType::UkPassport
+            | PiiType::UkDrivingLicence => {
                 // Generic government ID redaction routes through
                 // redact_all_government_ids_in_text_with_policy, which already
                 // covers all country-specific finders.

@@ -51,7 +51,7 @@ mod ssn;
 mod tax_id;
 mod test_patterns;
 mod thailand;
-mod uk_ni;
+mod uk;
 mod vehicle_id;
 
 crate::define_metrics! {

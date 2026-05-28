@@ -161,6 +161,12 @@ pub enum PiiType {
     SpainNie,
     /// UK National Insurance Number (NINO)
     UkNi,
+    /// UK NHS Number (10 digits, mod-11 weighted checksum)
+    UkNhs,
+    /// UK Passport (2 letters + 7 digits)
+    UkPassport,
+    /// UK DVLA Driving Licence (16-char structural format)
+    UkDrivingLicence,
 
     // =========================================================================
     // Medical Domain (PHI - Protected Health Information)
