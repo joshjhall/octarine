@@ -25,6 +25,7 @@ impl PiiType {
             Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
             Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
             Self::BrazilCpf | Self::BrazilCnpj | Self::MexicoCurp | Self::NigeriaNin | Self::NigeriaBvn | Self::NigeriaVehicleReg | Self::ThailandTnin |
+            Self::TurkeyTckn | Self::TurkeyLicensePlate |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
             Self::SpainNif | Self::SpainNie | Self::UkNi |

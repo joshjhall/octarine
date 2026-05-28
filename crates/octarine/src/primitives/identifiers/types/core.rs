@@ -90,6 +90,8 @@ pub enum IdentifierType {
     NigeriaBvn,         // Nigerian Bank Verification Number (11 digits, no public checksum)
     NigeriaVehicleReg,  // Nigerian vehicle registration (XXX-NNN-XX current, AA999-AAA legacy)
     ThailandTnin,       // Thai National Identification Number (13 digits, mod-11 check)
+    TurkeyTckn,         // Turkey TCKN (T.C. Kimlik Numarası, 11 digits, NVI mod-10 dual check)
+    TurkeyLicensePlate, // Turkey license plate (province 01-81 + 1-3 letters + 2-4 digits)
     SingaporeNric,      // Singapore NRIC/FIN
     SingaporeUen,       // Singapore Unique Entity Number (3 layout variants, opaque check letter)
     FinlandHetu,        // Finnish personal identity code

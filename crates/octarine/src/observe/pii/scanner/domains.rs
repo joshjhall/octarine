@@ -198,6 +198,14 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::ThailandTnin,
         ),
         (
+            GovernmentIdentifierBuilder::find_turkey_tckns_in_text,
+            PiiType::TurkeyTckn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_turkey_license_plates_in_text,
+            PiiType::TurkeyLicensePlate,
+        ),
+        (
             GovernmentIdentifierBuilder::find_singapore_nrics_in_text,
             PiiType::SingaporeNric,
         ),

@@ -62,6 +62,7 @@ mod singapore;
 mod ssn;
 mod tax_id;
 mod thailand;
+mod turkey;
 mod vehicle_id;
 
 pub use australia::{
@@ -107,6 +108,10 @@ pub use singapore::{
 pub use ssn::{find_ssns_in_text, is_ssn};
 pub use tax_id::{find_eins_in_text, find_tax_ids_in_text, is_ein, is_tax_id};
 pub use thailand::{find_thailand_tnins_in_text, is_thailand_tnin};
+pub use turkey::{
+    find_turkey_license_plates_in_text, find_turkey_tckns_in_text, is_turkey_license_plate,
+    is_turkey_tckn,
+};
 pub use vehicle_id::{find_vehicle_ids_in_text, is_vehicle_id};
 
 /// Detect which type of government identifier a value is
@@ -172,6 +177,10 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::MexicoCurp)
     } else if is_thailand_tnin(value) {
         Some(IdentifierType::ThailandTnin)
+    } else if is_turkey_tckn(value) {
+        Some(IdentifierType::TurkeyTckn)
+    } else if is_turkey_license_plate(value) {
+        Some(IdentifierType::TurkeyLicensePlate)
     } else if is_nigeria_vehicle_registration(value) {
         Some(IdentifierType::NigeriaVehicleReg)
     } else if is_nigeria_nin(value) {
@@ -261,6 +270,8 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_nigeria_bvns_in_text(text));
     all_matches.extend(find_nigeria_vehicle_registrations_in_text(text));
     all_matches.extend(find_thailand_tnins_in_text(text));
+    all_matches.extend(find_turkey_tckns_in_text(text));
+    all_matches.extend(find_turkey_license_plates_in_text(text));
     all_matches.extend(find_singapore_nrics_in_text(text));
     all_matches.extend(find_singapore_uens_in_text(text));
     all_matches.extend(find_finland_hetus_in_text(text));
