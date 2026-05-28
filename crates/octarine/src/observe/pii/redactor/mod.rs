@@ -195,6 +195,10 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::FinlandHetu
             | PiiType::PolandPesel
             | PiiType::ItalyFiscalCode
+            | PiiType::ItalyVat
+            | PiiType::ItalyPassport
+            | PiiType::ItalyIdentityCard
+            | PiiType::ItalyDriverLicense
             | PiiType::SpainNif
             | PiiType::SpainNie
             | PiiType::UkNi => {

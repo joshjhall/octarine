@@ -40,8 +40,9 @@ pub(crate) use personal::{
     NATIONALITIES, POLITICAL_AFFILIATIONS, RELIGIONS, age, australia_abn, australia_acn,
     australia_medicare, australia_tfn, birthdate, brazil_cnpj, brazil_cpf, driver_license,
     employee_id, finland_hetu, india_aadhaar, india_gstin, india_pan, india_passport,
-    india_vehicle_reg, india_voter_id, italy_fiscal_code, korea_brn, korea_driver_license,
-    korea_frn, korea_passport, korea_rrn, mexico_curp, national_id, nigeria_bvn, nigeria_nin,
+    india_vehicle_reg, india_voter_id, italy_driver_license, italy_fiscal_code,
+    italy_identity_card, italy_passport, italy_vat, korea_brn, korea_driver_license, korea_frn,
+    korea_passport, korea_rrn, mexico_curp, national_id, nigeria_bvn, nigeria_nin,
     nigeria_vehicle_reg, passport, personal_name, poland_pesel, singapore_nric, singapore_uen,
     spain_nie, spain_nif, ssn, student_id, tax_id, thailand_tnin, uk_ni,
 };

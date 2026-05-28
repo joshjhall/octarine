@@ -95,6 +95,10 @@ pub enum IdentifierType {
     FinlandHetu,        // Finnish personal identity code
     PolandPesel,        // Polish personal identity number (PESEL)
     ItalyFiscalCode,    // Italian Codice Fiscale
+    ItalyVat,           // Italian Partita IVA (11 digits, mod-10 Luhn-style)
+    ItalyPassport,      // Italian passport (2 letters + 7 digits)
+    ItalyIdentityCard,  // Italian Carta d'Identità (paper, CIE 2.0, CIE 3.0)
+    ItalyDriverLicense, // Italian Patente di Guida (standard + U1 Carta Conducente)
     SpainNif,           // Spanish NIF (Numero de Identificacion Fiscal)
     SpainNie,           // Spanish NIE (Numero de Identidad de Extranjero)
     UkNi,               // UK National Insurance Number (NINO)

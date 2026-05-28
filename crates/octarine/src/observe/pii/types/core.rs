@@ -58,6 +58,10 @@ impl PiiType {
             Self::FinlandHetu => "finland_hetu",
             Self::PolandPesel => "poland_pesel",
             Self::ItalyFiscalCode => "italy_fiscal_code",
+            Self::ItalyVat => "italy_vat",
+            Self::ItalyPassport => "italy_passport",
+            Self::ItalyIdentityCard => "italy_identity_card",
+            Self::ItalyDriverLicense => "italy_driver_license",
             Self::SpainNif => "spain_nif",
             Self::SpainNie => "spain_nie",
             Self::UkNi => "uk_ni",
@@ -203,6 +207,10 @@ impl PiiType {
             | Self::FinlandHetu
             | Self::PolandPesel
             | Self::ItalyFiscalCode
+            | Self::ItalyVat
+            | Self::ItalyPassport
+            | Self::ItalyIdentityCard
+            | Self::ItalyDriverLicense
             | Self::SpainNif
             | Self::SpainNie
             | Self::UkNi => "government",

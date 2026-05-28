@@ -438,6 +438,22 @@ impl StreamingScanner {
                 GovernmentIdentifierBuilder::find_italy_fiscal_codes_in_text,
             ),
             (
+                |t| matches!(t, IdentifierType::ItalyVat),
+                GovernmentIdentifierBuilder::find_italy_vats_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::ItalyPassport),
+                GovernmentIdentifierBuilder::find_italy_passports_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::ItalyIdentityCard),
+                GovernmentIdentifierBuilder::find_italy_identity_cards_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::ItalyDriverLicense),
+                GovernmentIdentifierBuilder::find_italy_driver_licenses_in_text,
+            ),
+            (
                 |t| matches!(t, IdentifierType::SingaporeNric),
                 GovernmentIdentifierBuilder::find_singapore_nrics_in_text,
             ),

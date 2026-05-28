@@ -101,7 +101,11 @@ pub use poland::{
 
 // Re-export Italy functions
 pub use italy::{
-    is_test_italy_fiscal_code, validate_italy_fiscal_code, validate_italy_fiscal_code_with_checksum,
+    ItalyIdentityCardFormat, identify_italy_identity_card_format, is_test_italy_driver_license,
+    is_test_italy_fiscal_code, is_test_italy_identity_card, is_test_italy_passport,
+    is_test_italy_vat, validate_italy_driver_license, validate_italy_fiscal_code,
+    validate_italy_fiscal_code_with_checksum, validate_italy_identity_card,
+    validate_italy_passport, validate_italy_vat, validate_italy_vat_with_checksum,
 };
 
 // Re-export Spain functions

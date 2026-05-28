@@ -246,6 +246,110 @@ pub fn validate_korea_brn(brn: &str) -> Result<(), Problem> {
     GovernmentBuilder::new().validate_korea_brn(brn)
 }
 
+// =============================================================================
+// Italy — Partita IVA (VAT), Passport, Identity Card, Driver License
+// =============================================================================
+//
+// `ItalyFiscalCode` (Codice Fiscale) shortcuts are deliberately omitted —
+// they predate the shortcuts file and remain accessible through
+// `GovernmentBuilder` directly.
+
+/// Check if value is an Italy Partita IVA (VAT)
+#[must_use]
+pub fn is_italy_vat(value: &str) -> bool {
+    GovernmentBuilder::new().is_italy_vat(value)
+}
+
+/// Find all Italy VAT mentions in text (label-anchored)
+#[must_use]
+pub fn find_italy_vats(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_italy_vats_in_text(text)
+}
+
+/// Validate an Italy VAT format
+///
+/// # Errors
+///
+/// Returns `Problem` if the VAT is not exactly 11 digits.
+pub fn validate_italy_vat(vat: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_italy_vat(vat)
+}
+
+/// Validate an Italy VAT with mod-10 Luhn-style checksum
+///
+/// # Errors
+///
+/// Returns `Problem` if format or checksum fails.
+pub fn validate_italy_vat_with_checksum(vat: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_italy_vat_with_checksum(vat)
+}
+
+/// Check if value is an Italy passport
+#[must_use]
+pub fn is_italy_passport(value: &str) -> bool {
+    GovernmentBuilder::new().is_italy_passport(value)
+}
+
+/// Find all Italy passport mentions in text (label-anchored)
+#[must_use]
+pub fn find_italy_passports(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_italy_passports_in_text(text)
+}
+
+/// Validate an Italy passport format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format is invalid.
+pub fn validate_italy_passport(passport: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_italy_passport(passport)
+}
+
+/// Check if value is an Italy identity card (paper, CIE 2.0, or CIE 3.0)
+#[must_use]
+pub fn is_italy_identity_card(value: &str) -> bool {
+    GovernmentBuilder::new().is_italy_identity_card(value)
+}
+
+/// Find all Italy identity card mentions in text (label-anchored)
+#[must_use]
+pub fn find_italy_identity_cards(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_italy_identity_cards_in_text(text)
+}
+
+/// Validate an Italy identity card format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format matches none of the three supported
+/// layouts.
+pub fn validate_italy_identity_card(card: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_italy_identity_card(card)
+}
+
+/// Check if value is an Italy driver license (standard or U1 Carta
+/// Conducente)
+#[must_use]
+pub fn is_italy_driver_license(value: &str) -> bool {
+    GovernmentBuilder::new().is_italy_driver_license(value)
+}
+
+/// Find all Italy driver license mentions in text
+#[must_use]
+pub fn find_italy_driver_licenses(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_italy_driver_licenses_in_text(text)
+}
+
+/// Validate an Italy driver license format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format matches neither the standard nor U1
+/// form.
+pub fn validate_italy_driver_license(license: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_italy_driver_license(license)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]

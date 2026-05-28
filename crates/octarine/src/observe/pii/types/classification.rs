@@ -26,6 +26,7 @@ impl PiiType {
             Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
             Self::BrazilCpf | Self::BrazilCnpj | Self::MexicoCurp | Self::NigeriaNin | Self::NigeriaBvn | Self::NigeriaVehicleReg | Self::ThailandTnin |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
+            Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
@@ -69,7 +70,9 @@ impl PiiType {
             // AustraliaTfn/Abn, IndiaAadhaar/Pan/Gstin/VehicleReg/VoterId/Passport,
             // SingaporeNric are protected by their own regimes —
             // PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
-            Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode | Self::SpainNif | Self::SpainNie | Self::UkNi |
+            Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
+            Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
+            Self::SpainNif | Self::SpainNie | Self::UkNi |
             // Financial — IBAN identifies an EU account holder (Recital 30 /
             // Art. 4(1)). Crypto addresses are pseudonymous by design and are
             // excluded unless linked to an identifiable person upstream.

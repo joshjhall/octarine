@@ -147,6 +147,161 @@ pub fn find_italy_fiscal_codes_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Check if a value matches Italy Partita IVA (VAT) format
+///
+/// Format-only check: exactly 11 digits. Use
+/// [`super::super::validation::validate_italy_vat_with_checksum`] for the
+/// mod-10 Luhn-style checksum.
+#[must_use]
+pub fn is_italy_vat(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::italy_vat::all().iter().any(|p| p.is_match(value))
+}
+
+/// Find all Italy VAT patterns in text
+///
+/// Uses the label-anchored pattern only in text scanning because a bare
+/// 11-digit run is ambiguous with Poland PESEL and similar formats. Direct
+/// `is_italy_vat` calls still accept bare 11-digit input.
+#[must_use]
+pub fn find_italy_vats_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::italy_vat::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::ItalyVat,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches Italy passport format
+#[must_use]
+pub fn is_italy_passport(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::italy_passport::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Italy passport patterns in text
+///
+/// Text scanning uses the label-anchored pattern only: the bare
+/// two-letter + seven-digit shape collides with too many other
+/// identifier formats to scan safely without context.
+#[must_use]
+pub fn find_italy_passports_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::italy_passport::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::ItalyPassport,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches Italy identity card format (paper, CIE 2.0,
+/// or CIE 3.0)
+#[must_use]
+pub fn is_italy_identity_card(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::italy_identity_card::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Italy identity card patterns in text
+///
+/// Label-anchored only: the bare paper/CIE shapes overlap with passport
+/// and other generic identifier formats.
+#[must_use]
+pub fn find_italy_identity_cards_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::italy_identity_card::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::ItalyIdentityCard,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches Italy driver license format (standard or
+/// legacy U1 Carta Conducente)
+#[must_use]
+pub fn is_italy_driver_license(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::italy_driver_license::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Italy driver license patterns in text
+#[must_use]
+pub fn find_italy_driver_licenses_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::italy_driver_license::all() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::ItalyDriverLicense,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Check if a value matches Poland PESEL format
 #[must_use]
 pub fn is_poland_pesel(value: &str) -> bool {

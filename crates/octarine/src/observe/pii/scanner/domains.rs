@@ -218,6 +218,22 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::ItalyFiscalCode,
         ),
         (
+            GovernmentIdentifierBuilder::find_italy_vats_in_text,
+            PiiType::ItalyVat,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_passports_in_text,
+            PiiType::ItalyPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_identity_cards_in_text,
+            PiiType::ItalyIdentityCard,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_driver_licenses_in_text,
+            PiiType::ItalyDriverLicense,
+        ),
+        (
             GovernmentIdentifierBuilder::find_spain_nifs_in_text,
             PiiType::SpainNif,
         ),
