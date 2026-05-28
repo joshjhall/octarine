@@ -147,6 +147,14 @@ pub enum PiiType {
     PolandPesel,
     /// Italian Codice Fiscale
     ItalyFiscalCode,
+    /// Italian Partita IVA (VAT code)
+    ItalyVat,
+    /// Italian passport (2 letters + 7 digits)
+    ItalyPassport,
+    /// Italian Carta d'Identità (paper, CIE 2.0, CIE 3.0)
+    ItalyIdentityCard,
+    /// Italian Patente di Guida (standard + U1 Carta Conducente)
+    ItalyDriverLicense,
     /// Spanish NIF (Numero de Identificacion Fiscal)
     SpainNif,
     /// Spanish NIE (Numero de Identidad de Extranjero)

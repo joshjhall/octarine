@@ -74,9 +74,12 @@ pub use brazil::{
 };
 pub use driver_license::{find_driver_licenses_in_text, is_driver_license};
 pub use europe::{
-    find_finland_hetus_in_text, find_italy_fiscal_codes_in_text, find_poland_pesels_in_text,
-    find_spain_nies_in_text, find_spain_nifs_in_text, is_finland_hetu, is_italy_fiscal_code,
-    is_poland_pesel, is_spain_nie, is_spain_nif,
+    find_finland_hetus_in_text, find_italy_driver_licenses_in_text,
+    find_italy_fiscal_codes_in_text, find_italy_identity_cards_in_text,
+    find_italy_passports_in_text, find_italy_vats_in_text, find_poland_pesels_in_text,
+    find_spain_nies_in_text, find_spain_nifs_in_text, is_finland_hetu, is_italy_driver_license,
+    is_italy_fiscal_code, is_italy_identity_card, is_italy_passport, is_italy_vat, is_poland_pesel,
+    is_spain_nie, is_spain_nif,
 };
 pub use india::{
     find_india_aadhaars_in_text, find_india_gstins_in_text, find_india_pans_in_text,
@@ -262,6 +265,10 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_finland_hetus_in_text(text));
     all_matches.extend(find_poland_pesels_in_text(text));
     all_matches.extend(find_italy_fiscal_codes_in_text(text));
+    all_matches.extend(find_italy_vats_in_text(text));
+    all_matches.extend(find_italy_passports_in_text(text));
+    all_matches.extend(find_italy_identity_cards_in_text(text));
+    all_matches.extend(find_italy_driver_licenses_in_text(text));
     all_matches.extend(find_spain_nifs_in_text(text));
     all_matches.extend(find_spain_nies_in_text(text));
     all_matches.extend(find_uk_nis_in_text(text));

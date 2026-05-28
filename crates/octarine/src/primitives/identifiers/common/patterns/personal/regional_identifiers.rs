@@ -378,6 +378,130 @@ pub(crate) mod italy_fiscal_code {
     }
 }
 
+/// Italy Partita IVA (VAT code) patterns — 11 digits, mod-10 Luhn-style checksum
+pub(crate) mod italy_vat {
+    use super::*;
+
+    /// Bare 11-digit VAT — must be label-anchored in scanning to avoid
+    /// shadowing Poland PESEL (also `\d{11}`); STANDARD here is kept loose
+    /// for direct `is_*` lookups against a single value.
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{11}\b").expect("BUG: Invalid regex pattern"));
+
+    /// VAT with explicit Italian or English label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:partita[\s-]?iva|p\.?[\s-]?iva|VAT(?:[\s-]?code|[\s-]?number)?|IVA)[\s:#-]*(\d{11})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners to prevent
+    /// false positives against any 11-digit number.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Italy passport patterns — 2 uppercase letters + 7 digits
+pub(crate) mod italy_passport {
+    use super::*;
+
+    /// Standard format `AA1234567`
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b[A-Z]{2}\d{7}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Passport with explicit label (Italian or English)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:passaporto|passport(?:[\s-]?number|[\s-]?no\.?)?)[\s:#-]*([A-Z]{2}\d{7})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners; the bare 2-letter +
+    /// 7-digit shape collides with many other identifier formats.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Italy identity card (Carta d'Identità) patterns — three coexisting
+/// formats: legacy paper, CIE 2.0, and CIE 3.0.
+pub(crate) mod italy_identity_card {
+    use super::*;
+
+    /// Paper card: 2 letters, optional space, 7 digits
+    pub static PAPER: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b[A-Z]{2}\s?\d{7}\b").expect("BUG: Invalid regex pattern"));
+
+    /// CIE 2.0: 7 digits + 2 letters
+    pub static CIE_V2: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b\d{7}[A-Z]{2}\b").expect("BUG: Invalid regex pattern"));
+
+    /// CIE 3.0: 2 letters + 5 digits + 2 letters
+    pub static CIE_V3: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[A-Z]{2}\d{5}[A-Z]{2}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Identity card with explicit Italian or English label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:carta[\s-]?d['\u{2019}]?identit[aà]|identity[\s-]?card|ID[\s-]?card|CIE)[\s:#-]*([A-Z]{2}\s?\d{7}|\d{7}[A-Z]{2}|[A-Z]{2}\d{5}[A-Z]{2})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*PAPER, &*CIE_V2, &*CIE_V3]
+    }
+
+    /// Label-anchored only — the bare paper/CIE shapes overlap with
+    /// passport and other generic identifier patterns.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Italy driver license (Patente di Guida) patterns — standard form
+/// `AA1234567A` plus legacy `U1` Carta Conducente.
+pub(crate) mod italy_driver_license {
+    use super::*;
+
+    /// Standard format: 2 letters + 7 digits + 1 letter
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[A-Z]{2}\d{7}[A-Z]\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Legacy Carta Conducente `U1` form: `U1` + 7 chars from a restricted
+    /// alphabet + 1 letter. Per Italian spec, position 3-9 excludes `A`,
+    /// `I`, `O`, `Q`, `V` from the allowed alphabet.
+    pub static U1: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\bU1[BCDEFGHLJKMNPRSTUWYXZ0-9]{7}[A-Z]\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Driver license with explicit Italian or English label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:patente(?:[\s-]?di[\s-]?guida)?|driver[\s-]?(?:license|licence)|driving[\s-]?licen[cs]e)[\s:#-]*([A-Z]{2}\d{7}[A-Z]|U1[BCDEFGHLJKMNPRSTUWYXZ0-9]{7}[A-Z])\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*U1, &*STANDARD]
+    }
+}
+
 /// Poland PESEL (personal identity number) patterns
 pub(crate) mod poland_pesel {
     use super::*;

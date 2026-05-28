@@ -580,6 +580,72 @@ fn test_scan_detects_italy_fiscal_code() {
 }
 
 #[test]
+fn test_scan_detects_italy_vat() {
+    // Label-anchored: 11-digit run alone is ambiguous (PESEL etc.)
+    let text = "Partita IVA: 12345678903";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::ItalyVat),
+        "Expected ItalyVat in {pii_types:?}"
+    );
+    assert!(PiiType::ItalyVat.is_gdpr_protected());
+    assert!(PiiType::ItalyVat.is_high_risk());
+}
+
+#[test]
+fn test_scan_detects_italy_passport() {
+    // Bare 2-letter+7-digit shape collides with too many formats — must be
+    // label-anchored to be picked up by the scanner.
+    let text = "Passaporto: AA1234567";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::ItalyPassport),
+        "Expected ItalyPassport in {pii_types:?}"
+    );
+    assert!(PiiType::ItalyPassport.is_gdpr_protected());
+}
+
+#[test]
+fn test_scan_detects_italy_identity_card() {
+    // All three CIE formats accepted when label-anchored
+    for sample in [
+        "Carta d'identità: CA1234567", // paper
+        "Carta d'identità: 1234567AB", // CIE 2.0
+        "Carta d'identità: CA12345AB", // CIE 3.0
+        "Identity card: 1234567AB",
+        "CIE: CA12345AB",
+    ] {
+        let pii_types = scan_for_pii(sample);
+        assert!(
+            pii_types.contains(&PiiType::ItalyIdentityCard),
+            "Expected ItalyIdentityCard for {sample:?}, got {pii_types:?}"
+        );
+    }
+    assert!(PiiType::ItalyIdentityCard.is_gdpr_protected());
+}
+
+#[test]
+fn test_scan_detects_italy_driver_license() {
+    // Standard form
+    let text_std = "Patente: AB1234567C";
+    let pii_std = scan_for_pii(text_std);
+    assert!(
+        pii_std.contains(&PiiType::ItalyDriverLicense),
+        "Expected ItalyDriverLicense in {pii_std:?}"
+    );
+
+    // Legacy U1 Carta Conducente form
+    let text_u1 = "Patente di guida: U1B123456C";
+    let pii_u1 = scan_for_pii(text_u1);
+    assert!(
+        pii_u1.contains(&PiiType::ItalyDriverLicense),
+        "Expected ItalyDriverLicense (U1 form) in {pii_u1:?}"
+    );
+
+    assert!(PiiType::ItalyDriverLicense.is_gdpr_protected());
+}
+
+#[test]
 fn test_scan_detects_india_aadhaar() {
     // 2345 6789 0123 — valid 12-digit Aadhaar (passes format check)
     let text = "Aadhaar: 2345 6789 0123";

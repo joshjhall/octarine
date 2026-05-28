@@ -205,6 +205,10 @@ fn test_country_specific_government_classifications() {
         PiiType::FinlandHetu,
         PiiType::PolandPesel,
         PiiType::ItalyFiscalCode,
+        PiiType::ItalyVat,
+        PiiType::ItalyPassport,
+        PiiType::ItalyIdentityCard,
+        PiiType::ItalyDriverLicense,
         PiiType::SpainNif,
         PiiType::SpainNie,
         PiiType::UkNi,
@@ -249,6 +253,10 @@ fn test_country_specific_government_classifications() {
     // Names follow the IdentifierType variant naming
     assert_eq!(PiiType::KoreaRrn.name(), "korea_rrn");
     assert_eq!(PiiType::ItalyFiscalCode.name(), "italy_fiscal_code");
+    assert_eq!(PiiType::ItalyVat.name(), "italy_vat");
+    assert_eq!(PiiType::ItalyPassport.name(), "italy_passport");
+    assert_eq!(PiiType::ItalyIdentityCard.name(), "italy_identity_card");
+    assert_eq!(PiiType::ItalyDriverLicense.name(), "italy_driver_license");
     assert_eq!(PiiType::SpainNie.name(), "spain_nie");
     assert_eq!(PiiType::UkNi.name(), "uk_ni");
 }
@@ -483,6 +491,19 @@ fn from_identifier_type_direct_mappings() {
     assert_eq!(
         PiiType::from(IdentifierType::ItalyFiscalCode),
         PiiType::ItalyFiscalCode
+    );
+    assert_eq!(PiiType::from(IdentifierType::ItalyVat), PiiType::ItalyVat);
+    assert_eq!(
+        PiiType::from(IdentifierType::ItalyPassport),
+        PiiType::ItalyPassport
+    );
+    assert_eq!(
+        PiiType::from(IdentifierType::ItalyIdentityCard),
+        PiiType::ItalyIdentityCard
+    );
+    assert_eq!(
+        PiiType::from(IdentifierType::ItalyDriverLicense),
+        PiiType::ItalyDriverLicense
     );
     assert_eq!(PiiType::from(IdentifierType::SpainNif), PiiType::SpainNif);
     assert_eq!(PiiType::from(IdentifierType::SpainNie), PiiType::SpainNie);
