@@ -336,3 +336,228 @@ pub fn find_poland_pesels_in_text(text: &str) -> Vec<IdentifierMatch> {
 
     deduplicate_matches(matches)
 }
+
+/// Check if a value matches UK NHS Number format (bare 10 digits or
+/// grouped `NNN NNN NNNN`)
+///
+/// Format-only check. Use
+/// [`super::super::validation::validate_uk_nhs_with_checksum`] for the
+/// mod-11 weighted-sum checksum.
+#[must_use]
+pub fn is_uk_nhs(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::uk_nhs::all().iter().any(|p| p.is_match(value))
+}
+
+/// Find all UK NHS Number patterns in text
+///
+/// Label-anchored or grouped form only — a bare `\d{10}` collides with phone
+/// numbers and many other formats, so direct `is_uk_nhs` calls still accept
+/// the unlabeled bare form, but text scanning requires context.
+#[must_use]
+pub fn find_uk_nhs_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::uk_nhs::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::UkNhs,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches UK passport format (2 uppercase letters + 7 digits)
+#[must_use]
+pub fn is_uk_passport(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::uk_passport::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all UK passport patterns in text
+///
+/// Label-anchored only: the bare 2-letter + 7-digit shape collides with
+/// Italian passport and other identifier formats.
+#[must_use]
+pub fn find_uk_passports_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::uk_passport::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::UkPassport,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+/// Check if a value matches UK DVLA driving licence format (16-char
+/// structural shape)
+#[must_use]
+pub fn is_uk_driving_licence(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::uk_driving_licence::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all UK DVLA driving licence patterns in text
+///
+/// Label-anchored only: the bare 16-char alphanumeric shape can collide
+/// with order numbers and other identifiers, so scanning requires context.
+#[must_use]
+pub fn find_uk_driving_licences_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::uk_driving_licence::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::UkDrivingLicence,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // ----- UK NHS Number -----
+
+    #[test]
+    fn test_is_uk_nhs_bare_10_digits_accepted() {
+        assert!(is_uk_nhs("9434765919"));
+    }
+
+    #[test]
+    fn test_is_uk_nhs_grouped_display_form_accepted() {
+        assert!(is_uk_nhs("943 476 5919"));
+        assert!(is_uk_nhs("943-476-5919"));
+    }
+
+    #[test]
+    fn test_is_uk_nhs_wrong_length_rejected() {
+        assert!(!is_uk_nhs("12345"));
+        // Note: bare 10-digit STANDARD pattern matches numeric inputs; we
+        // exercise the grouped-form-only filter via `find_uk_nhs_in_text`.
+    }
+
+    #[test]
+    fn test_find_uk_nhs_in_text_requires_label_or_grouped_form() {
+        let matches = find_uk_nhs_in_text("Patient NHS: 943 476 5919, contact later");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::UkNhs
+        );
+    }
+
+    #[test]
+    fn test_find_uk_nhs_in_text_no_label_no_match() {
+        // Bare 10-digit run without label or grouping should not be picked up.
+        let matches = find_uk_nhs_in_text("Call us on 9434765919 today.");
+        assert!(matches.is_empty());
+    }
+
+    // ----- UK Passport -----
+
+    #[test]
+    fn test_is_uk_passport_accepts_2_letters_7_digits() {
+        assert!(is_uk_passport("AB1234567"));
+        assert!(is_uk_passport("ZZ0000001"));
+    }
+
+    #[test]
+    fn test_is_uk_passport_rejects_wrong_length() {
+        assert!(!is_uk_passport("A1234567"));
+        assert!(!is_uk_passport("AB12345"));
+    }
+
+    #[test]
+    fn test_find_uk_passports_in_text_requires_label() {
+        let matches = find_uk_passports_in_text("UK passport: AB1234567 issued London");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::UkPassport
+        );
+    }
+
+    #[test]
+    fn test_find_uk_passports_in_text_no_label_no_match() {
+        // Bare 2-letter + 7-digit shape without UK-anchored label should not
+        // match, because Italian passport has the identical shape.
+        let matches = find_uk_passports_in_text("Reference AB1234567");
+        assert!(matches.is_empty());
+    }
+
+    // ----- UK Driving Licence -----
+
+    #[test]
+    fn test_is_uk_driving_licence_canonical_shape_accepted() {
+        // MORGA753116SM9IJ — sample DVLA-style shape
+        assert!(is_uk_driving_licence("MORGA753116SM9IJ"));
+    }
+
+    #[test]
+    fn test_is_uk_driving_licence_rejects_wrong_length() {
+        assert!(!is_uk_driving_licence("MORGA75311"));
+        assert!(!is_uk_driving_licence("MORGA753116SM9IJEXTRA"));
+    }
+
+    #[test]
+    fn test_find_uk_driving_licences_in_text_requires_label() {
+        let matches =
+            find_uk_driving_licences_in_text("Driving licence: MORGA753116SM9IJ expires 2032");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::UkDrivingLicence
+        );
+    }
+
+    #[test]
+    fn test_find_uk_driving_licences_dvla_label_accepted() {
+        let matches = find_uk_driving_licences_in_text("DVLA MORGA753116SM9IJ");
+        assert_eq!(matches.len(), 1);
+    }
+}

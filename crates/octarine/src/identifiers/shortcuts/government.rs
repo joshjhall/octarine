@@ -350,6 +350,84 @@ pub fn validate_italy_driver_license(license: &str) -> Result<(), Problem> {
     GovernmentBuilder::new().validate_italy_driver_license(license)
 }
 
+// ----------------------------------------------------------------------
+// UK identifiers — NHS Number, Passport, Driving Licence
+// ----------------------------------------------------------------------
+
+/// Check if value is a UK NHS Number (10 digits)
+#[must_use]
+pub fn is_uk_nhs(value: &str) -> bool {
+    GovernmentBuilder::new().is_uk_nhs(value)
+}
+
+/// Find all UK NHS Number mentions in text (label-anchored or grouped form)
+#[must_use]
+pub fn find_uk_nhs(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_uk_nhs_in_text(text)
+}
+
+/// Validate a UK NHS Number format (10 digits after stripping separators)
+///
+/// # Errors
+///
+/// Returns `Problem` if the format is invalid.
+pub fn validate_uk_nhs(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_uk_nhs(value)
+}
+
+/// Validate a UK NHS Number including the mod-11 weighted checksum
+///
+/// # Errors
+///
+/// Returns `Problem` if format or checksum fails, or if the value is a
+/// placeholder pattern (all identical digits).
+pub fn validate_uk_nhs_with_checksum(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_uk_nhs_with_checksum(value)
+}
+
+/// Check if value is a UK passport (2 letters + 7 digits)
+#[must_use]
+pub fn is_uk_passport(value: &str) -> bool {
+    GovernmentBuilder::new().is_uk_passport(value)
+}
+
+/// Find all UK passport mentions in text (label-anchored)
+#[must_use]
+pub fn find_uk_passports(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_uk_passports_in_text(text)
+}
+
+/// Validate a UK passport format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format is invalid.
+pub fn validate_uk_passport(passport: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_uk_passport(passport)
+}
+
+/// Check if value is a UK DVLA driving licence (16-char structural shape)
+#[must_use]
+pub fn is_uk_driving_licence(value: &str) -> bool {
+    GovernmentBuilder::new().is_uk_driving_licence(value)
+}
+
+/// Find all UK DVLA driving licence mentions in text (label-anchored)
+#[must_use]
+pub fn find_uk_driving_licences(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_uk_driving_licences_in_text(text)
+}
+
+/// Validate a UK DVLA driving licence shape
+///
+/// # Errors
+///
+/// Returns `Problem` if the 16-character structural shape does not match,
+/// or if the surname is the all-9 placeholder.
+pub fn validate_uk_driving_licence(licence: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_uk_driving_licence(licence)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -435,5 +513,43 @@ mod tests {
         assert!(validate_korea_brn("123-45-67890").is_ok());
         assert!(validate_korea_brn("").is_err());
         assert!(!find_korea_brns("BRN: 123-45-67890 registered").is_empty());
+    }
+
+    #[test]
+    fn test_uk_nhs_shortcuts() {
+        assert!(is_uk_nhs("9434765919"));
+        assert!(is_uk_nhs("943 476 5919"));
+        assert!(!is_uk_nhs("not a number"));
+        assert!(validate_uk_nhs("9434765919").is_ok());
+        assert!(validate_uk_nhs_with_checksum("9434765919").is_ok());
+        // Bad checksum
+        assert!(validate_uk_nhs_with_checksum("9434765910").is_err());
+        // Placeholder
+        assert!(validate_uk_nhs_with_checksum("9999999999").is_err());
+        // Text scanning requires label or grouped form
+        assert!(!find_uk_nhs("NHS Number: 9434765919 in records").is_empty());
+        assert!(find_uk_nhs("9434765919").is_empty());
+    }
+
+    #[test]
+    fn test_uk_passport_shortcuts() {
+        assert!(is_uk_passport("AB1234567"));
+        assert!(!is_uk_passport("AB123")); // too short
+        assert!(validate_uk_passport("AB1234567").is_ok());
+        assert!(validate_uk_passport("").is_err());
+        // Text scanning requires UK-anchored label
+        assert!(!find_uk_passports("UK passport: AB1234567 valid").is_empty());
+        assert!(find_uk_passports("Reference AB1234567").is_empty());
+    }
+
+    #[test]
+    fn test_uk_driving_licence_shortcuts() {
+        assert!(is_uk_driving_licence("MORGA753116SM9IJ"));
+        assert!(!is_uk_driving_licence("too short"));
+        assert!(validate_uk_driving_licence("MORGA753116SM9IJ").is_ok());
+        // All-9 surname is the DVLA placeholder
+        assert!(validate_uk_driving_licence("99999753116AB1XY").is_err());
+        // Text scanning requires label
+        assert!(!find_uk_driving_licences("DVLA MORGA753116SM9IJ").is_empty());
     }
 }

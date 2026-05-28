@@ -919,3 +919,57 @@ fn test_redact_phone_japan_format() {
         "Japan phone with hyphens must redact to [PHONE]",
     );
 }
+
+// ==========================================
+// UK IDENTIFIER PACK
+// ==========================================
+
+/// UK NHS Numbers are dual-classified — GDPR Article 9 special-category
+/// data AND HIPAA-equivalent PHI. The classification flags must reflect
+/// both regimes.
+#[test]
+fn test_uk_nhs_classification_is_both_gdpr_and_hipaa() {
+    assert!(
+        PiiType::UkNhs.is_gdpr_protected(),
+        "NHS Number is UK GDPR data"
+    );
+    assert!(
+        PiiType::UkNhs.is_hipaa_protected(),
+        "NHS Number is UK PHI under DPA 2018 Schedule 3 / GDPR Art 9",
+    );
+    assert!(PiiType::UkNhs.is_high_risk());
+}
+
+/// UK passports and DVLA driving licences are GDPR-protected (UK GDPR /
+/// DPA 2018) but not HIPAA. They are not PCI either.
+#[test]
+fn test_uk_passport_and_licence_are_gdpr_only() {
+    assert!(PiiType::UkPassport.is_gdpr_protected());
+    assert!(!PiiType::UkPassport.is_hipaa_protected());
+    assert!(!PiiType::UkPassport.is_pci_protected());
+
+    assert!(PiiType::UkDrivingLicence.is_gdpr_protected());
+    assert!(!PiiType::UkDrivingLicence.is_hipaa_protected());
+    assert!(!PiiType::UkDrivingLicence.is_pci_protected());
+}
+
+/// Scanner must surface NHS Number, UK passport, and UK DVLA driving
+/// licence when each carries a UK-anchored label or grouped form.
+#[test]
+fn test_scan_detects_uk_identifier_pack() {
+    let text = "Patient John Smith — NHS 943 476 5919, UK passport AB1234567, \
+                DVLA MORGA753116SM9IJ on file.";
+    let pii_types = scan_for_pii(text);
+    assert!(
+        pii_types.contains(&PiiType::UkNhs),
+        "expected UkNhs in: {pii_types:?}"
+    );
+    assert!(
+        pii_types.contains(&PiiType::UkPassport),
+        "expected UkPassport in: {pii_types:?}"
+    );
+    assert!(
+        pii_types.contains(&PiiType::UkDrivingLicence),
+        "expected UkDrivingLicence in: {pii_types:?}"
+    );
+}

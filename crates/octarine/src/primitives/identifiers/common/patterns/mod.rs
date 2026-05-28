@@ -44,7 +44,8 @@ pub(crate) use personal::{
     italy_identity_card, italy_passport, italy_vat, korea_brn, korea_driver_license, korea_frn,
     korea_passport, korea_rrn, mexico_curp, national_id, nigeria_bvn, nigeria_nin,
     nigeria_vehicle_reg, passport, personal_name, poland_pesel, singapore_nric, singapore_uen,
-    spain_nie, spain_nif, ssn, student_id, tax_id, thailand_tnin, uk_ni,
+    spain_nie, spain_nif, ssn, student_id, tax_id, thailand_tnin, uk_driving_licence, uk_nhs,
+    uk_ni, uk_passport,
 };
 
 // medical, biometric, location, and vehicle modules are already accessible via pub mod declarations

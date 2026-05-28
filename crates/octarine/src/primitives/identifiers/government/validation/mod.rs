@@ -58,6 +58,7 @@ mod singapore;
 mod spain;
 mod ssn;
 mod thailand;
+mod uk;
 mod vin;
 
 // Re-export cache utilities
@@ -162,6 +163,12 @@ pub use nigeria::{
 // Re-export Thailand functions
 pub use thailand::{
     is_test_thailand_tnin, validate_thailand_tnin, validate_thailand_tnin_with_checksum,
+};
+
+// Re-export UK functions
+pub use uk::{
+    is_test_uk_driving_licence, is_test_uk_nhs, is_test_uk_passport, validate_uk_driving_licence,
+    validate_uk_nhs, validate_uk_nhs_with_checksum, validate_uk_passport,
 };
 
 // Re-export VIN functions

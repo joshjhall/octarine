@@ -245,6 +245,18 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             GovernmentIdentifierBuilder::find_uk_nis_in_text,
             PiiType::UkNi,
         ),
+        (
+            GovernmentIdentifierBuilder::find_uk_nhs_in_text,
+            PiiType::UkNhs,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_passports_in_text,
+            PiiType::UkPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_driving_licences_in_text,
+            PiiType::UkDrivingLicence,
+        ),
     ];
 
     let government = GovernmentIdentifierBuilder::new();

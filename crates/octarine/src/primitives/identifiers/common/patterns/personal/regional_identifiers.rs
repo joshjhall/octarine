@@ -317,6 +317,112 @@ pub(crate) mod uk_ni {
     }
 }
 
+/// UK NHS Number patterns — 10 digits, mod-11 checksum
+///
+/// The official display form is grouped `NNN NNN NNNN` (3-3-4) but the raw
+/// 10-digit form is also valid. Detection accepts both. Text scanning uses
+/// `labeled_only()` because a bare 10-digit run is too ambiguous (matches
+/// phone numbers, Aadhaar prefixes, etc.).
+pub(crate) mod uk_nhs {
+    use super::*;
+
+    /// Bare 10-digit form (used for direct `is_*` lookups against a single value)
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{10}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Grouped form `NNN NNN NNNN` or `NNN-NNN-NNNN`
+    pub static SPACED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{3}[\s-]\d{3}[\s-]\d{4}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// NHS Number with explicit label, captures either the spaced or bare form
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:NHS(?:[\s-]?number|[\s-]?no\.?)?|national[\s-]?health[\s-]?service)[\s:#-]*(\d{3}[\s-]?\d{3}[\s-]?\d{4})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*SPACED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners; bare `\d{10}` is too
+    /// ambiguous to scan safely without context.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*SPACED]
+    }
+}
+
+/// UK Passport patterns — 2 uppercase letters + 7 digits
+///
+/// Same shape as Italian passport, so text scanning must use `labeled_only()`
+/// to distinguish them via surrounding context.
+pub(crate) mod uk_passport {
+    use super::*;
+
+    /// Standard format `AB1234567`
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b[A-Z]{2}\d{7}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Passport with explicit UK-anchored label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:UK[\s-]?passport|British[\s-]?passport|HM[\s-]?passport|passport(?:[\s-]?number|[\s-]?no\.?)?)[\s:#-]*([A-Z]{2}\d{7})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners; the bare 2-letter +
+    /// 7-digit shape collides with Italian passport and other identifiers.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// UK Driving Licence (DVLA) patterns — 16-char structural format
+///
+/// Layout: `[A-Z9]{5}\d{6}[A-Z9]{2}\d[A-Z0-9]{2}`
+///   - 5 surname chars (padded with `9` if shorter than 5 letters)
+///   - 6 DOB digits (decade, month+gender, day, year-in-decade)
+///   - 2 initial chars (`9` if no first/middle initial)
+///   - 1 check digit
+///   - 2 control alphanumeric chars
+///
+/// DVLA's check-digit algorithm is not publicly published, so validation is
+/// shape-only with structural placeholder rejection (e.g. all-9 surname).
+pub(crate) mod uk_driving_licence {
+    use super::*;
+
+    /// Standard 16-character DVLA shape
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[A-Z9]{5}\d{6}[A-Z9]{2}\d[A-Z0-9]{2}\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Driving licence with explicit UK-anchored label
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:DVLA|UK[\s-]?driving[\s-]?licen[cs]e|driving[\s-]?licen[cs]e(?:[\s-]?number|[\s-]?no\.?)?|driver[\s-]?number)[\s:#-]*([A-Z9]{5}\d{6}[A-Z9]{2}\d[A-Z0-9]{2})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — the bare 16-char shape can occasionally
+    /// collide with other alphanumeric identifiers (e.g. order numbers).
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
 /// Spain NIF (Numero de Identificacion Fiscal) patterns
 pub(crate) mod spain_nif {
     use super::*;
