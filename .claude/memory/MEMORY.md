@@ -8,3 +8,4 @@
 - [Dependabot coordinated bumps](project_dependabot_coordinated_bumps.md) — opentelemetry/tonic/tracing families need ONE unified PR; close individual Dependabot PRs as superseded
 - [Pre-1.0 prefer breaking](feedback_pre_1_0_breaking_changes.md) — while on 0.x beta, do breaking renames directly; skip `#[deprecated]` aliases
 - [macOS CI cache poisoning](project_ci_macos_cache_poisoning.md) — ci.yml uses `cache-bin: false` + versioned `shared-key` to prevent a poisoned `~/.cargo/bin` cache from breaking every subsequent run. Bump the key if it happens again; don't waste time debugging.
+- [Presidio audit issue namespace](project_presidio_audit_issues.md) — 140 issues #462-#601 in `gap/presidio` namespace. 15 tracking issues are the entry points; audit source-of-truth lives at `docs/audits/presidio/00-feature-master.md`.
