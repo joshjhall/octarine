@@ -63,6 +63,35 @@ pub fn validate_ein(ein: &str) -> Result<(), Problem> {
 }
 
 // =============================================================================
+// US ITIN (Individual Taxpayer Identification Number)
+// =============================================================================
+
+/// Check if value is a valid ITIN (Individual Taxpayer Identification Number)
+///
+/// Strict — area must be `9XX` and the middle group must lie in
+/// `{50-65, 70-88, 90-92, 94-99}` per IRS Publication 1915.
+#[must_use]
+pub fn is_itin(value: &str) -> bool {
+    GovernmentBuilder::new().is_itin(value)
+}
+
+/// Find all valid ITINs in text
+#[must_use]
+pub fn find_itins(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_itins_in_text(text)
+}
+
+/// Validate an ITIN format
+///
+/// # Errors
+///
+/// Returns `Problem` if the ITIN format, area, middle group, or serial is
+/// invalid.
+pub fn validate_itin(itin: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_itin(itin)
+}
+
+// =============================================================================
 // Singapore UEN
 // =============================================================================
 

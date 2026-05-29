@@ -29,6 +29,7 @@ impl PiiType {
             Self::Passport => "passport",
             Self::Vin => "vin",
             Self::Ein => "ein",
+            Self::Itin => "itin",
             Self::TaxId => "tax_id",
             Self::NationalId => "national_id",
             Self::KoreaRrn => "korea_rrn",
@@ -183,6 +184,7 @@ impl PiiType {
             | Self::Passport
             | Self::Vin
             | Self::Ein
+            | Self::Itin
             | Self::TaxId
             | Self::NationalId
             | Self::KoreaRrn

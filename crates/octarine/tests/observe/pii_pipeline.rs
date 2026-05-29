@@ -33,8 +33,8 @@ fn test_detects_email_address() {
 
 #[test]
 fn test_detects_ssn() {
-    // Use 900 series - designated for testing
-    let text = "SSN: 900-00-0001";
+    // 517-29-8346: SSA-valid area, group, and serial; safe SSN test value
+    let text = "SSN: 517-29-8346";
     assert!(is_pii_present(text));
 
     let types = scan_for_pii(text);
@@ -84,7 +84,7 @@ fn test_detects_password_pattern() {
 
 #[test]
 fn test_detects_multiple_pii_types() {
-    let text = "Email: user@example.com, SSN: 900-00-0001, Card: 4242424242424242";
+    let text = "Email: user@example.com, SSN: 517-29-8346, Card: 4242424242424242";
 
     let types = scan_for_pii(text);
     assert!(types.len() >= 3, "Should detect at least 3 PII types");
@@ -108,10 +108,10 @@ fn test_no_pii_in_clean_text() {
 
 #[test]
 fn test_redacts_ssn() {
-    let text = "SSN: 900-00-0001";
+    let text = "SSN: 517-29-8346";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
-    assert!(!redacted.contains("900-00-0001"));
+    assert!(!redacted.contains("517-29-8346"));
     assert!(redacted.contains("[SSN]"));
 }
 
@@ -145,11 +145,11 @@ fn test_redacts_password() {
 
 #[test]
 fn test_redacts_multiple_pii() {
-    let text = "Email: user@example.com, SSN: 900-00-0001";
+    let text = "Email: user@example.com, SSN: 517-29-8346";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     assert!(!redacted.contains("user@example.com"));
-    assert!(!redacted.contains("900-00-0001"));
+    assert!(!redacted.contains("517-29-8346"));
     assert!(redacted.contains("[EMAIL]"));
     assert!(redacted.contains("[SSN]"));
 }
@@ -172,7 +172,7 @@ fn test_preserves_message_structure() {
 
 #[test]
 fn test_testing_profile_no_redaction() {
-    let text = "SSN: 900-00-0001, Email: user@example.com";
+    let text = "SSN: 517-29-8346, Email: user@example.com";
     let redacted = redact_pii_with_profile(text, RedactionProfile::Testing);
 
     // Testing mode: no redaction for easier debugging
@@ -191,11 +191,11 @@ fn test_production_strict_full_redaction() {
 
 #[test]
 fn test_default_redaction_is_safe() {
-    let text = "SSN: 900-00-0001";
+    let text = "SSN: 517-29-8346";
     let redacted = redact_pii(text);
 
     // Default should redact PII
-    assert!(!redacted.contains("900-00-0001"));
+    assert!(!redacted.contains("517-29-8346"));
 }
 
 // ============================================================================
@@ -314,7 +314,7 @@ async fn test_memory_writer_stores_events_with_pii() {
     let writer = MemoryWriter::new();
 
     // Write event with PII
-    let event = Event::new(EventType::Info, "SSN: 900-00-0001");
+    let event = Event::new(EventType::Info, "SSN: 517-29-8346");
     writer.write(&event).await.expect("write should succeed");
 
     // Verify event is stored (PII handling is at a different layer)

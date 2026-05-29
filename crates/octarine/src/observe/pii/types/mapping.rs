@@ -76,6 +76,7 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::DriverLicense => Self::DriverLicense,
             IdentifierType::Passport => Self::Passport,
             IdentifierType::Ein => Self::Ein,
+            IdentifierType::Itin => Self::Itin,
             IdentifierType::TaxId => Self::TaxId,
             IdentifierType::NationalId => Self::NationalId,
             IdentifierType::KoreaRrn => Self::KoreaRrn,

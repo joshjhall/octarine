@@ -62,10 +62,37 @@ pub(crate) mod tax_id {
     pub static EIN_FORMAT: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"\b\d{2}-\d{7}\b").expect("BUG: Invalid regex pattern"));
 
-    /// ITIN (starts with 9)
-    /// Example: "912-34-5678"
+    /// ITIN — loose 9XX-XX-XXXX shape (kept for SSN-vs-tax-ID bucketing in
+    /// `tax_id` detection). Does NOT enforce the IRS middle-group rule and so
+    /// will match non-ITIN 9XX strings. Use [`ITIN_FORMAT_STRICT`] for
+    /// identification as `IdentifierType::Itin`.
+    /// Example: "912-34-5678" (matches even though group 34 is not a valid IRS middle group)
     pub static ITIN_FORMAT: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"\b9\d{2}-?\d{2}-?\d{4}\b").expect("BUG: Invalid regex pattern"));
+
+    /// ITIN — strict IRS layout. Area `9XX`, middle group in `{50-65, 70-88,
+    /// 90-92, 94-99}`. Per IRS Publication 1915 and 26 CFR §301.6109-1.
+    /// Example: "900-70-0001" (valid), "912-34-5678" (group 34 — does NOT match)
+    pub static ITIN_FORMAT_STRICT: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b9\d{2}-?(?:5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[02]|9[4-9])-?\d{4}\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// ITIN — strict exact-match (no surrounding text). For validators.
+    pub static ITIN_FORMAT_STRICT_EXACT: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^9\d{2}-?(?:5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[02]|9[4-9])-?\d{4}$")
+            .expect("BUG: Invalid regex pattern")
+    });
+
+    /// ITIN with explicit label (highest confidence)
+    /// Captures: prefix (label) + number
+    /// Example: "ITIN: 900-70-0001" → groups: ("ITIN: ", "900-70-0001")
+    pub static ITIN_LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(\b(?:ITIN|Individual[\s-]?Taxpayer[\s-]?Identification[\s-]?Number)[\s#:-]+)(9\d{2}-?(?:5[0-9]|6[0-5]|7[0-9]|8[0-8]|9[02]|9[4-9])-?\d{4})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
 
     /// Generic TIN with prefix
     pub static GENERIC_TIN: Lazy<Regex> = Lazy::new(|| {

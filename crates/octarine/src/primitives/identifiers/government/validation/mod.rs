@@ -44,6 +44,7 @@ mod ein;
 mod finland;
 mod india;
 mod italy;
+mod itin;
 mod korea_brn;
 mod korea_driver_license;
 mod korea_frn;
@@ -70,6 +71,9 @@ pub use ssn::validate_ssn;
 
 // Re-export EIN functions
 pub use ein::{is_test_ein, is_valid_ein_prefix, validate_ein};
+
+// Re-export ITIN functions
+pub use itin::{is_test_itin, is_valid_itin_group, validate_itin};
 
 // Re-export driver's license functions
 pub use driver_license::{is_test_driver_license, validate_driver_license};

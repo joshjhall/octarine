@@ -75,4 +75,29 @@ impl GovernmentBuilder {
     pub fn sanitize_ein(&self, ein: &str) -> Result<String, Problem> {
         self.inner.sanitize_ein(ein)
     }
+
+    /// Check if value is a valid ITIN (Individual Taxpayer Identification Number)
+    ///
+    /// Strict — requires `XXX-XX-XXXX` layout, area `9XX`, and a middle group
+    /// in `{50-65, 70-88, 90-92, 94-99}` per IRS Publication 1915.
+    #[must_use]
+    pub fn is_itin(&self, value: &str) -> bool {
+        self.inner.is_itin(value)
+    }
+
+    /// Find all valid ITINs in text
+    #[must_use]
+    pub fn find_itins_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        self.inner.find_itins_in_text(text)
+    }
+
+    /// Validate ITIN format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the ITIN format, area, middle group, or serial
+    /// is invalid.
+    pub fn validate_itin(&self, itin: &str) -> Result<(), Problem> {
+        self.inner.validate_itin(itin)
+    }
 }

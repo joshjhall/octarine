@@ -17,7 +17,7 @@ fn redact_pii(text: &str) -> String {
 
 #[test]
 fn test_automatic_ssn_redaction() {
-    let text = "User SSN: 900-00-0001";
+    let text = "User SSN: 517-29-8346";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     assert_eq!(redacted, "User SSN: [SSN]");
@@ -72,7 +72,7 @@ fn test_automatic_ip_address_redaction() {
 
 #[test]
 fn test_multiple_pii_types_in_single_message() {
-    let text = "User: user@example.com, SSN: 900-00-0001, Card: 4242424242424242";
+    let text = "User: user@example.com, SSN: 517-29-8346, Card: 4242424242424242";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     // All PII should be redacted
@@ -83,7 +83,7 @@ fn test_multiple_pii_types_in_single_message() {
 
 #[test]
 fn test_scan_detects_all_pii_types() {
-    let text = "Email: user@example.com, SSN: 900-00-0001";
+    let text = "Email: user@example.com, SSN: 517-29-8346";
     let pii_types = scan_for_pii(text);
 
     // Must contain at least 2 (email, SSN), may detect more (names, etc.)
@@ -122,7 +122,7 @@ fn test_production_lenient_redaction() {
 
 #[test]
 fn test_testing_profile_no_redaction() {
-    let text = "SSN: 900-00-0001, Email: user@example.com";
+    let text = "SSN: 517-29-8346, Email: user@example.com";
     let redacted = redact_pii_with_profile(text, RedactionProfile::Testing);
 
     // Testing mode: no redaction
@@ -828,7 +828,7 @@ fn test_redact_empty_string() {
 fn test_redact_large_input_under_limit_still_redacts_ssn() {
     let padding = "x".repeat(4_000);
     // Total length ~= 8 KB — well under the per-detector 10 KB guard.
-    let text = format!("{padding} SSN: 900-00-0001 {padding}");
+    let text = format!("{padding} SSN: 517-29-8346 {padding}");
     assert!(
         text.len() < 10_000,
         "fixture must stay under MAX_INPUT_LENGTH; got {}",
@@ -841,7 +841,7 @@ fn test_redact_large_input_under_limit_still_redacts_ssn() {
         "SSN inside an under-limit string must still be redacted",
     );
     assert!(
-        !redacted.contains("900-00-0001"),
+        !redacted.contains("517-29-8346"),
         "raw SSN must not survive redaction",
     );
 }
@@ -857,7 +857,7 @@ fn test_redact_large_input_under_limit_still_redacts_ssn() {
 fn test_redact_large_input_above_limit_skips_pii() {
     let padding = "x".repeat(11_000);
     // Total length ~= 22 KB — above the per-detector 10 KB guard.
-    let text = format!("{padding} SSN: 900-00-0001 {padding}");
+    let text = format!("{padding} SSN: 517-29-8346 {padding}");
     assert!(
         text.len() > 10_000,
         "fixture must exceed MAX_INPUT_LENGTH; got {}",
@@ -877,7 +877,7 @@ fn test_redact_large_input_above_limit_skips_pii() {
          no [SSN] marker should appear",
     );
     assert!(
-        redacted.contains("900-00-0001"),
+        redacted.contains("517-29-8346"),
         "raw SSN survives because the detector skipped this oversize input",
     );
 }

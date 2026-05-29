@@ -158,6 +158,14 @@ impl StreamingScanner {
             let _ = self.buffer.push(m);
             total = total.saturating_add(1);
         }
+        for m in government.find_eins_in_text(text) {
+            let _ = self.buffer.push(m);
+            total = total.saturating_add(1);
+        }
+        for m in government.find_itins_in_text(text) {
+            let _ = self.buffer.push(m);
+            total = total.saturating_add(1);
+        }
         for m in government.find_tax_ids_in_text(text) {
             let _ = self.buffer.push(m);
             total = total.saturating_add(1);
@@ -360,6 +368,10 @@ impl StreamingScanner {
             (
                 |t| matches!(t, IdentifierType::Ein),
                 GovernmentIdentifierBuilder::find_eins_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::Itin),
+                GovernmentIdentifierBuilder::find_itins_in_text,
             ),
             (
                 |t| matches!(t, IdentifierType::TaxId),

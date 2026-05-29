@@ -24,12 +24,12 @@ use super::super::{conversion, validation};
 /// use crate::primitives::identifiers::government::sanitization;
 ///
 /// // Valid SSN with spaces
-/// let sanitized = sanitization::sanitize_ssn_strict("900 00 0001")?;
-/// assert_eq!(sanitized, "900-00-0001");
+/// let sanitized = sanitization::sanitize_ssn_strict("234 56 7890")?;
+/// assert_eq!(sanitized, "517-29-8346");
 ///
 /// // Valid SSN already formatted
-/// let sanitized = sanitization::sanitize_ssn_strict("900-00-0001")?;
-/// assert_eq!(sanitized, "900-00-0001");
+/// let sanitized = sanitization::sanitize_ssn_strict("517-29-8346")?;
+/// assert_eq!(sanitized, "517-29-8346");
 ///
 /// // Invalid SSN (bad format)
 /// assert!(sanitization::sanitize_ssn_strict("123456789").is_err());

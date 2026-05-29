@@ -9,6 +9,7 @@
 use super::super::super::common::patterns;
 use super::super::super::types::{DetectionConfidence, IdentifierMatch, IdentifierType};
 use super::super::common::{is_itin_area, is_test_ssn};
+use super::super::validation::validate_itin;
 use super::helpers::{MAX_INPUT_LENGTH, deduplicate_matches, exceeds_safe_length, get_full_match};
 
 /// Extract only ASCII digits from a string
@@ -134,13 +135,24 @@ pub fn find_ssns_in_text(text: &str) -> Vec<IdentifierMatch> {
             let full_match = get_full_match(&capture);
             let matched_text = full_match.as_str();
 
-            // Reclassify ITINs (area 900-999) as TaxId
+            // Reclassify ITINs (area 900-999). Values that satisfy the full
+            // IRS rule become `Itin`; values that only share the 9XX area but
+            // fail the middle-group constraint stay `TaxId` so they remain
+            // visible as PII without claiming to be an ITIN. We validate
+            // against the extracted digit string so labeled matches
+            // (e.g. "SSN: 900-70-1234") still route correctly.
             if is_itin_area(matched_text) {
+                let digits = extract_digits(matched_text);
+                let identifier_type = if validate_itin(&digits).is_ok() {
+                    IdentifierType::Itin
+                } else {
+                    IdentifierType::TaxId
+                };
                 matches.push(IdentifierMatch::high_confidence(
                     full_match.start(),
                     full_match.end(),
                     matched_text.to_string(),
-                    IdentifierType::TaxId,
+                    identifier_type,
                 ));
                 continue;
             }
@@ -259,18 +271,30 @@ mod tests {
 
     #[test]
     fn test_find_ssns_reclassifies_itin() {
+        // 900-70-1234 has valid ITIN middle group 70 → reclassified as `Itin`.
+        // 912-34-5678 has invalid middle group 34 → reclassified as `TaxId`
+        // (it shares the area but fails the IRS middle-group rule).
         let text = "ITIN holder SSN: 900-70-1234 and 912-34-5678";
         let matches = find_ssns_in_text(text);
-        // Both should be reclassified as TaxId
         assert!(
             matches
                 .iter()
-                .all(|m| m.identifier_type == IdentifierType::TaxId),
-            "900-999 area codes should be classified as TaxId, not Ssn"
+                .any(|m| m.identifier_type == IdentifierType::Itin
+                    && m.matched_text.contains("900-70-1234")),
+            "900-70-1234 should classify as Itin, got: {matches:?}"
         );
         assert!(
-            !matches.is_empty(),
-            "ITINs should still be detected as TaxId"
+            matches
+                .iter()
+                .any(|m| m.identifier_type == IdentifierType::TaxId
+                    && m.matched_text.contains("912-34-5678")),
+            "912-34-5678 should classify as TaxId (invalid ITIN middle group), got: {matches:?}"
+        );
+        assert!(
+            !matches
+                .iter()
+                .any(|m| m.identifier_type == IdentifierType::Ssn),
+            "9XX-area values must never be Ssn"
         );
     }
 }

@@ -37,14 +37,14 @@
 //! let gov = builder.government();
 //!
 //! // Detection
-//! let is_ssn = gov.is_ssn("900-00-0001");
-//! let ssns = gov.find_ssns_in_text("SSN: 900-00-0001");
+//! let is_ssn = gov.is_ssn("517-29-8346");
+//! let ssns = gov.find_ssns_in_text("SSN: 517-29-8346");
 //!
 //! // Validation
-//! let valid = gov.validate_ssn("234-56-7890");
+//! let valid = gov.validate_ssn("517-29-8346");
 //!
 //! // Sanitization
-//! let redacted = gov.redact_ssn("900-00-0001");
+//! let redacted = gov.redact_ssn("517-29-8346");
 //!
 //! // Conversion
 //! let normalized = gov.normalize_ssn("900 00 0001");

@@ -11,7 +11,7 @@ pub enum IdentifierType {
     // Personal identifiers
     Email,
     PhoneNumber,
-    Ssn,          // Includes ITIN, EIN
+    Ssn,          // US Social Security Number (area 001-665 and 667-899 only — 9xx are ITINs)
     PersonalName, // Full names, first/last names
     Birthdate,    // Date of birth in various formats
     Username,
@@ -66,7 +66,8 @@ pub enum IdentifierType {
     DriverLicense,
     Passport,
     Ein,   // Employer Identification Number (XX-XXXXXXX, IRS campus prefix)
-    TaxId, // TIN, ITIN (EIN has its own variant)
+    Itin, // US Individual Taxpayer Identification Number (area 9XX, IRS middle group 50-65/70-88/90-92/94-99)
+    TaxId, // Generic TIN — EIN and ITIN have their own variants
     NationalId,
     KoreaRrn,           // South Korea Resident Registration Number (citizens, gender 1-4)
     KoreaFrn,           // South Korea Foreign Registration Number (foreigners, gender 5-8)

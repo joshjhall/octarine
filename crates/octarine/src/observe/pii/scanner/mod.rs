@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_scan_for_pii_ssn() {
-        let text = "SSN: 900-00-0001"; // 900 series is test data
+        let text = "SSN: 517-29-8346";
         let types = scan_for_pii(text);
         assert!(types.contains(&PiiType::Ssn));
     }
@@ -351,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_scan_for_pii_multiple() {
-        let text = "Email: user@example.com, SSN: 900-00-0001, Card: 4242424242424242";
+        let text = "Email: user@example.com, SSN: 517-29-8346, Card: 4242424242424242";
         let types = scan_for_pii(text);
         assert!(
             types.len() >= 3,
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_is_pii_present_true() {
-        assert!(is_pii_present("SSN: 900-00-0001"));
+        assert!(is_pii_present("SSN: 517-29-8346"));
         assert!(is_pii_present("user@example.com"));
         assert!(is_pii_present("4242424242424242"));
     }

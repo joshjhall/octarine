@@ -39,14 +39,14 @@ impl GovernmentIdentifierBuilder {
     ///
     /// // Complete - use type tokens like [SSN], [VEHICLE_ID]
     /// let result = builder.redact_all_in_text_with_policy(
-    ///     "SSN: 900-00-0001",
+    ///     "SSN: 517-29-8346",
     ///     TextRedactionPolicy::Complete,
     /// );
     /// assert!(result.contains("[SSN]"));
     ///
     /// // Partial - shows last 4 digits for SSN
     /// let result = builder.redact_all_in_text_with_policy(
-    ///     "SSN: 900-00-0001",
+    ///     "SSN: 517-29-8346",
     ///     TextRedactionPolicy::Partial,
     /// );
     /// assert!(result.contains("***-**-0001"));
@@ -75,11 +75,11 @@ mod tests {
         let gov = builder();
 
         // Detection
-        assert!(gov.is_government_identifier("900-00-0001"));
-        assert!(gov.is_government_present("SSN: 900-00-0001"));
+        assert!(gov.is_government_identifier("517-29-8346"));
+        assert!(gov.is_government_present("SSN: 517-29-8346"));
 
         // Redaction with policy
-        let text = "SSN: 900-00-0001, VIN: 1HGBH41JXMN109186";
+        let text = "SSN: 517-29-8346, VIN: 1HGBH41JXMN109186";
         let redacted = gov.redact_all_in_text_with_policy(text, TextRedactionPolicy::Complete);
         assert!(redacted.contains("[SSN]"));
         assert!(redacted.contains("[VEHICLE_ID]"));
