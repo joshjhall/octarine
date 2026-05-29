@@ -29,7 +29,7 @@ use super::strategy::{
 ///     redact_ssns_in_text_with_strategy, SsnRedactionStrategy
 /// };
 ///
-/// let text = "Employee SSN: 900-00-0001";
+/// let text = "Employee SSN: 517-29-8346";
 ///
 /// // Complete token
 /// let safe = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::Token);
@@ -37,7 +37,7 @@ use super::strategy::{
 ///
 /// // Partial last 4
 /// let partial = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::LastFour);
-/// assert_eq!(partial, "Employee SSN: ***-**-0001");
+/// assert_eq!(partial, "Employee SSN: ***-**-8346");
 /// ```
 #[must_use]
 pub fn redact_ssns_in_text_with_strategy(
@@ -62,7 +62,7 @@ pub fn redact_ssns_in_text_with_strategy(
                     let redacted = redact_ssn_with_strategy(ssn, strategy);
 
                     if i == 0 {
-                        // Preserve label: "SSN: 900-00-0001" → "SSN: [SSN]"
+                        // Preserve label: "SSN: 517-29-8346" → "SSN: [SSN]"
                         let label = caps.get(1).map_or("", |m| m.as_str());
                         format!("{}{}", label, redacted)
                     } else {
@@ -472,7 +472,7 @@ pub fn redact_vehicle_ids_in_text_with_strategy(
 /// use crate::primitives::identifiers::government::sanitization;
 /// use crate::primitives::identifiers::government::redaction::TextRedactionPolicy;
 ///
-/// let text = "SSN: 900-00-0001, VIN: 1HGBH41JXMN109186";
+/// let text = "SSN: 517-29-8346, VIN: 1HGBH41JXMN109186";
 ///
 /// // Default (Complete)
 /// let safe = sanitization::redact_all_government_ids_in_text_with_policy(text, None);
@@ -483,7 +483,7 @@ pub fn redact_vehicle_ids_in_text_with_strategy(
 ///     text,
 ///     Some(TextRedactionPolicy::Partial)
 /// );
-/// assert!(partial.contains("***-**-0001")); // Last 4 visible
+/// assert!(partial.contains("***-**-8346")); // Last 4 visible
 /// ```
 #[must_use]
 pub fn redact_all_government_ids_in_text_with_policy(
@@ -532,23 +532,23 @@ mod tests {
 
     #[test]
     fn test_redact_ssns_in_text() {
-        let text = "Employee SSN: 900-00-0001";
+        let text = "Employee SSN: 517-29-8346";
         let result = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::Token);
         assert_eq!(result, "Employee SSN: [SSN]");
     }
 
     #[test]
     fn test_redact_ssns_in_text_multiple() {
-        let text = "SSN: 900-00-0001 and SSN: 900-00-0002";
+        let text = "SSN: 517-29-8346 and SSN: 517-29-8347";
         let result = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::Token);
         assert_eq!(result, "SSN: [SSN] and SSN: [SSN]");
     }
 
     #[test]
     fn test_redact_ssns_in_text_last_four() {
-        let text = "Employee SSN: 900-00-0001";
+        let text = "Employee SSN: 517-29-8346";
         let result = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::LastFour);
-        assert_eq!(result, "Employee SSN: ***-**-0001");
+        assert_eq!(result, "Employee SSN: ***-**-8346");
     }
 
     // ========================================================================
@@ -619,7 +619,7 @@ mod tests {
     fn test_redact_all_government_ids() {
         use crate::primitives::identifiers::GovernmentTextPolicy;
 
-        let text = "SSN: 900-00-0001, VIN: 1HGBH41JXMN109186, EIN: 00-0000001";
+        let text = "SSN: 517-29-8346, VIN: 1HGBH41JXMN109186, EIN: 00-0000001";
         let result = redact_all_government_ids_in_text_with_policy(
             text,
             Some(GovernmentTextPolicy::Complete),
@@ -633,14 +633,14 @@ mod tests {
     fn test_redact_all_government_ids_with_policy() {
         use crate::primitives::identifiers::GovernmentTextPolicy;
 
-        let text = "SSN: 900-00-0001";
+        let text = "SSN: 517-29-8346";
 
         // Partial policy shows last 4
         let partial = redact_all_government_ids_in_text_with_policy(
             text,
             Some(GovernmentTextPolicy::Partial),
         );
-        assert!(partial.contains("***-**-0001"));
+        assert!(partial.contains("***-**-8346"));
 
         // Skip policy returns original
         let none =
@@ -668,7 +668,7 @@ mod tests {
         assert!(matches!(result, Cow::Borrowed(_)));
 
         // Dirty text should return owned
-        let text = "SSN: 900-00-0001";
+        let text = "SSN: 517-29-8346";
         let result = redact_ssns_in_text_with_strategy(text, SsnRedactionStrategy::Token);
         assert!(matches!(result, Cow::Owned(_)));
     }

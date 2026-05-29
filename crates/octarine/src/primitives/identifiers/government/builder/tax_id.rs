@@ -89,6 +89,36 @@ impl GovernmentIdentifierBuilder {
     pub fn sanitize_ein(&self, ein: &str) -> Result<String, Problem> {
         sanitization::sanitize_ein_strict(ein)
     }
+
+    /// Check if value is a valid ITIN (Individual Taxpayer Identification Number)
+    ///
+    /// Strict — requires `XXX-XX-XXXX` layout, area `9XX`, and a middle group
+    /// in `{50-65, 70-88, 90-92, 94-99}` per IRS Publication 1915. Use
+    /// [`is_tax_id`](Self::is_tax_id) for the broader superset check.
+    #[must_use]
+    pub fn is_itin(&self, value: &str) -> bool {
+        detection::is_itin(value)
+    }
+
+    /// Find all valid ITINs in text
+    ///
+    /// Returns `Itin`-tagged matches that pass the full IRS rule. Values with
+    /// the right shape but an invalid middle group are not returned here —
+    /// `find_tax_ids_in_text` will still surface them as `TaxId`.
+    #[must_use]
+    pub fn find_itins_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_itins_in_text(text)
+    }
+
+    /// Validate ITIN format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the ITIN format, area, middle group, or serial
+    /// is invalid.
+    pub fn validate_itin(&self, itin: &str) -> Result<(), Problem> {
+        validation::validate_itin(itin)
+    }
 }
 
 #[cfg(test)]

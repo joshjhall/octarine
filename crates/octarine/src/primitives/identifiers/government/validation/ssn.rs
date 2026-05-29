@@ -7,7 +7,7 @@
 //! SSN validation implements Social Security Administration rules:
 //! - Area 000 is never valid
 //! - Area 666 is reserved/never issued
-//! - Areas 900-999 are for ITINs (not SSNs)
+//! - Areas 900-999 are for ITINs (rejected as SSN — use `validate_itin`)
 //! - Group 00 is invalid
 //! - Serial 0000 is invalid
 //! - Test patterns (123-45-6789, etc.) are rejected
@@ -54,10 +54,10 @@ use super::cache::SSN_VALIDATION_CACHE;
 ///
 /// # SSA Validation Rules
 ///
-/// - **Area (first 3 digits)**: Cannot be 000, 666, or sequential patterns
+/// - **Area (first 3 digits)**: Cannot be 000, 666, or 900-999 (ITIN range)
 /// - **Group (middle 2 digits)**: Cannot be 00
 /// - **Serial (last 4 digits)**: Cannot be 0000
-/// - **Area 9xx**: ITINs, not SSNs (warning but not rejected)
+/// - **Area 9XX**: Rejected — these are ITINs. Use [`validate_itin`] instead.
 ///
 /// # Compliance
 ///
@@ -107,6 +107,15 @@ fn validate_ssn_uncached(ssn: &str) -> Result<(), Problem> {
     // SSA Rule: Area 666 is reserved/never issued
     if area == "666" {
         return Err(Problem::Validation("Invalid SSN area number 666".into()));
+    }
+
+    // SSA Rule: Area 9XX is the ITIN range — not an SSN. Reject here so the
+    // caller is forced to route through `validate_itin`, which enforces the
+    // IRS middle-group constraint that this validator cannot.
+    if area.starts_with('9') {
+        return Err(Problem::Validation(
+            "9XX area is an ITIN, not an SSN — use validate_itin".into(),
+        ));
     }
 
     // SSA Rule: Group 00 is invalid
@@ -230,9 +239,12 @@ mod tests {
 
     #[test]
     fn test_ssn_itin_area() {
-        // ITINs use 9xx area codes - we warn but don't reject
-        assert!(validate_ssn("912-34-5678").is_ok());
-        assert!(validate_ssn("987-12-3456").is_ok());
+        // 9XX area is an ITIN, not an SSN. validate_ssn must reject — even
+        // for values that would be valid ITINs — and callers must route
+        // 9XX strings through validate_itin.
+        assert!(validate_ssn("912-34-5678").is_err());
+        assert!(validate_ssn("987-12-3456").is_err());
+        assert!(validate_ssn("900-70-0001").is_err()); // valid as ITIN, still not an SSN
     }
 
     #[test]
@@ -367,7 +379,8 @@ mod tests {
         assert!(validate_ssn("666-01-0001").is_err()); // Invalid: 666
         assert!(validate_ssn("665-01-0001").is_ok()); // Valid: 665
         assert!(validate_ssn("667-01-0001").is_ok()); // Valid: 667
-        assert!(validate_ssn("900-01-0001").is_ok()); // Valid: ITIN in lenient mode
+        assert!(validate_ssn("899-01-0001").is_ok()); // Valid: 899 (just below ITIN range)
+        assert!(validate_ssn("900-01-0001").is_err()); // ITIN range — not an SSN
 
         // Group number boundaries
         assert!(validate_ssn("234-00-0001").is_err()); // Invalid: 00

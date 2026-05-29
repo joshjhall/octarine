@@ -20,7 +20,7 @@ impl PiiType {
             Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken |
             Self::Iban | Self::CryptoAddress |
             // Government (identity theft risk)
-            Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::TaxId | Self::NationalId | Self::Vin |
+            Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::Itin | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::KoreaFrn | Self::KoreaDriverLicense | Self::KoreaPassport | Self::KoreaBrn |
             Self::AustraliaTfn | Self::AustraliaAbn | Self::IndiaAadhaar | Self::IndiaPan |
             Self::IndiaGstin | Self::IndiaVehicleReg | Self::IndiaVoterId | Self::IndiaPassport |
@@ -113,6 +113,7 @@ impl PiiType {
                 | Self::PrescriptionNumber
                 | Self::DeaNumber
                 | Self::Ssn // SSN is also PHI in medical context
+                | Self::Itin // ITIN is also PHI in medical context (IRS-issued tax ID for patients)
                 | Self::Name // Names in medical context
                 | Self::Birthdate // DOB in medical context
                 | Self::Age // Age in medical context — HIPAA Safe Harbor requires aggregating > 89

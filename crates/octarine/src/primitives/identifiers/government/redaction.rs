@@ -50,7 +50,7 @@
 //!
 //! // Text scanning with generic policy
 //! let redacted = redact_all_government_ids_in_text_with_policy(
-//!     "SSN: 900-00-0001, VIN: 1HGBH41JXMN109186",
+//!     "SSN: 517-29-8346, VIN: 1HGBH41JXMN109186",
 //!     Some(TextRedactionPolicy::Complete)
 //! );
 //! // Result: "SSN: [SSN], VIN: [VEHICLE_ID]"

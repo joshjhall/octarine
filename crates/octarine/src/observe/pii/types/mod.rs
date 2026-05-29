@@ -89,6 +89,8 @@ pub enum PiiType {
     Vin,
     /// Employer Identification Number
     Ein,
+    /// US Individual Taxpayer Identification Number (area 9XX, IRS middle group 50-65/70-88/90-92/94-99)
+    Itin,
     /// Tax ID (generic)
     TaxId,
     /// National ID number (non-US government identifiers)

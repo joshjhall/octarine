@@ -166,6 +166,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::Passport => redact_passports(&result, profile),
             PiiType::Vin
             | PiiType::Ein
+            | PiiType::Itin
             | PiiType::TaxId
             | PiiType::NationalId
             | PiiType::KoreaRrn
@@ -310,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_redact_ssn_strict() {
-        let text = "SSN: 900-00-0001";
+        let text = "SSN: 517-29-8346";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
         // ProductionStrict uses Complete::Token strategy → [SSN]
         assert_eq!(result, "SSN: [SSN]");
@@ -381,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_redact_multiple_pii() {
-        let text = "Contact: user@example.com, SSN: 900-00-0001, Card: 4242424242424242";
+        let text = "Contact: user@example.com, SSN: 517-29-8346, Card: 4242424242424242";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
         // ProductionStrict uses Complete::Token strategy
         assert!(result.contains("[EMAIL]"));
@@ -398,14 +399,14 @@ mod tests {
 
     #[test]
     fn test_redact_testing_profile() {
-        let text = "SSN: 900-00-0001, Email: user@example.com";
+        let text = "SSN: 517-29-8346, Email: user@example.com";
         let result = redact_pii_with_profile(text, RedactionProfile::Testing);
         assert_eq!(result, text); // No redaction in testing mode
     }
 
     #[test]
     fn test_scan_and_redact() {
-        let text = "Email: user@example.com, SSN: 900-00-0001";
+        let text = "Email: user@example.com, SSN: 517-29-8346";
         let result = scan_and_redact(text, RedactionProfile::ProductionStrict);
 
         assert!(result.contains_pii);
@@ -446,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_multiple_ssns_in_line() {
-        let text = "SSN1: 900-00-0001, SSN2: 900-00-0002, SSN3: 900-00-0003";
+        let text = "SSN1: 517-29-8346, SSN2: 517-29-8347, SSN3: 517-29-8348";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
         // All SSNs should be redacted
         let ssn_count = result.matches("[SSN]").count();
@@ -534,7 +535,7 @@ mod tests {
     #[test]
     fn test_partial_redaction_lenient() {
         // Test that ProductionLenient shows partial data
-        let text = "SSN: 900-00-0001";
+        let text = "SSN: 517-29-8346";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionLenient);
         // Should show last digits in lenient mode
         assert!(result.contains("0001") || result.contains("***"));

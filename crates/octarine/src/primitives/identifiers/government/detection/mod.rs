@@ -49,6 +49,7 @@ mod driver_license;
 mod europe;
 mod helpers;
 mod india;
+mod itin;
 mod korea_brn;
 mod korea_driver_license;
 mod korea_frn;
@@ -89,6 +90,7 @@ pub use india::{
     find_india_voter_ids_in_text, is_india_aadhaar, is_india_gstin, is_india_pan,
     is_india_passport, is_india_vehicle_registration, is_india_voter_id,
 };
+pub use itin::{find_itins_in_text, is_itin};
 pub use korea_brn::{find_korea_brns_in_text, is_korea_brn};
 pub use korea_driver_license::{find_korea_driver_licenses_in_text, is_korea_driver_license};
 pub use korea_frn::{find_korea_frns_in_text, is_korea_frn};
@@ -151,6 +153,8 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::Ssn)
     } else if is_ein(value) {
         Some(IdentifierType::Ein)
+    } else if is_itin(value) {
+        Some(IdentifierType::Itin)
     } else if is_tax_id(value) {
         Some(IdentifierType::TaxId)
     } else if is_driver_license(value) {
@@ -245,6 +249,7 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
 
     all_matches.extend(find_ssns_in_text(text));
     all_matches.extend(find_eins_in_text(text));
+    all_matches.extend(find_itins_in_text(text));
     all_matches.extend(find_tax_ids_in_text(text));
     all_matches.extend(find_driver_licenses_in_text(text));
     all_matches.extend(find_passports_in_text(text));
@@ -393,7 +398,12 @@ mod tests {
             detect_government_identifier("00-0000001"),
             Some(IdentifierType::TaxId)
         );
-        // ITINs continue to be TaxId
+        // Valid ITINs route to Itin
+        assert_eq!(
+            detect_government_identifier("900-70-0001"),
+            Some(IdentifierType::Itin)
+        );
+        // 9XX-area values that fail the IRS middle-group rule fall through to TaxId
         assert_eq!(
             detect_government_identifier("912-34-5678"),
             Some(IdentifierType::TaxId)

@@ -19,7 +19,7 @@ use super::strategy::SsnRedactionStrategy;
 /// - `Anonymous` → `[Redacted]`
 /// - `LastFour` → `***-**-0001`
 /// - `FirstFive` → `900-00-****` (RISKY - leaks geographic area)
-/// - `Skip` → `900-00-0001` (no redaction)
+/// - `Skip` → `517-29-8346` (no redaction)
 ///
 /// # Security Considerations
 ///
@@ -35,15 +35,15 @@ use super::strategy::SsnRedactionStrategy;
 /// };
 ///
 /// // Complete token redaction
-/// let token = redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token);
+/// let token = redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token);
 /// assert_eq!(token, "[SSN]");
 ///
 /// // Partial redaction (last 4 - safer)
-/// let partial = redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::LastFour);
+/// let partial = redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::LastFour);
 /// assert_eq!(partial, "***-**-0001");
 ///
 /// // Complete masking
-/// let masked = redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Mask);
+/// let masked = redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Mask);
 /// assert_eq!(masked, "***-**-****");
 /// ```
 #[must_use]
@@ -112,13 +112,13 @@ mod tests {
     fn test_redact_ssn_with_strategies() {
         // Token
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token),
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token),
             "[SSN]"
         );
 
         // Mask
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Mask),
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Mask),
             "***-**-****"
         );
         assert_eq!(
@@ -132,14 +132,14 @@ mod tests {
 
         // Anonymous
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Anonymous),
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Anonymous),
             "[Redacted]"
         );
 
         // LastFour
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::LastFour),
-            "***-**-0001"
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::LastFour),
+            "***-**-8346"
         );
         assert_eq!(
             redact_ssn_with_strategy("900 00 0002", SsnRedactionStrategy::LastFour),
@@ -148,8 +148,8 @@ mod tests {
 
         // FirstFive (RISKY)
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::FirstFive),
-            "900-00-****"
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::FirstFive),
+            "517-29-****"
         );
         assert_eq!(
             redact_ssn_with_strategy("900 00 0002", SsnRedactionStrategy::FirstFive),
@@ -164,8 +164,8 @@ mod tests {
 
         // Skip
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Skip),
-            "900-00-0001"
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Skip),
+            "517-29-8346"
         );
     }
 
@@ -173,7 +173,7 @@ mod tests {
     fn test_multiple_formats() {
         // Dashed format
         assert_eq!(
-            redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token),
+            redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token),
             "[SSN]"
         );
 

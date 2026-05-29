@@ -40,7 +40,7 @@ impl GovernmentIdentifierBuilder {
     /// };
     ///
     /// let builder = GovernmentIdentifierBuilder::new();
-    /// let result = builder.redact_ssn_with_strategy("900-00-0001", SsnRedactionStrategy::Token);
+    /// let result = builder.redact_ssn_with_strategy("517-29-8346", SsnRedactionStrategy::Token);
     /// assert_eq!(result, "[SSN]");
     /// ```
     #[must_use]
@@ -59,7 +59,7 @@ impl GovernmentIdentifierBuilder {
     ///
     /// let builder = GovernmentIdentifierBuilder::new();
     /// let result = builder.redact_ssns_in_text_with_strategy(
-    ///     "SSN: 900-00-0001",
+    ///     "SSN: 517-29-8346",
     ///     SsnRedactionStrategy::LastFour,
     /// );
     /// assert!(result.contains("***-**-0001"));
