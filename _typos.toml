@@ -94,6 +94,49 @@ Tema = "Tema"   # Ghana city
 Herat = "Herat" # Afghanistan city
 Ba = "Ba"       # Fiji city
 
+# ISO 3166-1 alpha-2 country codes that collide with English typos. The IBAN
+# recognizer enumerates all 70 supported country codes (#436), and the gazetteer
+# uses these as well.
+FO = "FO" # Faroe Islands
+fo = "fo" # lowercase variant
+
+# Indian motor-vehicle registration vocabulary — RTO = Regional Transport Office.
+# Surfaces in IN_VEHICLE_REGISTRATION recognizer context keywords (#476, #450)
+# and per-state RTO format docs.
+RTO = "RTO"
+rto = "rto"
+
+# Azure Kubernetes Service — surfaces in deployment docs, Bicep modules, Helm
+# chart values, and the Invisio-style reference deployment (#475, #594).
+AKS = "AKS"
+aks = "aks"
+
+# DICOM PN (Person Name) Value Representation type. Surfaces throughout the
+# octarine-dicom crate (#471, #555) and PS3.15 Annex E conformance work.
+# Single-letter VR codes (AE, AS, AT, CS, DA, DS, DT, FD, FL, IS, LO, LT, OB,
+# OD, OF, OL, OW, PN, SH, SL, SQ, SS, ST, TM, UI, UL, UN, US, UT) are the
+# DICOM type system — add only the ones typos flags as misspellings.
+PN = "PN"
+pn = "pn"
+
+# Pydantic-style configuration vocabulary used in TOML schema discussions
+# (#496 layered config) — `entit{y,ies}` is a parametric ref to entity/entities
+# in the recognizer config schema.
+entit = "entit"
+
+# Stock exchange codes that surface in organization-name corpora and any
+# future financial-identifier exchange-listing detection.
+BSE = "BSE" # Bombay Stock Exchange
+TYO = "TYO" # Tokyo Stock Exchange
+
+# Presidio sample-code typos preserved verbatim as quotes in
+# docs/audits/presidio/. These are NOT octarine typos — they're errors in
+# Microsoft's published sample code that we cite by-string. Mapping to
+# themselves silences typos without normalizing the citation.
+mappgings = "mappgings" # Invisio sample `build_entity_mappgings` (sic)
+namne = "namne"         # Spark sample `table_namne` (sic)
+parrallel = "parrallel" # Spark sample comment "parrallel processing" (sic)
+
 [files]
 extend-exclude = [
   "CHANGELOG.md",

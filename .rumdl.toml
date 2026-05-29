@@ -56,3 +56,25 @@ tables = false
 # Long-form reference / gap-analysis docs use dense paragraphs sourced
 # from external research; MD013/MD049 are not useful gating signals.
 "docs/presidio-gap-analysis.md" = ["MD013", "MD049"]
+# Multi-file audit research output (docs/audits/**) — same rationale, plus
+# table/list spacing rules that fire often on dense reference content. Audit
+# docs quote external source verbatim (Presidio tables with collapsed cells,
+# code blocks with `#!/bin/sh` shebangs, `#1639` issue refs, `+` list markers
+# in code samples, bare GitHub URLs as citations) — these are not formatting
+# bugs, they are accurate quotes.
+"docs/audits/**" = [
+  "MD004", # list marker style (audit quotes `+` markers in code samples)
+  "MD012", # multiple blank lines
+  "MD013", # line length
+  "MD018", # no space after `#` (audit quotes `#1639` issue refs + `#!/sh` shebangs)
+  "MD022", # blank lines around heading
+  "MD031", # blank line before/after fenced code block
+  "MD032", # blank line before list
+  "MD034", # bare URL (audit cites GitHub URLs as sources)
+  "MD038", # spaces inside code span
+  "MD040", # code block language tag
+  "MD049", # emphasis style
+  "MD050", # strong style
+  "MD056", # table cell count (audit quotes Presidio tables with collapsed cells)
+  "MD058", # blank line before table
+]
