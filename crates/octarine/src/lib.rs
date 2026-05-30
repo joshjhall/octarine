@@ -164,6 +164,20 @@ pub mod crypto;
 /// ```
 pub mod identifiers;
 
+/// PII anonymization operator and engine surface (Layer 3)
+///
+/// This module consumes detection results and applies configurable per-entity
+/// transformations to produce anonymized text plus an audit trail — octarine's
+/// parity surface for Presidio's `AnonymizerEngine`.
+///
+/// It currently provides the shared type vocabulary
+/// ([`RecognizerResult`](anonymize::RecognizerResult),
+/// [`OperatorConfig`](anonymize::OperatorConfig),
+/// [`EngineResult`](anonymize::EngineResult), the
+/// [`PiiSpan`](anonymize::PiiSpan) span algebra, and the operator/strategy
+/// enums); the engine and operators land in follow-up work.
+pub mod anonymize;
+
 // ============================================================================
 // Prelude - common imports for consuming applications
 // ============================================================================
