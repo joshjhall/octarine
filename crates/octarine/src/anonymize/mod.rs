@@ -9,18 +9,18 @@
 //!
 //! This is the foundational **type system** only. The engine and the
 //! individual operators are implemented in follow-up work; everything they
-//! share is defined here in [`types`]:
+//! share is defined here:
 //!
-//! - [`RecognizerResult`] — the single canonical detection result.
-//! - [`OperatorConfig`] — caller-immutable per-entity operator configuration.
-//! - [`OperatorResult`] / [`EngineResult`] — per-entity and top-level output.
-//! - [`OperatorType`] — anonymize vs deanonymize direction.
-//! - [`ConflictResolutionStrategy`] — overlap-resolution selector.
-//! - [`PiiSpan`] — shared half-open span algebra (intersects, contains, …).
+//! - `RecognizerResult` — the single canonical detection result.
+//! - `OperatorConfig` — caller-immutable per-entity operator configuration.
+//! - `OperatorResult` / `EngineResult` — per-entity and top-level output.
+//! - `OperatorType` — anonymize vs deanonymize direction.
+//! - `ConflictResolutionStrategy` — overlap-resolution selector.
+//! - `PiiSpan` — shared half-open span algebra (intersects, contains, …).
 //!
-//! All spans are half-open (`start` inclusive, `end` exclusive). See
-//! [`types`] for the full design rationale and the Presidio anti-patterns this
-//! layout deliberately avoids.
+//! All spans are half-open (`start` inclusive, `end` exclusive). See the type
+//! definitions below for the full design rationale and the Presidio
+//! anti-patterns this layout deliberately avoids.
 
 mod types;
 
