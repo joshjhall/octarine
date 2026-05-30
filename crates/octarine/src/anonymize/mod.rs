@@ -5,11 +5,7 @@
 //! transformations (replace, redact, mask, hash, encrypt, keep, custom, …) to
 //! produce anonymized text plus an audit trail.
 //!
-//! # Status
-//!
-//! This is the foundational **type system** only. The engine and the
-//! individual operators are implemented in follow-up work; everything they
-//! share is defined here:
+//! # Components
 //!
 //! - `RecognizerResult` — the single canonical detection result.
 //! - `OperatorConfig` — caller-immutable per-entity operator configuration.
@@ -17,13 +13,42 @@
 //! - `OperatorType` — anonymize vs deanonymize direction.
 //! - `ConflictResolutionStrategy` — overlap-resolution selector.
 //! - `PiiSpan` — shared half-open span algebra (intersects, contains, …).
+//! - `Operator` — the transformation trait every operator implements.
+//! - `AnonymizerEngine` — applies operators to detected spans with conflict
+//!   resolution and offset tracking.
+//! - `Replace` / `Redact` — the built-in operators. Further operators (mask,
+//!   hash, encrypt, keep, custom) land as follow-up work under the
+//!   `anonymize/` umbrella.
 //!
 //! All spans are half-open (`start` inclusive, `end` exclusive). See the type
-//! definitions below for the full design rationale and the Presidio
-//! anti-patterns this layout deliberately avoids.
+//! definitions for the full design rationale and the Presidio anti-patterns
+//! this layout deliberately avoids.
+//!
+//! # Quick start
+//!
+//! ```
+//! use std::collections::HashMap;
+//! use octarine::anonymize::{anonymize, OperatorConfig, RecognizerResult};
+//!
+//! let mut operators = HashMap::new();
+//! operators.insert("US_SSN".to_string(), OperatorConfig::new("redact")?);
+//!
+//! let results = vec![RecognizerResult::new("US_SSN", 4, 15, 0.95)?];
+//! let out = anonymize("SSN 123-45-6789.", results, &operators)?;
+//! assert_eq!(out.text.as_deref(), Some("SSN ."));
+//! # Ok::<(), octarine_problem::Problem>(())
+//! ```
 
+mod engine;
+mod operator;
+mod operators;
+mod shortcuts;
 mod types;
 
+pub use engine::AnonymizerEngine;
+pub use operator::Operator;
+pub use operators::{Redact, Replace};
+pub use shortcuts::{anonymize, redact_all};
 pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
     PiiSpan, RecognizerResult,

@@ -9,3 +9,6 @@
 - [Pre-1.0 prefer breaking](feedback_pre_1_0_breaking_changes.md) — while on 0.x beta, do breaking renames directly; skip `#[deprecated]` aliases
 - [macOS CI cache poisoning](project_ci_macos_cache_poisoning.md) — ci.yml uses `cache-bin: false` + versioned `shared-key` to prevent a poisoned `~/.cargo/bin` cache from breaking every subsequent run. Bump the key if it happens again; don't waste time debugging.
 - [Presidio audit issue namespace](project_presidio_audit_issues.md) — 140 issues #462-#601 in `gap/presidio` namespace. 15 tracking issues are the entry points; audit source-of-truth lives at `docs/audits/presidio/00-feature-master.md`.
+- [Conform scope allowlist](project_conform_scope_allowlist.md) — new top-level octarine modules must be added to `.conform.yaml` scopes or the commit-msg hook rejects `feat(<module>):`
+- [CI Doc job is strict](project_ci_doc_job_strict.md) — CI `Doc` runs `just doc` (rustdoc -D warnings, catches broken intra-doc links); `just preflight`/`test-docs` don't. Run `just doc` after editing doc comments.
+- [Redactor/engine convergence](project_redactor_engine_convergence.md) — epic #604: converge observe/pii redactor onto anonymize engine; operators (Mask #483, Hash #484) must delegate to primitive strategies, not reimplement. Detection already single-sourced.
