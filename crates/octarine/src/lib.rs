@@ -170,12 +170,31 @@ pub mod identifiers;
 /// transformations to produce anonymized text plus an audit trail — octarine's
 /// parity surface for Presidio's `AnonymizerEngine`.
 ///
-/// It currently provides the shared type vocabulary
+/// It provides the shared type vocabulary
 /// ([`RecognizerResult`](anonymize::RecognizerResult),
 /// [`OperatorConfig`](anonymize::OperatorConfig),
 /// [`EngineResult`](anonymize::EngineResult), the
 /// [`PiiSpan`](anonymize::PiiSpan) span algebra, and the operator/strategy
-/// enums); the engine and operators land in follow-up work.
+/// enums), the [`AnonymizerEngine`](anonymize::AnonymizerEngine) with
+/// conflict resolution and offset tracking, and the built-in
+/// [`Replace`](anonymize::Replace) and [`Redact`](anonymize::Redact)
+/// operators. Further operators (mask, hash, encrypt, keep, custom) land as
+/// follow-up work.
+///
+/// # Quick Start
+///
+/// ```rust
+/// use std::collections::HashMap;
+/// use octarine::anonymize::{anonymize, OperatorConfig, RecognizerResult};
+///
+/// let mut operators = HashMap::new();
+/// operators.insert("US_SSN".to_string(), OperatorConfig::new("redact")?);
+///
+/// let results = vec![RecognizerResult::new("US_SSN", 4, 15, 0.95)?];
+/// let out = anonymize("SSN 123-45-6789.", results, &operators)?;
+/// assert_eq!(out.text.as_deref(), Some("SSN ."));
+/// # Ok::<(), octarine::observe::Problem>(())
+/// ```
 pub mod anonymize;
 
 // ============================================================================
