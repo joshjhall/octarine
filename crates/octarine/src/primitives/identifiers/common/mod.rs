@@ -23,7 +23,7 @@ pub use luhn::{
     is_valid as is_luhn_valid, is_valid_with_min_length as is_luhn_valid_with_min_length,
 };
 pub use masking::{
-    alphanumeric_only, create_mask, digits_only, mask_all, mask_digits_preserve_format,
+    alphanumeric_only, create_mask, digits_only, mask_all, mask_chars, mask_digits_preserve_format,
     mask_middle, show_first_and_last, show_first_n, show_last_n,
 };
 pub use utils::{

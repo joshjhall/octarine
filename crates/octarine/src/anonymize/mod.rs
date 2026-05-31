@@ -16,10 +16,13 @@
 //! - `Operator` — the transformation trait every operator implements.
 //! - `AnonymizerEngine` — applies operators to detected spans with conflict
 //!   resolution and offset tracking.
-//! - `Replace` / `Redact` — the stateless built-in operators. `Custom` wraps a
-//!   caller-supplied closure (`Fn(&str) -> Result<String>`) for one-off
-//!   transforms and stateful pseudonymization. Further operators (mask, hash,
-//!   encrypt, keep) land as follow-up work under the `anonymize/` umbrella.
+//! - `Replace` / `Redact` / `Mask` — the stateless built-in operators.
+//!   `Replace` substitutes a fixed value (or `<ENTITY_TYPE>`), `Redact` deletes
+//!   the span, and `Mask` positionally masks characters (multi-char units and
+//!   tail-masking via `from_end`). `Custom` wraps a caller-supplied closure
+//!   (`Fn(&str) -> Result<String>`) for one-off transforms and stateful
+//!   pseudonymization. Further operators (hash, encrypt, keep) land as
+//!   follow-up work under the `anonymize/` umbrella.
 //!
 //! All spans are half-open (`start` inclusive, `end` exclusive). See the type
 //! definitions for the full design rationale and the Presidio anti-patterns
@@ -48,7 +51,7 @@ mod types;
 
 pub use engine::AnonymizerEngine;
 pub use operator::Operator;
-pub use operators::{Custom, Redact, Replace};
+pub use operators::{Custom, Mask, Redact, Replace};
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,

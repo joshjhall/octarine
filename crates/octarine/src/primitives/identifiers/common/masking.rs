@@ -274,6 +274,69 @@ pub fn create_mask(length: usize, mask_char: char) -> String {
     mask_char.to_string().repeat(length)
 }
 
+/// Mask a fixed number of characters from one end of a string
+///
+/// Positional masking with a configurable mask **unit** (one or more
+/// characters). `count` characters are masked from the start, or from the tail
+/// when `from_end` is `true`. Each masked character position is replaced by the
+/// entire `unit` string, so multi-character units like `"**"` or `"XX"` are
+/// supported (the output for a single masked position is the full unit).
+///
+/// `count` is clamped to the character length of `value`, so a `count` larger
+/// than the string simply masks the whole string. UTF-8 safe: counting and
+/// slicing are by `char`, never by byte.
+///
+/// This is the shared transformation behind the anonymize `mask` operator and
+/// any other caller needing positional masking — kept here so the logic has a
+/// single home.
+///
+/// # Arguments
+///
+/// * `value` - The input string
+/// * `unit` - The mask unit (one or more characters, e.g. `"*"` or `"XX"`)
+/// * `count` - Number of characters to mask (clamped to the char length)
+/// * `from_end` - Mask from the tail instead of the start
+///
+/// # Returns
+///
+/// The masked string. With a single-character `unit` the length in characters
+/// is preserved; multi-character units expand each masked position.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Mask the first 4 characters.
+/// assert_eq!(mask_chars("1234567890", "*", 4, false), "****567890");
+///
+/// // Tail-mask the last 4 (PAN/phone pattern).
+/// assert_eq!(mask_chars("1234567890", "*", 4, true), "123456****");
+///
+/// // Multi-character unit.
+/// assert_eq!(mask_chars("abcd", "XX", 2, false), "XXXXcd");
+///
+/// // count larger than the string clamps to its length.
+/// assert_eq!(mask_chars("abc", "*", 99, false), "***");
+/// ```
+pub fn mask_chars(value: &str, unit: &str, count: usize, from_end: bool) -> String {
+    let chars: Vec<char> = value.chars().collect();
+    let char_count = chars.len();
+    let to_mask = count.min(char_count);
+    let keep = char_count.saturating_sub(to_mask);
+    let mask = unit.repeat(to_mask);
+
+    if from_end {
+        let visible: String = chars
+            .get(..keep)
+            .map_or_else(String::new, |s| s.iter().collect());
+        format!("{visible}{mask}")
+    } else {
+        let visible: String = chars
+            .get(to_mask..)
+            .map_or_else(String::new, |s| s.iter().collect());
+        format!("{mask}{visible}")
+    }
+}
+
 /// Mask digits while preserving separators
 ///
 /// Useful for SSN, phone numbers, credit cards with formatting.
@@ -437,6 +500,49 @@ mod tests {
         assert_eq!(create_mask(5, '*'), "*****");
         assert_eq!(create_mask(10, '#'), "##########");
         assert_eq!(create_mask(0, '*'), "");
+    }
+
+    // ===== mask_chars Tests =====
+
+    #[test]
+    fn test_mask_chars_from_start() {
+        assert_eq!(mask_chars("1234567890", "*", 4, false), "****567890");
+        assert_eq!(mask_chars("ABCDEFGH", "*", 3, false), "***DEFGH");
+    }
+
+    #[test]
+    fn test_mask_chars_from_end() {
+        assert_eq!(mask_chars("1234567890", "*", 4, true), "123456****");
+        assert_eq!(mask_chars("ABCDEFGH", "*", 3, true), "ABCDE***");
+    }
+
+    #[test]
+    fn test_mask_chars_multi_char_unit() {
+        // Each masked position expands to the full unit.
+        assert_eq!(mask_chars("abcd", "XX", 2, false), "XXXXcd");
+        assert_eq!(mask_chars("abcd", "**", 2, true), "ab****");
+    }
+
+    #[test]
+    fn test_mask_chars_clamps_to_length() {
+        assert_eq!(mask_chars("abc", "*", 99, false), "***");
+        assert_eq!(mask_chars("abc", "*", 99, true), "***");
+        assert_eq!(mask_chars("", "*", 5, false), "");
+    }
+
+    #[test]
+    fn test_mask_chars_zero_count_is_identity() {
+        assert_eq!(mask_chars("abc", "*", 0, false), "abc");
+        assert_eq!(mask_chars("abc", "*", 0, true), "abc");
+    }
+
+    #[test]
+    fn test_mask_chars_unicode() {
+        // Char-count semantics, not byte-count.
+        assert_eq!(mask_chars("café", "*", 2, true), "ca**");
+        assert_eq!(mask_chars("café", "*", 2, false), "**fé");
+        assert_eq!(mask_chars("😀😀😀😀", "*", 2, false), "**😀😀");
+        assert_eq!(mask_chars("A😀B😀C", "*", 2, true), "A😀B**");
     }
 
     // ===== mask_digits_preserve_format Tests =====

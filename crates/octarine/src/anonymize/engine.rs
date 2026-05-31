@@ -18,7 +18,7 @@ use std::collections::HashMap;
 
 use octarine_problem::{Problem, Result};
 
-use super::operators::{Redact, Replace};
+use super::operators::{Mask, Redact, Replace};
 use super::{
     ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig, OperatorResult, PiiSpan,
     RecognizerResult,
@@ -88,8 +88,9 @@ impl Default for AnonymizerEngine {
 }
 
 impl AnonymizerEngine {
-    /// Creates an engine with the built-in operators (`replace`, `redact`) and
-    /// the default [`ConflictResolutionStrategy::MergeSimilarOrContained`].
+    /// Creates an engine with the built-in operators (`replace`, `redact`,
+    /// `mask`) and the default
+    /// [`ConflictResolutionStrategy::MergeSimilarOrContained`].
     #[must_use]
     pub fn new() -> Self {
         let mut engine = Self {
@@ -99,6 +100,7 @@ impl AnonymizerEngine {
         };
         engine.register(Box::new(Replace));
         engine.register(Box::new(Redact));
+        engine.register(Box::new(Mask));
         engine
     }
 
@@ -111,8 +113,8 @@ impl AnonymizerEngine {
 
     /// Registers a custom operator, returning `self` for chaining.
     ///
-    /// An operator whose name matches a built-in (`replace`, `redact`) replaces
-    /// it.
+    /// An operator whose name matches a built-in (`replace`, `redact`, `mask`)
+    /// replaces it.
     #[must_use]
     pub fn with_operator(mut self, operator: Box<dyn Operator>) -> Self {
         self.register(operator);
@@ -632,6 +634,48 @@ mod tests {
     #[test]
     fn longest_free_subrange_none_when_fully_covered() {
         assert_eq!(longest_free_subrange(2, 5, &[(0, 10)]), None);
+    }
+
+    #[test]
+    fn mask_operator_tail_masks_through_engine() {
+        // The built-in `mask` operator is reachable by name and tail-masks a
+        // PAN span, preserving the surrounding text and the leading digits.
+        let engine = AnonymizerEngine::new();
+        let mut params = HashMap::new();
+        params.insert("masking_char".to_string(), json!("*"));
+        params.insert("chars_to_mask".to_string(), json!(12));
+        params.insert("from_end".to_string(), json!(true));
+        let mut ops = HashMap::new();
+        ops.insert(
+            "CREDIT_CARD".to_string(),
+            OperatorConfig::with_params("mask", params).expect("cfg"),
+        );
+
+        // "card 4111-1111-1111-1234." — PAN spans bytes 5..24.
+        let text = "card 4111-1111-1111-1234.";
+        let out = engine
+            .anonymize(text, vec![rr("CREDIT_CARD", 5, 24, 0.99)], &ops)
+            .expect("anonymize");
+        assert_eq!(out.text.as_deref(), Some("card 4111-11************."));
+        let item = out.items.first().expect("one item");
+        assert_eq!(item.operator.as_deref(), Some("mask"));
+    }
+
+    #[test]
+    fn mask_operator_invalid_config_fails_engine_up_front() {
+        // A negative chars_to_mask must fail validation before any output is
+        // built (not silently no-op, the Presidio anti-pattern).
+        let engine = AnonymizerEngine::new();
+        let mut params = HashMap::new();
+        params.insert("masking_char".to_string(), json!("*"));
+        params.insert("chars_to_mask".to_string(), json!(-1));
+        let mut ops = HashMap::new();
+        ops.insert(
+            "US_SSN".to_string(),
+            OperatorConfig::with_params("mask", params).expect("cfg"),
+        );
+        let err = engine.anonymize("123-45-6789", vec![rr("US_SSN", 0, 11, 0.9)], &ops);
+        assert!(err.is_err());
     }
 
     #[test]
