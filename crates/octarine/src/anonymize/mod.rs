@@ -23,6 +23,11 @@
 //!   (`Fn(&str) -> Result<String>`) for one-off transforms and stateful
 //!   pseudonymization. Further operators (hash, encrypt, keep) land as
 //!   follow-up work under the `anonymize/` umbrella.
+//! - `StateStore` / `SessionId` / `EntityKey` — the token-vault surface: the
+//!   backend-agnostic persistence contract behind reversible pseudonymization,
+//!   recording each `(session, original) → stable token` mapping. Pluggable
+//!   backends and the InstanceCounter operators that consume it land as
+//!   follow-up work.
 //!
 //! All spans are half-open (`start` inclusive, `end` exclusive). See the type
 //! definitions for the full design rationale and the Presidio anti-patterns
@@ -48,6 +53,7 @@ mod operator;
 mod operators;
 mod shortcuts;
 mod types;
+mod vault;
 
 pub use engine::AnonymizerEngine;
 pub use operator::Operator;
@@ -57,3 +63,4 @@ pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
     PiiSpan, RecognizerResult,
 };
+pub use vault::{EntityKey, SessionId, StateStore};
