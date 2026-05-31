@@ -43,6 +43,10 @@
 // Private to identifiers/ - sibling modules (like paths/) cannot access
 mod common;
 
+// Re-export the generic positional masker for crate-internal use (the
+// anonymize `mask` operator delegates to it — single-source transformation).
+pub(crate) use common::mask_chars;
+
 // Accessible within crate - observe/pii and security can use these
 pub(crate) mod builder;
 pub(crate) mod streaming;
