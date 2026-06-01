@@ -15,13 +15,14 @@
 //! original all stay correctly aligned with no delta arithmetic.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use octarine_problem::{Problem, Result};
 
 use super::operators::{Mask, Redact, Replace};
 use super::{
-    ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig, OperatorResult, PiiSpan,
-    RecognizerResult,
+    AsyncOperator, ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig,
+    OperatorResult, PiiSpan, RecognizerResult, SessionId, StateStore,
 };
 use crate::observe;
 use crate::observe::metrics::{increment_by, record};
@@ -35,6 +36,15 @@ crate::define_metrics! {
 /// The operator config key the engine falls back to for entities with no
 /// explicit operator and no `DEFAULT` entry.
 const DEFAULT_OPERATOR_KEY: &str = "DEFAULT";
+
+/// A resolved replacement for one applied span: the transformed text plus the
+/// name of the operator that produced it. Threaded from a shell's resolution
+/// step into the sans-IO [`splice`](AnonymizerEngine::splice) core so that core
+/// performs no operator dispatch.
+struct Replacement {
+    text: String,
+    operator: String,
+}
 
 /// Applies configurable per-entity operators to detected PII spans.
 ///
@@ -65,6 +75,8 @@ const DEFAULT_OPERATOR_KEY: &str = "DEFAULT";
 /// ```
 pub struct AnonymizerEngine {
     registry: HashMap<String, Box<dyn Operator>>,
+    async_registry: HashMap<String, Box<dyn AsyncOperator>>,
+    store: Option<Arc<dyn StateStore>>,
     conflict: ConflictResolutionStrategy,
     emit_events: bool,
 }
@@ -73,8 +85,12 @@ impl std::fmt::Debug for AnonymizerEngine {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut names: Vec<&str> = self.registry.keys().map(String::as_str).collect();
         names.sort_unstable();
+        let mut async_names: Vec<&str> = self.async_registry.keys().map(String::as_str).collect();
+        async_names.sort_unstable();
         f.debug_struct("AnonymizerEngine")
             .field("operators", &names)
+            .field("async_operators", &async_names)
+            .field("has_store", &self.store.is_some())
             .field("conflict", &self.conflict)
             .field("emit_events", &self.emit_events)
             .finish()
@@ -95,6 +111,8 @@ impl AnonymizerEngine {
     pub fn new() -> Self {
         let mut engine = Self {
             registry: HashMap::new(),
+            async_registry: HashMap::new(),
+            store: None,
             conflict: ConflictResolutionStrategy::default(),
             emit_events: true,
         };
@@ -118,6 +136,36 @@ impl AnonymizerEngine {
     #[must_use]
     pub fn with_operator(mut self, operator: Box<dyn Operator>) -> Self {
         self.register(operator);
+        self
+    }
+
+    /// Registers a session-aware [`AsyncOperator`], returning `self` for
+    /// chaining.
+    ///
+    /// Async operators are reached only by
+    /// [`anonymize_async`](AnonymizerEngine::anonymize_async) and
+    /// [`deanonymize_async`](AnonymizerEngine::deanonymize_async); the
+    /// synchronous [`anonymize`](AnonymizerEngine::anonymize) path never invokes
+    /// them. On the async path an async operator shadows a sync operator of the
+    /// same name. Most store-backed operators also need a store injected with
+    /// [`with_store`](AnonymizerEngine::with_store).
+    #[must_use]
+    pub fn with_async_operator(mut self, operator: Box<dyn AsyncOperator>) -> Self {
+        self.async_registry
+            .insert(operator.operator_name().to_string(), operator);
+        self
+    }
+
+    /// Injects the token-vault [`StateStore`] the async path resolves reversible
+    /// tokens through, returning `self` for chaining.
+    ///
+    /// The store is shared as `Arc<dyn StateStore>` and handed to each
+    /// [`AsyncOperator`] per span. The synchronous path ignores it entirely —
+    /// vault access is async-only by design (see the operator module's
+    /// sync/async boundary invariant).
+    #[must_use]
+    pub fn with_store(mut self, store: Arc<dyn StateStore>) -> Self {
+        self.store = Some(store);
         self
     }
 
@@ -185,7 +233,159 @@ impl AnonymizerEngine {
         outcome
     }
 
+    /// Anonymizes `text` on the **async, session-aware** path, resolving
+    /// reversible tokens through the injected [`StateStore`] within `session`.
+    ///
+    /// This is the asynchronous shell over the same sans-IO splice core as
+    /// [`anonymize`](Self::anonymize). For each
+    /// applied span it prefers a registered [`AsyncOperator`] (handed the store
+    /// and session so it can mint a stable token), falling back to a synchronous
+    /// [`Operator`] — a fixed transform — when no async operator is configured
+    /// for that entity's operator name. Register async operators with
+    /// [`with_async_operator`](Self::with_async_operator) and the store with
+    /// [`with_store`](Self::with_store).
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`Problem`] if an operator config names an unregistered
+    /// operator, if a config is rejected by `validate`, if a span lies outside
+    /// `text` or on a non-char boundary, if an async operator needs a store but
+    /// none was injected, or if an operator's transform or store I/O fails.
+    pub async fn anonymize_async(
+        &self,
+        text: &str,
+        results: Vec<RecognizerResult>,
+        operators: &HashMap<String, OperatorConfig>,
+        session: &SessionId,
+    ) -> Result<EngineResult> {
+        self.run_async(text, results, operators, session).await
+    }
+
+    /// Reverses a previously anonymized `text` on the async, session-aware path,
+    /// restoring originals from the tokens recorded in the [`StateStore`] for
+    /// `session`.
+    ///
+    /// Mechanically identical to [`anonymize_async`](Self::anonymize_async): the
+    /// direction is determined by which operators the caller configured —
+    /// register deanonymizing [`AsyncOperator`]s (and matching
+    /// [`OperatorConfig`] names) that read tokens back out of the store, mirror
+    /// of the sync [`Custom`](crate::anonymize::Custom) /
+    /// [`Custom::deanonymizer`](crate::anonymize::Custom::deanonymizer) pairing.
+    /// It exists as a named entry point so reversing reads as `deanonymize`, not
+    /// `anonymize`.
+    ///
+    /// # Errors
+    ///
+    /// Same conditions as [`anonymize_async`](Self::anonymize_async).
+    pub async fn deanonymize_async(
+        &self,
+        text: &str,
+        results: Vec<RecognizerResult>,
+        operators: &HashMap<String, OperatorConfig>,
+        session: &SessionId,
+    ) -> Result<EngineResult> {
+        self.run_async(text, results, operators, session).await
+    }
+
+    /// The instrumented async shell shared by
+    /// [`anonymize_async`](Self::anonymize_async) and
+    /// [`deanonymize_async`](Self::deanonymize_async).
+    async fn run_async(
+        &self,
+        text: &str,
+        results: Vec<RecognizerResult>,
+        operators: &HashMap<String, OperatorConfig>,
+        session: &SessionId,
+    ) -> Result<EngineResult> {
+        let start = std::time::Instant::now();
+        let outcome = self
+            .anonymize_async_inner(text, results, operators, session)
+            .await;
+
+        if self.emit_events {
+            record(
+                metric_names::anonymize_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            match &outcome {
+                Ok(result) => {
+                    increment_by(metric_names::spans_operated(), result.items.len() as u64);
+                    observe::debug(
+                        "anonymize",
+                        format!("anonymized {} span(s) (async)", result.items.len()),
+                    );
+                }
+                Err(_) => {
+                    increment_by(metric_names::errors(), 1);
+                }
+            }
+        }
+
+        outcome
+    }
+
+    /// The un-instrumented core of the async path: validate, resolve overlaps,
+    /// select applied spans, resolve each replacement through the async (then
+    /// sync) registry, then hand the parallel replacements to the sans-IO
+    /// [`splice`](Self::splice) core.
+    async fn anonymize_async_inner(
+        &self,
+        text: &str,
+        results: Vec<RecognizerResult>,
+        operators: &HashMap<String, OperatorConfig>,
+        session: &SessionId,
+    ) -> Result<EngineResult> {
+        self.validate_operators(&results, operators)?;
+
+        let resolved = self.resolve_conflicts(results);
+        let applied = dedupe_overlaps(&resolved);
+
+        let mut replacements: Vec<Replacement> = Vec::with_capacity(applied.len());
+        for span in &applied {
+            let original = text
+                .get(span.start..span.end)
+                .ok_or_else(|| span_error(text, span.start, span.end))?;
+            let config = self.config_for(&span.entity_type, operators);
+
+            let replacement = if let Some(operator) = self.async_registry.get(&config.operator_name)
+            {
+                // Async operators may read or write the vault, so a store must
+                // have been injected.
+                let store = self.store.as_deref().ok_or_else(|| {
+                    Problem::Validation(format!(
+                        "async operator '{}' requires a StateStore; call with_store(..)",
+                        config.operator_name
+                    ))
+                })?;
+                let text = operator
+                    .operate_async(original, &span.entity_type, &config, store, session)
+                    .await?;
+                Replacement {
+                    text,
+                    operator: operator.operator_name().to_string(),
+                }
+            } else {
+                // Fall back to a synchronous fixed transform.
+                let operator = self.lookup(&config.operator_name)?;
+                let text = operator.operate(original, &span.entity_type, &config)?;
+                Replacement {
+                    text,
+                    operator: operator.operator_name().to_string(),
+                }
+            };
+
+            replacements.push(replacement);
+        }
+
+        self.splice(text, &applied, &replacements)
+    }
+
     /// The un-instrumented core of [`anonymize`](AnonymizerEngine::anonymize).
+    ///
+    /// This is the synchronous shell over the sans-IO [`splice`](Self::splice)
+    /// core: it validates configs, resolves overlaps, selects the spans that
+    /// will actually be applied, resolves each one's replacement through the
+    /// **sync** operator registry (a fixed transform, no I/O), then splices.
     fn anonymize_inner(
         &self,
         text: &str,
@@ -197,43 +397,65 @@ impl AnonymizerEngine {
         self.validate_operators(&results, operators)?;
 
         let resolved = self.resolve_conflicts(results);
+        let applied = dedupe_overlaps(&resolved);
 
+        // Resolve each applied span's replacement via the sync registry. This is
+        // the only step that differs between the sync and async shells; both
+        // then hand the parallel replacements to the same `splice` core.
+        let mut replacements: Vec<Replacement> = Vec::with_capacity(applied.len());
+        for span in &applied {
+            let original = text
+                .get(span.start..span.end)
+                .ok_or_else(|| span_error(text, span.start, span.end))?;
+            let config = self.config_for(&span.entity_type, operators);
+            let operator = self.lookup(&config.operator_name)?;
+            let text = operator.operate(original, &span.entity_type, &config)?;
+            replacements.push(Replacement {
+                text,
+                operator: operator.operator_name().to_string(),
+            });
+        }
+
+        self.splice(text, &applied, &replacements)
+    }
+
+    /// Splices `replacements` into `text` at the `applied` spans — the shared
+    /// sans-IO core of both the sync and async paths.
+    ///
+    /// `applied` must be the gap-free, in-order span selection from
+    /// [`dedupe_overlaps`] and `replacements` its parallel resolved output (one
+    /// entry per applied span, same order). The rewrite copies the verbatim gaps
+    /// between spans and pushes each replacement in place, reading output offsets
+    /// from the length built so far so any replacement size stays aligned. This
+    /// function performs **no operator dispatch and no I/O**; all transforms are
+    /// already resolved by the caller.
+    fn splice(
+        &self,
+        text: &str,
+        applied: &[&RecognizerResult],
+        replacements: &[Replacement],
+    ) -> Result<EngineResult> {
         let mut output = String::with_capacity(text.len());
-        let mut items: Vec<OperatorResult> = Vec::new();
+        let mut items: Vec<OperatorResult> = Vec::with_capacity(applied.len());
         let mut cursor: usize = 0;
 
-        for span in &resolved {
-            // Skip spans that overlap already-consumed text (possible under the
-            // `None` strategy, which performs no overlap resolution).
-            if span.start < cursor {
-                continue;
-            }
-
+        for (span, replacement) in applied.iter().zip(replacements) {
             // Copy the verbatim gap before this span.
             let gap = text
                 .get(cursor..span.start)
                 .ok_or_else(|| span_error(text, cursor, span.start))?;
             output.push_str(gap);
 
-            // Extract the original span text (validates bounds + char boundary).
-            let original = text
-                .get(span.start..span.end)
-                .ok_or_else(|| span_error(text, span.start, span.end))?;
-
-            let config = self.config_for(&span.entity_type, operators);
-            let operator = self.lookup(&config.operator_name)?;
-            let replacement = operator.operate(original, &span.entity_type, &config)?;
-
             let out_start = output.len();
-            output.push_str(&replacement);
+            output.push_str(&replacement.text);
             let out_end = output.len();
 
             items.push(OperatorResult::new(
                 span.entity_type.clone(),
                 out_start,
                 out_end,
-                Some(replacement),
-                Some(operator.operator_name().to_string()),
+                Some(replacement.text.clone()),
+                Some(replacement.operator.clone()),
             )?);
 
             cursor = span.end;
@@ -255,6 +477,10 @@ impl AnonymizerEngine {
 
     /// Validates the operator config for every distinct entity type in
     /// `results`, ensuring each names a registered operator that accepts it.
+    ///
+    /// An operator name is satisfied by either the synchronous registry or the
+    /// async registry, so a config naming an async-only operator validates on
+    /// both paths (it simply never runs on the sync path).
     fn validate_operators(
         &self,
         results: &[RecognizerResult],
@@ -262,8 +488,12 @@ impl AnonymizerEngine {
     ) -> Result<()> {
         for span in results {
             let config = self.config_for(&span.entity_type, operators);
-            let operator = self.lookup(&config.operator_name)?;
-            operator.validate(&config)?;
+            if let Some(operator) = self.async_registry.get(&config.operator_name) {
+                operator.validate(&config)?;
+            } else {
+                let operator = self.lookup(&config.operator_name)?;
+                operator.validate(&config)?;
+            }
         }
         Ok(())
     }
@@ -310,6 +540,29 @@ impl AnonymizerEngine {
             ConflictResolutionStrategy::RemoveIntersections => remove_intersections(results),
         }
     }
+}
+
+/// Selects, from conflict-resolved and `(start, end)`-sorted detections, the
+/// spans that will actually be applied — dropping any span that overlaps text a
+/// kept span already consumed.
+///
+/// This is the post-resolution skip that the `None`
+/// [`ConflictResolutionStrategy`] leaves to the rewrite (other strategies
+/// already remove overlaps). It is factored out of the splice loop so a
+/// replacement is resolved exactly once per applied span: critical on the async
+/// path, where resolving a span may mint a vault token — a skipped span must
+/// never mint one.
+fn dedupe_overlaps(resolved: &[RecognizerResult]) -> Vec<&RecognizerResult> {
+    let mut applied: Vec<&RecognizerResult> = Vec::with_capacity(resolved.len());
+    let mut cursor: usize = 0;
+    for span in resolved {
+        if span.start < cursor {
+            continue;
+        }
+        applied.push(span);
+        cursor = span.end;
+    }
+    applied
 }
 
 /// Builds a [`Problem`] describing a span that is out of bounds or not on a
@@ -685,5 +938,263 @@ mod tests {
             .anonymize("Bob", vec![rr("PERSON", 0, 3, 0.9)], &HashMap::new())
             .expect("anon");
         assert_eq!(out.text.as_deref(), Some("<PERSON>"));
+    }
+
+    // --- Async session-aware path -------------------------------------------
+
+    use std::sync::{Arc, RwLock};
+
+    use async_trait::async_trait;
+
+    use crate::anonymize::{EntityKey, OperatorType};
+
+    /// An in-test [`StateStore`] keyed by `(session, entity_type, original)`.
+    /// Mirrors the vault's private test mock (which is not exported); exists so
+    /// the engine's async path can be exercised end to end.
+    #[derive(Default)]
+    struct MemStore {
+        inner: RwLock<HashMap<(String, String, String), String>>,
+    }
+
+    #[async_trait]
+    impl StateStore for MemStore {
+        async fn get(&self, session: &SessionId, key: &EntityKey) -> Result<Option<String>> {
+            let g = self
+                .inner
+                .read()
+                .map_err(|e| Problem::Runtime(format!("poison: {e}")))?;
+            Ok(g.get(&(
+                session.as_str().to_string(),
+                key.entity_type.clone(),
+                key.original.clone(),
+            ))
+            .cloned())
+        }
+
+        async fn put(&self, session: &SessionId, key: &EntityKey, value: String) -> Result<()> {
+            let mut g = self
+                .inner
+                .write()
+                .map_err(|e| Problem::Runtime(format!("poison: {e}")))?;
+            g.insert(
+                (
+                    session.as_str().to_string(),
+                    key.entity_type.clone(),
+                    key.original.clone(),
+                ),
+                value,
+            );
+            Ok(())
+        }
+
+        async fn list(
+            &self,
+            session: &SessionId,
+            entity_type: &str,
+        ) -> Result<Vec<(String, String)>> {
+            let g = self
+                .inner
+                .read()
+                .map_err(|e| Problem::Runtime(format!("poison: {e}")))?;
+            Ok(g.iter()
+                .filter(|((s, e, _), _)| s == session.as_str() && e == entity_type)
+                .map(|((_, _, o), t)| (o.clone(), t.clone()))
+                .collect())
+        }
+
+        async fn flush(&self, session: &SessionId) -> Result<()> {
+            let mut g = self
+                .inner
+                .write()
+                .map_err(|e| Problem::Runtime(format!("poison: {e}")))?;
+            g.retain(|(s, _, _), _| s != session.as_str());
+            Ok(())
+        }
+    }
+
+    /// A store-backed `InstanceCounter`-style operator: mints `<TYPE_n>` tokens,
+    /// stable per original within a session.
+    struct Counter;
+
+    #[async_trait]
+    impl AsyncOperator for Counter {
+        async fn operate_async(
+            &self,
+            text: &str,
+            entity_type: &str,
+            _config: &OperatorConfig,
+            store: &dyn StateStore,
+            session: &SessionId,
+        ) -> Result<String> {
+            let key = EntityKey::new(entity_type, text);
+            if let Some(token) = store.get(session, &key).await? {
+                return Ok(token);
+            }
+            let idx = store.list(session, entity_type).await?.len();
+            let token = format!("<{entity_type}_{idx}>");
+            store.put(session, &key, token.clone()).await?;
+            Ok(token)
+        }
+
+        fn operator_name(&self) -> &'static str {
+            "counter"
+        }
+    }
+
+    /// The reverse of [`Counter`]: resolves a token span back to its original by
+    /// reading the session's mappings out of the store.
+    struct CounterReverse;
+
+    #[async_trait]
+    impl AsyncOperator for CounterReverse {
+        async fn operate_async(
+            &self,
+            text: &str,
+            entity_type: &str,
+            _config: &OperatorConfig,
+            store: &dyn StateStore,
+            session: &SessionId,
+        ) -> Result<String> {
+            for (original, token) in store.list(session, entity_type).await? {
+                if token == text {
+                    return Ok(original);
+                }
+            }
+            Ok(text.to_string())
+        }
+
+        fn operator_name(&self) -> &'static str {
+            "counter_reverse"
+        }
+
+        fn operator_type(&self) -> OperatorType {
+            OperatorType::Deanonymize
+        }
+    }
+
+    fn counter_ops(name: &str) -> HashMap<String, OperatorConfig> {
+        let mut ops = HashMap::new();
+        ops.insert(
+            DEFAULT_OPERATOR_KEY.to_string(),
+            OperatorConfig::new(name).expect("valid config"),
+        );
+        ops
+    }
+
+    #[tokio::test]
+    async fn async_path_mints_stable_tokens_per_session() {
+        let store: Arc<dyn StateStore> = Arc::new(MemStore::default());
+        let engine = AnonymizerEngine::new()
+            .with_async_operator(Box::new(Counter))
+            .with_store(Arc::clone(&store));
+        let session = SessionId::new("chat-1");
+
+        // "Jane" appears twice (same token) and "Bob" once (next index).
+        let text = "Jane and Jane and Bob";
+        let results = vec![
+            rr("PERSON", 0, 4, 0.9),
+            rr("PERSON", 9, 13, 0.9),
+            rr("PERSON", 18, 21, 0.9),
+        ];
+
+        let out = engine
+            .anonymize_async(text, results, &counter_ops("counter"), &session)
+            .await
+            .expect("anonymize_async");
+
+        assert_eq!(
+            out.text.as_deref(),
+            Some("<PERSON_0> and <PERSON_0> and <PERSON_1>")
+        );
+        assert_eq!(out.items.len(), 3);
+        assert_eq!(
+            out.items.first().expect("item").operator.as_deref(),
+            Some("counter")
+        );
+    }
+
+    #[tokio::test]
+    async fn async_round_trip_restores_originals() {
+        let store: Arc<dyn StateStore> = Arc::new(MemStore::default());
+        let session = SessionId::new("chat-2");
+        let text = "Jane met Jane";
+
+        // Anonymize through the counter.
+        let anon_engine = AnonymizerEngine::new()
+            .with_async_operator(Box::new(Counter))
+            .with_store(Arc::clone(&store));
+        let anon = anon_engine
+            .anonymize_async(
+                text,
+                vec![rr("PERSON", 0, 4, 0.9), rr("PERSON", 9, 13, 0.9)],
+                &counter_ops("counter"),
+                &session,
+            )
+            .await
+            .expect("anonymize_async");
+        let anon_text = anon.text.clone().expect("text");
+        assert_eq!(anon_text, "<PERSON_0> met <PERSON_0>");
+
+        // Build reverse detections from the produced token spans, then
+        // deanonymize through the reverse operator against the same store.
+        let reverse_results: Vec<RecognizerResult> = anon
+            .items
+            .iter()
+            .map(|item| rr(&item.entity_type, item.start, item.end, 1.0))
+            .collect();
+
+        let deanon_engine = AnonymizerEngine::new()
+            .with_async_operator(Box::new(CounterReverse))
+            .with_store(Arc::clone(&store));
+        let restored = deanon_engine
+            .deanonymize_async(
+                &anon_text,
+                reverse_results,
+                &counter_ops("counter_reverse"),
+                &session,
+            )
+            .await
+            .expect("deanonymize_async");
+
+        assert_eq!(restored.text.as_deref(), Some(text));
+    }
+
+    #[tokio::test]
+    async fn async_path_falls_back_to_sync_operators() {
+        // With no async operator configured, the async path applies the same
+        // fixed transforms as the sync path — no store needed.
+        let engine = AnonymizerEngine::new();
+        let session = SessionId::new("chat-3");
+        let out = engine
+            .anonymize_async(
+                "SSN 123-45-6789.",
+                vec![rr("US_SSN", 4, 15, 0.9)],
+                &HashMap::new(),
+                &session,
+            )
+            .await
+            .expect("anonymize_async");
+        assert_eq!(out.text.as_deref(), Some("SSN <US_SSN>."));
+        assert_eq!(
+            out.items.first().expect("item").operator.as_deref(),
+            Some("replace")
+        );
+    }
+
+    #[tokio::test]
+    async fn async_operator_without_store_errors() {
+        // A configured async operator that needs the vault but no store was
+        // injected fails clearly rather than silently dropping the span.
+        let engine = AnonymizerEngine::new().with_async_operator(Box::new(Counter));
+        let session = SessionId::new("chat-4");
+        let err = engine
+            .anonymize_async(
+                "Bob",
+                vec![rr("PERSON", 0, 3, 0.9)],
+                &counter_ops("counter"),
+                &session,
+            )
+            .await;
+        assert!(err.is_err());
     }
 }
