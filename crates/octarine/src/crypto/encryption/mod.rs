@@ -69,6 +69,7 @@
 // Submodules with different security properties - accessible as encryption::ephemeral, etc.
 pub mod ephemeral;
 pub mod hybrid;
+pub mod keyed;
 pub mod persistent;
 
 // Re-export types for convenience at the encryption level

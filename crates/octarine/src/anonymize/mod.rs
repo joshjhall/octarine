@@ -27,7 +27,10 @@
 //!   the span, and `Mask` positionally masks characters (multi-char units and
 //!   tail-masking via `from_end`). `Custom` wraps a caller-supplied closure
 //!   (`Fn(&str) -> Result<String>`) for one-off transforms and stateful
-//!   pseudonymization. Further operators (hash, encrypt, keep) land as
+//!   pseudonymization. `Encrypt` / `Decrypt` seal and open spans with
+//!   authenticated encryption (ChaCha20-Poly1305 or AES-256-GCM), binding the
+//!   ciphertext to the entity type via AAD and offering an opt-in deterministic
+//!   mode for joinable output. Further operators (hash, keep) land as
 //!   follow-up work under the `anonymize/` umbrella.
 //! - `StateStore` / `SessionId` / `EntityKey` — the token-vault surface: the
 //!   backend-agnostic persistence contract behind reversible pseudonymization,
@@ -63,7 +66,7 @@ mod vault;
 
 pub use engine::AnonymizerEngine;
 pub use operator::{AsyncOperator, Operator};
-pub use operators::{Custom, Mask, Redact, Replace};
+pub use operators::{Custom, Decrypt, Encrypt, Mask, Redact, Replace};
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
