@@ -37,7 +37,7 @@ use chacha20poly1305::{
 
 use crate::primitives::crypto::{
     CryptoError,
-    keys::{DomainSeparator, hkdf_sha3_256, random_nonce_12},
+    keys::{DomainSeparator, fill_random, hkdf_sha3_256},
 };
 
 /// AEAD key size (256 bits) — both ciphers use a 32-byte key.
@@ -113,7 +113,13 @@ pub(crate) fn seal(
     mode: NonceMode,
 ) -> Result<String, CryptoError> {
     let nonce = match mode {
-        NonceMode::Random => random_nonce_12()?,
+        NonceMode::Random => {
+            // Generate the nonce inline via the CSPRNG so the random source is
+            // visible at the encryption site (matches `ephemeral.rs`).
+            let mut nonce = [0u8; NONCE_SIZE];
+            fill_random(&mut nonce)?;
+            nonce
+        }
         NonceMode::Deterministic => synthetic_nonce(key, aad, plaintext)?,
     };
     let ciphertext = aead_encrypt(algo, key, &nonce, plaintext, aad)?;
@@ -217,11 +223,12 @@ fn synthetic_nonce(
         .with_context(aad)
         .with_context(plaintext);
     let okm = hkdf_sha3_256(key, None, domain, NONCE_SIZE)?;
-    let slice = okm
+    // Build the nonce directly from the derived bytes — the value comes entirely
+    // from the KDF, never from a fixed constant.
+    let nonce: [u8; NONCE_SIZE] = okm
         .get(..NONCE_SIZE)
+        .and_then(|slice| slice.try_into().ok())
         .ok_or_else(|| CryptoError::key_derivation("synthetic nonce derivation too short"))?;
-    let mut nonce = [0u8; NONCE_SIZE];
-    nonce.copy_from_slice(slice);
     Ok(nonce)
 }
 
@@ -248,11 +255,10 @@ fn decode_wire(wire: &str) -> Result<(u8, u8, [u8; NONCE_SIZE], Vec<u8>), Crypto
         .get(1)
         .ok_or_else(|| CryptoError::decryption("wire payload missing algo id"))?;
 
-    let nonce_slice = bytes
+    let nonce: [u8; NONCE_SIZE] = bytes
         .get(HEADER_LEN..NONCE_END)
+        .and_then(|slice| slice.try_into().ok())
         .ok_or_else(|| CryptoError::decryption("wire payload missing nonce"))?;
-    let mut nonce = [0u8; NONCE_SIZE];
-    nonce.copy_from_slice(nonce_slice);
 
     let ciphertext = bytes
         .get(NONCE_END..)
@@ -272,6 +278,8 @@ mod tests {
     use super::*;
 
     const KEY: [u8; KEY_SIZE] = [7u8; KEY_SIZE];
+    /// A different key, used to prove decryption fails under the wrong key.
+    const OTHER_KEY: [u8; KEY_SIZE] = [9u8; KEY_SIZE];
 
     #[test]
     fn round_trip_chacha() {
@@ -326,7 +334,7 @@ mod tests {
             NonceMode::Random,
         )
         .expect("seal");
-        let other = [9u8; KEY_SIZE];
+        let other = OTHER_KEY;
         assert!(open(&other, &wire, b"EMAIL").is_err());
     }
 
