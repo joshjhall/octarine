@@ -37,7 +37,7 @@ use chacha20poly1305::{
 
 use crate::primitives::crypto::{
     CryptoError,
-    keys::{DomainSeparator, fill_random, hkdf_sha3_256},
+    keys::{DomainSeparator, hkdf_sha3_256, random_bytes_vec},
 };
 
 /// AEAD key size (256 bits) — both ciphers use a 32-byte key.
@@ -113,13 +113,7 @@ pub(crate) fn seal(
     mode: NonceMode,
 ) -> Result<String, CryptoError> {
     let nonce = match mode {
-        NonceMode::Random => {
-            // Generate the nonce inline via the CSPRNG so the random source is
-            // visible at the encryption site (matches `ephemeral.rs`).
-            let mut nonce = [0u8; NONCE_SIZE];
-            fill_random(&mut nonce)?;
-            nonce
-        }
+        NonceMode::Random => random_nonce()?,
         NonceMode::Deterministic => synthetic_nonce(key, aad, plaintext)?,
     };
     let ciphertext = aead_encrypt(algo, key, &nonce, plaintext, aad)?;
@@ -207,6 +201,19 @@ fn aead_decrypt(
                 .map_err(|e| CryptoError::decryption(format!("decryption failed: {e}")))
         }
     }
+}
+
+/// Generate a fresh random 96-bit nonce from the CSPRNG.
+///
+/// The bytes originate entirely from `random_bytes_vec` (getrandom-backed);
+/// the array is built from those bytes via `try_into`, never from a fixed
+/// constant.
+fn random_nonce() -> Result<[u8; NONCE_SIZE], CryptoError> {
+    let bytes = random_bytes_vec(NONCE_SIZE)?;
+    bytes
+        .get(..NONCE_SIZE)
+        .and_then(|slice| slice.try_into().ok())
+        .ok_or_else(|| CryptoError::random_generation("nonce generation too short"))
 }
 
 /// Derive a deterministic 96-bit nonce from `HKDF(key, AAD ‖ plaintext)`.
