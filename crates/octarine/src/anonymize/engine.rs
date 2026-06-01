@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use octarine_problem::{Problem, Result};
 
-use super::operators::{Mask, Redact, Replace};
+use super::operators::{Decrypt, Encrypt, Mask, Redact, Replace};
 use super::{
     AsyncOperator, ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig,
     OperatorResult, PiiSpan, RecognizerResult, SessionId, StateStore,
@@ -105,7 +105,7 @@ impl Default for AnonymizerEngine {
 
 impl AnonymizerEngine {
     /// Creates an engine with the built-in operators (`replace`, `redact`,
-    /// `mask`) and the default
+    /// `mask`, `encrypt`, `decrypt`) and the default
     /// [`ConflictResolutionStrategy::MergeSimilarOrContained`].
     #[must_use]
     pub fn new() -> Self {
@@ -119,6 +119,8 @@ impl AnonymizerEngine {
         engine.register(Box::new(Replace));
         engine.register(Box::new(Redact));
         engine.register(Box::new(Mask));
+        engine.register(Box::new(Encrypt));
+        engine.register(Box::new(Decrypt));
         engine
     }
 
@@ -131,8 +133,8 @@ impl AnonymizerEngine {
 
     /// Registers a custom operator, returning `self` for chaining.
     ///
-    /// An operator whose name matches a built-in (`replace`, `redact`, `mask`)
-    /// replaces it.
+    /// An operator whose name matches a built-in (`replace`, `redact`, `mask`,
+    /// `encrypt`, `decrypt`) replaces it.
     #[must_use]
     pub fn with_operator(mut self, operator: Box<dyn Operator>) -> Self {
         self.register(operator);
@@ -805,6 +807,44 @@ mod tests {
         );
         let err = engine.anonymize("Bob", vec![rr("PERSON", 0, 3, 0.9)], &ops);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn encrypt_operator_round_trips_through_engine() {
+        use super::super::{Decrypt, Operator};
+
+        // 32 zero key bytes, base64url-no-pad.
+        const KEY_B64: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+        let engine = AnonymizerEngine::new().silent();
+        let mut ops = HashMap::new();
+        let mut params = HashMap::new();
+        params.insert("key".to_string(), json!(KEY_B64));
+        ops.insert(
+            "EMAIL".to_string(),
+            OperatorConfig::with_params("encrypt", params.clone()).expect("cfg"),
+        );
+
+        let text = "ping alice@example.com now";
+        // Byte offsets of "alice@example.com": 5..22.
+        let out = engine
+            .anonymize(text, vec![rr("EMAIL", 5, 22, 0.99)], &ops)
+            .expect("anonymize");
+
+        let item = out.items.first().expect("one item");
+        assert_eq!(item.operator.as_deref(), Some("encrypt"));
+        let sealed = item.text.as_deref().expect("ciphertext present");
+        // The engine spliced ciphertext in place of the original address.
+        let rewritten = out.text.as_deref().expect("text");
+        assert!(rewritten.contains(sealed));
+        assert!(!rewritten.contains("alice@example.com"));
+
+        // The sealed value opens back to the original under the same key+entity.
+        let dec_config = OperatorConfig::with_params("decrypt", params).expect("cfg");
+        let opened = Decrypt
+            .operate(sealed, "EMAIL", &dec_config)
+            .expect("decrypt");
+        assert_eq!(opened, "alice@example.com");
     }
 
     #[test]

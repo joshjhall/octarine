@@ -45,10 +45,14 @@
 
 mod ephemeral;
 mod hybrid;
+mod keyed;
 mod persistent;
 
 // Re-export ephemeral types
 pub use ephemeral::{EncryptedComponents, EphemeralEncryption};
+
+// Re-export keyed AEAD primitive (caller-supplied key, AAD, versioned wire)
+pub(crate) use keyed::{AeadAlgo, NonceMode, open, seal};
 
 // Re-export persistent types
 pub use persistent::{PersistentEncryptedComponents, PersistentEncryption, SecureStorage};
