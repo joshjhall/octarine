@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use octarine_problem::{Problem, Result};
 
-use super::operators::{Decrypt, Encrypt, Mask, Redact, Replace};
+use super::operators::{Decrypt, Encrypt, Hash, Mask, Redact, Replace};
 use super::{
     AsyncOperator, ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig,
     OperatorResult, PiiSpan, RecognizerResult, SessionId, StateStore,
@@ -105,7 +105,7 @@ impl Default for AnonymizerEngine {
 
 impl AnonymizerEngine {
     /// Creates an engine with the built-in operators (`replace`, `redact`,
-    /// `mask`, `encrypt`, `decrypt`) and the default
+    /// `mask`, `hash`, `encrypt`, `decrypt`) and the default
     /// [`ConflictResolutionStrategy::MergeSimilarOrContained`].
     #[must_use]
     pub fn new() -> Self {
@@ -119,6 +119,7 @@ impl AnonymizerEngine {
         engine.register(Box::new(Replace));
         engine.register(Box::new(Redact));
         engine.register(Box::new(Mask));
+        engine.register(Box::new(Hash));
         engine.register(Box::new(Encrypt));
         engine.register(Box::new(Decrypt));
         engine

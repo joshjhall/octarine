@@ -94,6 +94,7 @@
 // Domain modules - accessible as crate::primitives::crypto::<domain>::*
 pub(crate) mod auth;
 pub(crate) mod encryption;
+pub(crate) mod hash;
 pub(crate) mod keys;
 pub(crate) mod secrets;
 
@@ -124,6 +125,7 @@ pub use error::CryptoError;
 // Domain modules are accessed via their namespace:
 //   crate::primitives::crypto::auth::*
 //   crate::primitives::crypto::encryption::*
+//   crate::primitives::crypto::hash::*
 //   crate::primitives::crypto::keys::*
 //   crate::primitives::crypto::secrets::*
 // ============================================================================

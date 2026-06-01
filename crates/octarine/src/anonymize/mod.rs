@@ -22,16 +22,18 @@
 //!   resolution and offset tracking. Its synchronous `anonymize` applies fixed
 //!   transforms; `anonymize_async` / `deanonymize_async` inject an
 //!   `Arc<dyn StateStore>` to resolve reversible tokens through the vault.
-//! - `Replace` / `Redact` / `Mask` — the stateless built-in operators.
+//! - `Replace` / `Redact` / `Mask` / `Hash` — the stateless built-in operators.
 //!   `Replace` substitutes a fixed value (or `<ENTITY_TYPE>`), `Redact` deletes
-//!   the span, and `Mask` positionally masks characters (multi-char units and
-//!   tail-masking via `from_end`). `Custom` wraps a caller-supplied closure
-//!   (`Fn(&str) -> Result<String>`) for one-off transforms and stateful
+//!   the span, `Mask` positionally masks characters (multi-char units and
+//!   tail-masking via `from_end`), and `Hash` replaces the span with a salted
+//!   one-way digest (SHA-256/512, BLAKE3, HMAC-SHA3-256, or Argon2) under an
+//!   explicit salt-determinism contract. `Custom` wraps a caller-supplied
+//!   closure (`Fn(&str) -> Result<String>`) for one-off transforms and stateful
 //!   pseudonymization. `Encrypt` / `Decrypt` seal and open spans with
 //!   authenticated encryption (ChaCha20-Poly1305 or AES-256-GCM), binding the
 //!   ciphertext to the entity type via AAD and offering an opt-in deterministic
-//!   mode for joinable output. Further operators (hash, keep) land as
-//!   follow-up work under the `anonymize/` umbrella.
+//!   mode for joinable output. Further operators (keep) land as follow-up work
+//!   under the `anonymize/` umbrella.
 //! - `StateStore` / `SessionId` / `EntityKey` — the token-vault surface: the
 //!   backend-agnostic persistence contract behind reversible pseudonymization,
 //!   recording each `(session, original) → stable token` mapping. Pluggable
@@ -66,7 +68,7 @@ mod vault;
 
 pub use engine::AnonymizerEngine;
 pub use operator::{AsyncOperator, Operator};
-pub use operators::{Custom, Decrypt, Encrypt, Mask, Redact, Replace};
+pub use operators::{Custom, Decrypt, Encrypt, Hash, Mask, Redact, Replace};
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
