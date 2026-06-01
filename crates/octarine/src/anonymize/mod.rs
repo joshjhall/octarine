@@ -14,8 +14,14 @@
 //! - `ConflictResolutionStrategy` — overlap-resolution selector.
 //! - `PiiSpan` — shared half-open span algebra (intersects, contains, …).
 //! - `Operator` — the transformation trait every operator implements.
+//! - `AsyncOperator` — the session-aware async counterpart to `Operator`,
+//!   handed a `StateStore` + `SessionId` to mint and reverse reversible tokens.
+//!   Reached only through the engine's async path; the sync path never touches
+//!   the vault (see the operator module's sync/async boundary invariant).
 //! - `AnonymizerEngine` — applies operators to detected spans with conflict
-//!   resolution and offset tracking.
+//!   resolution and offset tracking. Its synchronous `anonymize` applies fixed
+//!   transforms; `anonymize_async` / `deanonymize_async` inject an
+//!   `Arc<dyn StateStore>` to resolve reversible tokens through the vault.
 //! - `Replace` / `Redact` / `Mask` — the stateless built-in operators.
 //!   `Replace` substitutes a fixed value (or `<ENTITY_TYPE>`), `Redact` deletes
 //!   the span, and `Mask` positionally masks characters (multi-char units and
@@ -56,7 +62,7 @@ mod types;
 mod vault;
 
 pub use engine::AnonymizerEngine;
-pub use operator::Operator;
+pub use operator::{AsyncOperator, Operator};
 pub use operators::{Custom, Mask, Redact, Replace};
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{
