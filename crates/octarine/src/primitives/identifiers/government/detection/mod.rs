@@ -61,6 +61,7 @@ mod nigeria;
 mod passport;
 mod singapore;
 mod ssn;
+mod sweden;
 mod tax_id;
 mod thailand;
 mod turkey;
@@ -108,6 +109,10 @@ pub use singapore::{
     find_singapore_nrics_in_text, find_singapore_uens_in_text, is_singapore_nric, is_singapore_uen,
 };
 pub use ssn::{find_ssns_in_text, is_ssn};
+pub use sweden::{
+    find_sweden_orgnummers_in_text, find_sweden_personnummers_in_text, is_sweden_orgnummer,
+    is_sweden_personnummer,
+};
 pub use tax_id::{find_eins_in_text, find_tax_ids_in_text, is_ein, is_tax_id};
 pub use thailand::{find_thailand_tnins_in_text, is_thailand_tnin};
 pub use turkey::{
@@ -200,6 +205,12 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::FinlandHetu)
     } else if is_poland_pesel(value) {
         Some(IdentifierType::PolandPesel)
+    } else if is_sweden_personnummer(value) {
+        // Personnummer (month-constrained, third digit 0/1) is checked before
+        // orgnummer (third digit >= 2); the two are mutually exclusive.
+        Some(IdentifierType::SwedenPersonnummer)
+    } else if is_sweden_orgnummer(value) {
+        Some(IdentifierType::SwedenOrgnummer)
     } else if is_italy_fiscal_code(value) {
         Some(IdentifierType::ItalyFiscalCode)
     } else if is_spain_nif(value) {
@@ -281,6 +292,8 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_singapore_uens_in_text(text));
     all_matches.extend(find_finland_hetus_in_text(text));
     all_matches.extend(find_poland_pesels_in_text(text));
+    all_matches.extend(find_sweden_personnummers_in_text(text));
+    all_matches.extend(find_sweden_orgnummers_in_text(text));
     all_matches.extend(find_italy_fiscal_codes_in_text(text));
     all_matches.extend(find_italy_vats_in_text(text));
     all_matches.extend(find_italy_passports_in_text(text));

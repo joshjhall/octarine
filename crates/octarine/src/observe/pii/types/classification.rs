@@ -30,6 +30,7 @@ impl PiiType {
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
+            Self::SwedenPersonnummer | Self::SwedenOrgnummer |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
@@ -76,6 +77,7 @@ impl PiiType {
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
+            Self::SwedenPersonnummer | Self::SwedenOrgnummer |
             // Financial — IBAN identifies an EU account holder (Recital 30 /
             // Art. 4(1)). Crypto addresses are pseudonymous by design and are
             // excluded unless linked to an identifiable person upstream.

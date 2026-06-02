@@ -173,6 +173,10 @@ pub enum PiiType {
     UkPassport,
     /// UK DVLA Driving Licence (16-char structural format)
     UkDrivingLicence,
+    /// Swedish personal identity number (personnummer)
+    SwedenPersonnummer,
+    /// Swedish organisationsnummer (company identity number)
+    SwedenOrgnummer,
 
     // =========================================================================
     // Medical Domain (PHI - Protected Health Information)

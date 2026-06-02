@@ -1,6 +1,7 @@
 //! European national identifier operations on `GovernmentIdentifierBuilder`.
 //!
-//! Covers Finland HETU, Spain NIF and NIE, Italy Codice Fiscale, and Poland PESEL.
+//! Covers Finland HETU, Spain NIF and NIE, Italy Codice Fiscale, Poland PESEL,
+//! and Sweden Personnummer + Organisationsnummer.
 
 use super::*;
 
@@ -311,5 +312,81 @@ impl GovernmentIdentifierBuilder {
     #[must_use]
     pub fn is_test_poland_pesel(&self, pesel: &str) -> bool {
         validation::is_test_poland_pesel(pesel)
+    }
+
+    // ---- Sweden Personnummer -------------------------------------------------
+
+    /// Check if value matches Sweden personnummer format (shape + date sanity)
+    #[must_use]
+    pub fn is_sweden_personnummer(&self, value: &str) -> bool {
+        detection::is_sweden_personnummer(value)
+    }
+
+    /// Find all Sweden personnummers in text (label-anchored)
+    #[must_use]
+    pub fn find_sweden_personnummers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_sweden_personnummers_in_text(text)
+    }
+
+    /// Validate Sweden personnummer format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format or date is invalid
+    pub fn validate_sweden_personnummer(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_sweden_personnummer(value)
+    }
+
+    /// Validate Sweden personnummer with Luhn checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format, date, or checksum is invalid
+    pub fn validate_sweden_personnummer_with_checksum(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_sweden_personnummer_with_checksum(value)
+    }
+
+    /// Check if a Sweden personnummer is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_sweden_personnummer(&self, value: &str) -> bool {
+        validation::is_test_sweden_personnummer(value)
+    }
+
+    // ---- Sweden Organisationsnummer -----------------------------------------
+
+    /// Check if value matches Sweden organisationsnummer format (shape + third-digit rule)
+    #[must_use]
+    pub fn is_sweden_orgnummer(&self, value: &str) -> bool {
+        detection::is_sweden_orgnummer(value)
+    }
+
+    /// Find all Sweden organisationsnummers in text (label-anchored)
+    #[must_use]
+    pub fn find_sweden_orgnummers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_sweden_orgnummers_in_text(text)
+    }
+
+    /// Validate Sweden organisationsnummer format (without checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format or third-digit rule is invalid
+    pub fn validate_sweden_orgnummer(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_sweden_orgnummer(value)
+    }
+
+    /// Validate Sweden organisationsnummer with Luhn checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format or checksum is invalid
+    pub fn validate_sweden_orgnummer_with_checksum(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_sweden_orgnummer_with_checksum(value)
+    }
+
+    /// Check if a Sweden organisationsnummer is a test/dummy pattern
+    #[must_use]
+    pub fn is_test_sweden_orgnummer(&self, value: &str) -> bool {
+        validation::is_test_sweden_orgnummer(value)
     }
 }

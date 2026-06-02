@@ -482,6 +482,14 @@ impl StreamingScanner {
                 GovernmentIdentifierBuilder::find_uk_nis_in_text,
             ),
             (
+                |t| matches!(t, IdentifierType::SwedenPersonnummer),
+                GovernmentIdentifierBuilder::find_sweden_personnummers_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::SwedenOrgnummer),
+                GovernmentIdentifierBuilder::find_sweden_orgnummers_in_text,
+            ),
+            (
                 |t| matches!(t, IdentifierType::VehicleId),
                 GovernmentIdentifierBuilder::find_vehicle_ids_in_text,
             ),

@@ -116,6 +116,18 @@ Each gap includes the source domain report reference. Severity rule: blocks a Pr
 
 ### CRIT-11. Swedish Personnummer + Organisationsnummer missing
 
+- **Status**: ✅ Closed in #435. `SwedenPersonnummer` (Luhn over the 10-digit
+  core, month 1-12 + day 1-31/61-91 samordningsnummer, accepts `YYMMDD`,
+  `YYMMDD-`/`YYMMDD+`, and 12-digit `YYYYMMDD` forms) and `SwedenOrgnummer`
+  (10 digits, third digit ≥ 2, Luhn) implemented in
+  `primitives/identifiers/government/{detection/sweden.rs,validation/sweden.rs}`
+  plus `builder/europe.rs`, reusing `national_id::luhn_check`. Wired through the
+  Layer 3 `GovernmentBuilder`/shortcuts, the PII bridge
+  (`PiiType::SwedenPersonnummer`, `PiiType::SwedenOrgnummer`), `scan_government()`,
+  and the streaming scanner. Classification: `is_high_risk = true` and
+  `is_gdpr_protected = true` (Sweden is an EU member). Text scanning is
+  label-gated (context keywords `personnummer`, `personnr`, `samordningsnummer`,
+  `organisationsnummer`, `orgnr`).
 - **Presidio**: `SePersonnummerRecognizer` (Luhn over 10 digits + date sanity, includes samordningsnummer where day ≥ 61 means day - 60; accepts `YYMMDDXXXX` and `YYYYMMDDXXXX`, optional `-`/`+` separator where `+` marks 100+ years). `SeOrganisationsnummerRecognizer` (10 digits, third digit ≥ 2 to distinguish from personnummer, Luhn).
 - **Octarine**: Neither identifier exists. No Swedish anything in `government/`.
 - **Impact**: Personnummer is the unique Swedish national ID, universally used for healthcare / banking / government. Considered the most sensitive non-credential PII in Sweden; identity theft via leaked personnummer is endemic.

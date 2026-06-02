@@ -269,6 +269,14 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             GovernmentIdentifierBuilder::find_uk_driving_licences_in_text,
             PiiType::UkDrivingLicence,
         ),
+        (
+            GovernmentIdentifierBuilder::find_sweden_personnummers_in_text,
+            PiiType::SwedenPersonnummer,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_sweden_orgnummers_in_text,
+            PiiType::SwedenOrgnummer,
+        ),
     ];
 
     let government = GovernmentIdentifierBuilder::new();

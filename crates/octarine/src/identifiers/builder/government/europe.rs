@@ -1,5 +1,6 @@
 //! European national-identifier methods — Finland (HETU), Spain (NIF + NIE),
-//! Italy (Codice Fiscale), Poland (PESEL).
+//! Italy (Codice Fiscale), Poland (PESEL), Sweden (Personnummer +
+//! Organisationsnummer).
 
 use super::*;
 
@@ -444,5 +445,127 @@ impl GovernmentBuilder {
     /// Validate Polish PESEL with weighted checksum verification
     pub fn validate_poland_pesel_with_checksum(&self, pesel: &str) -> Result<(), Problem> {
         self.inner.validate_poland_pesel_with_checksum(pesel)
+    }
+
+    // ---- Sweden Personnummer -------------------------------------------------
+
+    /// Check if value matches a Swedish personnummer pattern
+    #[must_use]
+    pub fn is_sweden_personnummer(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_sweden_personnummer(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Swedish personnummer format
+    pub fn validate_sweden_personnummer(&self, value: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_sweden_personnummer(value);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                observe::warn(
+                    "sweden_personnummer_validation_failed",
+                    "Invalid Sweden personnummer format",
+                );
+            }
+        }
+        result
+    }
+
+    /// Validate Swedish personnummer with Luhn checksum verification
+    pub fn validate_sweden_personnummer_with_checksum(&self, value: &str) -> Result<(), Problem> {
+        self.inner.validate_sweden_personnummer_with_checksum(value)
+    }
+
+    /// Find all Swedish personnummer mentions in text
+    #[must_use]
+    pub fn find_sweden_personnummers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
+        let matches = self.inner.find_sweden_personnummers_in_text(text);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !matches.is_empty() {
+                increment_by(metric_names::detected(), matches.len() as u64);
+            }
+        }
+        matches
+    }
+
+    // ---- Sweden Organisationsnummer ------------------------------------------
+
+    /// Check if value matches a Swedish organisationsnummer pattern
+    #[must_use]
+    pub fn is_sweden_orgnummer(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_sweden_orgnummer(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Validate Swedish organisationsnummer format
+    pub fn validate_sweden_orgnummer(&self, value: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_sweden_orgnummer(value);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                observe::warn(
+                    "sweden_orgnummer_validation_failed",
+                    "Invalid Sweden organisationsnummer format",
+                );
+            }
+        }
+        result
+    }
+
+    /// Validate Swedish organisationsnummer with Luhn checksum verification
+    pub fn validate_sweden_orgnummer_with_checksum(&self, value: &str) -> Result<(), Problem> {
+        self.inner.validate_sweden_orgnummer_with_checksum(value)
+    }
+
+    /// Find all Swedish organisationsnummer mentions in text
+    #[must_use]
+    pub fn find_sweden_orgnummers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
+        let matches = self.inner.find_sweden_orgnummers_in_text(text);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !matches.is_empty() {
+                increment_by(metric_names::detected(), matches.len() as u64);
+            }
+        }
+        matches
     }
 }
