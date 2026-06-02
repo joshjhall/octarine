@@ -42,7 +42,7 @@ fn test_automatic_credit_card_redaction() {
 
 #[test]
 fn test_automatic_phone_redaction() {
-    let text = "Call: +1-555-123-4567";
+    let text = "Call: +1-415-867-5309";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     assert_eq!(redacted, "Call: [PHONE]");
@@ -166,7 +166,7 @@ fn test_redaction_preserves_message_structure() {
 
 #[test]
 fn test_redaction_preserves_formatting() {
-    let text = "Contact info:\n  Email: user@example.com\n  Phone: +1-555-123-4567";
+    let text = "Contact info:\n  Email: user@example.com\n  Phone: +1-415-867-5309";
     let redacted = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
 
     // Newlines and spacing preserved

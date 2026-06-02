@@ -37,10 +37,10 @@ use crate::primitives::Problem;
 /// ```ignore
 /// use octarine::primitives::identifiers::personal::{PhoneRedactionStrategy, redact_phone};
 ///
-/// let phone = "+1-555-123-4567";
+/// let phone = "+1-415-867-5309";
 ///
 /// // Partial - show last four (PCI-DSS)
-/// assert_eq!(redact_phone(phone, PhoneRedactionStrategy::ShowLastFour), "***-***-4567");
+/// assert_eq!(redact_phone(phone, PhoneRedactionStrategy::ShowLastFour), "***-***-5309");
 ///
 /// // Full - type token
 /// assert_eq!(redact_phone(phone, PhoneRedactionStrategy::Token), "[PHONE]");
@@ -111,8 +111,8 @@ pub fn redact_phone_with_strategy(phone: &str, strategy: PhoneRedactionStrategy)
 /// ```ignore
 /// use crate::primitives::identifiers::personal::sanitization;
 ///
-/// assert_eq!(sanitize_phone("(555) 123-4567")?, "+15551234567");
-/// assert_eq!(sanitize_phone("+1-555-123-4567")?, "+15551234567");
+/// assert_eq!(sanitize_phone("(415) 867-5309")?, "+14158675309");
+/// assert_eq!(sanitize_phone("+1-415-867-5309")?, "+14158675309");
 /// assert!(sanitize_phone("123").is_err());
 /// ```
 pub fn sanitize_phone(phone: &str) -> Result<String, Problem> {
@@ -161,16 +161,17 @@ mod tests {
     #[test]
     fn test_redact_phone_with_strategy() {
         assert_eq!(
-            redact_phone_with_strategy("+1-555-123-4567", PhoneRedactionStrategy::ShowLastFour),
-            "***-***-4567"
+            redact_phone_with_strategy("+1-415-867-5309", PhoneRedactionStrategy::ShowLastFour),
+            "***-***-5309"
         );
         assert_eq!(
-            redact_phone_with_strategy("5551234567", PhoneRedactionStrategy::ShowLastFour),
-            "***-***-4567"
+            redact_phone_with_strategy("4158675309", PhoneRedactionStrategy::ShowLastFour),
+            "***-***-5309"
         );
+        // Invalid numbers redact wholesale to avoid leaking partial data.
         assert_eq!(
             redact_phone_with_strategy("1234567", PhoneRedactionStrategy::ShowLastFour),
-            "***-4567"
+            "[PHONE]"
         );
         assert_eq!(
             redact_phone_with_strategy("123", PhoneRedactionStrategy::ShowLastFour),
@@ -181,7 +182,7 @@ mod tests {
     #[test]
     fn test_redact_phone_with_strategy_token() {
         assert_eq!(
-            redact_phone_with_strategy("+1-555-123-4567", PhoneRedactionStrategy::Token),
+            redact_phone_with_strategy("+1-415-867-5309", PhoneRedactionStrategy::Token),
             "[PHONE]"
         );
     }

@@ -212,10 +212,10 @@ mod tests {
         let builder = PersonalIdentifierBuilder::new();
         assert_eq!(
             builder.redact_phone_with_strategy(
-                "+1-555-123-4567",
+                "+1-415-867-5309",
                 PhoneRedactionStrategy::ShowLastFour
             ),
-            "***-***-4567"
+            "***-***-5309"
         );
         assert_eq!(
             builder.redact_phone_with_strategy("123", PhoneRedactionStrategy::Token),
@@ -251,7 +251,7 @@ mod tests {
     fn test_sanitize_phone() {
         let builder = PersonalIdentifierBuilder::new();
         let result = builder
-            .sanitize_phone("(555) 123-4567")
+            .sanitize_phone("(415) 867-5309")
             .expect("should sanitize valid phone");
         assert!(result.starts_with("+1"));
         assert!(builder.sanitize_phone("invalid").is_err());
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn test_redact_all_in_text_with_policy() {
         let builder = PersonalIdentifierBuilder::new();
-        let text = "Email: user@example.com, Phone: +1-555-123-4567";
+        let text = "Email: user@example.com, Phone: +1-415-867-5309";
         let result = builder.redact_all_in_text_with_policy(text, TextRedactionPolicy::Complete);
         assert!(result.contains("[EMAIL]"));
         assert!(result.contains("[PHONE]"));

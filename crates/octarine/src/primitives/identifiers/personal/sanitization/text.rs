@@ -162,7 +162,7 @@ pub fn redact_birthdates_in_text(text: &str, policy: TextRedactionPolicy) -> Cow
 /// ```ignore
 /// use octarine::primitives::identifiers::personal::{TextRedactionPolicy, redact_all_in_text};
 ///
-/// let text = "Contact John Smith at user@example.com or +1-555-123-4567";
+/// let text = "Contact John Smith at user@example.com or +1-415-867-5309";
 /// let result = redact_all_in_text(text, TextRedactionPolicy::Complete);
 /// // Result: "Contact [NAME] at [EMAIL] or [PHONE]"
 /// ```
@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_redact_phones_in_text() {
-        let text = "Call +1-555-123-4567";
+        let text = "Call +1-415-867-5309";
         let result = redact_phones_in_text(text, TextRedactionPolicy::Complete);
         assert!(result.contains("[PHONE]"));
     }
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn test_redact_all_in_text() {
-        let text = "Contact John Smith at user@example.com or +1-555-123-4567. Born: 1990-05-15";
+        let text = "Contact John Smith at user@example.com or +1-415-867-5309. Born: 1990-05-15";
         let result = redact_all_in_text(text, TextRedactionPolicy::Complete);
         assert!(result.contains("[EMAIL]"));
         assert!(result.contains("[PHONE]"));

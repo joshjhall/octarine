@@ -43,7 +43,7 @@ use super::phone::{detect_phones_in_text, is_phone_number};
 /// assert_eq!(result, Some(IdentifierType::Email));
 ///
 /// // Phone detection
-/// let result = find_personal_identifier("+1-555-123-4567");
+/// let result = find_personal_identifier("+1-415-867-5309");
 /// assert_eq!(result, Some(IdentifierType::PhoneNumber));
 /// ```
 ///
@@ -137,7 +137,7 @@ pub fn is_pii(value: &str) -> bool {
 /// ```ignore
 /// use crate::primitives::identifiers::personal::detection::detect_all_pii_in_text;
 ///
-/// let text = "Contact John Smith at user@example.com or +1-555-123-4567. Born: 1990-05-15";
+/// let text = "Contact John Smith at user@example.com or +1-415-867-5309. Born: 1990-05-15";
 /// let matches = detect_all_pii_in_text(text);
 ///
 /// // Should find: name, email, phone, birthdate
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_detect_all_pii_in_text() {
-        let text = "Contact John Smith at user@example.com or +1-555-123-4567. Born: 1990-05-15";
+        let text = "Contact John Smith at user@example.com or +1-415-867-5309. Born: 1990-05-15";
         let matches = detect_all_pii_in_text(text);
 
         // Should find multiple PII types
@@ -307,7 +307,7 @@ mod tests {
     #[test]
     fn test_is_pii_present() {
         assert!(is_pii_present("Email: user@example.com"));
-        assert!(is_pii_present("Call +1-555-123-4567"));
+        assert!(is_pii_present("Call +1-415-867-5309"));
         assert!(is_pii_present("Born on 1990-05-15"));
         assert!(!is_pii_present("No PII here"));
     }

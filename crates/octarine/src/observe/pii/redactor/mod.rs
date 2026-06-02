@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_redact_phone() {
-        let text = "Phone: +1-555-123-4567";
+        let text = "Phone: +1-415-867-5309";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
         // ProductionStrict uses Complete::Token strategy → [PHONE]
         assert_eq!(result, "Phone: [PHONE]");
@@ -474,12 +474,12 @@ mod tests {
 
     #[test]
     fn test_phone_various_formats() {
-        // Test different phone number formats
+        // Test different phone number formats (genuinely-valid US numbers)
         let formats = vec![
-            "+1-555-123-4567", // International with dashes
-            "(555) 123-4567",  // US format with parens
-            "555.123.4567",    // Dots
-            "1-555-123-4567",  // US with leading 1
+            "+1-415-867-5309", // International with dashes
+            "(415) 867-5309",  // US format with parens
+            "415.867.5309",    // Dots
+            "1-415-867-5309",  // US with leading 1
         ];
 
         for format in formats {
@@ -546,7 +546,7 @@ mod tests {
     #[test]
     fn test_unicode_with_pii() {
         // Test PII detection with unicode characters nearby
-        let text = "用户邮箱: user@example.com, 电话: +1-555-123-4567";
+        let text = "用户邮箱: user@example.com, 电话: +1-415-867-5309";
         let result = redact_pii_with_profile(text, RedactionProfile::ProductionStrict);
         // Should detect PII even with unicode
         assert!(result.contains("[EMAIL]") || result.contains("[PHONE]"));

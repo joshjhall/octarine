@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_is_phone_number() {
         let builder = PersonalIdentifierBuilder::new();
-        assert!(builder.is_phone_number("+15551234567"));
+        assert!(builder.is_phone_number("+14158675309"));
         assert!(!builder.is_phone_number("not-a-phone"));
     }
 
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn test_detect_phones_in_text() {
         let builder = PersonalIdentifierBuilder::new();
-        let matches = builder.detect_phones_in_text("Call +1-555-123-4567 or (555) 234-5678");
+        let matches = builder.detect_phones_in_text("Call +1-415-867-5309 or (212) 234-5678");
         assert_eq!(matches.len(), 2);
     }
 

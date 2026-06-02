@@ -794,8 +794,8 @@ mod tests {
     fn test_redact_phone_with_strategy() {
         let builder = PersonalBuilder::silent();
         let result = builder
-            .redact_phone_with_strategy("+1-555-123-4567", PhoneRedactionStrategy::ShowLastFour);
-        assert!(result.contains("4567"));
+            .redact_phone_with_strategy("+1-415-867-5309", PhoneRedactionStrategy::ShowLastFour);
+        assert!(result.contains("5309"));
     }
 
     #[test]

@@ -156,9 +156,15 @@ mod tests {
 
     #[test]
     fn test_phone_patterns() {
-        assert!(phone::WITH_COUNTRY_CODE.is_match("+1-555-123-4567"));
-        assert!(phone::WITH_PARENS.is_match("(555) 123-4567"));
-        assert!(phone::STANDARD.is_match("555-123-4567"));
+        // CANDIDATE is a loose matcher for text scanning; validity is decided
+        // downstream by libphonenumber, not by this regex.
+        assert!(phone::CANDIDATE.is_match("+1-555-123-4567"));
+        assert!(phone::CANDIDATE.is_match("(555) 123-4567"));
+        assert!(phone::CANDIDATE.is_match("555-123-4567"));
+
+        // Exact patterns used for classification.
+        assert!(phone::E164_EXACT.is_match("+15551234567"));
+        assert!(phone::US_EXACT.is_match("(555) 123-4567"));
     }
 
     #[test]
@@ -236,18 +242,11 @@ mod tests {
         assert!(!email::STANDARD.is_match("@example.com"));
     }
 
-    #[test]
-    fn test_phone_false_positives() {
-        // Should NOT match short numbers
-        assert!(!phone::STANDARD.is_match("555-1234"));
-        assert!(!phone::STANDARD.is_match("12-345-6789")); // Only 9 digits
-
-        // Should NOT match too many digits
-        assert!(!phone::STANDARD.is_match("5555-123-4567")); // 11 digits
-
-        // Should NOT match SSN-formatted numbers
-        assert!(!phone::STANDARD.is_match("123-45-6789")); // 3-2-4 is SSN
-    }
+    // Phone false-positive rejection is no longer a regex concern: the
+    // `CANDIDATE` pattern is deliberately loose, and validity (length, carrier
+    // prefix, SSN/date lookalikes) is decided by libphonenumber in
+    // `detect_phones_in_text`. See that module's tests for false-positive
+    // coverage.
 
     #[test]
     fn test_credit_card_false_positives() {
@@ -403,7 +402,7 @@ mod tests {
         // Empty strings should not match
         assert!(!ssn::WITH_DASHES.is_match(""));
         assert!(!email::STANDARD.is_match(""));
-        assert!(!phone::STANDARD.is_match(""));
+        assert!(!phone::E164_EXACT.is_match(""));
         assert!(!credit_card::NO_SEPARATOR.is_match(""));
 
         // Whitespace only should not match

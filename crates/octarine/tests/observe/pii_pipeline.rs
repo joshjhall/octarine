@@ -53,7 +53,7 @@ fn test_detects_credit_card() {
 
 #[test]
 fn test_detects_phone_number() {
-    let text = "Call: +1-555-123-4567";
+    let text = "Call: +1-415-867-5309";
     assert!(is_pii_present(text));
 
     let types = scan_for_pii(text);

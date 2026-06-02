@@ -95,15 +95,17 @@ mod tests {
         // Starting with 0 (invalid for E.164)
         assert!(validate_phone("0123456789").is_err());
 
-        // Exactly at boundaries
-        assert!(validate_phone("1234567").is_ok()); // 7 digits - minimum
-        assert!(validate_phone("123456789012345").is_ok()); // 15 digits - maximum
+        // libphonenumber enforces real numbering plans, not a bare digit-count
+        // range: impossible numbers are rejected even within 7–15 digits.
+        assert!(validate_phone("1234567").is_err()); // not a real number
+        assert!(validate_phone("123456789012345").is_err()); // not a real number
         assert!(validate_phone("1234567890123456").is_err()); // 16 digits - too long
+        assert!(validate_phone("123-456-7890").is_err()); // area code 123 invalid
 
-        // With various separators
-        assert!(validate_phone("123-456-7890").is_ok());
-        assert!(validate_phone("(123) 456-7890").is_ok());
-        assert!(validate_phone("123.456.7890").is_ok());
+        // Valid US numbers with various separators
+        assert!(validate_phone("415-867-5309").is_ok());
+        assert!(validate_phone("(415) 867-5309").is_ok());
+        assert!(validate_phone("415.867.5309").is_ok());
     }
 
     #[test]
