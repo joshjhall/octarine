@@ -2,8 +2,9 @@
 //!
 //! Brazil (CPF, CNPJ), Mexico (CURP), Nigeria (NIN), Thailand (TNIN),
 //! Turkey (TCKN, License Plate), Singapore (NRIC), Finland (HETU), UK NI,
-//! Spain (NIF, NIE), Italy (codice fiscale), Poland (PESEL), plus generic
-//! personal names and birthdate patterns.
+//! Spain (NIF, NIE), Italy (codice fiscale), Poland (PESEL), Sweden
+//! (Personnummer, Organisationsnummer), plus generic personal names and
+//! birthdate patterns.
 
 // arch-check: allow file-length — country-specific regex registry that grows
 // by ~30 LOC per identifier. A follow-up should split into regional submodules
@@ -692,6 +693,72 @@ pub(crate) mod poland_pesel {
 
     pub fn all() -> Vec<&'static Regex> {
         vec![&*LABELED, &*STANDARD]
+    }
+}
+
+/// Sweden Personnummer patterns
+///
+/// Format: `YYMMDD-NNNC`, `YYMMDD+NNNC` (10-digit core, `+` marks 100+ years),
+/// or `YYYYMMDDNNNC` (12-digit). The trailing `NNNC` is a 3-digit individual
+/// number plus a Luhn check digit. `is_sweden_personnummer` /
+/// `validate_sweden_personnummer` apply month/day sanity (including
+/// samordningsnummer, day 61-91) on top of these shape-only patterns.
+pub(crate) mod sweden_personnummer {
+    use super::*;
+
+    /// Shape: 6 or 8 leading digits + optional `-`/`+` + 4 digits.
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{6}(?:\d{2})?[-+]?\d{4}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Personnummer with explicit label (Swedish + English aliases)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:personnummer|personnr|pers\.?\s?nr|samordningsnummer|pnr)[\s:#-]*(\d{6}(?:\d{2})?[-+]?\d{4})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners. A bare 10/12-digit run
+    /// collides with dates, phone numbers, and Swedish orgnummer.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Sweden Organisationsnummer patterns
+///
+/// Format: `NNNNNN-NNNN` or 10 bare digits. The third digit is `>= 2`, which
+/// distinguishes an orgnummer from a personnummer. `is_sweden_orgnummer` /
+/// `validate_sweden_orgnummer` enforce the third-digit rule and Luhn on top of
+/// these shape-only patterns.
+pub(crate) mod sweden_orgnummer {
+    use super::*;
+
+    /// Shape: 6 digits + optional `-` + 4 digits.
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\b\d{6}-?\d{4}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Orgnummer with explicit label (Swedish + English aliases)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:organisationsnummer|org\.?\s?nr|orgnr|organization[\s-]?number)[\s:#-]*(\d{6}-?\d{4})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — used by text scanners. A bare 10-digit run
+    /// collides with phone numbers and Swedish personnummer.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
     }
 }
 

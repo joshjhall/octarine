@@ -253,7 +253,10 @@ pub fn validate_canada_sin(sin: &str) -> Result<(), Problem> {
 }
 
 /// Luhn algorithm checksum validation
-fn luhn_check(digits: &str) -> bool {
+///
+/// Shared within the `validation` module so country modules (e.g. `sweden`)
+/// can reuse the same mod-10 implementation rather than duplicating it.
+pub(super) fn luhn_check(digits: &str) -> bool {
     let mut sum: u32 = 0;
     let mut double = false;
 

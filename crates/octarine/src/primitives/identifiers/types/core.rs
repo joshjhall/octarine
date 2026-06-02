@@ -108,6 +108,8 @@ pub enum IdentifierType {
     UkNhs,              // UK NHS Number (10 digits, mod-11 weighted checksum)
     UkPassport,         // UK Passport (2 letters + 7 digits)
     UkDrivingLicence,   // UK DVLA Driving Licence (16-char DVLA structural format)
+    SwedenPersonnummer, // Swedish personal identity number (YYMMDD/YYYYMMDD + NNN + Luhn)
+    SwedenOrgnummer,    // Swedish organisationsnummer (10 digits, third digit >= 2, Luhn)
 
     // Organizational identifiers
     EmployeeId,

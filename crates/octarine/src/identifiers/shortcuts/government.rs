@@ -512,6 +512,70 @@ pub fn validate_turkey_license_plate(plate: &str) -> Result<(), Problem> {
     GovernmentBuilder::new().validate_turkey_license_plate(plate)
 }
 
+// ============================================================================
+// Sweden
+// ============================================================================
+
+/// Check if value is a Sweden personnummer (shape + date sanity)
+#[must_use]
+pub fn is_sweden_personnummer(value: &str) -> bool {
+    GovernmentBuilder::new().is_sweden_personnummer(value)
+}
+
+/// Find all Sweden personnummers in text (label-anchored only)
+#[must_use]
+pub fn find_sweden_personnummers(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_sweden_personnummers_in_text(text)
+}
+
+/// Validate a Sweden personnummer format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format or date is invalid.
+pub fn validate_sweden_personnummer(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_sweden_personnummer(value)
+}
+
+/// Validate a Sweden personnummer with Luhn checksum verification
+///
+/// # Errors
+///
+/// Returns `Problem` if the format, date, or checksum is invalid.
+pub fn validate_sweden_personnummer_with_checksum(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_sweden_personnummer_with_checksum(value)
+}
+
+/// Check if value is a Sweden organisationsnummer (shape + third-digit rule)
+#[must_use]
+pub fn is_sweden_orgnummer(value: &str) -> bool {
+    GovernmentBuilder::new().is_sweden_orgnummer(value)
+}
+
+/// Find all Sweden organisationsnummers in text (label-anchored only)
+#[must_use]
+pub fn find_sweden_orgnummers(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_sweden_orgnummers_in_text(text)
+}
+
+/// Validate a Sweden organisationsnummer format
+///
+/// # Errors
+///
+/// Returns `Problem` if the format or third-digit rule is invalid.
+pub fn validate_sweden_orgnummer(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_sweden_orgnummer(value)
+}
+
+/// Validate a Sweden organisationsnummer with Luhn checksum verification
+///
+/// # Errors
+///
+/// Returns `Problem` if the format or checksum is invalid.
+pub fn validate_sweden_orgnummer_with_checksum(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_sweden_orgnummer_with_checksum(value)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -659,5 +723,33 @@ mod tests {
         assert!(validate_turkey_license_plate("34 ABC 123").is_ok());
         assert!(validate_turkey_license_plate("34 QBC 123").is_err()); // reserved letter
         assert!(!find_turkey_license_plates("Plaka: 34 ABC 123").is_empty());
+    }
+
+    #[test]
+    fn test_sweden_personnummer_shortcuts() {
+        // Canonical Swedish test personnummer.
+        assert!(is_sweden_personnummer("19121212-1212"));
+        assert!(validate_sweden_personnummer("19121212-1212").is_ok());
+        assert!(validate_sweden_personnummer_with_checksum("19121212-1212").is_ok());
+        assert!(validate_sweden_personnummer("").is_err());
+        // Bad month rejected.
+        assert!(validate_sweden_personnummer("811328-1234").is_err());
+        // Text scanning requires a label — bare digits collide with dates/phones.
+        assert!(!find_sweden_personnummers("personnummer: 19121212-1212").is_empty());
+        assert!(find_sweden_personnummers("19121212-1212").is_empty());
+    }
+
+    #[test]
+    fn test_sweden_orgnummer_shortcuts() {
+        // 556016-0680 has third digit 6 (>= 2) and a valid Luhn check digit.
+        assert!(is_sweden_orgnummer("556016-0680"));
+        assert!(validate_sweden_orgnummer("556016-0680").is_ok());
+        assert!(validate_sweden_orgnummer_with_checksum("556016-0680").is_ok());
+        // Third digit < 2 is a personnummer shape, not an orgnummer.
+        assert!(!is_sweden_orgnummer("551016-0680"));
+        assert!(validate_sweden_orgnummer("").is_err());
+        // Label-gated text scanning.
+        assert!(!find_sweden_orgnummers("orgnr: 556016-0680").is_empty());
+        assert!(find_sweden_orgnummers("556016-0680").is_empty());
     }
 }

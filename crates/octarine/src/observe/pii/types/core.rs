@@ -71,6 +71,8 @@ impl PiiType {
             Self::UkNhs => "uk_nhs",
             Self::UkPassport => "uk_passport",
             Self::UkDrivingLicence => "uk_driving_licence",
+            Self::SwedenPersonnummer => "sweden_personnummer",
+            Self::SwedenOrgnummer => "sweden_orgnummer",
             // Medical
             Self::Mrn => "mrn",
             Self::Npi => "npi",
@@ -225,7 +227,9 @@ impl PiiType {
             | Self::UkNi
             | Self::UkNhs
             | Self::UkPassport
-            | Self::UkDrivingLicence => "government",
+            | Self::UkDrivingLicence
+            | Self::SwedenPersonnummer
+            | Self::SwedenOrgnummer => "government",
             Self::Mrn
             | Self::Npi
             | Self::InsuranceNumber

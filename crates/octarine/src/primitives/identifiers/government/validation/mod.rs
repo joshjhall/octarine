@@ -58,6 +58,7 @@ mod poland;
 mod singapore;
 mod spain;
 mod ssn;
+mod sweden;
 mod thailand;
 mod turkey;
 mod uk;
@@ -118,6 +119,13 @@ pub use italy::{
 pub use spain::{
     is_test_spain_nie, is_test_spain_nif, validate_spain_nie, validate_spain_nie_with_checksum,
     validate_spain_nif, validate_spain_nif_with_checksum,
+};
+
+// Re-export Sweden functions
+pub use sweden::{
+    is_test_sweden_orgnummer, is_test_sweden_personnummer, validate_sweden_orgnummer,
+    validate_sweden_orgnummer_with_checksum, validate_sweden_personnummer,
+    validate_sweden_personnummer_with_checksum,
 };
 
 // Re-export India functions
