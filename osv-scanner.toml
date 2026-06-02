@@ -8,3 +8,9 @@
 id = "RUSTSEC-2023-0071"
 # Marvin attack on the rsa crate. No fix is available upstream yet. The same
 # ignore is applied in `just deps-audit`; revisit when rsa publishes a fix.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0089"
+# atomic-polyfill is unmaintained (not a vulnerability). Pulled in transitively
+# via phonenumber → postcard → heapless 0.7, which cannot be upgraded away until
+# postcard moves to heapless 0.8+. Mirrored in deny.toml; revisit 2026-12-01.

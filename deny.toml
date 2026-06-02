@@ -14,6 +14,12 @@ ignore = [
   # Re-evaluate by 2026-10-01: check if upstream has patched or if we can drop the dep.
   # CRITICAL: if RS256 server-side signing is ever added, this MUST be resolved first.
   { id = "RUSTSEC-2023-0071", reason = "no patch available, transitive dep only — re-evaluate 2026-10-01" },
+  # atomic-polyfill is unmaintained (not a vulnerability). Pulled in transitively
+  # via phonenumber → postcard → heapless 0.7. postcard requires heapless ^0.7,
+  # and heapless only dropped atomic-polyfill (for portable-atomic) in 0.8+, so we
+  # cannot upgrade it away without an upstream postcard bump.
+  # Re-evaluate by 2026-12-01: check if phonenumber/postcard moved to heapless 0.8+.
+  { id = "RUSTSEC-2023-0089", reason = "unmaintained, transitive via phonenumber→postcard→heapless 0.7 — re-evaluate 2026-12-01" },
 ]
 
 # ─── Licenses ────────────────────────────────────────────────────────────────
