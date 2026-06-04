@@ -7,11 +7,12 @@
 //! `let _ = ...`, silently dropping events for every registered writer
 //! except the always-synchronous console.
 //!
-//! Cargo runs these tests in parallel inside a single process, sharing
-//! the global `WRITER_REGISTRY` and `EVENT_DISPATCHER`. Tests use unique
-//! per-test writer names and unique event message markers, and assertions
-//! filter captured events by marker — never by absolute count — so two
-//! tests that fan out through the dispatcher cannot disturb each other.
+//! The dispatcher and `WRITER_REGISTRY` are process-global singletons.
+//! Under nextest each test runs in its own process, but tests still use
+//! unique per-test writer names and unique event message markers, and
+//! assertions filter captured events by marker — never by absolute count
+//! — so the suite stays robust whether run process-per-test (nextest) or
+//! many-per-process (plain `cargo test`).
 
 #![allow(clippy::panic, clippy::expect_used)]
 
@@ -25,6 +26,22 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::time::{Instant, sleep};
+
+/// Deadline for positive-signal polls (waiting for an event to arrive).
+///
+/// The dispatcher runs on a single-threaded background runtime. Under
+/// nextest each test is its own process, and when CI runs many such
+/// processes in parallel that background thread is CPU-starved, so a
+/// flushed event can take well over a second to surface. A 2s deadline
+/// flaked here (observed failures at ~2.02s through all retries); 5s
+/// matches the deadline every other poll in the observe integration
+/// suite already uses and absorbs the scheduling jitter. This bounds the
+/// happy path only — assertions still fail fast once the signal arrives.
+const POLL_DEADLINE: Duration = Duration::from_secs(5);
+
+/// Interval between poll probes. Small enough that a fast machine returns
+/// almost immediately, large enough not to busy-spin.
+const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Poll `probe` up to `deadline`, checking every `interval`. Returns
 /// `true` as soon as the probe succeeds. Avoids fixed-duration sleeps so
@@ -126,7 +143,7 @@ async fn registered_writer_receives_dispatched_event() {
 
     dispatch(Event::new(EventType::Info, marker));
 
-    let received = poll_until(Duration::from_secs(2), Duration::from_millis(10), || {
+    let received = poll_until(POLL_DEADLINE, POLL_INTERVAL, || {
         count_with_marker(&capture, marker) >= 1
     })
     .await;
@@ -165,7 +182,7 @@ async fn multiple_writers_all_receive_event() {
 
     dispatch(Event::new(EventType::Info, marker));
 
-    let both = poll_until(Duration::from_secs(2), Duration::from_millis(10), || {
+    let both = poll_until(POLL_DEADLINE, POLL_INTERVAL, || {
         count_with_marker(&a, marker) >= 1 && count_with_marker(&b, marker) >= 1
     })
     .await;
@@ -199,7 +216,7 @@ async fn failing_writer_does_not_block_others() {
 
     dispatch(Event::new(EventType::Info, marker));
 
-    let good_received = poll_until(Duration::from_secs(5), Duration::from_millis(50), || {
+    let good_received = poll_until(POLL_DEADLINE, POLL_INTERVAL, || {
         count_with_marker(&good, marker) >= 1
     })
     .await;
@@ -246,7 +263,7 @@ async fn disabled_writer_receives_nothing() {
     }));
     dispatch(Event::new(EventType::Info, probe_marker));
 
-    let probe_received = poll_until(Duration::from_secs(2), Duration::from_millis(10), || {
+    let probe_received = poll_until(POLL_DEADLINE, POLL_INTERVAL, || {
         count_with_marker(&probe, probe_marker) >= 1
     })
     .await;
