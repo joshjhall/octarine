@@ -309,10 +309,8 @@ pub fn calculate_boundary_depth_strict(path: &str, boundary: &str) -> Result<usi
             Component::Normal(_) => {
                 depth = depth.saturating_add(1);
             }
-            Component::ParentDir => {
-                if depth > 0 {
-                    depth = depth.saturating_sub(1);
-                }
+            Component::ParentDir if depth > 0 => {
+                depth = depth.saturating_sub(1);
             }
             _ => {}
         }

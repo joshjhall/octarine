@@ -303,9 +303,9 @@ impl DatabaseBackend for InMemoryBackend {
 
         // Sort
         if query.ascending {
-            filtered.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+            filtered.sort_by_key(|a| a.timestamp);
         } else {
-            filtered.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+            filtered.sort_by_key(|b| std::cmp::Reverse(b.timestamp));
         }
 
         let total_count = filtered.len();

@@ -272,15 +272,14 @@ pub fn sanitize_for_log_with_config<'a>(input: &'a str, options: &TextConfig) ->
             '\t' if options.escape_tabs => {
                 result.push_str("\\t");
             }
-            _ if c.is_ascii() && is_dangerous_control_byte(c as u8) => {
-                if options.remove_control_chars {
-                    if options.use_replacement_char {
-                        result.push('\u{FFFD}');
-                    }
-                    // else: skip (remove)
-                } else {
-                    result.push(c);
+            _ if c.is_ascii()
+                && is_dangerous_control_byte(c as u8)
+                && options.remove_control_chars =>
+            {
+                if options.use_replacement_char {
+                    result.push('\u{FFFD}');
                 }
+                // else: skip (remove)
             }
             _ if !c.is_ascii() && !options.allow_unicode => {
                 if options.escape_unicode {
