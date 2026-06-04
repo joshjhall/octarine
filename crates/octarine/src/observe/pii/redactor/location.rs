@@ -74,7 +74,7 @@ pub(super) fn redact_named_locations(text: &str, profile: RedactionProfile) -> S
                 return text.to_string();
             }
             // Replace from the end so earlier byte spans stay valid.
-            matches.sort_by(|a, b| b.start.cmp(&a.start));
+            matches.sort_by_key(|m| std::cmp::Reverse(m.start));
             let mut out = text.to_string();
             for m in matches {
                 if m.confidence == DetectionConfidence::Low {

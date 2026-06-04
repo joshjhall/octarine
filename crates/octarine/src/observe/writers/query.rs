@@ -337,9 +337,9 @@ pub fn paginate_events_with_errors(
 ) -> QueryResult {
     // Sort
     if query.ascending {
-        events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        events.sort_by_key(|a| a.timestamp);
     } else {
-        events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        events.sort_by_key(|b| std::cmp::Reverse(b.timestamp));
     }
 
     let total_count = events.len();

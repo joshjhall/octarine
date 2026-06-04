@@ -58,10 +58,8 @@ pub fn extract_host(url: &str) -> Option<&str> {
     // Find the scheme separator
     let after_scheme = if let Some(idx) = trimmed.find("://") {
         &trimmed[idx + 3..]
-    } else if let Some(rest) = trimmed.strip_prefix("//") {
-        rest
     } else {
-        return None;
+        trimmed.strip_prefix("//")?
     };
 
     // Remove userinfo if present (user:pass@)
