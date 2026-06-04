@@ -10,4 +10,4 @@ mod personal;
 
 pub use core::{DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType};
 pub use financial::{CreditCardType, CryptoAddressType};
-pub use personal::{CredentialMatch, CredentialType, PhoneRegion};
+pub use personal::{CountryCode, CredentialMatch, CredentialType, PhoneRegion};

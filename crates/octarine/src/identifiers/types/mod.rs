@@ -27,7 +27,7 @@ pub use location::{
     AddressNormalization, GpsFormat, LocationTextPolicy, PostalCodeNormalization, PostalCodeType,
 };
 pub use network::{ApiKeyProvider, UuidVersion};
-pub use personal::{CredentialMatch, CredentialType, PhoneRegion};
+pub use personal::{CountryCode, CredentialMatch, CredentialType, PhoneRegion};
 pub use policies::{
     CredentialTextPolicy, GovernmentTextPolicy, MedicalTextPolicy, OrganizationalTextPolicy,
     PersonalTextPolicy,

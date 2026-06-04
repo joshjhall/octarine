@@ -101,8 +101,8 @@ pub(crate) mod crypto;
 
 // Re-export types — pub so L3 modules can re-export them in the public API
 pub use types::{
-    CredentialMatch, CredentialType, CreditCardType, CryptoAddressType, DetectionConfidence,
-    DetectionResult, IdentifierMatch, IdentifierType, PhoneRegion,
+    CountryCode, CredentialMatch, CredentialType, CreditCardType, CryptoAddressType,
+    DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType, PhoneRegion,
 };
 
 // Re-export correlation types — pub so L3 modules can re-export them

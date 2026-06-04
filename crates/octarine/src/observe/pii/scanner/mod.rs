@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_scan_for_pii_phone() {
-        let text = "Call: +1-555-123-4567";
+        let text = "Call: +1-415-867-5309";
         let types = scan_for_pii(text);
         assert!(types.contains(&PiiType::Phone));
     }

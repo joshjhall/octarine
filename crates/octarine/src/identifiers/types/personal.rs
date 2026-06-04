@@ -1,3 +1,5 @@
 //! Personal identifier types — re-exported from primitives
 
-pub use crate::primitives::identifiers::{CredentialMatch, CredentialType, PhoneRegion};
+pub use crate::primitives::identifiers::{
+    CountryCode, CredentialMatch, CredentialType, PhoneRegion,
+};

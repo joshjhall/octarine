@@ -125,9 +125,9 @@ pub use builder::{
 // Re-export types for public API
 pub use types::{
     ApiKeyProvider, BiometricTemplateRedactionStrategy, BiometricTextPolicy, CacheStats,
-    CorrelationConfig, CorrelationMatch, CredentialMatch, CredentialPairType, CredentialTextPolicy,
-    CredentialType, CreditCardType, CryptoAddressType, DetectionConfidence, DetectionResult,
-    DnaRedactionStrategy, FacialIdRedactionStrategy, FinancialTextPolicy,
+    CorrelationConfig, CorrelationMatch, CountryCode, CredentialMatch, CredentialPairType,
+    CredentialTextPolicy, CredentialType, CreditCardType, CryptoAddressType, DetectionConfidence,
+    DetectionResult, DnaRedactionStrategy, FacialIdRedactionStrategy, FinancialTextPolicy,
     FingerprintRedactionStrategy, GovernmentTextPolicy, GpsFormat, IdentifierMatch, IdentifierType,
     IrisIdRedactionStrategy, LocationTextPolicy, MedicalTextPolicy, MetricViolation,
     OrganizationalTextPolicy, PersonalTextPolicy, PhoneRegion, PostalCodeNormalization,

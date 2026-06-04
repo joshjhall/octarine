@@ -98,11 +98,11 @@ pub fn calculate_age(birthdate: &str) -> Result<u32, Problem> {
 /// Phone number display format styles
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhoneFormatStyle {
-    /// E.164 international format: +15551234567
+    /// E.164 international format: +14158675309
     E164,
-    /// National format: (555) 123-4567
+    /// National format: (415) 867-5309
     National,
-    /// International format: +1 (555) 123-4567
+    /// International format: +1 (415) 867-5309
     International,
 }
 
@@ -110,7 +110,7 @@ pub enum PhoneFormatStyle {
 // Phone Normalization
 // ============================================================================
 
-/// Normalize phone to E.164 format (+15551234567)
+/// Normalize phone to E.164 format (+14158675309)
 ///
 /// Converts various phone number formats to E.164 standard.
 /// Validates format using detection layer before conversion.
@@ -125,8 +125,8 @@ pub enum PhoneFormatStyle {
 /// ```ignore
 /// use crate::primitives::identifiers::personal::conversion;
 ///
-/// let result = conversion::normalize_phone_e164("5551234567", "US");
-/// assert_eq!(result.unwrap(), "+15551234567");
+/// let result = conversion::normalize_phone_e164("4158675309", "US");
+/// assert_eq!(result.unwrap(), "+14158675309");
 /// ```
 pub fn normalize_phone_e164(phone: &str, default_country: &str) -> Result<String, Problem> {
     // Validate phone format first using detection layer
@@ -164,8 +164,8 @@ pub fn normalize_phone_e164(phone: &str, default_country: &str) -> Result<String
 /// use crate::primitives::identifiers::personal::conversion::{to_phone_display, PhoneFormatStyle};
 ///
 /// assert_eq!(
-///     to_phone_display("5551234567", PhoneFormatStyle::National),
-///     "(555) 123-4567"
+///     to_phone_display("4158675309", PhoneFormatStyle::National),
+///     "(415) 867-5309"
 /// );
 /// ```
 #[must_use]
@@ -288,18 +288,18 @@ mod tests {
     fn test_normalize_phone_e164() {
         // US 10-digit
         let result =
-            normalize_phone_e164("5551234567", "US").expect("should normalize 10-digit US phone");
-        assert_eq!(result, "+15551234567");
+            normalize_phone_e164("4158675309", "US").expect("should normalize 10-digit US phone");
+        assert_eq!(result, "+14158675309");
 
         // Already E.164
         let result =
-            normalize_phone_e164("+15551234567", "US").expect("should preserve E.164 format");
-        assert_eq!(result, "+15551234567");
+            normalize_phone_e164("+14158675309", "US").expect("should preserve E.164 format");
+        assert_eq!(result, "+14158675309");
 
         // 11-digit with leading 1
-        let result = normalize_phone_e164("15551234567", "US")
+        let result = normalize_phone_e164("14158675309", "US")
             .expect("should normalize 11-digit with leading 1");
-        assert_eq!(result, "+15551234567");
+        assert_eq!(result, "+14158675309");
 
         // Invalid (fails detection - too short)
         let err = normalize_phone_e164("12345", "US").expect_err("should fail for short phone");
@@ -311,36 +311,36 @@ mod tests {
     #[test]
     fn test_to_phone_display_national() {
         assert_eq!(
-            to_phone_display("5551234567", PhoneFormatStyle::National),
-            "(555) 123-4567"
+            to_phone_display("4158675309", PhoneFormatStyle::National),
+            "(415) 867-5309"
         );
         assert_eq!(
-            to_phone_display("15551234567", PhoneFormatStyle::National),
-            "(555) 123-4567"
+            to_phone_display("14158675309", PhoneFormatStyle::National),
+            "(415) 867-5309"
         );
     }
 
     #[test]
     fn test_to_phone_display_international() {
         assert_eq!(
-            to_phone_display("15551234567", PhoneFormatStyle::International),
-            "+1 (555) 123-4567"
+            to_phone_display("14158675309", PhoneFormatStyle::International),
+            "+1 (415) 867-5309"
         );
         assert_eq!(
-            to_phone_display("5551234567", PhoneFormatStyle::International),
-            "(555) 123-4567"
+            to_phone_display("4158675309", PhoneFormatStyle::International),
+            "(415) 867-5309"
         );
     }
 
     #[test]
     fn test_to_phone_display_e164() {
         assert_eq!(
-            to_phone_display("5551234567", PhoneFormatStyle::E164),
-            "+15551234567"
+            to_phone_display("4158675309", PhoneFormatStyle::E164),
+            "+14158675309"
         );
         assert_eq!(
-            to_phone_display("15551234567", PhoneFormatStyle::E164),
-            "+15551234567"
+            to_phone_display("14158675309", PhoneFormatStyle::E164),
+            "+14158675309"
         );
     }
 
@@ -413,39 +413,39 @@ mod tests {
 
         // Exactly 10 digits
         assert_eq!(
-            to_phone_display("5551234567", PhoneFormatStyle::E164),
-            "+15551234567"
+            to_phone_display("4158675309", PhoneFormatStyle::E164),
+            "+14158675309"
         );
 
         // Exactly 11 digits with leading 1
         assert_eq!(
-            to_phone_display("15551234567", PhoneFormatStyle::E164),
-            "+15551234567"
+            to_phone_display("14158675309", PhoneFormatStyle::E164),
+            "+14158675309"
         );
 
         // With various separators
         assert_eq!(
-            to_phone_display("(555) 123-4567", PhoneFormatStyle::National),
-            "(555) 123-4567"
+            to_phone_display("(415) 867-5309", PhoneFormatStyle::National),
+            "(415) 867-5309"
         );
         assert_eq!(
-            to_phone_display("555.123.4567", PhoneFormatStyle::National),
-            "(555) 123-4567"
+            to_phone_display("415.867.5309", PhoneFormatStyle::National),
+            "(415) 867-5309"
         );
     }
 
     #[test]
     fn test_phone_normalization_edge_cases() {
         // Already has + prefix
-        let result = normalize_phone_e164("+15551234567", "US").expect("should handle + prefix");
-        assert_eq!(result, "+15551234567");
+        let result = normalize_phone_e164("+14158675309", "US").expect("should handle + prefix");
+        assert_eq!(result, "+14158675309");
 
         // With leading 1 (11 digits)
-        let result = normalize_phone_e164("15551234567", "US").expect("should handle 11 digits");
-        assert_eq!(result, "+15551234567");
+        let result = normalize_phone_e164("14158675309", "US").expect("should handle 11 digits");
+        assert_eq!(result, "+14158675309");
 
         // Non-US country (currently limited - detection still passes for valid phone)
-        let err = normalize_phone_e164("5551234567", "UK").expect_err("should fail for non-US");
+        let err = normalize_phone_e164("4158675309", "UK").expect_err("should fail for non-US");
         assert!(err.to_string().contains("country code"));
 
         // Too few digits (fails detection)
@@ -453,8 +453,8 @@ mod tests {
         assert!(err.to_string().contains("Invalid phone"));
 
         // Various separators should be stripped
-        let result = normalize_phone_e164("(555) 123-4567", "US").expect("should strip separators");
-        assert_eq!(result, "+15551234567");
+        let result = normalize_phone_e164("(415) 867-5309", "US").expect("should strip separators");
+        assert_eq!(result, "+14158675309");
     }
 
     #[test]
@@ -509,31 +509,31 @@ mod tests {
 
     #[test]
     fn test_phone_format_styles_comprehensive() {
-        let phone = "5551234567";
+        let phone = "4158675309";
 
         // E164
         assert_eq!(
             to_phone_display(phone, PhoneFormatStyle::E164),
-            "+15551234567"
+            "+14158675309"
         );
 
         // National
         assert_eq!(
             to_phone_display(phone, PhoneFormatStyle::National),
-            "(555) 123-4567"
+            "(415) 867-5309"
         );
 
         // International
         assert_eq!(
             to_phone_display(phone, PhoneFormatStyle::International),
-            "(555) 123-4567"
+            "(415) 867-5309"
         );
 
         // 11 digit with leading 1
-        let phone11 = "15551234567";
+        let phone11 = "14158675309";
         assert_eq!(
             to_phone_display(phone11, PhoneFormatStyle::International),
-            "+1 (555) 123-4567"
+            "+1 (415) 867-5309"
         );
     }
 

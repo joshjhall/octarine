@@ -127,7 +127,7 @@ pub use detection::find_phone_region;
 pub use detection::is_pii_present;
 
 // Export phone region type from common types module
-pub use super::types::PhoneRegion;
+pub use super::types::{CountryCode, PhoneRegion};
 
 // Export sanitization functions for normalization (in addition to redaction)
 pub use sanitization::{

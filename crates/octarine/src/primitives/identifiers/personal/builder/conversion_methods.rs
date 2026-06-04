@@ -6,7 +6,7 @@ use super::super::conversion;
 use super::core::{PersonalIdentifierBuilder, PhoneFormatStyle};
 
 impl PersonalIdentifierBuilder {
-    /// Normalize phone to E.164 format (+15551234567)
+    /// Normalize phone to E.164 format (+14158675309)
     pub fn normalize_phone_e164(
         &self,
         phone: &str,
@@ -42,17 +42,17 @@ mod tests {
     fn test_normalize_phone_e164() {
         let builder = PersonalIdentifierBuilder::new();
         let result = builder
-            .normalize_phone_e164("5551234567", "US")
+            .normalize_phone_e164("4158675309", "US")
             .expect("should normalize phone");
-        assert_eq!(result, "+15551234567");
+        assert_eq!(result, "+14158675309");
     }
 
     #[test]
     fn test_to_phone_display() {
         let builder = PersonalIdentifierBuilder::new();
         assert_eq!(
-            builder.to_phone_display("5551234567", PhoneFormatStyle::National),
-            "(555) 123-4567"
+            builder.to_phone_display("4158675309", PhoneFormatStyle::National),
+            "(415) 867-5309"
         );
     }
 

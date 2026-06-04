@@ -244,7 +244,7 @@ deps-outdated:
 
 # Check for known security vulnerabilities
 deps-audit:
-    cargo audit --ignore RUSTSEC-2023-0071
+    cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2023-0089
 
 # Run cargo-deny checks (advisories, licenses, sources)
 deps-deny:

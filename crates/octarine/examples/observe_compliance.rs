@@ -21,7 +21,7 @@ fn demonstrate_pii_detection() {
         ("SSN", "My SSN is 123-45-6789"),
         ("Credit Card", "Card number: 4111-1111-1111-1111"),
         ("Email", "Contact me at user@example.com"),
-        ("Phone", "Call me at (555) 123-4567"),
+        ("Phone", "Call me at (415) 867-5309"),
         ("IPv4 Address", "Server IP: 192.168.1.100"),
         ("AWS Key", aws_key_example.as_str()),
         ("No PII", "This is a clean string with no PII"),
