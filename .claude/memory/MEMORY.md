@@ -12,3 +12,5 @@
 - [Conform scope allowlist](project_conform_scope_allowlist.md) — new top-level octarine modules must be added to `.conform.yaml` scopes or the commit-msg hook rejects `feat(<module>):`
 - [CI Doc job is strict](project_ci_doc_job_strict.md) — CI `Doc` runs `just doc` (rustdoc -D warnings, catches broken intra-doc links); `just preflight`/`test-docs` don't. Run `just doc` after editing doc comments.
 - [Redactor/engine convergence](project_redactor_engine_convergence.md) — epic #604: converge observe/pii redactor onto anonymize engine; operators (Mask #483, Hash #484) must delegate to primitive strategies, not reimplement. Detection already single-sourced.
+- [Anonymize sans-IO split](project-anonymize-sans-io-split.md) — anonymize engine: sync splice core shared by sync + async shells; AsyncOperator coexists with Operator; vault access is async-only by invariant (#609)
+- [CodeQL hard-coded crypto FP](project-codeql-hardcoded-crypto-fp.md) — CodeQL flags `[0u8; N]`/`[9u8; N]` array literals reaching AEAD key/nonce sinks even when overwritten; build arrays from a Vec via `try_into`, promote test-key literals to named consts. Token can't dismiss alerts (403).
