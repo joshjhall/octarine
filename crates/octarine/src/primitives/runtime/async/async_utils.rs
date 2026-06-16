@@ -345,28 +345,28 @@ mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_sleep_ms() {
-        let start = now();
+        // Paused time advances deterministically when tokio::time::sleep
+        // fires, so elapsed is exactly the requested duration — no wall-clock
+        // jitter and no flakiness under CI coverage instrumentation.
+        let start = tokio::time::Instant::now();
         sleep_ms(10).await;
-        let elapsed = start.elapsed();
-        // Allow 20% margin for OS scheduler jitter
-        assert!(
-            elapsed.as_millis() >= 8,
-            "Expected at least 8ms elapsed, got {}ms",
-            elapsed.as_millis()
-        );
+        assert_eq!(start.elapsed(), Duration::from_millis(10));
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_sleep_secs() {
-        let start = now();
-        // Just test it compiles and runs, don't actually wait seconds
-        tokio::time::timeout(Duration::from_millis(1), sleep_secs(1))
-            .await
-            .ok();
-        // Should have been interrupted
-        assert!(start.elapsed().as_millis() < 100);
+        // Paused time advances to the earliest pending timer: the 1ms timeout
+        // fires before the 1s sleep completes, so the sleep is interrupted
+        // deterministically without ever waiting a real second.
+        let start = tokio::time::Instant::now();
+        let result = tokio::time::timeout(Duration::from_millis(1), sleep_secs(1)).await;
+        assert!(
+            result.is_err(),
+            "sleep_secs(1) should be interrupted by the 1ms timeout"
+        );
+        assert_eq!(start.elapsed(), Duration::from_millis(1));
     }
 
     #[tokio::test]
@@ -375,35 +375,27 @@ mod tests {
         yield_now().await;
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_interval() {
         let mut timer = interval_ms(10);
 
         // First tick is immediate
         timer.tick().await;
 
-        let start = now();
+        // Paused time advances exactly one period between ticks, so elapsed
+        // is precisely the configured interval — deterministic, no jitter.
+        let start = tokio::time::Instant::now();
         timer.tick().await;
-        let elapsed = start.elapsed();
-
-        // Allow for some timing variance - at least 5ms should have elapsed
-        assert!(
-            elapsed.as_millis() >= 5,
-            "Expected at least 5ms elapsed, got {}ms",
-            elapsed.as_millis()
-        );
+        assert_eq!(start.elapsed(), Duration::from_millis(10));
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_timeout() {
-        let start = now();
+        // Paused time advances exactly when the timeout future fires, so
+        // elapsed is precisely the requested duration.
+        let start = tokio::time::Instant::now();
         timeout(Duration::from_millis(10)).await;
-        let elapsed = start.elapsed();
-        assert!(
-            elapsed.as_millis() >= 10,
-            "Expected at least 10ms elapsed, got {}ms",
-            elapsed.as_millis()
-        );
+        assert_eq!(start.elapsed(), Duration::from_millis(10));
     }
 
     #[tokio::test]
