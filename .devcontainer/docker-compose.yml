@@ -30,9 +30,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ..:/workspace/octarine
       # Shared Rust caches (reduces duplication after image rebuild)
-      - cargo-registry:/cache/cargo/registry
-      - cargo-git:/cache/cargo/git
-      - rustup:/cache/rustup
+      - octarine-cargo-registry:/cache/cargo/registry
+      - octarine-cargo-git:/cache/cargo/git
+      - octarine-rustup:/cache/rustup
+      # codegraph index: <project>/.codegraph is symlinked here by the dev-tools
+      # first-startup hook, so the knowledge-graph index lives on this volume
+      # (out of the git tree, droppable to force a clean re-index).
+      - octarine-codegraph:/cache/codegraph
     tmpfs:
       # Writable /run so supervisor can create its socket/pidfile as the runtime user (UID 1000)
       - /run:mode=0755,uid=1000,gid=1000
@@ -62,9 +66,11 @@ services:
 
 # Shared cache volumes
 volumes:
-  cargo-registry:
-  cargo-git:
-  rustup:
+  octarine-cargo-registry:
+  octarine-cargo-git:
+  octarine-rustup:
+  # codegraph knowledge-graph index (see the .codegraph symlink note above).
+  octarine-codegraph:
 
 networks:
   octarine-network:
