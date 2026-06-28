@@ -75,7 +75,7 @@ pub use config::TracingConfig;
 pub use layer::ObserveLayer;
 pub use propagation::{
     HeaderLike, HeaderLikeMut, TraceContext, extract_correlation_id, extract_from_headers,
-    inject_correlation_id, inject_to_headers,
+    inject_correlation_id, inject_to_headers, is_valid_traceparent,
 };
 
 // Re-export otel types at tracing level (three-layer API)

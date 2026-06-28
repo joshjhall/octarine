@@ -66,7 +66,9 @@ use axum::{
 use tower::{Layer, Service};
 use uuid::Uuid;
 
-use crate::observe::tracing::{HeaderLike, extract_correlation_id, inject_to_headers};
+use crate::observe::tracing::{
+    HeaderLike, extract_correlation_id, inject_to_headers, is_valid_traceparent,
+};
 use crate::observe::warn;
 use crate::primitives::runtime as prim_runtime;
 
@@ -207,6 +209,16 @@ where
                     ),
                 );
             }
+        }
+        // traceparent is also an accepted source — audit a malformed one too,
+        // so the rejection-warning guarantee covers every header we read.
+        if let Some(raw) = header_map.get_header(TRACEPARENT.as_str())
+            && !is_valid_traceparent(&raw)
+        {
+            warn(
+                "correlation",
+                "Rejected invalid traceparent header (malformed); generating a fresh id",
+            );
         }
 
         // Extract the trace context. `extract_correlation_id` tries

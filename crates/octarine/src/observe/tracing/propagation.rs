@@ -199,6 +199,16 @@ where
     }
 }
 
+/// Returns `true` if `value` is a `traceparent` header this parser would
+/// accept (valid version byte and a 32-hex-digit trace-id yielding a UUID).
+///
+/// Useful for auditing: an HTTP middleware can warn when a present
+/// `traceparent` header is rejected, instead of silently dropping it.
+#[must_use]
+pub fn is_valid_traceparent(value: &str) -> bool {
+    parse_traceparent(value).is_some()
+}
+
 /// Parse W3C traceparent header format
 ///
 /// Format: {version}-{trace-id}-{parent-id}-{flags}
@@ -206,6 +216,14 @@ where
 fn parse_traceparent(value: &str) -> Option<Uuid> {
     let parts: Vec<&str> = value.split('-').collect();
     if parts.len() >= 2 {
+        // version is the first part: a two-hex-digit byte. Per W3C Trace
+        // Context §2.2.3 the reserved value `ff` is invalid and MUST be
+        // rejected; we also reject any malformed (non-two-char) version so an
+        // attacker cannot smuggle a chosen trace-id via a bogus version.
+        let version = parts.first()?;
+        if version.len() != 2 || version.eq_ignore_ascii_case("ff") {
+            return None;
+        }
         // trace-id is the second part (32 hex chars)
         let trace_id = parts.get(1)?;
         if trace_id.len() == 32 {

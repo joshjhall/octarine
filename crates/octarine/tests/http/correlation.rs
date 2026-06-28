@@ -97,6 +97,35 @@ async fn test_inbound_request_id_header_is_accepted() {
     assert_eq!(body_str, inbound.to_string());
 }
 
+#[tokio::test]
+async fn test_correlation_id_takes_priority_over_request_id() {
+    // When both X-Correlation-ID and X-Request-ID are present, the former wins.
+    let app = Router::new()
+        .route(
+            "/",
+            get(|CorrelationId(id): CorrelationId| async move { id.to_string() }),
+        )
+        .layer(CorrelationLayer::new());
+
+    let correlation = Uuid::new_v4();
+    let request_id = Uuid::new_v4();
+    let request = Request::builder()
+        .uri("/")
+        .header(&X_CORRELATION_ID, correlation.to_string())
+        .header(&X_REQUEST_ID, request_id.to_string())
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = call_app(app, request).await;
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .expect("read body");
+    let body_str = String::from_utf8(body.to_vec()).expect("valid utf8");
+
+    assert_eq!(body_str, correlation.to_string());
+    assert_ne!(body_str, request_id.to_string());
+}
+
 // ============================================================================
 // AC2: invalid correlation id is rejected; fresh id generated
 // ============================================================================
@@ -134,6 +163,30 @@ async fn test_invalid_correlation_id_is_rejected() {
         .expect("read body");
     let body_str = String::from_utf8(body.to_vec()).expect("valid utf8");
     Uuid::parse_str(&body_str).expect("handler saw a valid UUID");
+}
+
+#[tokio::test]
+async fn test_invalid_request_id_header_is_rejected() {
+    let app = Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(CorrelationLayer::new());
+
+    let request = Request::builder()
+        .uri("/")
+        .header(&X_REQUEST_ID, "definitely-not-a-uuid")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = call_app(app, request).await;
+
+    // Invalid X-Request-ID is rejected; a fresh valid id is echoed.
+    let echoed = response
+        .headers()
+        .get(&X_CORRELATION_ID)
+        .and_then(|v| v.to_str().ok())
+        .expect("x-correlation-id echoed");
+    assert_ne!(echoed, "definitely-not-a-uuid");
+    Uuid::parse_str(echoed).expect("fresh id is a valid UUID");
 }
 
 // ============================================================================
