@@ -108,6 +108,43 @@ pub trait StateStore: Send + Sync {
     /// Returns a [`Problem`](octarine_problem::Problem) if the backend cannot
     /// be reached or the delete fails.
     async fn flush(&self, session: &SessionId) -> Result<()>;
+
+    /// Atomically returns the token already stored for `key`, or stores `value`
+    /// and returns it if no mapping exists yet.
+    ///
+    /// This is the **token-minting** primitive an anonymizer must use on the
+    /// hot path. A separate [`get`](StateStore::get)-then-[`put`](StateStore::put)
+    /// leaves a check-then-act window in which two callers racing on the same
+    /// new original each observe `None` and mint *divergent* tokens
+    /// (`<PERSON_0>` vs `<PERSON_1>`); the loser's token is then overwritten in
+    /// the store while it still lives in an already-anonymized document, so
+    /// deanonymization later recovers the wrong original. `get_or_put` closes
+    /// that window: the returned `String` is always the single token now in
+    /// force for `key` — the caller's `value` if it won the race, or the
+    /// previously-stored token otherwise.
+    ///
+    /// The provided default is **not** atomic — it performs `get` then `put`
+    /// and is correct only when callers never race on the same key. Backends
+    /// that can offer a true compare-and-set (the in-memory store under its
+    /// write lock, Redis `SETNX`, Postgres `INSERT … ON CONFLICT`) **override**
+    /// this method to deliver the atomicity the trait contract promises.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`Problem`](octarine_problem::Problem) if the backend cannot
+    /// be reached or the operation fails.
+    async fn get_or_put(
+        &self,
+        session: &SessionId,
+        key: &EntityKey,
+        value: String,
+    ) -> Result<String> {
+        if let Some(existing) = self.get(session, key).await? {
+            return Ok(existing);
+        }
+        self.put(session, key, value.clone()).await?;
+        Ok(value)
+    }
 }
 
 #[cfg(test)]

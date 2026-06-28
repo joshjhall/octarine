@@ -64,24 +64,25 @@ const OP: &str = "anonymize.vault.memory";
 /// let key = EntityKey::new("PERSON", "Jane Doe");
 ///
 /// // First sighting of "Jane Doe": no token yet, so the operator mints one.
-/// assert_eq!(store.get(&session, &key).await.unwrap(), None);
-/// store.put(&session, &key, "<PERSON_0>".to_string()).await.unwrap();
+/// // `get_or_put` is the atomic mint — it returns the caller's token because
+/// // none was stored.
+/// assert_eq!(store.get_or_put(&session, &key, "<PERSON_0>".to_string()).await?, "<PERSON_0>");
 ///
-/// // Re-sighting reuses the stored token (stability across the session).
-/// assert_eq!(
-///     store.get(&session, &key).await.unwrap(),
-///     Some("<PERSON_0>".to_string()),
-/// );
+/// // Re-sighting reuses the stored token (stability across the session): a
+/// // second mint with a different value still returns the original.
+/// assert_eq!(store.get_or_put(&session, &key, "<PERSON_9>".to_string()).await?, "<PERSON_0>");
+/// assert_eq!(store.get(&session, &key).await?, Some("<PERSON_0>".to_string()));
 ///
 /// // Enumerate every PERSON mapping to build the reverse lookup.
 /// assert_eq!(
-///     store.list(&session, "PERSON").await.unwrap(),
+///     store.list(&session, "PERSON").await?,
 ///     vec![("Jane Doe".to_string(), "<PERSON_0>".to_string())],
 /// );
 ///
 /// // Conversation over: drop all of the session's state.
-/// store.flush(&session).await.unwrap();
-/// assert_eq!(store.get(&session, &key).await.unwrap(), None);
+/// store.flush(&session).await?;
+/// assert_eq!(store.get(&session, &key).await?, None);
+/// # Ok::<(), octarine_problem::Problem>(())
 /// # });
 /// ```
 pub struct InMemoryStore {
@@ -143,13 +144,18 @@ impl Default for InMemoryStore {
 
 /// Prints a session count only — never the mapped keys or tokens — so a `{:?}`
 /// of the store cannot leak a protected value into a log line.
+///
+/// Uses `try_read` rather than a blocking `read`: a `Debug` format triggered
+/// from a context that already holds the lock (a panic handler or a log line
+/// inside `put`/`flush`) would otherwise deadlock, since `std::sync::RwLock` is
+/// not reentrant. An unavailable lock prints `<locked>` instead of hanging.
 impl fmt::Debug for InMemoryStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sessions = self.sessions.read().map(|g| g.len());
         let mut dbg = f.debug_struct("InMemoryStore");
-        match sessions {
-            Ok(count) => dbg.field("sessions", &count),
-            Err(_) => dbg.field("sessions", &"<poisoned>"),
+        match self.sessions.try_read() {
+            Ok(guard) => dbg.field("sessions", &guard.len()),
+            Err(std::sync::TryLockError::WouldBlock) => dbg.field("sessions", &"<locked>"),
+            Err(std::sync::TryLockError::Poisoned(_)) => dbg.field("sessions", &"<poisoned>"),
         };
         dbg.field("emit_events", &self.emit_events).finish()
     }
@@ -211,6 +217,35 @@ impl StateStore for InMemoryStore {
         }
 
         Ok(())
+    }
+
+    async fn get_or_put(
+        &self,
+        session: &SessionId,
+        key: &EntityKey,
+        value: String,
+    ) -> Result<String> {
+        // Single write-lock acquisition makes the check-and-set atomic: a
+        // concurrent caller racing on the same key either sees this token or is
+        // serialized behind this write, so no two callers mint divergent tokens.
+        let (token, minted) = {
+            let mut guard = self.write()?;
+            match guard.entry(session.clone()).or_default().entry(key.clone()) {
+                std::collections::hash_map::Entry::Occupied(e) => (e.get().clone(), false),
+                std::collections::hash_map::Entry::Vacant(e) => (e.insert(value).clone(), true),
+            }
+        };
+
+        if minted && self.emit_events {
+            increment_by(metric_names::put_count(), 1);
+            // entity_type + session label only — never the original value or token.
+            observe::debug(
+                OP,
+                format!("minted {} mapping in session {}", key.entity_type, session),
+            );
+        }
+
+        Ok(token)
     }
 }
 
@@ -307,6 +342,10 @@ mod tests {
             .await
             .expect("put");
         store
+            .put(&session, &key("PERSON", "Bob"), "<PERSON_1>".to_string())
+            .await
+            .expect("put");
+        store
             .put(
                 &session,
                 &key("EMAIL", "jane@acme.com"),
@@ -315,10 +354,17 @@ mod tests {
             .await
             .expect("put");
 
-        let persons = store.list(&session, "PERSON").await.expect("list");
+        // Sort before comparing: list() iterates a HashMap, so order is
+        // unspecified. The multi-entry case would expose an ordering bug a
+        // single-element assertion cannot.
+        let mut persons = store.list(&session, "PERSON").await.expect("list");
+        persons.sort();
         assert_eq!(
             persons,
-            vec![("Jane".to_string(), "<PERSON_0>".to_string())]
+            vec![
+                ("Bob".to_string(), "<PERSON_1>".to_string()),
+                ("Jane".to_string(), "<PERSON_0>".to_string()),
+            ]
         );
 
         // Unknown type and unknown session both yield empty, not error.
@@ -412,15 +458,15 @@ mod tests {
     }
 
     #[test]
-    fn debug_never_leaks_stored_values() {
+    fn debug_exposes_session_count_not_contents() {
         // The Debug impl must expose a count, not the protected map contents.
+        // The non-empty case (`debug_with_data_still_hides_originals`) proves
+        // data is hidden; this one pins the structural shape for an empty store.
         let store = InMemoryStore::silent();
         let dbg = format!("{store:?}");
         assert!(dbg.contains("InMemoryStore"));
-        assert!(dbg.contains("sessions"));
-        // No way for a key or token to appear — there are none yet, but assert
-        // the shape so a future change that prints the map fails loudly here.
-        assert!(!dbg.contains("PERSON"));
+        assert!(dbg.contains("sessions: 0"));
+        assert!(dbg.contains("emit_events: false"));
     }
 
     #[tokio::test]
@@ -444,5 +490,104 @@ mod tests {
             "token must not appear in Debug"
         );
         assert!(dbg.contains("sessions"));
+    }
+
+    #[test]
+    fn default_matches_new_emit_events_on() {
+        // Guard against a refactor that silently makes Default delegate to
+        // silent() instead of new(), which would disable audit events for any
+        // caller relying on `InMemoryStore::default()`.
+        assert!(format!("{:?}", InMemoryStore::default()).contains("emit_events: true"));
+        assert!(format!("{:?}", InMemoryStore::new()).contains("emit_events: true"));
+    }
+
+    #[tokio::test]
+    async fn new_store_exercises_event_path_without_error() {
+        // Every other test uses silent(); this one drives the emit_events=true
+        // branch of put/flush (observe::debug + increment_by) so a regression in
+        // the metric names or event formatting cannot pass undetected.
+        let store = InMemoryStore::new();
+        let session = SessionId::new("s1");
+        let k = key("PERSON", "Jane Doe");
+
+        store
+            .put(&session, &k, "<PERSON_0>".to_string())
+            .await
+            .expect("put with events");
+        assert_eq!(
+            store.get(&session, &k).await.expect("get"),
+            Some("<PERSON_0>".to_string())
+        );
+        store.flush(&session).await.expect("flush with events");
+        assert_eq!(
+            store.get(&session, &k).await.expect("get after flush"),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn get_or_put_mints_then_returns_stable_token() {
+        let store = InMemoryStore::new(); // also covers the emit path for the mint
+        let session = SessionId::new("s1");
+        let k = key("PERSON", "Jane Doe");
+
+        // First call mints and returns the caller's token.
+        assert_eq!(
+            store
+                .get_or_put(&session, &k, "<PERSON_0>".to_string())
+                .await
+                .expect("mint"),
+            "<PERSON_0>"
+        );
+        // Second call returns the *stored* token, ignoring the new value.
+        assert_eq!(
+            store
+                .get_or_put(&session, &k, "<PERSON_9>".to_string())
+                .await
+                .expect("reuse"),
+            "<PERSON_0>"
+        );
+        assert_eq!(
+            store.get(&session, &k).await.expect("get"),
+            Some("<PERSON_0>".to_string())
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn concurrent_get_or_put_on_same_key_converges_to_one_token() {
+        // The core anti-TOCTOU guarantee: 100 callers racing to mint a token for
+        // the SAME key must all observe the SAME winning token, and the store
+        // must hold exactly that one mapping. A non-atomic get-then-put would let
+        // divergent tokens leak to the losers.
+        let store = Arc::new(InMemoryStore::silent());
+        let session = SessionId::new("race");
+        let k = key("PERSON", "Jane Doe");
+
+        let mut handles = Vec::with_capacity(100);
+        for i in 0..100 {
+            let store = Arc::clone(&store);
+            let session = session.clone();
+            let k = k.clone();
+            handles.push(tokio::spawn(async move {
+                store
+                    .get_or_put(&session, &k, format!("<PERSON_{i}>"))
+                    .await
+                    .expect("get_or_put")
+            }));
+        }
+        let mut tokens = Vec::with_capacity(100);
+        for h in handles {
+            tokens.push(h.await.expect("join"));
+        }
+
+        // Every caller saw the identical winning token...
+        let winner = tokens.first().expect("at least one token").clone();
+        assert!(
+            tokens.iter().all(|t| *t == winner),
+            "all racing callers must agree on one token, got divergent: {tokens:?}"
+        );
+        // ...and exactly one mapping exists for the key.
+        assert_eq!(store.list(&session, "PERSON").await.expect("list").len(), 1);
+        assert_eq!(store.get(&session, &k).await.expect("get"), Some(winner));
     }
 }
