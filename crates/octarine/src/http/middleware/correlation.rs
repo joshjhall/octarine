@@ -45,7 +45,7 @@
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
-//! use octarine::http::middleware::CorrelationLayer;
+//! use octarine::http::CorrelationLayer;
 //!
 //! let app: Router = Router::new()
 //!     .route("/", get(|| async { "ok" }))
@@ -66,12 +66,15 @@ use axum::{
 use tower::{Layer, Service};
 use uuid::Uuid;
 
-use crate::observe::tracing::{extract_correlation_id, inject_to_headers};
+use crate::observe::tracing::{HeaderLike, extract_correlation_id, inject_to_headers};
 use crate::observe::warn;
 use crate::primitives::runtime as prim_runtime;
 
 /// Header name for the correlation ID (canonical, echoed on responses).
 pub static X_CORRELATION_ID: HeaderName = HeaderName::from_static("x-correlation-id");
+
+/// Header name for the common request ID (accepted as a correlation source).
+pub static X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
 /// Header name for the W3C trace context.
 pub static TRACEPARENT: HeaderName = HeaderName::from_static("traceparent");
@@ -85,17 +88,29 @@ pub static TRACEPARENT: HeaderName = HeaderName::from_static("traceparent");
 ///
 /// ```rust
 /// use axum::{Router, routing::get};
-/// use octarine::http::middleware::CorrelationLayer;
+/// use octarine::http::CorrelationLayer;
 ///
 /// let app: Router = Router::new()
 ///     .route("/", get(|| async { "ok" }))
 ///     .layer(CorrelationLayer::new());
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CorrelationLayer {
-    /// When `true`, also write the resolved id into the **request** headers as
-    /// `X-Correlation-ID` (if absent) so downstream services receive it.
+    /// When `true`, write the resolved id into the **request** headers as
+    /// `X-Correlation-ID` (overwriting any inbound value with the resolved,
+    /// validated id) so downstream services receive it.
     propagate_to_request: bool,
+}
+
+impl Default for CorrelationLayer {
+    /// Identical to [`CorrelationLayer::new`] — request-header propagation on.
+    ///
+    /// Implemented manually (rather than derived) so `Default::default()` and
+    /// `new()` never diverge: a derived `Default` would zero `propagate_to_request`
+    /// to `false`, silently disabling the documented default behavior.
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CorrelationLayer {
@@ -169,30 +184,39 @@ where
     }
 
     fn call(&mut self, mut request: Request<Body>) -> Self::Future {
-        // Reject a present-but-invalid X-Correlation-ID. We log WITHOUT echoing
-        // the rejected value to avoid log injection from attacker-controlled
-        // header content.
-        let raw_correlation = request
-            .headers()
-            .get(&X_CORRELATION_ID)
-            .and_then(|v| v.to_str().ok());
-        if let Some(raw) = raw_correlation
-            && Uuid::parse_str(raw.trim()).is_err()
-        {
-            warn(
-                "correlation",
-                "Rejected invalid X-Correlation-ID header (not a UUID); generating a fresh id",
-            );
+        // Build the header view ONCE and drive both the audit warning and the
+        // extraction from it, so the value we warn about is exactly the value
+        // extraction considers — avoiding a first-vs-last mismatch when a client
+        // smuggles duplicate id headers.
+        let header_map = headers_to_map(request.headers());
+
+        // Reject present-but-invalid id headers. We log WITHOUT echoing the
+        // rejected value to avoid log injection from attacker-controlled header
+        // content. Both accepted id sources (`X-Correlation-ID`, `X-Request-ID`)
+        // are checked so the audit trail is complete regardless of which header
+        // the probe used.
+        for header in [&X_CORRELATION_ID, &X_REQUEST_ID] {
+            if let Some(raw) = header_map.get_header(header.as_str())
+                && Uuid::parse_str(raw.trim()).is_err()
+            {
+                warn(
+                    "correlation",
+                    format!(
+                        "Rejected invalid {} header (not a UUID); generating a fresh id",
+                        header.as_str()
+                    ),
+                );
+            }
         }
 
         // Extract the trace context. `extract_correlation_id` tries
         // X-Correlation-ID -> X-Request-ID -> traceparent (all UUID-validated)
         // and falls back to a fresh UUID when none is present/valid.
-        let header_map = headers_to_map(request.headers());
         let correlation_id = extract_correlation_id(&header_map).correlation_id;
 
         // Optionally propagate the resolved id into the request headers so
-        // downstream services reached from the handler inherit it.
+        // downstream services reached from the handler inherit it. We overwrite
+        // any inbound value with the resolved, validated id.
         if self.propagate_to_request
             && let Ok(value) = HeaderValue::from_str(&correlation_id.to_string())
         {
@@ -201,7 +225,11 @@ where
                 .insert(X_CORRELATION_ID.clone(), value);
         }
 
-        let mut inner = self.inner.clone();
+        // Tower contract: `call` must run on the same instance that `poll_ready`
+        // readied. Swap the readied `self.inner` out and leave a clone behind for
+        // the next poll, rather than cloning the (unpolled) service for the call.
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
 
         Box::pin(async move {
             // Scope the id as task-local so every observe::Event emitted during
@@ -258,6 +286,16 @@ mod tests {
     fn test_propagate_to_request_toggle() {
         let layer = CorrelationLayer::new().propagate_to_request(false);
         assert!(!layer.propagate_to_request);
+    }
+
+    #[test]
+    fn test_default_matches_new() {
+        // Default must not diverge from new() — both enable request propagation.
+        assert_eq!(
+            CorrelationLayer::default().propagate_to_request,
+            CorrelationLayer::new().propagate_to_request
+        );
+        assert!(CorrelationLayer::default().propagate_to_request);
     }
 
     #[test]

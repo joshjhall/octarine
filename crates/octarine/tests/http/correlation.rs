@@ -317,6 +317,133 @@ async fn test_compatible_with_observe_and_context_layers() {
 }
 
 #[tokio::test]
+async fn test_propagate_to_request_enabled_sets_request_header() {
+    // The positive arm: with propagation on (the default), a request arriving
+    // without any correlation header gets the resolved id injected before the
+    // handler sees it.
+    let app = Router::new()
+        .route(
+            "/",
+            get(|request: Request<Body>| async move {
+                request
+                    .headers()
+                    .get("x-correlation-id")
+                    .and_then(|v| v.to_str().ok())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| "missing".to_string())
+            }),
+        )
+        .layer(CorrelationLayer::new());
+
+    let request = Request::builder()
+        .uri("/")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = call_app(app, request).await;
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .expect("read body");
+    let body_str = String::from_utf8(body.to_vec()).expect("valid utf8");
+
+    assert_ne!(body_str, "missing", "handler should see an injected header");
+    Uuid::parse_str(&body_str).expect("injected request header is a valid UUID");
+}
+
+#[tokio::test]
+async fn test_invalid_traceparent_falls_back_to_fresh_id() {
+    let app = Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(CorrelationLayer::new());
+
+    let request = Request::builder()
+        .uri("/")
+        .header(&TRACEPARENT, "invalid-garbage")
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = call_app(app, request).await;
+
+    // A malformed traceparent is rejected; a fresh valid id is echoed.
+    let echoed = response
+        .headers()
+        .get(&X_CORRELATION_ID)
+        .and_then(|v| v.to_str().ok())
+        .expect("x-correlation-id echoed");
+    Uuid::parse_str(echoed).expect("fresh id is a valid UUID");
+}
+
+#[tokio::test]
+async fn test_correlation_id_visible_to_runtime_context_in_handler() {
+    // The core observability claim: the id is task-local for the request scope,
+    // so anything emitting an event (which reads the runtime correlation id)
+    // sees the inbound id. We read the runtime context directly in the handler.
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async { octarine::runtime::r#async::correlation_id().to_string() }),
+        )
+        .layer(CorrelationLayer::new());
+
+    let inbound = Uuid::new_v4();
+    let request = Request::builder()
+        .uri("/")
+        .header(&X_CORRELATION_ID, inbound.to_string())
+        .body(Body::empty())
+        .expect("valid request");
+
+    let response = call_app(app, request).await;
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .expect("read body");
+    let body_str = String::from_utf8(body.to_vec()).expect("valid utf8");
+
+    // The runtime correlation id observed inside the handler equals the inbound.
+    assert_eq!(body_str, inbound.to_string());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_concurrent_requests_have_isolated_correlation_ids() {
+    // task-local (not thread-local) isolation: two concurrent requests with a
+    // yield point must each observe only their own id, even across thread hops.
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async {
+                tokio::task::yield_now().await;
+                octarine::runtime::r#async::correlation_id().to_string()
+            }),
+        )
+        .layer(CorrelationLayer::new());
+
+    let id_a = Uuid::new_v4();
+    let id_b = Uuid::new_v4();
+
+    let req = |id: Uuid| {
+        Request::builder()
+            .uri("/")
+            .header(&X_CORRELATION_ID, id.to_string())
+            .body(Body::empty())
+            .expect("valid request")
+    };
+
+    let (resp_a, resp_b) = tokio::join!(
+        call_app(app.clone(), req(id_a)),
+        call_app(app.clone(), req(id_b))
+    );
+
+    let read = |resp: axum::response::Response| async {
+        let bytes = axum::body::to_bytes(resp.into_body(), 1024)
+            .await
+            .expect("read body");
+        String::from_utf8(bytes.to_vec()).expect("valid utf8")
+    };
+
+    assert_eq!(read(resp_a).await, id_a.to_string());
+    assert_eq!(read(resp_b).await, id_b.to_string());
+}
+
+#[tokio::test]
 async fn test_propagate_to_request_disabled_does_not_set_request_header() {
     let app = Router::new()
         .route(

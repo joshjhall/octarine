@@ -15,7 +15,7 @@
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
-//! use octarine::http::{RequestIdLayer, ContextLayer};
+//! use octarine::http::{CorrelationLayer, ContextLayer};
 //!
 //! async fn list_patterns() -> &'static str {
 //!     "patterns"
@@ -23,7 +23,7 @@
 //!
 //! let app: Router = Router::new()
 //!     .route("/api/patterns", get(list_patterns))
-//!     .layer(RequestIdLayer::new())
+//!     .layer(CorrelationLayer::new())
 //!     .layer(ContextLayer::new());
 //! ```
 //!
