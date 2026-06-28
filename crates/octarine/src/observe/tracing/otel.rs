@@ -10,7 +10,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rust-core = { version = "0.2", features = ["otel"] }
+//! octarine = { version = "0.3", features = ["otel"] }
 //! ```
 //!
 //! # Example
@@ -44,7 +44,7 @@ use opentelemetry::trace::{
     TraceState, Tracer,
 };
 use opentelemetry::{Context, KeyValue, global};
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_otlp::{WithExportConfig, WithTonicConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use uuid::Uuid;
@@ -55,8 +55,35 @@ use crate::observe::types::{Event, EventType, Severity};
 /// Global tracer provider for OpenTelemetry
 static TRACER_PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 
+/// OTLP transport protocol for the span exporter.
+///
+/// The default is [`OtlpProtocol::Grpc`], preserving the original behavior.
+/// The HTTP variants require the `otel-http` cargo feature; selecting one
+/// without that feature compiled returns an [`OtelError::InitError`] at
+/// [`init_otel`] time rather than failing to compile, so gRPC-only builds are
+/// unaffected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OtlpProtocol {
+    /// OTLP over gRPC (tonic transport). Default; listens on port 4317 by
+    /// convention.
+    #[default]
+    Grpc,
+    /// OTLP over HTTP with binary protobuf payloads. Port 4318 by convention.
+    ///
+    /// Requires the `otel-http` feature.
+    HttpBinary,
+    /// OTLP over HTTP with JSON-encoded payloads. Port 4318 by convention.
+    ///
+    /// Requires the `otel-http` feature.
+    HttpJson,
+}
+
 /// Configuration for OpenTelemetry integration
-#[derive(Debug, Clone)]
+///
+/// `Debug` is implemented manually to redact header values: `headers` may carry
+/// auth tokens (bearer tokens, API keys), which must never reach logs, spans, or
+/// error chains in plaintext.
+#[derive(Clone)]
 pub struct OtelConfig {
     /// Service name for tracing
     pub service_name: String,
@@ -68,6 +95,37 @@ pub struct OtelConfig {
     pub export_timeout: Duration,
     /// Whether to export to OTLP
     pub export_enabled: bool,
+    /// OTLP transport protocol (default: gRPC)
+    pub protocol: OtlpProtocol,
+    /// Headers forwarded on every export request (e.g. auth tokens).
+    ///
+    /// Private so every header passes through [`with_header`](Self::with_header)
+    /// — this keeps the values out of `Debug` output and leaves room to validate
+    /// on insert. Names (not values) are inspectable via
+    /// [`header_names`](Self::header_names). Applied as gRPC metadata for
+    /// [`OtlpProtocol::Grpc`] and as HTTP headers for the HTTP transports.
+    headers: HashMap<String, String>,
+}
+
+impl std::fmt::Debug for OtelConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact header values — they may be credentials. Names are kept so the
+        // configured set is still visible for debugging.
+        let redacted: HashMap<&str, &str> = self
+            .headers
+            .keys()
+            .map(|k| (k.as_str(), "[REDACTED]"))
+            .collect();
+        f.debug_struct("OtelConfig")
+            .field("service_name", &self.service_name)
+            .field("otlp_endpoint", &self.otlp_endpoint)
+            .field("resource_attributes", &self.resource_attributes)
+            .field("export_timeout", &self.export_timeout)
+            .field("export_enabled", &self.export_enabled)
+            .field("protocol", &self.protocol)
+            .field("headers", &redacted)
+            .finish()
+    }
 }
 
 impl OtelConfig {
@@ -79,6 +137,8 @@ impl OtelConfig {
             resource_attributes: HashMap::new(),
             export_timeout: Duration::from_secs(10),
             export_enabled: true,
+            protocol: OtlpProtocol::default(),
+            headers: HashMap::new(),
         }
     }
 
@@ -86,6 +146,75 @@ impl OtelConfig {
     pub fn with_otlp_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.otlp_endpoint = endpoint.into();
         self
+    }
+
+    /// Select the OTLP transport protocol.
+    ///
+    /// Defaults to [`OtlpProtocol::Grpc`]. Use [`OtlpProtocol::HttpBinary`] or
+    /// [`OtlpProtocol::HttpJson`] to target OTLP/HTTP receivers; both require
+    /// the `otel-http` feature.
+    ///
+    /// For the HTTP transports the endpoint is used verbatim — include the full
+    /// per-signal path (e.g. `/v1/traces`). The `/v1/traces` suffix is only
+    /// auto-appended when configuring via the `OTEL_EXPORTER_OTLP_ENDPOINT`
+    /// environment variable, not via [`with_otlp_endpoint`](Self::with_otlp_endpoint).
+    ///
+    /// # Example
+    ///
+    /// Grafana Cloud OTLP (HTTP/protobuf) with a bearer token. Ignored at
+    /// compile time — uses placeholder credentials and a live external endpoint.
+    ///
+    /// ```rust,ignore
+    /// use octarine::observe::tracing::{OtelConfig, OtlpProtocol};
+    ///
+    /// let config = OtelConfig::new("my-service")
+    ///     .with_otlp_endpoint("https://otlp-gateway-prod.grafana.net/otlp/v1/traces")
+    ///     .with_otlp_protocol(OtlpProtocol::HttpBinary)
+    ///     .with_header("Authorization", "Basic <base64-instance-id:token>");
+    /// ```
+    ///
+    /// Honeycomb OTLP/HTTP. Ignored at compile time — uses a placeholder API
+    /// key and a live external endpoint.
+    ///
+    /// ```rust,ignore
+    /// use octarine::observe::tracing::{OtelConfig, OtlpProtocol};
+    ///
+    /// let config = OtelConfig::new("my-service")
+    ///     .with_otlp_endpoint("https://api.honeycomb.io/v1/traces")
+    ///     .with_otlp_protocol(OtlpProtocol::HttpBinary)
+    ///     .with_header("x-honeycomb-team", "<api-key>");
+    /// ```
+    pub fn with_otlp_protocol(mut self, protocol: OtlpProtocol) -> Self {
+        self.protocol = protocol;
+        self
+    }
+
+    /// Add a header forwarded on every export request.
+    ///
+    /// Sent as gRPC metadata for the gRPC transport and as an HTTP header for
+    /// the HTTP transports. Typically used for auth tokens, e.g.
+    /// `Authorization: Api-Token ...`.
+    ///
+    /// This is an infallible setter (per the project's builder convention).
+    /// Header names/values are validated once, for both transports, at
+    /// [`init_otel`] time — an invalid name or value (e.g. containing CRLF or
+    /// other control characters) surfaces a single [`OtelError::InitError`]
+    /// there rather than being silently dropped here. Names are lower-cased so
+    /// case-variant duplicates (`Authorization` vs `authorization`) collapse to
+    /// one entry instead of colliding nondeterministically at export time.
+    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers
+            .insert(key.into().to_ascii_lowercase(), value.into());
+        self
+    }
+
+    /// Iterate the configured export header names (not values).
+    ///
+    /// Values are intentionally not exposed — they may be credentials, and
+    /// [`Debug`](OtelConfig) redacts them. Use this to inspect which headers are
+    /// configured without risking a credential leak.
+    pub fn header_names(&self) -> impl Iterator<Item = &str> {
+        self.headers.keys().map(String::as_str)
     }
 
     /// Add a resource attribute
@@ -143,6 +272,120 @@ impl From<OtelError> for crate::observe::Problem {
     }
 }
 
+/// Build an OTLP span exporter for the configured transport.
+///
+/// Branches between the gRPC (tonic) and HTTP (reqwest) backends. Headers are
+/// forwarded as gRPC metadata or HTTP headers respectively. The HTTP arms
+/// require the `otel-http` feature; without it, selecting an HTTP protocol
+/// returns an [`OtelError::InitError`] describing the missing feature.
+fn build_exporter(config: &OtelConfig) -> Result<opentelemetry_otlp::SpanExporter, OtelError> {
+    // Validate every header once, for both transports, before building. This is
+    // the single point where an invalid name/value (CRLF, control chars) is
+    // reported — the HTTP path forwards the raw map, so without this it would
+    // validate later with a less actionable error.
+    validate_headers(&config.headers)?;
+
+    match config.protocol {
+        OtlpProtocol::Grpc => {
+            let mut builder = opentelemetry_otlp::SpanExporter::builder()
+                .with_tonic()
+                .with_endpoint(&config.otlp_endpoint)
+                .with_timeout(config.export_timeout);
+
+            if !config.headers.is_empty() {
+                builder = builder.with_metadata(grpc_metadata(&config.headers)?);
+            }
+
+            builder
+                .build()
+                .map_err(|e| OtelError::InitError(e.to_string()))
+        }
+        OtlpProtocol::HttpBinary | OtlpProtocol::HttpJson => build_http_exporter(config),
+    }
+}
+
+/// Validate that every header name and value is a legal HTTP header (RFC 7230).
+///
+/// Rejects CRLF/control-character injection. Applied uniformly to both
+/// transports so an invalid auth header fails loudly at init rather than being
+/// silently dropped or sent malformed.
+fn validate_headers(headers: &HashMap<String, String>) -> Result<(), OtelError> {
+    for (key, value) in headers {
+        http::header::HeaderName::from_bytes(key.as_bytes())
+            .map_err(|e| OtelError::InitError(format!("invalid header name '{key}': {e}")))?;
+        http::header::HeaderValue::from_str(value)
+            .map_err(|e| OtelError::InitError(format!("invalid header value for '{key}': {e}")))?;
+    }
+    Ok(())
+}
+
+/// Convert a (pre-validated) header map into gRPC metadata for the tonic
+/// transport. Uses `append` so distinct entries are all preserved; names are
+/// already lower-cased by [`OtelConfig::with_header`], so case-variant
+/// duplicates were collapsed at insert time.
+fn grpc_metadata(
+    headers: &HashMap<String, String>,
+) -> Result<opentelemetry_otlp::tonic_types::metadata::MetadataMap, OtelError> {
+    let mut header_map = http::HeaderMap::new();
+    for (key, value) in headers {
+        let name = http::header::HeaderName::from_bytes(key.as_bytes())
+            .map_err(|e| OtelError::InitError(format!("invalid header name '{key}': {e}")))?;
+        let val = http::header::HeaderValue::from_str(value)
+            .map_err(|e| OtelError::InitError(format!("invalid header value for '{key}': {e}")))?;
+        header_map.append(name, val);
+    }
+    Ok(opentelemetry_otlp::tonic_types::metadata::MetadataMap::from_headers(header_map))
+}
+
+/// Build the OTLP/HTTP span exporter (binary protobuf or JSON).
+///
+/// Only compiled with the `otel-http` feature. The fallback below returns an
+/// actionable error when an HTTP protocol is requested in a gRPC-only build.
+#[cfg(feature = "otel-http")]
+fn build_http_exporter(config: &OtelConfig) -> Result<opentelemetry_otlp::SpanExporter, OtelError> {
+    use opentelemetry_otlp::{Protocol, WithHttpConfig};
+
+    let protocol = match config.protocol {
+        OtlpProtocol::HttpBinary => Protocol::HttpBinary,
+        OtlpProtocol::HttpJson => Protocol::HttpJson,
+        // The caller (`build_exporter`) routes gRPC to the tonic path, so this
+        // is unreachable in practice. Return an error rather than silently
+        // mapping to HttpBinary, so any future routing change fails loudly
+        // instead of sending spans over the wrong transport.
+        OtlpProtocol::Grpc => {
+            return Err(OtelError::InitError(
+                "internal error: gRPC protocol routed to the HTTP exporter".to_string(),
+            ));
+        }
+    };
+
+    let mut builder = opentelemetry_otlp::SpanExporter::builder()
+        .with_http()
+        .with_endpoint(&config.otlp_endpoint)
+        .with_timeout(config.export_timeout)
+        .with_protocol(protocol);
+
+    if !config.headers.is_empty() {
+        builder = builder.with_headers(config.headers.clone());
+    }
+
+    builder
+        .build()
+        .map_err(|e| OtelError::InitError(e.to_string()))
+}
+
+/// Fallback when the `otel-http` feature is not enabled.
+#[cfg(not(feature = "otel-http"))]
+fn build_http_exporter(
+    _config: &OtelConfig,
+) -> Result<opentelemetry_otlp::SpanExporter, OtelError> {
+    Err(OtelError::InitError(
+        "OTLP/HTTP transport requested but the `otel-http` feature is not enabled. \
+         Rebuild with `--features otel-http` to use HttpBinary or HttpJson."
+            .to_string(),
+    ))
+}
+
 /// Initialize OpenTelemetry with the given configuration
 ///
 /// This sets up the global tracer provider with an OTLP exporter.
@@ -165,13 +408,7 @@ pub fn init_otel(config: OtelConfig) -> Result<(), OtelError> {
 
     // Build tracer provider
     let provider = if config.export_enabled {
-        // Create OTLP exporter (0.31+ API with grpc-tonic feature)
-        let exporter = opentelemetry_otlp::SpanExporter::builder()
-            .with_tonic()
-            .with_endpoint(&config.otlp_endpoint)
-            .with_timeout(config.export_timeout)
-            .build()
-            .map_err(|e| OtelError::InitError(e.to_string()))?;
+        let exporter = build_exporter(&config)?;
 
         // Note: 0.31+ no longer requires async runtime for batch exporter
         SdkTracerProvider::builder()
@@ -183,12 +420,14 @@ pub fn init_otel(config: OtelConfig) -> Result<(), OtelError> {
         SdkTracerProvider::builder().with_resource(resource).build()
     };
 
-    // Set as global provider
-    global::set_tracer_provider(provider.clone());
-
+    // Claim the one-shot init slot FIRST. Only set the global provider once the
+    // guard succeeds, so a double-init (or startup race) cannot replace the live
+    // global provider while orphaning the original in the OnceLock unshutdown.
     TRACER_PROVIDER
-        .set(provider)
+        .set(provider.clone())
         .map_err(|_| OtelError::InitError("OpenTelemetry already initialized".to_string()))?;
+
+    global::set_tracer_provider(provider);
 
     Ok(())
 }
@@ -205,7 +444,7 @@ pub fn shutdown_otel() {
 
 /// Get the global tracer for creating spans
 fn get_tracer() -> impl Tracer {
-    global::tracer("rust-core-observe")
+    global::tracer("octarine-observe")
 }
 
 /// Convert a UUID to an OpenTelemetry TraceId
@@ -503,6 +742,107 @@ mod tests {
     }
 
     #[test]
+    fn test_otel_config_default_protocol_is_grpc() {
+        // Default transport must stay gRPC — no breaking change for callers.
+        let config = OtelConfig::new("svc");
+        assert_eq!(config.protocol, OtlpProtocol::Grpc);
+        assert!(config.headers.is_empty());
+    }
+
+    #[test]
+    fn test_otel_config_protocol_and_headers() {
+        let config = OtelConfig::new("svc")
+            .with_otlp_protocol(OtlpProtocol::HttpBinary)
+            .with_header("Authorization", "Api-Token abc")
+            .with_header("x-tenant", "acme");
+
+        assert_eq!(config.protocol, OtlpProtocol::HttpBinary);
+        // Names are lower-cased on insert.
+        assert_eq!(
+            config.headers.get("authorization"),
+            Some(&"Api-Token abc".to_string())
+        );
+        assert_eq!(config.headers.get("x-tenant"), Some(&"acme".to_string()));
+    }
+
+    #[test]
+    fn test_with_header_lowercases_names_collapsing_case_variants() {
+        // Case-variant duplicates must collapse to one entry (last wins),
+        // matching gRPC/HTTP case-insensitive header semantics.
+        let config = OtelConfig::new("svc")
+            .with_header("Authorization", "first")
+            .with_header("authorization", "second");
+        assert_eq!(config.headers.len(), 1);
+        assert_eq!(
+            config.headers.get("authorization"),
+            Some(&"second".to_string())
+        );
+    }
+
+    #[test]
+    fn test_validate_headers_rejects_crlf_injection() {
+        // CRLF/control chars are rejected at init time (validate_headers), not
+        // silently dropped by the infallible builder.
+        let mut headers = HashMap::new();
+        headers.insert("x-bad".to_string(), "value\r\ninjected".to_string());
+        let err = validate_headers(&headers).expect_err("CRLF value must error");
+        assert!(matches!(err, OtelError::InitError(_)));
+
+        let mut bad_name = HashMap::new();
+        bad_name.insert("x-bad\nname".to_string(), "v".to_string());
+        assert!(matches!(
+            validate_headers(&bad_name),
+            Err(OtelError::InitError(_))
+        ));
+    }
+
+    #[test]
+    fn test_validate_headers_accepts_valid() {
+        let mut headers = HashMap::new();
+        headers.insert("authorization".to_string(), "Api-Token abc".to_string());
+        assert!(validate_headers(&headers).is_ok());
+    }
+
+    #[test]
+    fn test_debug_redacts_header_values() {
+        let config = OtelConfig::new("svc").with_header("Authorization", "Api-Token super-secret");
+        let rendered = format!("{config:?}");
+        assert!(
+            !rendered.contains("super-secret"),
+            "header values must be redacted in Debug output: {rendered}"
+        );
+        assert!(rendered.contains("[REDACTED]"));
+        // Names remain visible for debuggability (lower-cased on insert).
+        assert!(rendered.contains("authorization"));
+    }
+
+    #[test]
+    fn test_header_names_exposes_names_not_values() {
+        let config = OtelConfig::new("svc")
+            .with_header("Authorization", "Api-Token secret")
+            .with_header("x-tenant", "acme");
+        let mut names: Vec<&str> = config.header_names().collect();
+        names.sort_unstable();
+        assert_eq!(names, vec!["authorization", "x-tenant"]);
+    }
+
+    #[test]
+    fn test_otlp_protocol_default_trait() {
+        assert_eq!(OtlpProtocol::default(), OtlpProtocol::Grpc);
+    }
+
+    #[cfg(not(feature = "otel-http"))]
+    #[test]
+    fn test_http_protocol_without_feature_errors() {
+        // Selecting an HTTP transport without the `otel-http` feature must fail
+        // at init time with an actionable error, not a compile break.
+        let config = OtelConfig::new("svc").with_otlp_protocol(OtlpProtocol::HttpBinary);
+        let err = build_exporter(&config).expect_err("HTTP without otel-http must error");
+        assert!(matches!(err, OtelError::InitError(_)));
+        assert!(err.to_string().contains("otel-http"));
+    }
+
+    #[test]
     fn test_otel_config_presets() {
         let dev = OtelConfig::development("dev-service");
         assert!(!dev.export_enabled);
@@ -514,6 +854,42 @@ mod tests {
             prod.resource_attributes.get("deployment.environment"),
             Some(&"production".to_string())
         );
+    }
+
+    #[test]
+    fn test_grpc_metadata_converts_headers() {
+        let mut headers = HashMap::new();
+        headers.insert("authorization".to_string(), "Api-Token abc".to_string());
+        headers.insert("x-tenant".to_string(), "acme".to_string());
+
+        let metadata = grpc_metadata(&headers).expect("valid headers convert");
+        assert_eq!(
+            metadata.get("authorization").and_then(|v| v.to_str().ok()),
+            Some("Api-Token abc")
+        );
+        assert_eq!(
+            metadata.get("x-tenant").and_then(|v| v.to_str().ok()),
+            Some("acme")
+        );
+    }
+
+    #[test]
+    fn test_grpc_metadata_rejects_invalid_header_name() {
+        let mut headers = HashMap::new();
+        // Spaces are not valid in HTTP header names.
+        headers.insert("bad name".to_string(), "value".to_string());
+        let err = grpc_metadata(&headers).expect_err("invalid name must error");
+        assert!(matches!(err, OtelError::InitError(_)));
+    }
+
+    #[test]
+    fn test_grpc_metadata_rejects_invalid_header_value() {
+        let mut headers = HashMap::new();
+        // ASCII control characters are not valid in HTTP header values.
+        headers.insert("x-api-key".to_string(), "\u{1}invalid".to_string());
+        let err = grpc_metadata(&headers).expect_err("control char in value must error");
+        assert!(matches!(err, OtelError::InitError(_)));
+        assert!(err.to_string().contains("x-api-key"));
     }
 
     #[test]

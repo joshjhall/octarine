@@ -81,8 +81,8 @@ pub use propagation::{
 // Re-export otel types at tracing level (three-layer API)
 #[cfg(feature = "otel")]
 pub use otel::{
-    OtelConfig, OtelError, OtelExporter, export_event, init_otel, shutdown_otel, trace_id_to_uuid,
-    uuid_to_span_id, uuid_to_trace_id,
+    OtelConfig, OtelError, OtelExporter, OtlpProtocol, export_event, init_otel, shutdown_otel,
+    trace_id_to_uuid, uuid_to_span_id, uuid_to_trace_id,
 };
 
 /// Initialize tracing with the observe integration

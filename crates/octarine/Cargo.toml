@@ -127,7 +127,10 @@ sqlx = { version = "0.9", optional = true, default-features = false, features = 
 # OpenTelemetry (optional)
 opentelemetry = { version = "0.32", optional = true }
 opentelemetry_sdk = { version = "0.32", optional = true }
-opentelemetry-otlp = { version = "0.32", optional = true, features = ["grpc-tonic", "trace"] }
+opentelemetry-otlp = { version = "0.32", optional = true, default-features = false, features = [
+  "grpc-tonic",
+  "trace",
+] }
 
 # HTTP server middleware (optional)
 axum = { version = "0.8", optional = true }
@@ -205,7 +208,18 @@ database = ["dep:graphql-parser"]
 formats = ["dep:quick-xml", "dep:serde_yaml"]
 postgres = ["database", "dep:sqlx", "sqlx?/postgres"]
 sqlite = ["database", "dep:sqlx", "sqlx?/sqlite"]
-otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp"]
+# OpenTelemetry OTLP/gRPC exporter (default transport).
+# `dep:http` provides `MetadataMap::from_headers` for forwarding gRPC auth headers.
+otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", "dep:http"]
+# OTLP/HTTP transport (binary protobuf + JSON) for managed receivers
+# (Grafana Cloud, Honeycomb, Datadog OTLP intake) that only accept HTTP.
+# Uses the blocking reqwest client, matching the gRPC batch-exporter pattern.
+otel-http = [
+  "otel",
+  "opentelemetry-otlp/http-proto",
+  "opentelemetry-otlp/http-json",
+  "opentelemetry-otlp/reqwest-blocking-client",
+]
 http = [
   "dep:axum",
   "dep:tower",
@@ -262,6 +276,11 @@ harness = false
 [[test]]
 name = "metrics_integration"
 required-features = ["testing"]
+
+# OTLP/HTTP transport integration test — needs the HTTP exporter backend.
+[[test]]
+name = "otel_http_transport"
+required-features = ["otel-http"]
 
 [lints.rust]
 unsafe_code = "forbid"
