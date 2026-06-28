@@ -16,15 +16,17 @@
 //! thread safety. Octarine ships the trait first-class so backends own their
 //! own atomicity.
 //!
-//! The default [`InMemoryStore`] backend ships here; Redis and Postgres
-//! backends, the session lifecycle API, and the InstanceCounter operators that
-//! consume this surface land as follow-up work; see
-//! `docs/anonymize/token-vault.md`.
+//! The default [`InMemoryStore`] backend and the [`SessionManager`] lifecycle
+//! API (open/close/touch + TTL expiry) ship here; Redis and Postgres backends
+//! and the InstanceCounter operators that consume this surface land as
+//! follow-up work; see `docs/anonymize/token-vault.md`.
 
 mod backends;
+mod session;
 mod store;
 mod types;
 
 pub use backends::InMemoryStore;
+pub use session::{DEFAULT_SWEEP_INTERVAL, SessionManager, SessionOptions};
 pub use store::StateStore;
 pub use types::{EntityKey, SessionId};
