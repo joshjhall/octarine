@@ -71,7 +71,7 @@ mod shortcuts;
 mod types;
 mod vault;
 
-pub use engine::{AnonymizerEngine, BatchAnonymizerEngine};
+pub use engine::{AnonymizerEngine, BatchAnonymizerEngine, BatchDeanonymizeEngine};
 pub use operator::{AsyncOperator, Operator};
 pub use operators::{Custom, Decrypt, Encrypt, Hash, Mask, Redact, Replace};
 pub use shortcuts::{anonymize, redact_all};
