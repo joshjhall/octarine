@@ -9,11 +9,12 @@ This is the headline pattern for protecting LLM prompts — anonymize a prompt
 before sending it to a model, then rehydrate the model's response with the
 original identities.
 
-> **Status**: the foundational surface (`StateStore` + `SessionId` + `EntityKey`)
-> and the async, session-aware engine path that consumes it (`anonymize_async` /
-> `deanonymize_async` + the `AsyncOperator` trait) have landed. Concrete store
-> backends and the InstanceCounter operators are tracked as follow-up work (see
-> [Roadmap](#roadmap)).
+> **Status**: the foundational surface (`StateStore` + `SessionId` + `EntityKey`),
+> the default `InMemoryStore` backend, the session-lifecycle API
+> (`SessionManager` + TTL expiry), and the async, session-aware engine path that
+> consumes it (`anonymize_async` / `deanonymize_async` + the `AsyncOperator`
+> trait) have landed. The Redis/Postgres backends and the InstanceCounter
+> operators are tracked as follow-up work (see [Roadmap](#roadmap)).
 
 ## Surface
 
@@ -63,6 +64,82 @@ callers never mint divergent tokens for the same original.
 | `flush` | Drops all state for a session (session-close / TTL expiry).        |
 
 A store is shared across threads as `Arc<dyn StateStore>`.
+
+## Session lifecycle & TTL
+
+A bare `StateStore` records mappings but has no notion of a session *beginning*
+or *ending* — a `SessionId` is just a label the caller invents, and abandoned
+sessions accumulate in the backend forever. `SessionManager` adds the missing
+lifecycle on top of any store:
+
+```rust
+use std::sync::Arc;
+use std::time::Duration;
+use octarine::anonymize::{InMemoryStore, SessionManager, SessionOptions};
+
+# tokio_test::block_on(async {
+let store = Arc::new(InMemoryStore::new());
+let sessions = SessionManager::new(Arc::clone(&store));
+
+// Open a 30-minute session; `id` is a fresh, time-ordered UUID-v7.
+let id = sessions.open(SessionOptions::with_ttl(Duration::from_secs(1800)));
+
+// On every interaction, reset the TTL so an active conversation stays alive:
+sessions.touch(&id).await?;
+
+// End it explicitly — flushes the session's mappings from the store:
+sessions.close(&id).await?;
+# Ok::<(), octarine_problem::Problem>(())
+# });
+```
+
+| Method        | Contract                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `open`        | Mints a UUID-v7 `SessionId` (or uses `id_hint`); optional TTL. Sync. |
+| `close`       | Flushes the session's store state and untracks it. Idempotent.       |
+| `touch`       | Resets the TTL clock; `NotFound` if the session is not open.         |
+| `sweep_now`   | Runs one expiry pass immediately; returns the count reclaimed.       |
+| `start_sweep` | Spawns the background expiry task (aborted on `stop_sweep` / drop).  |
+
+`SessionOptions` carries `ttl: Option<Duration>` (`None` = never expires) and
+`id_hint: Option<String>` (a deterministic id for tests or for adopting an
+externally-issued identifier). `open` returns a **UUID-v7** — time-ordered, so
+session ids sort by creation time for log correlation.
+
+### Why TTL is first-class (compliance)
+
+Presidio's `InstanceCounterAnonymizer` keeps its mapping in a plain Python dict
+that lives as long as the process — there is no concept of expiry. Octarine
+ships TTL by default because compliance regimes require pseudonymized state to
+be purged on a bounded schedule, and the TTL *is* that retention control:
+
+- **HIPAA** minimum-necessary / retention-limitation — re-identification keys
+  must not outlive the operational need.
+- **GDPR** storage limitation (Art. 5(1)(e)) — personal data kept no longer
+  than necessary.
+
+Set the TTL to your retention window and abandoned sessions are reclaimed
+automatically — no out-of-band cron job, no manual cleanup.
+
+### TTL enforcement strategy per backend
+
+TTL is enforced **manager-side** by default: a tokio interval task calls
+`StateStore::flush` on each expired session. This is backend-agnostic and is the
+strategy the `InMemoryStore` uses. Stateful backends that land later additionally
+push expiry *into* the store so the database reclaims space even when no manager
+process is running:
+
+| Backend        | Strategy                                                       |
+| -------------- | ------------------------------------------------------------- |
+| **InMemory**   | Manager-side `tokio::time::interval` sweep calls `flush`.     |
+| **Redis**      | Native `EXPIRE` on the session hash; `touch` re-issues it.    |
+| **Postgres**   | `expires_at` column + a periodic SQL sweep (cadence config).  |
+
+The sweep cadence is configurable via `SessionManager::with_sweep_interval`; the
+default is `DEFAULT_SWEEP_INTERVAL` (60 s). A session with TTL `T` is purged at
+most one sweep interval after `T` elapses. Observe events on `open`/`close`/
+`expire` carry the **session id only** — a session holds no PII (the originals
+live in the store), so nothing sensitive reaches an audit log.
 
 ## Async execution model
 
@@ -126,9 +203,9 @@ documented in the `anonymize::operator` and `anonymize::engine` module docs.
 
 ## Worked example (planned)
 
-The async engine path and the `AsyncOperator` trait have landed (#609); once an
-in-memory backend (#540) and the InstanceCounter operators (#543) land, the full
-round trip looks like this:
+The async engine path and the `AsyncOperator` trait (#609) and the in-memory
+backend (#540) have landed; once the InstanceCounter operators (#543) land, the
+full round trip looks like this:
 
 ```text
 let store: Arc<dyn StateStore> = Arc::new(InMemoryStore::new());
@@ -146,9 +223,10 @@ let session = SessionId::new("chat-42");
 // 4. store.flush(&session) when the conversation ends.
 ```
 
-The injected `Arc<dyn StateStore>` and the `anonymize_async` / `deanonymize_async`
-shells exist today (see [Async execution model](#async-execution-model)); only
-the concrete store backend and operator are still follow-up work.
+The injected `Arc<dyn StateStore>`, the `anonymize_async` / `deanonymize_async`
+shells, and the `InMemoryStore` backend exist today (see
+[Async execution model](#async-execution-model)); only the InstanceCounter
+operator is still follow-up work.
 
 ## Why octarine over Presidio
 
@@ -159,13 +237,13 @@ promotes it to a first-class, backend-agnostic trait where each backend
 
 ## Roadmap
 
-| Capability                       | Issue |
-| -------------------------------- | ----- |
-| `StateStore` trait + value types | #539  |
-| Async session-aware engine path  | #609  |
-| In-memory backend (default)      | #540  |
-| Redis backend (`redis` feature)  | #541  |
-| Postgres backend                 | #542  |
-| Session lifecycle API (TTL)      | #544  |
-| InstanceCounter operators        | #543  |
-| Concurrency tests                | #545  |
+| Capability                       | Issue | Status      |
+| -------------------------------- | ----- | ----------- |
+| `StateStore` trait + value types | #539  | landed      |
+| Async session-aware engine path  | #609  | landed      |
+| In-memory backend (default)      | #540  | landed      |
+| Session lifecycle API (TTL)      | #544  | landed      |
+| Redis backend (`redis` feature)  | #541  | follow-up   |
+| Postgres backend                 | #542  | follow-up   |
+| InstanceCounter operators        | #543  | follow-up   |
+| Concurrency tests | #545 |  |

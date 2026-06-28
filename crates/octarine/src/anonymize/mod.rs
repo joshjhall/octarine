@@ -36,9 +36,14 @@
 //!   under the `anonymize/` umbrella.
 //! - `StateStore` / `SessionId` / `EntityKey` — the token-vault surface: the
 //!   backend-agnostic persistence contract behind reversible pseudonymization,
-//!   recording each `(session, original) → stable token` mapping. Pluggable
-//!   backends and the InstanceCounter operators that consume it land as
-//!   follow-up work.
+//!   recording each `(session, original) → stable token` mapping. The default
+//!   `InMemoryStore` backend ships today; Redis/Postgres backends and the
+//!   InstanceCounter operators that consume it land as follow-up work.
+//! - `SessionManager` / `SessionOptions` — the session-lifecycle API over a
+//!   `StateStore`: `open` mints a time-ordered UUID-v7 `SessionId` with an
+//!   optional TTL, `close` flushes it, `touch` resets its TTL, and a background
+//!   sweep purges expired sessions so abandoned state is reclaimed on a
+//!   compliance-mandated schedule.
 //!
 //! All spans are half-open (`start` inclusive, `end` exclusive). See the type
 //! definitions for the full design rationale and the Presidio anti-patterns
@@ -74,4 +79,7 @@ pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
     PiiSpan, RecognizerResult,
 };
-pub use vault::{EntityKey, InMemoryStore, SessionId, StateStore};
+pub use vault::{
+    DEFAULT_SWEEP_INTERVAL, EntityKey, InMemoryStore, SessionId, SessionManager, SessionOptions,
+    StateStore,
+};
