@@ -75,6 +75,7 @@
 //! `observe::*` logging calls within the request scope.
 
 pub mod extractors;
+pub mod handlers;
 pub mod middleware;
 pub mod presets;
 
