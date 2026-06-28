@@ -1,11 +1,12 @@
 //! Integration tests for the Layer 3 `anonymize` engine.
 //!
 //! Exercises the public `octarine::anonymize` surface — the
-//! [`AnonymizerEngine`], the `anonymize`/`redact_all` shortcuts, and the
-//! built-in `Replace`/`Redact` operators — through the same re-export paths a
-//! downstream consumer uses. The detection inputs are shaped like real
-//! recognizer output (`RecognizerResult` spans over a fixed string) so that
-//! the end-to-end detect → anonymize flow is covered, not just unit behaviour.
+//! [`AnonymizerEngine`], the [`BatchAnonymizerEngine`], the
+//! `anonymize`/`redact_all` shortcuts, and the built-in `Replace`/`Redact`
+//! operators — through the same re-export paths a downstream consumer uses. The
+//! detection inputs are shaped like real recognizer output (`RecognizerResult`
+//! spans over a fixed string) so that the end-to-end detect → anonymize flow is
+//! covered, not just unit behaviour.
 
 #![allow(clippy::panic)]
 #![allow(clippy::expect_used)]
@@ -13,8 +14,8 @@
 use std::collections::HashMap;
 
 use octarine::anonymize::{
-    AnonymizerEngine, ConflictResolutionStrategy, Operator, OperatorConfig, OperatorType,
-    RecognizerResult, anonymize, redact_all,
+    AnonymizerEngine, BatchAnonymizerEngine, ConflictResolutionStrategy, Operator, OperatorConfig,
+    OperatorType, RecognizerResult, anonymize, redact_all,
 };
 
 /// Builds a detection result, panicking on invalid spans (test-only).
@@ -166,4 +167,84 @@ fn engine_accepts_a_custom_operator() {
         .anonymize("Hi Bob", vec![detect("PERSON", 3, 6, 0.9)], &operators)
         .expect("anonymize");
     assert_eq!(out.text.as_deref(), Some("Hi ***"));
+}
+
+#[test]
+fn batch_anonymize_list_through_public_api() {
+    // The batch engine, reached through the public re-export, anonymizes a
+    // small slice with one detection list per text, preserving input order.
+    let batch = BatchAnonymizerEngine::new();
+    let texts = ["SSN 123-45-6789", "no pii", "call jane@x.io"];
+    let results = vec![
+        vec![detect("US_SSN", 4, 15, 0.99)],
+        vec![],
+        vec![detect("EMAIL_ADDRESS", 5, 14, 0.95)],
+    ];
+
+    let out = batch
+        .anonymize_list(&texts, &results, &HashMap::new())
+        .expect("anonymize_list");
+
+    assert_eq!(out.len(), 3);
+    assert_eq!(
+        out.first().and_then(|r| r.text.as_deref()),
+        Some("SSN <US_SSN>")
+    );
+    assert_eq!(out.get(1).and_then(|r| r.text.as_deref()), Some("no pii"));
+    assert_eq!(
+        out.get(2).and_then(|r| r.text.as_deref()),
+        Some("call <EMAIL_ADDRESS>")
+    );
+}
+
+#[test]
+fn batch_anonymize_dict_through_public_api() {
+    // A realistic nested document: anonymize the emails of two users and pass
+    // the numeric `age` through unchanged, preserving structure.
+    let batch = BatchAnonymizerEngine::new();
+    let input = serde_json::json!({
+        "users": [
+            { "email": "a@b.co", "age": 30 },
+            { "email": "c@d.co", "age": 41 },
+        ]
+    });
+
+    let mut by_path = HashMap::new();
+    by_path.insert(
+        "users.0.email".to_string(),
+        vec![detect("EMAIL_ADDRESS", 0, 6, 0.95)],
+    );
+    by_path.insert(
+        "users.1.email".to_string(),
+        vec![detect("EMAIL_ADDRESS", 0, 6, 0.95)],
+    );
+
+    let mut operators = HashMap::new();
+    operators.insert(
+        "EMAIL_ADDRESS".to_string(),
+        OperatorConfig::new("redact").expect("cfg"),
+    );
+
+    let out = batch
+        .anonymize_dict(&input, &by_path, &operators)
+        .expect("anonymize_dict");
+
+    assert_eq!(
+        out,
+        serde_json::json!({
+            "users": [
+                { "email": "", "age": 30 },
+                { "email": "", "age": 41 },
+            ]
+        })
+    );
+}
+
+#[test]
+fn batch_anonymize_list_length_mismatch_is_rejected() {
+    let batch = BatchAnonymizerEngine::new();
+    let texts = ["a", "b"];
+    let results = vec![vec![]]; // one list for two texts
+    let err = batch.anonymize_list(&texts, &results, &HashMap::new());
+    assert!(err.is_err(), "length mismatch should error");
 }
