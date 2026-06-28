@@ -161,15 +161,17 @@ pub struct CorrelationService<S> {
 /// extraction helpers. Header names are already lowercase in axum, and the
 /// helpers query case-insensitively, so this is a faithful adapter.
 fn headers_to_map(headers: &HeaderMap) -> HashMap<String, String> {
-    headers
-        .iter()
-        .filter_map(|(name, value)| {
-            value
-                .to_str()
-                .ok()
-                .map(|v| (name.as_str().to_string(), v.to_string()))
-        })
-        .collect()
+    let mut map = HashMap::new();
+    for (name, value) in headers.iter() {
+        // First-value-wins, matching `HeaderMap::get()` and HTTP precedence:
+        // a client cannot displace a valid leading id by appending a duplicate
+        // header (which a plain `.collect()` would let win, last-writer-wins).
+        if let Ok(v) = value.to_str() {
+            map.entry(name.as_str().to_string())
+                .or_insert_with(|| v.to_string());
+        }
+    }
+    map
 }
 
 impl<S> Service<Request<Body>> for CorrelationService<S>
