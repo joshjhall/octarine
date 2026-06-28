@@ -70,7 +70,7 @@ where
             .map(CorrelationId)
             .ok_or((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Missing correlation ID - ensure RequestIdLayer is configured",
+                "Missing correlation ID - ensure CorrelationLayer or RequestIdLayer is configured",
             ))
     }
 }

@@ -199,6 +199,16 @@ where
     }
 }
 
+/// Returns `true` if `value` is a `traceparent` header this parser would
+/// accept (valid version byte and a 32-hex-digit trace-id yielding a UUID).
+///
+/// Useful for auditing: an HTTP middleware can warn when a present
+/// `traceparent` header is rejected, instead of silently dropping it.
+#[must_use]
+pub fn is_valid_traceparent(value: &str) -> bool {
+    parse_traceparent(value).is_some()
+}
+
 /// Parse W3C traceparent header format
 ///
 /// Format: {version}-{trace-id}-{parent-id}-{flags}
@@ -206,17 +216,30 @@ where
 fn parse_traceparent(value: &str) -> Option<Uuid> {
     let parts: Vec<&str> = value.split('-').collect();
     if parts.len() >= 2 {
-        // trace-id is the second part (32 hex chars)
+        // version is the first part: a two-hex-digit byte. Per W3C Trace
+        // Context §2.2.3 the reserved value `ff` is invalid and MUST be
+        // rejected; we also reject any malformed (non-two-hex-digit) version so
+        // an attacker cannot smuggle a chosen trace-id via a bogus version.
+        let version = parts.first()?;
+        if version.len() != 2
+            || !version.bytes().all(|b| b.is_ascii_hexdigit())
+            || version.eq_ignore_ascii_case("ff")
+        {
+            return None;
+        }
+        // trace-id is the second part (32 hex chars). Require ASCII hex so the
+        // byte-range slices below always fall on char boundaries (no panic) and
+        // out-of-spec trace-ids are rejected.
         let trace_id = parts.get(1)?;
-        if trace_id.len() == 32 {
+        if trace_id.len() == 32 && trace_id.bytes().all(|b| b.is_ascii_hexdigit()) {
             // Convert to UUID format
             let uuid_str = format!(
                 "{}-{}-{}-{}-{}",
-                &trace_id[0..8],
-                &trace_id[8..12],
-                &trace_id[12..16],
-                &trace_id[16..20],
-                &trace_id[20..32]
+                trace_id.get(0..8)?,
+                trace_id.get(8..12)?,
+                trace_id.get(12..16)?,
+                trace_id.get(16..20)?,
+                trace_id.get(20..32)?
             );
             return Uuid::parse_str(&uuid_str).ok();
         }
@@ -457,6 +480,45 @@ mod tests {
         // Invalid format
         assert!(parse_traceparent("invalid").is_none());
         assert!(parse_traceparent("00-short-00f067aa0ba902b7-01").is_none());
+    }
+
+    #[test]
+    fn test_parse_traceparent_rejects_invalid_version() {
+        // W3C §2.2.3: reserved `ff` version must be rejected.
+        assert!(
+            parse_traceparent("ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01").is_none()
+        );
+        // Malformed version length.
+        assert!(
+            parse_traceparent("0-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01").is_none()
+        );
+        assert!(
+            parse_traceparent("000-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01").is_none()
+        );
+        // Non-hex version byte.
+        assert!(
+            parse_traceparent("zz-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01").is_none()
+        );
+    }
+
+    #[test]
+    fn test_parse_traceparent_rejects_non_hex_trace_id() {
+        // 32-char trace-id with non-hex chars must be rejected (and must not
+        // panic on slicing).
+        assert!(
+            parse_traceparent("00-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-00f067aa0ba902b7-01").is_none()
+        );
+    }
+
+    #[test]
+    fn test_is_valid_traceparent() {
+        assert!(is_valid_traceparent(
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        ));
+        assert!(!is_valid_traceparent(
+            "ff-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        ));
+        assert!(!is_valid_traceparent("malformed"));
     }
 
     #[test]

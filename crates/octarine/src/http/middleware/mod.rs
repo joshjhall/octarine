@@ -6,6 +6,7 @@
 #[cfg(feature = "auth")]
 mod auth;
 mod context;
+mod correlation;
 mod metrics;
 mod observe;
 mod rate_limit;
@@ -15,6 +16,7 @@ mod security;
 #[cfg(feature = "auth")]
 pub use auth::{ApiKeyValidator, AuthConfig, AuthLayer, AuthService, Claims};
 pub use context::{ContextLayer, ContextService};
+pub use correlation::{CorrelationLayer, CorrelationService};
 pub use metrics::{MetricsConfig, MetricsLayer, MetricsService};
 // Re-export PathPattern from data layer for public API
 pub use crate::data::network::PathPattern;
