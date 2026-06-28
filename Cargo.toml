@@ -33,6 +33,9 @@ addr = "0.15"
 # Bare-URL extraction from prose with prose-aware boundary handling
 linkify = "0.11"
 
+# Data parallelism
+rayon = "1.12"
+
 # CLI
 clap = { version = "4.0", features = ["derive", "env"] }
 

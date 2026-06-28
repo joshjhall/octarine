@@ -71,6 +71,9 @@ async-trait = "0.1"
 tokio = { workspace = true }
 tokio-util = "0.7.17"
 
+# Data parallelism (batch anonymizer engine)
+rayon = { workspace = true }
+
 # Logging and tracing
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

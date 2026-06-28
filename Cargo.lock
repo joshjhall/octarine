@@ -2889,6 +2889,7 @@ dependencies = [
  "quick-xml 0.40.1",
  "rand 0.10.1",
  "rand_core 0.10.1",
+ "rayon",
  "regex",
  "reqwest",
  "rexpect",

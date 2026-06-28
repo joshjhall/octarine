@@ -1,10 +1,14 @@
-//! The anonymizer engine — applies operators to detected spans.
+//! The single-text anonymizer engine — applies operators to detected spans.
 //!
 //! [`AnonymizerEngine`] is the Layer 3 orchestration surface: it takes input
 //! text plus a set of [`RecognizerResult`] detections and a per-entity operator
 //! map, resolves any overlaps between detections, then rewrites the text by
 //! applying the configured [`Operator`] to each span. The output carries both
 //! the transformed text and an [`OperatorResult`] audit item per applied span.
+//!
+//! For list/nested-dict inputs, see
+//! [`BatchAnonymizerEngine`](super::BatchAnonymizerEngine), which parallelizes
+//! across many texts on top of this engine.
 //!
 //! # Offset tracking
 //!
@@ -19,8 +23,8 @@ use std::sync::Arc;
 
 use octarine_problem::{Problem, Result};
 
-use super::operators::{Decrypt, Encrypt, Hash, Mask, Redact, Replace};
-use super::{
+use crate::anonymize::operators::{Decrypt, Encrypt, Hash, Mask, Redact, Replace};
+use crate::anonymize::{
     AsyncOperator, ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig,
     OperatorResult, PiiSpan, RecognizerResult, SessionId, StateStore,
 };
@@ -812,7 +816,7 @@ mod tests {
 
     #[test]
     fn encrypt_operator_round_trips_through_engine() {
-        use super::super::{Decrypt, Operator};
+        use crate::anonymize::{Decrypt, Operator};
 
         // 32 zero key bytes, base64url-no-pad.
         const KEY_B64: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
