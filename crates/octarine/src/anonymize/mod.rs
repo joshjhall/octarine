@@ -74,4 +74,4 @@ pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
     PiiSpan, RecognizerResult,
 };
-pub use vault::{EntityKey, SessionId, StateStore};
+pub use vault::{EntityKey, InMemoryStore, SessionId, StateStore};
