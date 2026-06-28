@@ -26,6 +26,9 @@ mod session;
 mod store;
 mod types;
 
+#[cfg(test)]
+mod tests;
+
 pub use backends::InMemoryStore;
 pub use session::{DEFAULT_SWEEP_INTERVAL, SessionManager, SessionOptions};
 pub use store::StateStore;
