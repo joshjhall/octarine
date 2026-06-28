@@ -13,6 +13,7 @@
 //! | [`limits`] | Request body size limits |
 //! | [`timeout`] | Request timeout configurations |
 //! | [`compression`] | Response compression |
+//! | [`metrics`] | Prometheus `/metrics` scrape endpoint |
 //!
 //! # Recommended Middleware Stack
 //!
@@ -74,6 +75,7 @@
 pub mod compression;
 pub mod cors;
 pub mod limits;
+pub mod metrics;
 pub mod rate_limit;
 pub mod timeout;
 
