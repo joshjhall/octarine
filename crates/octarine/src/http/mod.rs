@@ -52,7 +52,12 @@
 //!
 //! Recommended order (outermost first):
 //!
-//! 1. `RequestIdLayer` - correlation ID (first, so all logs have it)
+//! 1. `CorrelationLayer` - correlation ID + W3C `traceparent` (first, so all
+//!    logs carry the id and the response echoes it). Prefer this over
+//!    `RequestIdLayer` for async services: it also accepts `X-Correlation-ID`
+//!    and `traceparent`, scopes the id as task-local, and chains the outbound
+//!    trace. Use `RequestIdLayer` only when a thread-local, `X-Request-ID`-only
+//!    id is sufficient; do not mount both.
 //! 2. `TimeoutLayer` - reject slow requests early
 //! 3. `RequestBodyLimitLayer` - reject oversized requests
 //! 4. `ContextLayer` - extract tenant/user
@@ -89,9 +94,9 @@ pub use extractors::{
 #[cfg(feature = "auth")]
 pub use middleware::{AuthConfig, AuthLayer, Claims};
 pub use middleware::{
-    ContextLayer, FrameOptions, KeyStrategy, MetricsConfig, MetricsLayer, ObserveConfig,
-    ObserveLayer, PathPattern, RateLimitConfig, RateLimitLayer, RequestIdLayer, SecurityConfig,
-    SecurityLayer,
+    ContextLayer, CorrelationLayer, FrameOptions, KeyStrategy, MetricsConfig, MetricsLayer,
+    ObserveConfig, ObserveLayer, PathPattern, RateLimitConfig, RateLimitLayer, RequestIdLayer,
+    SecurityConfig, SecurityLayer,
 };
 
 // Re-export tower-http types for convenience (so users don't need to add tower-http dependency)
