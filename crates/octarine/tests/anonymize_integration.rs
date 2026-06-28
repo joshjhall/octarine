@@ -2,11 +2,12 @@
 //!
 //! Exercises the public `octarine::anonymize` surface — the
 //! [`AnonymizerEngine`], the [`BatchAnonymizerEngine`], the
-//! `anonymize`/`redact_all` shortcuts, and the built-in `Replace`/`Redact`
-//! operators — through the same re-export paths a downstream consumer uses. The
-//! detection inputs are shaped like real recognizer output (`RecognizerResult`
-//! spans over a fixed string) so that the end-to-end detect → anonymize flow is
-//! covered, not just unit behaviour.
+//! [`BatchDeanonymizeEngine`], the `anonymize`/`redact_all` shortcuts, and the
+//! built-in `Replace`/`Redact`/`Encrypt`/`Decrypt` operators — through the same
+//! re-export paths a downstream consumer uses. The detection inputs are shaped
+//! like real recognizer output (`RecognizerResult` spans over a fixed string)
+//! so that the end-to-end detect → anonymize flow is covered, not just unit
+//! behaviour.
 
 #![allow(clippy::panic)]
 #![allow(clippy::expect_used)]
@@ -14,13 +15,29 @@
 use std::collections::HashMap;
 
 use octarine::anonymize::{
-    AnonymizerEngine, BatchAnonymizerEngine, ConflictResolutionStrategy, Operator, OperatorConfig,
-    OperatorType, RecognizerResult, anonymize, redact_all,
+    AnonymizerEngine, BatchAnonymizerEngine, BatchDeanonymizeEngine, ConflictResolutionStrategy,
+    Operator, OperatorConfig, OperatorResult, OperatorType, RecognizerResult, anonymize,
+    redact_all,
 };
 
 /// Builds a detection result, panicking on invalid spans (test-only).
 fn detect(entity: &str, start: usize, end: usize, score: f64) -> RecognizerResult {
     RecognizerResult::new(entity, start, end, score).expect("valid detection")
+}
+
+/// 32 zero bytes, base64url-no-pad — a fixed AEAD key for round-trip tests.
+const KEY_B64: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+/// A single-entity operator map naming `op` (`encrypt`/`decrypt`) with `KEY_B64`.
+fn keyed_ops(op: &str, entity: &str) -> HashMap<String, OperatorConfig> {
+    let mut params = HashMap::new();
+    params.insert("key".to_string(), serde_json::json!(KEY_B64));
+    let mut ops = HashMap::new();
+    ops.insert(
+        entity.to_string(),
+        OperatorConfig::with_params(op, params).expect("cfg"),
+    );
+    ops
 }
 
 #[test]
@@ -247,4 +264,127 @@ fn batch_anonymize_list_length_mismatch_is_rejected() {
     let results = vec![vec![]]; // one list for two texts
     let err = batch.anonymize_list(&texts, &results, &HashMap::new());
     assert!(err.is_err(), "length mismatch should error");
+}
+
+#[test]
+fn batch_deanonymize_list_round_trips_through_public_surface() {
+    // Anonymize a batch with `encrypt`, then reverse it with the public
+    // `BatchDeanonymizeEngine::deanonymize_list` — the path a real consumer hits
+    // (re-export wiring, method signatures, EngineResult.items handoff).
+    let texts = ["SSN 123-45-6789.", "SSN 987-65-4321."];
+    let results = vec![
+        vec![detect("US_SSN", 4, 15, 0.95)],
+        vec![detect("US_SSN", 4, 15, 0.95)],
+    ];
+    let sealed = BatchAnonymizerEngine::new()
+        .anonymize_list(&texts, &results, &keyed_ops("encrypt", "US_SSN"))
+        .expect("anonymize_list");
+
+    let sealed_texts: Vec<&str> = sealed
+        .iter()
+        .map(|r| r.text.as_deref().expect("text"))
+        .collect();
+    let items: Vec<Vec<OperatorResult>> = sealed.iter().map(|r| r.items.clone()).collect();
+
+    let restored = BatchDeanonymizeEngine::new()
+        .deanonymize_list(&sealed_texts, &items, &keyed_ops("decrypt", "US_SSN"))
+        .expect("deanonymize_list");
+
+    assert_eq!(restored.len(), 2);
+    assert_eq!(
+        restored.first().and_then(|r| r.text.as_deref()),
+        Some("SSN 123-45-6789."),
+        "first item round-trips"
+    );
+    assert_eq!(
+        restored.get(1).and_then(|r| r.text.as_deref()),
+        Some("SSN 987-65-4321."),
+        "second item round-trips"
+    );
+}
+
+#[test]
+fn batch_deanonymize_lenient_keeps_failed_item_anonymized() {
+    // Default (lenient) mode: one item that cannot be reversed (wrong key) is
+    // left anonymized while the rest of the batch reverses — the documented
+    // symmetric-error-semantics contract, checked at the integration level.
+    let sealed = BatchAnonymizerEngine::new()
+        .anonymize_list(
+            &["SSN 123-45-6789."],
+            &[vec![detect("US_SSN", 4, 15, 0.95)]],
+            &keyed_ops("encrypt", "US_SSN"),
+        )
+        .expect("anonymize_list");
+    let sealed_first = sealed.first().expect("sealed item");
+    let sealed_text = sealed_first.text.clone().expect("text");
+
+    let texts = [sealed_text.as_str(), "no pii"];
+    let items = vec![sealed_first.items.clone(), vec![]];
+
+    // A different all-ones key fails the tag check on item 0.
+    let mut wrong = keyed_ops("decrypt", "US_SSN");
+    wrong.insert(
+        "US_SSN".to_string(),
+        OperatorConfig::with_params("decrypt", {
+            let mut p = HashMap::new();
+            p.insert(
+                "key".to_string(),
+                serde_json::json!("AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"),
+            );
+            p
+        })
+        .expect("cfg"),
+    );
+
+    let restored = BatchDeanonymizeEngine::new()
+        .deanonymize_list(&texts, &items, &wrong)
+        .expect("lenient batch must not abort");
+
+    assert_eq!(restored.len(), 2);
+    // Item 0 stays anonymized (the safe value); item 1 passes through.
+    assert_eq!(
+        restored.first().and_then(|r| r.text.as_deref()),
+        Some(sealed_text.as_str())
+    );
+    assert_eq!(
+        restored.get(1).and_then(|r| r.text.as_deref()),
+        Some("no pii")
+    );
+}
+
+#[test]
+fn batch_deanonymize_strict_aborts_on_failure() {
+    // strict() opts into fail-fast: a wrong-key item fails the whole batch.
+    let sealed = BatchAnonymizerEngine::new()
+        .anonymize_list(
+            &["SSN 123-45-6789."],
+            &[vec![detect("US_SSN", 4, 15, 0.95)]],
+            &keyed_ops("encrypt", "US_SSN"),
+        )
+        .expect("anonymize_list");
+    let sealed_texts: Vec<&str> = sealed
+        .iter()
+        .map(|r| r.text.as_deref().expect("text"))
+        .collect();
+    let items: Vec<Vec<OperatorResult>> = sealed.iter().map(|r| r.items.clone()).collect();
+
+    let mut wrong = HashMap::new();
+    wrong.insert(
+        "US_SSN".to_string(),
+        OperatorConfig::with_params("decrypt", {
+            let mut p = HashMap::new();
+            p.insert(
+                "key".to_string(),
+                serde_json::json!("AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"),
+            );
+            p
+        })
+        .expect("cfg"),
+    );
+
+    let err =
+        BatchDeanonymizeEngine::new()
+            .strict()
+            .deanonymize_list(&sealed_texts, &items, &wrong);
+    assert!(err.is_err(), "strict mode should abort on a failed item");
 }
