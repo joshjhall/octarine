@@ -159,14 +159,14 @@ fn aead_encrypt(
             let cipher = ChaCha20Poly1305::new_from_slice(key)
                 .map_err(|e| CryptoError::invalid_key(format!("cipher init failed: {e}")))?;
             cipher
-                .encrypt(ChachaNonce::from_slice(nonce), payload)
+                .encrypt(&ChachaNonce::from(*nonce), payload)
                 .map_err(|e| CryptoError::encryption(format!("encryption failed: {e}")))
         }
         AeadAlgo::Aes256Gcm => {
             let cipher = Aes256Gcm::new_from_slice(key)
                 .map_err(|e| CryptoError::invalid_key(format!("cipher init failed: {e}")))?;
             cipher
-                .encrypt(AesNonce::from_slice(nonce), payload)
+                .encrypt(&AesNonce::from(*nonce), payload)
                 .map_err(|e| CryptoError::encryption(format!("encryption failed: {e}")))
         }
     }
@@ -190,14 +190,14 @@ fn aead_decrypt(
             let cipher = ChaCha20Poly1305::new_from_slice(key)
                 .map_err(|e| CryptoError::invalid_key(format!("cipher init failed: {e}")))?;
             cipher
-                .decrypt(ChachaNonce::from_slice(nonce), payload)
+                .decrypt(&ChachaNonce::from(*nonce), payload)
                 .map_err(|e| CryptoError::decryption(format!("decryption failed: {e}")))
         }
         AeadAlgo::Aes256Gcm => {
             let cipher = Aes256Gcm::new_from_slice(key)
                 .map_err(|e| CryptoError::invalid_key(format!("cipher init failed: {e}")))?;
             cipher
-                .decrypt(AesNonce::from_slice(nonce), payload)
+                .decrypt(&AesNonce::from(*nonce), payload)
                 .map_err(|e| CryptoError::decryption(format!("decryption failed: {e}")))
         }
     }
@@ -452,6 +452,48 @@ mod tests {
     #[test]
     fn empty_wire_decodes_to_error() {
         assert!(open(&KEY, "", b"EMAIL").is_err());
+    }
+
+    /// Known-answer test pinning the exact on-wire bytes for deterministic-mode
+    /// sealing. In deterministic mode the nonce is `HKDF(key, AAD ‖ plaintext)`,
+    /// so a fixed `(algo, key, plaintext, aad)` produces a byte-stable wire
+    /// string — unlike random mode. These vectors were captured under aes-gcm /
+    /// chacha20poly1305 0.10 (aead 0.5) and verified byte-for-byte identical
+    /// under 0.11 (aead 0.6), proving the trait/`hybrid-array` migration did not
+    /// alter the AEAD output. They guard against silent wire-format drift on
+    /// future AEAD upgrades: a change here means previously stored ciphertext
+    /// would no longer decrypt, and must be treated as a breaking data-format
+    /// change — never blindly re-baselined.
+    #[test]
+    fn deterministic_wire_format_known_answers() {
+        const KAT_PLAINTEXT: &[u8] = b"known-answer-plaintext";
+        const KAT_AAD: &[u8] = b"EMAIL";
+        // Captured vectors: (algo, expected base64 URL_SAFE_NO_PAD wire string).
+        let vectors = [
+            (
+                AeadAlgo::ChaCha20Poly1305,
+                "AQH-jQCP_cTwrF4Ju8a7bQZmH-Bw4UNb4Jy_qkM7E5c_DziHbFyynYgBZiXy-uFxAcm2Eg",
+            ),
+            (
+                AeadAlgo::Aes256Gcm,
+                "AQL-jQCP_cTwrF4Ju8b_PBgMFvtvQEkjMAtBmXHtgnsgIQp7XbGc08v3gP5MZ7HYXjSCZA",
+            ),
+        ];
+        for (algo, expected) in vectors {
+            let wire =
+                seal(algo, &KEY, KAT_PLAINTEXT, KAT_AAD, NonceMode::Deterministic).expect("seal");
+            assert_eq!(
+                wire,
+                expected,
+                "wire format drifted for algo_id={} — stored ciphertext would no longer decrypt",
+                algo.algo_id()
+            );
+            // The pinned bytes must also still open to the original plaintext.
+            assert_eq!(
+                open(&KEY, expected, KAT_AAD).expect("open").as_slice(),
+                KAT_PLAINTEXT
+            );
+        }
     }
 
     #[test]

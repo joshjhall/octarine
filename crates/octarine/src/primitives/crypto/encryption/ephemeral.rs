@@ -157,9 +157,9 @@ impl EphemeralEncryption {
         let cipher = ChaCha20Poly1305::new_from_slice(&key)
             .map_err(|e| CryptoError::invalid_key(format!("Failed to create cipher: {e}")))?;
 
-        let nonce_ref = Nonce::from_slice(&nonce);
+        let nonce_ref = Nonce::from(nonce);
         let ciphertext = cipher
-            .encrypt(nonce_ref, data)
+            .encrypt(&nonce_ref, data)
             .map_err(|e| CryptoError::encryption(format!("Encryption failed: {e}")))?;
 
         Ok(Self {
@@ -272,10 +272,10 @@ impl EphemeralEncryption {
         let cipher = ChaCha20Poly1305::new_from_slice(&self.key)
             .map_err(|e| CryptoError::invalid_key(format!("Failed to create cipher: {e}")))?;
 
-        let nonce = Nonce::from_slice(&self.nonce);
+        let nonce = Nonce::from(self.nonce);
 
         cipher
-            .decrypt(nonce, self.ciphertext.as_slice())
+            .decrypt(&nonce, self.ciphertext.as_slice())
             .map_err(|e| CryptoError::decryption(format!("Decryption failed: {e}")))
     }
 
