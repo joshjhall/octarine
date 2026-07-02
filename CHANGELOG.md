@@ -2,55 +2,6 @@
 
 All notable changes to octarine will be documented in this file.
 
-## [Unreleased]
-
-### CI
-
-- feat(ci): automate crates.io publishing and GitHub Release on tag push (#112)
-  - New `.github/workflows/release.yml` triggered on `v*` tags (and `workflow_dispatch` for re-runs) validates the tag against `Cargo.toml` and `CHANGELOG.md`, then publishes `octarine-derive`, `octarine-problem`, and `octarine` in dependency order. Each publish step is idempotent — re-running on a partial failure skips crates already on crates.io at the target version.
-  - Adds `scripts/release/changelog.py` `extract` subcommand that pulls a CHANGELOG section by version (used as the GitHub Release body, with the operator-only `<!-- TODO: review -->` marker stripped).
-  - Root `Cargo.toml` workspace deps now carry `version = ...` alongside `path = ...` so `cargo publish` accepts them. The `just release` recipe keeps these specs in lockstep with each crate's `[package].version` and fails fast if `octarine-derive`'s workspace dep drifts from its independently-versioned crate manifest.
-  - Operator's manual `gh release create` / `cargo publish` steps removed from docs and the release skill.
-
-### Added
-
-- feat(identifiers): add framework database credential detection (#30)
-  - JDBC variants: Oracle thin (`jdbc:oracle:thin:user/pass@host`) and SQL Server semicolon format (`jdbc:sqlserver://host;user=X;password=Y`) extend the existing `is_connection_string_with_credentials` / `find_connection_strings_in_text` story
-  - New umbrella functions `is_framework_credential_present` / `find_framework_credentials_in_text` (+ Layer 3 builder methods and shortcuts) detect credentials in Django `'PASSWORD': 'value'` settings, Rails `password: value` YAML, `.env` keys (`DB_PASSWORD`, `MYSQL_PASSWORD`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `MONGO_PASSWORD`, `DATABASE_PASSWORD`, `POSTGRESQL_PASSWORD`), and Docker Compose env (`MYSQL_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, `MONGO_INITDB_ROOT_PASSWORD`, `RABBITMQ_DEFAULT_PASS`, `REDIS_PASSWORD`)
-  - Redaction primitives `redact_framework_credential` / `redact_framework_credentials_in_text` preserve the key and replace the value with `****`; `redact_connection_string` extended to handle Oracle thin (`user/****@host`)
-  - PII scanner (`scan_for_pii`) maps framework matches to `PiiType::ConnectionString` — no new PII type variants needed
-  - Commented-out credentials (`# DB_PASSWORD=secret`) are also flagged since comments can be uncommented
-
-- feat(identifiers): add international postal codes (DE, FR, AU, JP, IN, NL, BR) (#37)
-  - Per-country detection functions: `is_german_postal_code`, `is_french_postal_code`, `is_australian_postal_code`, `is_japanese_postal_code`, `is_indian_postal_code`, `is_dutch_postal_code`, `is_brazilian_postal_code`
-  - `PostalCodeType` gains `GermanPostal`, `FrenchPostal`, `AustralianPostal`, `JapanesePostal`, `IndianPostal`, `DutchPostal`, `BrazilianPostal` variants
-  - `find_postal_codes_in_text` now gates short-numeric matches (DE/FR/AU/IN) on a ±50-char address-context keyword window (`zip`, `postal code`, `PLZ`, `CEP`, `PIN code`, `code postal`) to suppress false positives on phone numbers, prices, and years
-  - `normalize_postal_code` accepts bare-digit Japanese (NNNNNNN) and Brazilian (NNNNNNNN) forms and inserts canonical hyphens; Dutch codes are normalized to a single space between digits and letters
-
-### Changed
-
-- **BREAKING refactor(naming):** rename Layer 3 public verify_*/has_*/ensure_*/check_* to canonical names (#314, completes #193 naming-drift)
-  - `crypto::auth::hmac`: `verify` / `verify_strict` / `verify_hex` / `verify_with_domain` / `verify_multipart` → `is_valid` / `validate_strict` / `is_hex_valid` / `is_with_domain_valid` / `is_multipart_valid` (old names deleted, no aliases)
-  - `crypto::auth::hmac`: misnamed `validate_hex` / `validate_with_domain` / `validate_multipart` bool-returning aliases removed (the convention reserves `validate_*` for `Result`-returning functions)
-  - `crypto::keys::password`: `verify` (async) / `verify_sync` → `validate` / `validate_sync` (the prior `validate_sync` alias is now the only name)
-  - `data::paths::FormatBuilder::ensure_trailing_separator` → `with_trailing_separator`
-  - `data::paths::SeparatorStyle::is_separators_present` (was `has_separators`) on both Layer 1 and Layer 3 enums
-  - `primitives::io::net::HealthCheck::evaluate_health` trait method (was `check_health`) — external implementers must update
-  - `primitives::crypto::builder::HmacBuilder::is_valid` / `PasswordBuilder::validate` (were `.verify`)
-  - `scripts/arch_check/checks/naming_prefix.py` scope extended to all Layer 3 modules (`crypto/`, `data/`, `security/`, `auth/`, `http/`, `runtime/`, `io/`) — completes the prefix-rule lockdown crate-wide
-
-- refactor(naming): rename internal `pub fn` violations of prohibited-prefix naming convention (slice of #193)
-  - `primitives/crypto/auth/hmac`: `verify_hmac{,_strict,_hex,_with_domain,_multipart}` → `is_hmac_valid` / `validate_hmac_strict` / `is_hmac_hex_valid` / `is_hmac_with_domain_valid` / `is_hmac_multipart_valid`
-  - `primitives/crypto/builder::HmacBuilder`: `verify_strict` / `verify_hex` / `verify_with_domain` / `verify_multipart` → `validate_strict` / `is_hex_valid` / `is_with_domain_valid` / `is_multipart_valid`
-  - `primitives/crypto/keys/password`: `verify_password{,_sync}` → `validate_password{,_sync}`
-  - `primitives/io/file/permissions::ensure_directory_mode` → `with_directory_mode`
-  - `primitives/data/paths` (4 sites): `ensure_trailing_separator` → `with_trailing_separator`
-  - `primitives/security/paths/sanitization::remove_traversal_sequences` → `strip_traversal_sequences`
-  - `observe/metrics/thresholds::check_threshold` → `evaluate_threshold`
-  - `observe/writers::ensure_registry` → `init_registry_if_missing`
-  - Layer 3 public surface (`crypto::auth::hmac::verify_*`, `crypto::keys::password::verify_*`, `data::paths::FormatBuilder::ensure_trailing_separator`, `SeparatorStyle::has_separators`, `primitives::io::net::HealthCheck::check_health`) is unchanged in this PR — those require a deprecation cycle and will be done with the next minor bump (#314)
-  - `scripts/arch_check/checks/naming_prefix.py` scope extended to cover `primitives/crypto`, `primitives/data`, `primitives/io`, and `observe`
-
 ## [0.3.0-beta.3] - 2026-04-28
 
 ### Fixed
