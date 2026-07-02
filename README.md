@@ -22,14 +22,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.3" }
+octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.4" }
 ```
 
 Enable only the features you need:
 
 ```toml
 [dependencies]
-octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.3", default-features = false, features = ["observe", "security"] }
+octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.4", default-features = false, features = ["observe", "security"] }
 ```
 
 ## Feature Flags

@@ -2,6 +2,186 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [0.3.0-beta.4] - 2026-07-02
+
+<!-- TODO: review and curate before push -->
+
+### Added
+
+- feat(anonymize): add InstanceCounter operators for reversible pseudonymization (#653)
+- feat(http): add CorrelationLayer middleware for correlation-id propagation (#648)
+- feat(observe): add OTLP/HTTP transport to complement OTLP/gRPC exporter (#644)
+- feat(anonymize): add parallel batch deanonymizer engine via rayon (#513) (#642)
+- feat(anonymize): add session lifecycle API with TTL expiry (#544) (#635)
+- feat(anonymize): add parallel batch anonymizer engine via rayon (#634)
+- feat(http): serve Prometheus /metrics via axum preset (#632)
+- feat(anonymize): add InMemoryStore default StateStore backend (#627)
+- feat(identifiers): phone validation via phonenumber crate (libphonenumber) (#617)
+- feat(identifiers): Swedish Personnummer + Organisationsnummer (#435) (#616)
+- feat(anonymize): Hash operator over SHA-2/BLAKE3/HMAC/Argon2 (#484) (#614)
+- feat(anonymize): Encrypt/Decrypt operators over keyed AEAD (#485) (#613)
+- feat(anonymize): StateStore trait + SessionId/EntityKey vault foundation (#608)
+- feat(anonymize): Mask operator with multi-char units + strict validation (#607)
+- feat(anonymize): Custom operator with no-probe-call discipline (#487) (#606)
+- feat(anonymize): operator engine + Replace/Redact operators (#605)
+- feat(anonymize): shared operator/engine type system (#603)
+- feat(identifiers): Turkey pack — TCKN (NVI mod-10) + License Plate (#461)
+- feat(identifiers): UK pack — NHS Number, Passport, Driving Licence (#460)
+- feat(identifiers): Italian completeness (VAT, passport, identity card, driver license) (#459)
+- feat(identifiers): NamedLocation gazetteer detector (~280 countries + ~1500 cities) (#458)
+- feat(identifiers): add AGE + NRP entities (HIPAA Safe Harbor + GDPR Art 9) (#457)
+- feat(identifiers): PSL validation for email + URL, plus bare-URL detection via linkify (#456)
+- feat(identifiers): BTC base58check/Bech32m + ETH EIP-55 checksum validation (#454)
+- feat(ci): automate crates.io publishing and GitHub Release on tag push (#398)
+- feat(arch-check): promote doctest-ignores to default ERROR + docs (#395)
+- feat(arch-check): add opt-in doctest-ignores check (#393)
+- feat(observe): cache Registry::snapshot() with 1s TTL (#392)
+- feat(runtime): cache auto-generated correlation IDs per thread (#391)
+- feat(identifiers): add framework database credential detection (#390)
+- feat(identifiers): add Korea extended IDs (driver license, FRN, passport, BRN) (#389)
+- feat(identifiers): support CJK, Arabic, Hindi credential keywords (#388)
+- feat(identifiers): add 8 developer-platform token detectors (#384)
+- feat(identifiers): add Singapore UEN and Australia Medicare/ACN detection (#383)
+- feat(identifiers): add Nigeria Vehicle Registration and BVN detection (#382)
+- feat(arch-check): enforce 800 production-LOC file-length limit (#347)
+- feat(identifiers): add LATAM/Africa government IDs (Brazil CPF/CNPJ, Mexico CURP, Nigeria NIN, Thailand TNIN) (#312)
+- feat(identifiers): add US street address normalization (USPS Pub 28) (#311)
+- feat(identifiers): add international postal codes (DE, FR, AU, JP, IN, NL, BR) (#310)
+- feat(identifiers): add India extended IDs (GSTIN, vehicle reg, voter ID, passport) (#305)
+- feat(release): add `just release <type>` keyword bumps, skill, and docs (#295)
+
+### Fixed
+
+- chore(tooling): bump Rust toolchain 1.94 -> 1.95.0, fix LSP and clippy (#618)
+- fix(identifiers): US ITIN — strict IRS middle-group rule + reject 9xx as SSN (#602)
+- fix(ci): install cargo-nextest in nightly test job (#387)
+- fix(tests): poll for TTL expiration instead of fixed-sleep assertions (#372)
+- fix(ci): detach to PR head before linting commits with conform (#358)
+- fix(ci): unbreak macOS Check — PATH + cache invalidation + no bin caching (#333)
+- fix(ci): harden macOS Check against rustup-init shim flake (#332)
+- refactor(identifiers): split government/builder.rs into per-country modules (#331)
+- fix(ci): replace broken osv-scanner-action with install-action + just recipe (#326)
+- fix(observe): add silent mode to 5 Layer 3 builders (#302)
+- fix(tests): replace fixed sleeps with poll-until-condition loops (#299)
+- fix(pii): emit provider-specific PiiType variants for tokens (#298)
+- fix(arch-check): collapse multi-line pub use blocks in unwrapped-fn (#294)
+- fix(pii-sync): scan_network now detects PiiType::Hostname and PiiType::Port (#291)
+- fix(license): align dual-license artifacts with ecosystem (#288)
+
+### Changed
+
+- refactor(anonymize): async session-aware engine path (sans-IO core) (#610)
+- refactor(runtime): use FileMode::PRIVATE constant in with_secure_file (#364)
+- refactor(observe): migrate builders to crate::define_metrics! macro (#349)
+- refactor(lints): reduce cognitive complexity & enforce in CI (#348)
+- refactor(observe): split observe/pii/types.rs into per-section submodules (#346)
+- refactor(crypto): split crypto/secrets/storage.rs into per-section submodules (#345)
+- refactor(io): split io/ops.rs into per-section submodules (#344)
+- refactor(identifiers): split Layer 1 token/builder.rs into per-section submodules (#343)
+- refactor(identifiers): split network.rs into per-category submodules (#342)
+- refactor(identifiers): split personal.rs into per-region submodules (#341)
+- refactor(security): wrap PrimAllowList directly to fix leak (#336) (#337)
+- refactor(identifiers): split Layer 3 builder/token.rs into per-section submodules (#335)
+- refactor(identifiers): split government/builder.rs into per-country modules (#331)
+- refactor(types): extract Problem/Result into octarine-problem micro-crate (#328)
+- refactor(http): extract pure logic into primitives/http/ (#320)
+- refactor(identifiers): split Layer 3 builder/government.rs into per-country submodules (#318)
+- refactor(identifiers): split government/detection.rs into per-country submodules (#317)
+- refactor(naming): rename Layer 3 public verify_*/has_*/ensure_*/check_* (#316)
+- refactor(naming): rename internal prohibited-prefix functions (#315)
+- refactor: complete unimplemented checksums and normalizations (#304)
+- refactor(data/paths): drop cross-concern security re-exports (#303)
+- refactor(observe): convert Layer 3 builders to 2-arg observe API (#301)
+- refactor(primitives): tighten inline pub mod to pub(crate) mod in pattern files (#300)
+- refactor(arch-check): rewrite as Python package with pytest suite (#292)
+- refactor(visibility): re-export primitives types from L3 shortcuts (#290)
+- refactor(identifiers): split api_keys.rs into per-provider submodules (#289)
+- refactor(identifiers): split shortcuts.rs god file into per-domain submodules (#287)
+- refactor(data/paths): split PathBuilder god-module into per-concern impl blocks (#286)
+- build(release): include chore: commits in CHANGELOG generation
+- chore(memory): record unpushed-dep-fixes-on-local-main diagnostic
+- chore(deps): bump linkify 0.10 -> 0.11 (#626)
+- chore(deps): fix RUSTSEC-2026-0185 (quinn-proto) + bring deps to latest semver (#625)
+- chore(deps): fix RUSTSEC-2026-0173 + bring all deps to latest semver (#622)
+- chore(memory): record anonymize sans-IO split and CodeQL crypto FP notes (#620)
+- chore(tooling): bump Rust toolchain 1.94 -> 1.95.0, fix LSP and clippy (#618)
+- chore(memory): note Presidio audit issue namespace
+- chore(deps): bump sqlx 0.8→0.9 and refresh all dependencies (#455)
+- chore(claude): split audit-octarine-platforms rules into companion file (#381)
+- chore(observe): clean up metric-naming drift and flaky timer assertion (#380)
+- chore(claude): ignore Claude Code scheduled-tasks lock file
+- chore(tooling): adopt taplo for TOML formatting and schema linting (#378)
+- chore(tooling): add just quarterly recipe and quarterly-review workflow (#377)
+- chore(tooling): adopt actionlint for GitHub Actions workflow linting (#376)
+- chore(tooling): adopt cargo-nextest for test runs (#375)
+- chore(tooling): adopt cargo-machete for unused-dependency detection (#373)
+- chore(deps): bump containers submodule to v4.19.2 (#370)
+- chore(ci): adopt cargo-llvm-cov for coverage reporting (#369)
+- chore(tooling): adopt bacon for continuous background checks (#368)
+- chore(ci): enable mold linker on Linux for faster builds (#367)
+- chore(ci): align remaining jobs to just recipes (#366)
+- chore(tooling): adopt rumdl for Markdown linting (#361)
+- chore(tooling): adopt shfmt for shell script formatting (#360)
+- chore(tooling): adopt hadolint for Dockerfile linting (#359)
+- chore(tooling): adopt conform for conventional-commit enforcement (#357)
+- chore(tooling): replace cspell (Node) with typos (Rust) for spell-check (#356)
+- chore(tooling): remove biome now that dprint owns JSON formatting (#355)
+- chore(tooling): adopt dprint for YAML and JSON formatting (#354)
+- chore(tooling): add .zed/settings.json with dprint/taplo LSP overrides (#352)
+- chore(deps): bump containers submodule to v4.19.0
+- chore(memory): record macOS CI cache-poisoning lesson (#334)
+- chore(deps): bump assert_cmd, jsonwebtoken, nix to latest patch/minor (#322)
+- chore(ci): wire osv-scanner for broader vulnerability coverage (#321)
+- chore(memory): add coordinated dependabot bumps learning
+- chore(deps): bump opentelemetry crates from 0.31 to 0.32 (unified) (#313)
+- chore(memory): record PR auto-merge-on-green preference
+
+### Documentation
+
+- docs(release): drop stale Unreleased section from CHANGELOG
+- docs: Presidio gap analysis — feature inventory and superset posture
+- docs(arch-check): justify 338 ignore doctests across 134 Layer 2/3 files (#394)
+- docs(architecture): document solo-maintainer posture and high-risk subsystems (#386)
+- docs(ci): add GitHub issue templates for bug, feature, and task (#385)
+- docs(auth): remove stale "coming soon" markers from lib.rs (#365)
+- docs(architecture): rename index.md to README.md (#330)
+- docs: explain platform-conditional logic in observe writer and home fallback (#329)
+
+### Testing
+
+- feat(http): add CorrelationLayer middleware for correlation-id propagation (#648)
+- test(anonymize): add vault concurrency conformance suite (#639)
+- test(runtime): make async timing tests deterministic via paused clock (#623)
+- chore(ci): enable mold linker on Linux for faster builds (#367)
+- test(data): add integration test for Data facade (#351)
+- refactor(identifiers): split Layer 1 token/builder.rs into per-section submodules (#343)
+- refactor(identifiers): split Layer 3 builder/token.rs into per-section submodules (#335)
+- refactor(identifiers): split government/builder.rs into per-country modules (#331)
+- test(timing): add diagnostic messages to bare timing assertions (#319)
+- fix(tests): replace fixed sleeps with poll-until-condition loops (#299)
+- test(security): cover error paths and edge cases in Layer 3 builders (#285)
+
+### CI
+
+- deps: bump quick-xml to 0.41 and migrate AEAD crates to 0.11 (#654)
+- feat(anonymize): Encrypt/Decrypt operators over keyed AEAD (#485) (#613)
+
+### Build
+
+- build(deps): bump the minor-and-patch group across 1 directory with 4 updates (#379)
+- build(deps): bump sha3 from 0.11.0 to 0.12.0 (#363)
+- chore(deps): bump opentelemetry crates from 0.31 to 0.32 (unified) (#313)
+- build(deps): bump the minor-and-patch group with 4 updates (#306)
+- refactor(observe): convert Layer 3 builders to 2-arg observe API (#301)
+- build(deps): bump the minor-and-patch group with 2 updates (#296)
+- build(deps): bump pkcs8 from 0.10.2 to 0.11.0 (#297)
+- build(release): include chore: commits in CHANGELOG generation
+
+### Other
+
+- deps(testing): bump rexpect 0.6 → 0.7 (#327)
+- deps(xml): bump quick-xml 0.39 → 0.40 (#325)
+
 ## [0.3.0-beta.3] - 2026-04-28
 
 ### Fixed
