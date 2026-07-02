@@ -57,8 +57,8 @@ sha3 = "0.12"
 blake3 = "1"
 hex = "0.4"
 zeroize = { version = "1.8", features = ["derive"] }
-chacha20poly1305 = "0.10.1"
-aes-gcm = "0.10.3"
+chacha20poly1305 = "0.11.0"
+aes-gcm = "0.11.0"
 argon2 = "0.5"
 
 # Cryptocurrency address validation (BTC base58check, Bech32/Bech32m, ETH EIP-55)
@@ -165,7 +165,7 @@ sha1 = { version = "0.11", optional = true }
 graphql-parser = { version = "0.4", optional = true }
 
 # Structured data formats (optional, for formats module)
-quick-xml = { version = "0.40", optional = true }
+quick-xml = { version = "0.41", optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
 # Crypto input validation (optional)

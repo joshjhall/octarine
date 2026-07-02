@@ -52,7 +52,7 @@ impl SecureStorage {
             .map_err(|e| CryptoError::encryption(format!("ChaCha cipher init failed: {e}")))?;
 
         let chacha_ciphertext = chacha_cipher
-            .encrypt(ChachaNonce::from_slice(&chacha_nonce), data)
+            .encrypt(&ChachaNonce::from(chacha_nonce), data)
             .map_err(|e| CryptoError::encryption(format!("ChaCha encryption failed: {e}")))?;
 
         // Step 5: Second layer - AES-256-GCM
@@ -60,10 +60,7 @@ impl SecureStorage {
             .map_err(|e| CryptoError::encryption(format!("AES cipher init failed: {e}")))?;
 
         let aes_ciphertext = aes_cipher
-            .encrypt(
-                AesNonce::from_slice(&aes_nonce),
-                chacha_ciphertext.as_slice(),
-            )
+            .encrypt(&AesNonce::from(aes_nonce), chacha_ciphertext.as_slice())
             .map_err(|e| CryptoError::encryption(format!("AES encryption failed: {e}")))?;
 
         // Step 6: Encrypt shared secret with platform key for storage
@@ -74,10 +71,7 @@ impl SecureStorage {
             .map_err(|e| CryptoError::encryption(format!("Platform cipher init failed: {e}")))?;
 
         let encrypted_shared_secret = platform_cipher
-            .encrypt(
-                ChachaNonce::from_slice(&platform_nonce),
-                shared_secret.as_ref(),
-            )
+            .encrypt(&ChachaNonce::from(platform_nonce), shared_secret.as_ref())
             .map_err(|e| CryptoError::encryption(format!("Platform key encryption failed: {e}")))?;
 
         // Zeroize sensitive material
@@ -133,7 +127,7 @@ impl SecureStorage {
 
         let shared_secret_bytes = platform_cipher
             .decrypt(
-                ChachaNonce::from_slice(&encrypted.platform_nonce),
+                &ChachaNonce::from(encrypted.platform_nonce),
                 encrypted.encrypted_shared_secret.as_slice(),
             )
             .map_err(|e| CryptoError::decryption(format!("Platform key decryption failed: {e}")))?;
@@ -147,7 +141,7 @@ impl SecureStorage {
 
         let chacha_ciphertext = aes_cipher
             .decrypt(
-                AesNonce::from_slice(&encrypted.aes_nonce),
+                &AesNonce::from(encrypted.aes_nonce),
                 encrypted.aes_ciphertext.as_slice(),
             )
             .map_err(|e| CryptoError::decryption(format!("AES decryption failed: {e}")))?;
@@ -158,7 +152,7 @@ impl SecureStorage {
 
         let plaintext = chacha_cipher
             .decrypt(
-                ChachaNonce::from_slice(&encrypted.chacha_nonce),
+                &ChachaNonce::from(encrypted.chacha_nonce),
                 chacha_ciphertext.as_slice(),
             )
             .map_err(|e| CryptoError::decryption(format!("ChaCha decryption failed: {e}")))?;
