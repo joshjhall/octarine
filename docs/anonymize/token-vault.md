@@ -11,10 +11,12 @@ original identities.
 
 > **Status**: the foundational surface (`StateStore` + `SessionId` + `EntityKey`),
 > the default `InMemoryStore` backend, the session-lifecycle API
-> (`SessionManager` + TTL expiry), and the async, session-aware engine path that
+> (`SessionManager` + TTL expiry), the async, session-aware engine path that
 > consumes it (`anonymize_async` / `deanonymize_async` + the `AsyncOperator`
-> trait) have landed. The Redis/Postgres backends and the InstanceCounter
-> operators are tracked as follow-up work (see [Roadmap](#roadmap)).
+> trait), and the `InstanceCounterAnonymizer` / `InstanceCounterDeanonymizer`
+> operators that mint and reverse stable tokens have all landed. The
+> Redis/Postgres backends are tracked as follow-up work (see
+> [Roadmap](#roadmap)).
 
 ## Surface
 
@@ -201,32 +203,83 @@ itself would need a synchronous face — at which point this split must be
 reconsidered *deliberately*, not broken silently. The same invariant is
 documented in the `anonymize::operator` and `anonymize::engine` module docs.
 
-## Worked example (planned)
+## Worked example — the InstanceCounter round trip
 
-The async engine path and the `AsyncOperator` trait (#609) and the in-memory
-backend (#540) have landed; once the InstanceCounter operators (#543) land, the
-full round trip looks like this:
+`InstanceCounterAnonymizer` mints stable `<{entity_type}_{index}>` tokens and
+`InstanceCounterDeanonymizer` reverses them. Register the forward operator on an
+anonymize engine and the reverse operator on a deanonymize engine, both sharing
+one `Arc<dyn StateStore>` and `SessionId`:
 
-```text
+```rust
+use std::collections::HashMap;
+use std::sync::Arc;
+use octarine::anonymize::{
+    AnonymizerEngine, InstanceCounterAnonymizer, InstanceCounterDeanonymizer,
+    InMemoryStore, OperatorConfig, RecognizerResult, SessionId, StateStore,
+};
+
+# tokio_test::block_on(async {
 let store: Arc<dyn StateStore> = Arc::new(InMemoryStore::new());
-let engine = AnonymizerEngine::new()
-    .with_async_operator(Box::new(InstanceCounter::new()))
-    .with_store(Arc::clone(&store));
 let session = SessionId::new("chat-42");
 
-// 1. Anonymize: "Email Jane Doe at jane@acme.com"
-//    engine.anonymize_async(prompt, results, &operators, &session).await
-//             -> "Email <PERSON_0> at <EMAIL_0>"
-// 2. Send the anonymized prompt to the model.
-// 3. Deanonymize the reply, reversing tokens back to originals:
-//    engine.deanonymize_async(reply, results, &operators, &session).await
-// 4. store.flush(&session) when the conversation ends.
+// Route every entity type to the instance_counter operator via DEFAULT.
+let mut operators = HashMap::new();
+operators.insert("DEFAULT".to_string(), OperatorConfig::new("instance_counter")?);
+
+// 1. Anonymize a prompt. Repeated values reuse their token (stability).
+let anon_engine = AnonymizerEngine::new()
+    .with_async_operator(Box::new(InstanceCounterAnonymizer::new()))
+    .with_store(Arc::clone(&store));
+let prompt = "Jane and Jane and Bob";
+let results = vec![
+    RecognizerResult::new("PERSON", 0, 4, 0.9)?,
+    RecognizerResult::new("PERSON", 9, 13, 0.9)?,
+    RecognizerResult::new("PERSON", 18, 21, 0.9)?,
+];
+let anon = anon_engine.anonymize_async(prompt, results, &operators, &session).await?;
+assert_eq!(anon.text.as_deref(), Some("<PERSON_0> and <PERSON_0> and <PERSON_1>"));
+
+// 2. Send the anonymized prompt to the model; it replies referencing tokens.
+// 3. Deanonymize the reply against the same store + session.
+let deanon_engine = AnonymizerEngine::new()
+    .with_async_operator(Box::new(InstanceCounterDeanonymizer::new()))
+    .with_store(Arc::clone(&store));
+let reply = "<PERSON_1> greeted <PERSON_0>";
+let reply_spans = vec![
+    RecognizerResult::new("PERSON", 0, 10, 1.0)?,
+    RecognizerResult::new("PERSON", 19, 29, 1.0)?,
+];
+let restored = deanon_engine.deanonymize_async(reply, reply_spans, &operators, &session).await?;
+assert_eq!(restored.text.as_deref(), Some("Bob greeted Jane"));
+
+// 4. Conversation over: drop the session's mappings.
+store.flush(&session).await?;
+# Ok::<(), octarine_problem::Problem>(())
+# });
 ```
 
-The injected `Arc<dyn StateStore>`, the `anonymize_async` / `deanonymize_async`
-shells, and the `InMemoryStore` backend exist today (see
-[Async execution model](#async-execution-model)); only the InstanceCounter
-operator is still follow-up work.
+### Token format and strictness
+
+The anonymizer's default token format is `<{entity_type}_{index}>`. Override it
+per operator with `InstanceCounterAnonymizer::with_format("[{entity_type}:{index}]")`
+or per entity via a `format` config parameter; any format must contain both the
+`{entity_type}` and `{index}` placeholders or the operator's `validate` rejects
+it up front.
+
+The deanonymizer is **lenient** by default — a token with no mapping in the
+session (one the model invented or mangled) passes through unchanged. Call
+`InstanceCounterDeanonymizer::new().with_strict(true)` to instead surface an
+unknown token as an error, catching a broken round trip loudly.
+
+### Thread safety
+
+The mint goes through `StateStore::get_or_put`, the backend's atomic
+compare-and-set: two callers racing on the same new original converge on one
+token instead of minting divergent ones. This is the footgun Presidio's sample
+`InstanceCounterAnonymizer` carries ("NOT thread-safe") and octarine closes by
+construction. Index *sequencing* across distinct concurrent originals is
+best-effort (see the operator's rustdoc), but per-value stability and round-trip
+correctness hold under concurrency.
 
 ## Why octarine over Presidio
 
@@ -243,7 +296,7 @@ promotes it to a first-class, backend-agnostic trait where each backend
 | Async session-aware engine path  | #609  | landed      |
 | In-memory backend (default)      | #540  | landed      |
 | Session lifecycle API (TTL)      | #544  | landed      |
+| InstanceCounter operators        | #543  | landed      |
 | Redis backend (`redis` feature)  | #541  | follow-up   |
 | Postgres backend                 | #542  | follow-up   |
-| InstanceCounter operators        | #543  | follow-up   |
-| Concurrency tests | #545 |  |
+| Concurrency tests                | #545  | landed      |

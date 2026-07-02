@@ -37,8 +37,16 @@
 //! - `StateStore` / `SessionId` / `EntityKey` — the token-vault surface: the
 //!   backend-agnostic persistence contract behind reversible pseudonymization,
 //!   recording each `(session, original) → stable token` mapping. The default
-//!   `InMemoryStore` backend ships today; Redis/Postgres backends and the
-//!   InstanceCounter operators that consume it land as follow-up work.
+//!   `InMemoryStore` backend ships today; Redis/Postgres backends land as
+//!   follow-up work.
+//! - `InstanceCounterAnonymizer` / `InstanceCounterDeanonymizer` — the
+//!   reversible-pseudonymization operators over the vault: the anonymizer mints
+//!   stable per-session `<{entity_type}_{index}>` tokens (`<PERSON_0>`,
+//!   `<EMAIL_0>`) through the store's atomic mint, and the deanonymizer reverses
+//!   them on the model's response. Both implement `AsyncOperator` (vault access
+//!   is async-only) and are thread-safe by construction — octarine's
+//!   first-class replacement for Presidio's sample-only, "NOT thread-safe"
+//!   `InstanceCounterAnonymizer`.
 //! - `SessionManager` / `SessionOptions` — the session-lifecycle API over a
 //!   `StateStore`: `open` mints a time-ordered UUID-v7 `SessionId` with an
 //!   optional TTL, `close` flushes it, `touch` resets its TTL, and a background
@@ -73,7 +81,10 @@ mod vault;
 
 pub use engine::{AnonymizerEngine, BatchAnonymizerEngine, BatchDeanonymizeEngine};
 pub use operator::{AsyncOperator, Operator};
-pub use operators::{Custom, Decrypt, Encrypt, Hash, Mask, Redact, Replace};
+pub use operators::{
+    Custom, Decrypt, Encrypt, Hash, InstanceCounterAnonymizer, InstanceCounterDeanonymizer, Mask,
+    Redact, Replace,
+};
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{
     ConflictResolutionStrategy, EngineResult, OperatorConfig, OperatorResult, OperatorType,
