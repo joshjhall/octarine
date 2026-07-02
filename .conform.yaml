@@ -35,6 +35,7 @@ policies:
           - fix
           - perf
           - refactor
+          - release
           - test
         # Scope allowlist curated from `git log` of last ~300 commits
         # plus octarine top-level modules. Permissive on purpose —
