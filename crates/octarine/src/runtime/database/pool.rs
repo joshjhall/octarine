@@ -449,6 +449,77 @@ mod tests {
     }
 
     // =========================================================================
+    // Connection-failure I/O paths (no live database required)
+    //
+    // These drive the real `ManagedPool::new` connection machinery against
+    // unreachable / malformed endpoints and assert the error branches, which
+    // the `#[ignore]`d happy-path tests above never reach in CI. No fixed
+    // sleeps: failures are produced by the pool's own bounded timeouts.
+    // =========================================================================
+
+    /// A malformed URL must fail during option parsing (`build_connect_options`)
+    /// before any network I/O, surfacing as a `Config` error.
+    #[tokio::test]
+    async fn test_new_rejects_malformed_url() {
+        let db_config = DatabaseConfig::test("this is not a url");
+        let pool_config = PoolConfig::new(db_config).with_name("bad-url");
+        let shutdown = ShutdownCoordinator::new();
+
+        let result = ManagedPool::new(pool_config, &shutdown).await;
+        let err = result.err().expect("malformed URL must not connect");
+        assert!(
+            matches!(err, PoolError::Config(_)),
+            "expected Config error, got {err:?}"
+        );
+    }
+
+    /// A well-formed DSN pointing at a closed port must fail the initial
+    /// connection. `min_connections >= 1` forces `connect_with` to establish a
+    /// connection eagerly, so `new` returns an error rather than a live pool.
+    /// Port 1 is in the reserved range and refuses/So the connect fails fast;
+    /// a short acquire timeout bounds the wait without a fixed sleep.
+    #[tokio::test]
+    async fn test_new_fails_on_unreachable_server() {
+        let db_config = DatabaseConfig::builder()
+            .url("postgres://user:pass@127.0.0.1:1/octarine_none")
+            .max_connections(1)
+            .min_connections(1)
+            .acquire_timeout(Duration::from_secs(3))
+            .connect_timeout(Duration::from_secs(3))
+            .build()
+            .expect("config builds");
+        let pool_config = PoolConfig::new(db_config).with_name("unreachable");
+        let shutdown = ShutdownCoordinator::new();
+
+        let result = ManagedPool::new(pool_config, &shutdown).await;
+        // The exact variant depends on how sqlx classifies the failure
+        // (connect refused vs. acquire timeout); either way it must be an Err
+        // and must NOT register a usable pool.
+        assert!(
+            result.is_err(),
+            "connecting to a closed port must fail, not yield a live pool"
+        );
+    }
+
+    /// `new_unmanaged` shares the same connection path but skips shutdown-hook
+    /// registration; it must fail identically on an unreachable server.
+    #[tokio::test]
+    async fn test_new_unmanaged_fails_on_unreachable_server() {
+        let db_config = DatabaseConfig::builder()
+            .url("postgres://user:pass@127.0.0.1:1/octarine_none")
+            .max_connections(1)
+            .min_connections(1)
+            .acquire_timeout(Duration::from_secs(3))
+            .connect_timeout(Duration::from_secs(3))
+            .build()
+            .expect("config builds");
+        let pool_config = PoolConfig::new(db_config);
+
+        let result = ManagedPool::new_unmanaged(pool_config).await;
+        assert!(result.is_err(), "unreachable server must fail to connect");
+    }
+
+    // =========================================================================
     // Integration tests (require database)
     // Run with: cargo test -p octarine --features postgres -- --ignored
     // =========================================================================

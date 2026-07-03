@@ -635,4 +635,200 @@ mod tests {
         assert!(!redacted.contains("a@b.com"));
         assert!(!redacted.contains("/users/42"));
     }
+
+    // =========================================================================
+    // I/O path tests via wiremock for the observable (Layer 3) client.
+    //
+    // This layer wraps the primitive client and (a) enforces rate limiting
+    // BEFORE dispatch and (b) maps primitive errors to `Problem`. Expected
+    // results are derived from those two responsibilities plus HTTP retry
+    // semantics, not from current output.
+    // =========================================================================
+    mod io_paths {
+        #![allow(clippy::panic, clippy::expect_used)]
+        use super::*;
+        use crate::primitives::runtime::r#async::backoff::RetryPolicy;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use wiremock::matchers::{method as m, path as pth};
+        use wiremock::{Mock, MockServer, Respond, ResponseTemplate};
+
+        fn fast_retry(attempts: u32) -> RetryPolicy {
+            RetryPolicy::fixed(attempts, Duration::from_millis(1))
+        }
+
+        struct SequenceResponder {
+            calls: Arc<AtomicUsize>,
+            fail_count: usize,
+            first: u16,
+            then: u16,
+        }
+
+        impl Respond for SequenceResponder {
+            fn respond(&self, _req: &wiremock::Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n < self.fail_count {
+                    ResponseTemplate::new(self.first)
+                } else {
+                    ResponseTemplate::new(self.then)
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn success_returns_response() {
+            let server = MockServer::start().await;
+            Mock::given(m("GET"))
+                .and(pth("/ok"))
+                .respond_with(ResponseTemplate::new(200).set_body_string("body"))
+                .mount(&server)
+                .await;
+
+            let client = HttpClient::new(HttpClientConfig::default()).expect("client should build");
+            let resp = client
+                .get(&format!("{}/ok", server.uri()))
+                .send()
+                .await
+                .expect("2xx should be Ok");
+
+            assert_eq!(resp.status().as_u16(), 200);
+            assert_eq!(resp.text().await.expect("body"), "body");
+        }
+
+        #[tokio::test]
+        async fn retries_then_succeeds_through_wrapper() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            Mock::given(m("GET"))
+                .and(pth("/flaky"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: 2,
+                    first: 503,
+                    then: 200,
+                })
+                .mount(&server)
+                .await;
+
+            let config = HttpClientConfig::builder()
+                .retry_policy(fast_retry(5))
+                .no_circuit_breaker()
+                .build();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let resp = client
+                .get(&format!("{}/flaky", server.uri()))
+                .send()
+                .await
+                .expect("should recover after retries");
+
+            // The observable wrapper must preserve the primitive's retry
+            // behavior: two 503s then a 200 yields a successful 200 that
+            // reports it was retried.
+            assert_eq!(resp.status().as_u16(), 200);
+            assert!(resp.retried());
+            assert_eq!(resp.attempts(), 3);
+        }
+
+        #[tokio::test]
+        async fn non_2xx_final_response_is_ok_not_problem() {
+            let server = MockServer::start().await;
+            Mock::given(m("GET"))
+                .and(pth("/notfound"))
+                .respond_with(ResponseTemplate::new(404))
+                .mount(&server)
+                .await;
+
+            let client =
+                HttpClient::new(HttpClientConfig::no_retry()).expect("client should build");
+            let resp = client
+                .get(&format!("{}/notfound", server.uri()))
+                .send()
+                .await
+                .expect("a delivered 404 is Ok at this layer, logged as a warning");
+
+            // The wrapper logs a warning for 4xx/5xx but still returns the
+            // response; it does not convert delivered non-2xx into a Problem.
+            assert_eq!(resp.status().as_u16(), 404);
+            assert!(resp.is_client_error());
+        }
+
+        #[tokio::test]
+        async fn timeout_maps_to_problem() {
+            let server = MockServer::start().await;
+            Mock::given(m("GET"))
+                .and(pth("/slow"))
+                .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(30)))
+                .mount(&server)
+                .await;
+
+            let client =
+                HttpClient::new(HttpClientConfig::no_retry()).expect("client should build");
+            let err = client
+                .get(&format!("{}/slow", server.uri()))
+                .timeout(Duration::from_millis(100))
+                .send()
+                .await
+                .expect_err("timeout should surface as an error");
+
+            // Transport failures are mapped to Problem::OperationFailed by the
+            // wrapper's error-conversion arm.
+            assert!(
+                matches!(err, Problem::OperationFailed(_)),
+                "expected OperationFailed, got {err:?}"
+            );
+        }
+
+        #[tokio::test]
+        async fn rate_limit_denies_before_dispatch() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            // Count how many requests actually reach the server.
+            Mock::given(m("GET"))
+                .and(pth("/rl"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: 0,
+                    first: 200,
+                    then: 200,
+                })
+                .mount(&server)
+                .await;
+
+            // Allow exactly 1 request per long window so the second send() is
+            // denied by the active limiter in this layer.
+            let config = HttpClientConfig::builder()
+                .rate_limit(1, Duration::from_secs(60))
+                .no_retry()
+                .build();
+            let client = HttpClient::with_name("rl_test", config).expect("client should build");
+            let url = format!("{}/rl", server.uri());
+
+            let first = client.get(&url).send().await;
+            assert!(first.is_ok(), "first request within budget should pass");
+
+            let second = client
+                .get(&url)
+                .send()
+                .await
+                .expect_err("second request must be rate limited");
+            match second {
+                Problem::OperationFailed(msg) => {
+                    assert!(
+                        msg.contains("Rate limit exceeded"),
+                        "unexpected message: {msg}"
+                    );
+                }
+                other => panic!("expected rate-limit OperationFailed, got {other:?}"),
+            }
+
+            // Crucially, the denied request must NOT have been dispatched to the
+            // server: only the first call reached it.
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                1,
+                "rate-limited request should not hit the network"
+            );
+        }
+    }
 }

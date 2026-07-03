@@ -569,4 +569,146 @@ mod tests {
             Severity::Info
         ));
     }
+
+    // =========================================================================
+    // WHERE-clause construction (pure logic, no database required)
+    //
+    // `build_where_clause` turns an AuditQuery into a parameterised SQL
+    // fragment plus ordered bind values. Getting placeholder numbering and
+    // bind ordering right is the core of safe query building, so it is worth
+    // exercising directly rather than only through a live DB. Expected output
+    // is derived from the SQL semantics (1-based $N placeholders, one bind per
+    // dynamic value, booleans inlined), not pasted from current output.
+    // =========================================================================
+    use super::super::query::AuditQuery;
+
+    #[test]
+    fn test_where_clause_empty_query() {
+        let (clause, params) = PostgresBackend::build_where_clause(&AuditQuery::default());
+        // No filters => no WHERE clause and no bind params.
+        assert_eq!(clause, "");
+        assert!(params.is_empty());
+    }
+
+    #[test]
+    fn test_where_clause_tenant_and_user_number_sequentially() {
+        let query = AuditQuery {
+            tenant_id: Some("acme".to_string()),
+            user_id: Some("u-1".to_string()),
+            ..Default::default()
+        };
+        let (clause, params) = PostgresBackend::build_where_clause(&query);
+
+        // Two string filters => $1 and $2 in declaration order, WHERE-joined
+        // with AND, and two binds in the same order.
+        assert!(clause.starts_with("WHERE "));
+        assert!(clause.contains("tenant_id = $1"));
+        assert!(clause.contains("user_id = $2"));
+        assert!(clause.contains(" AND "));
+        assert_eq!(params, vec!["acme".to_string(), "u-1".to_string()]);
+    }
+
+    #[test]
+    fn test_where_clause_event_types_expand_placeholders() {
+        let query = AuditQuery {
+            event_types: Some(vec![EventType::LoginFailure, EventType::SystemError]),
+            ..Default::default()
+        };
+        let (clause, params) = PostgresBackend::build_where_clause(&query);
+
+        // An N-element IN list must expand to N sequential placeholders and N
+        // binds (one per type), each rendered via Debug.
+        assert!(
+            clause.contains("event_type IN ($1, $2)"),
+            "clause was: {clause}"
+        );
+        assert_eq!(
+            params,
+            vec![
+                format!("{:?}", EventType::LoginFailure),
+                format!("{:?}", EventType::SystemError),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_where_clause_boolean_flags_inlined_not_bound() {
+        let query = AuditQuery {
+            security_relevant_only: true,
+            contains_pii_only: true,
+            contains_phi_only: true,
+            ..Default::default()
+        };
+        let (clause, params) = PostgresBackend::build_where_clause(&query);
+
+        // Boolean-only filters are inlined as literal predicates; they add no
+        // bind parameters (nothing user-controlled to parameterise).
+        assert!(clause.contains("security_relevant = TRUE"));
+        assert!(clause.contains("contains_pii = TRUE"));
+        assert!(clause.contains("contains_phi = TRUE"));
+        assert!(
+            params.is_empty(),
+            "boolean flags must not produce bind params, got {params:?}"
+        );
+    }
+
+    #[test]
+    fn test_where_clause_placeholder_numbering_after_multivalue() {
+        // A time bound ($1), then a 2-element type list ($2,$3), then a tenant
+        // filter must correctly continue at $4 — verifying the running index
+        // advances past the multi-value IN expansion.
+        let query = AuditQuery {
+            since: Some(chrono::Utc::now()),
+            event_types: Some(vec![EventType::Info, EventType::Warning]),
+            tenant_id: Some("acme".to_string()),
+            ..Default::default()
+        };
+        let (clause, params) = PostgresBackend::build_where_clause(&query);
+
+        assert!(clause.contains("timestamp >= $1"), "clause: {clause}");
+        assert!(
+            clause.contains("event_type IN ($2, $3)"),
+            "clause: {clause}"
+        );
+        assert!(clause.contains("tenant_id = $4"), "clause: {clause}");
+        // Binds: since (rfc3339), two event types, tenant.
+        assert_eq!(params.len(), 4);
+        assert_eq!(params.get(3), Some(&"acme".to_string()));
+    }
+
+    // =========================================================================
+    // Connection-failure I/O path (no database required)
+    // =========================================================================
+
+    /// A malformed connection string must fail during `PgPoolOptions::connect`
+    /// URL parsing and be mapped to `WriterError::Configuration` — the same
+    /// error-mapping closure used for every connect failure. This exercises
+    /// the failure branch of `connect()` without any network wait.
+    #[tokio::test]
+    async fn test_connect_malformed_url_is_configuration_error() {
+        let result = PostgresBackend::connect("not-a-postgres-url").await;
+        let err = result.err().expect("malformed URL must not connect");
+        assert!(
+            matches!(err, WriterError::Configuration(_)),
+            "expected Configuration error, got {err:?}"
+        );
+    }
+
+    /// Connecting to a closed TCP port also maps to `WriterError::Configuration`.
+    /// `PostgresBackend::connect` hardcodes a 30s `acquire_timeout`, so this
+    /// genuinely-unreachable path is slow and is `#[ignore]`d by default; the
+    /// fast malformed-URL test above covers the same mapping closure, and
+    /// `runtime::database::pool`'s unreachable test covers the TCP-refused
+    /// branch with a short, configurable timeout. Run manually:
+    /// `cargo test --features postgres -- --ignored unreachable`.
+    #[tokio::test]
+    #[ignore = "slow: connect() hardcodes a 30s acquire_timeout"]
+    async fn test_connect_unreachable_is_configuration_error() {
+        let result = PostgresBackend::connect("postgres://user:pass@127.0.0.1:1/none").await;
+        let err = result.err().expect("closed port must not connect");
+        assert!(
+            matches!(err, WriterError::Configuration(_)),
+            "expected Configuration error, got {err:?}"
+        );
+    }
 }
