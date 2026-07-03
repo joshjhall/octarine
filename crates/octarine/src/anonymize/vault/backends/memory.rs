@@ -16,10 +16,24 @@
 //! # Privacy
 //!
 //! The store holds original PII in memory by definition — that is its job — but
-//! it never *emits* it. The observe events on `put`/`flush` carry only the
-//! entity type and the (non-secret) [`SessionId`]; the [`Debug`] impl prints a
-//! session count, never the map contents. So neither an audit log nor a
-//! `{:?}` of the store can leak a protected value.
+//! it protects that memory on two axes:
+//!
+//! - **Observability.** It never *emits* a protected value. The observe events
+//!   on `put`/`flush` carry only the entity type and the (non-secret)
+//!   [`SessionId`]; the [`Debug`] impl prints a session count, never the map
+//!   contents. So neither an audit log nor a `{:?}` of the store can leak a
+//!   protected value.
+//! - **Memory lifetime.** Both the original PII and its token live in
+//!   [`PrimitiveLockedSecret`] containers, which zeroize their bytes on drop.
+//!   When a mapping is overwritten, a session is [`flush`](StateStore::flush)ed,
+//!   or the whole store is dropped, the cleartext is overwritten rather than
+//!   merely deallocated — so it does not linger in freed heap for a later
+//!   over-read or a core dump to recover. Those containers also route through
+//!   the `mlock` seam, keeping the pages off swap on platforms where locking is
+//!   available and degrading to zeroization-only where it is not. The original
+//!   is never used as a plain map key either: the inner map is keyed by a
+//!   one-way BLAKE3 digest of the `(entity_type, original)` pair, so the PII
+//!   byte string exists only inside a locked secret.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -32,6 +46,8 @@ use super::super::StateStore;
 use super::super::types::{EntityKey, SessionId};
 use crate::observe;
 use crate::observe::metrics::increment_by;
+use crate::primitives::crypto::hash::blake3_hex;
+use crate::primitives::crypto::secrets::PrimitiveLockedSecret;
 
 crate::define_metrics! {
     put_count => "anonymize.vault.put_count",
@@ -86,8 +102,76 @@ const OP: &str = "anonymize.vault.memory";
 /// # });
 /// ```
 pub struct InMemoryStore {
-    sessions: RwLock<HashMap<SessionId, HashMap<EntityKey, String>>>,
+    sessions: RwLock<HashMap<SessionId, HashMap<String, SecureEntry>>>,
     emit_events: bool,
+}
+
+/// One stored mapping, with its secret material held in zeroize-on-drop memory.
+///
+/// The inner map is keyed by a BLAKE3 digest (see [`key_digest`]), not by the
+/// [`EntityKey`] itself, so the original PII never sits in a plain map key.
+/// This struct holds the material needed to reconstruct the `(original, token)`
+/// pair on [`list`](StateStore::list):
+///
+/// - `entity_type` is a category label (`"PERSON"`, `"EMAIL"`) — not PII — and
+///   is kept in the clear so `list` can filter by it without exposing secrets.
+/// - `original` and `token` are the protected byte strings, each wrapped in a
+///   [`PrimitiveLockedSecret`]: zeroized when the entry is dropped (overwrite,
+///   flush, or store drop) and routed through the `mlock` seam.
+struct SecureEntry {
+    /// Entity category (e.g. `"PERSON"`) — a label, not a protected value.
+    entity_type: String,
+    /// The original pre-anonymization value, held as secret memory.
+    original: PrimitiveLockedSecret,
+    /// The stable token that replaces the original, held as secret memory.
+    token: PrimitiveLockedSecret,
+}
+
+impl SecureEntry {
+    /// Builds an entry from an [`EntityKey`] and its token, moving both secret
+    /// byte strings into zeroize-on-drop locked memory.
+    ///
+    /// The `entity_type` (a category label) is copied in the clear; the original
+    /// and token are consumed into [`PrimitiveLockedSecret`]s.
+    fn from_parts(key: &EntityKey, token: String) -> Self {
+        Self {
+            entity_type: key.entity_type.clone(),
+            original: PrimitiveLockedSecret::new(key.original.clone().into_bytes()),
+            token: PrimitiveLockedSecret::new(token.into_bytes()),
+        }
+    }
+}
+
+/// Derives the inner-map key for an [`EntityKey`] as a hex BLAKE3 digest of
+/// `entity_type || 0x00 || original`.
+///
+/// Hashing keeps the original PII out of the (plain, non-zeroized) map key: the
+/// digest is one-way and non-sensitive, so it may live in ordinary heap, while
+/// the original byte string is retained only inside a [`PrimitiveLockedSecret`].
+/// The `0x00` separator is unambiguous because neither `entity_type` nor the
+/// digest domain contains a NUL in practice, preventing `("AB","C")` from
+/// colliding with `("A","BC")`.
+fn key_digest(key: &EntityKey) -> String {
+    let mut material = Vec::with_capacity(key.entity_type.len().saturating_add(key.original.len()));
+    material.extend_from_slice(key.entity_type.as_bytes());
+    material.push(0x00);
+    material.extend_from_slice(key.original.as_bytes());
+    let digest = blake3_hex(&material);
+    // The composite is not itself secret (it is a digest input), but zeroize it
+    // anyway: it briefly held the cleartext original, so overwrite before free.
+    zeroize::Zeroize::zeroize(&mut material);
+    digest
+}
+
+/// Reconstructs an owned `String` from a locked secret's bytes.
+///
+/// The bytes always originate from a `String` we stored ([`put`](StateStore::put)
+/// / [`get_or_put`](StateStore::get_or_put) take `String` inputs), so they are
+/// valid UTF-8; the fallible path is mapped to [`Problem::Runtime`] rather than
+/// unwrapped, satisfying the crate's `unwrap_used` lint without a panic.
+fn expose_string(secret: &PrimitiveLockedSecret) -> Result<String> {
+    String::from_utf8(secret.expose_secret().to_vec())
+        .map_err(|e| Problem::Runtime(format!("vault secret was not valid UTF-8: {e}")))
 }
 
 impl InMemoryStore {
@@ -117,7 +201,7 @@ impl InMemoryStore {
     /// [`Problem::Runtime`].
     fn read(
         &self,
-    ) -> Result<std::sync::RwLockReadGuard<'_, HashMap<SessionId, HashMap<EntityKey, String>>>>
+    ) -> Result<std::sync::RwLockReadGuard<'_, HashMap<SessionId, HashMap<String, SecureEntry>>>>
     {
         self.sessions
             .read()
@@ -128,7 +212,7 @@ impl InMemoryStore {
     /// [`Problem::Runtime`].
     fn write(
         &self,
-    ) -> Result<std::sync::RwLockWriteGuard<'_, HashMap<SessionId, HashMap<EntityKey, String>>>>
+    ) -> Result<std::sync::RwLockWriteGuard<'_, HashMap<SessionId, HashMap<String, SecureEntry>>>>
     {
         self.sessions
             .write()
@@ -165,16 +249,21 @@ impl fmt::Debug for InMemoryStore {
 impl StateStore for InMemoryStore {
     async fn get(&self, session: &SessionId, key: &EntityKey) -> Result<Option<String>> {
         let guard = self.read()?;
-        Ok(guard.get(session).and_then(|m| m.get(key)).cloned())
+        let Some(entry) = guard.get(session).and_then(|m| m.get(&key_digest(key))) else {
+            return Ok(None);
+        };
+        expose_string(&entry.token).map(Some)
     }
 
     async fn put(&self, session: &SessionId, key: &EntityKey, value: String) -> Result<()> {
         {
             let mut guard = self.write()?;
+            // Inserting overwrites any prior entry for this digest; the replaced
+            // SecureEntry drops here, zeroizing its original and token bytes.
             guard
                 .entry(session.clone())
                 .or_default()
-                .insert(key.clone(), value);
+                .insert(key_digest(key), SecureEntry::from_parts(key, value));
         }
 
         if self.emit_events {
@@ -194,11 +283,15 @@ impl StateStore for InMemoryStore {
         let Some(map) = guard.get(session) else {
             return Ok(Vec::new());
         };
-        Ok(map
-            .iter()
-            .filter(|(k, _)| k.entity_type == entity_type)
-            .map(|(k, token)| (k.original.clone(), token.clone()))
-            .collect())
+        map.values()
+            .filter(|entry| entry.entity_type == entity_type)
+            .map(|entry| {
+                Ok((
+                    expose_string(&entry.original)?,
+                    expose_string(&entry.token)?,
+                ))
+            })
+            .collect()
     }
 
     async fn flush(&self, session: &SessionId) -> Result<()> {
@@ -230,9 +323,18 @@ impl StateStore for InMemoryStore {
         // serialized behind this write, so no two callers mint divergent tokens.
         let (token, minted) = {
             let mut guard = self.write()?;
-            match guard.entry(session.clone()).or_default().entry(key.clone()) {
-                std::collections::hash_map::Entry::Occupied(e) => (e.get().clone(), false),
-                std::collections::hash_map::Entry::Vacant(e) => (e.insert(value).clone(), true),
+            match guard
+                .entry(session.clone())
+                .or_default()
+                .entry(key_digest(key))
+            {
+                std::collections::hash_map::Entry::Occupied(e) => {
+                    (expose_string(&e.get().token)?, false)
+                }
+                std::collections::hash_map::Entry::Vacant(e) => (
+                    expose_string(&e.insert(SecureEntry::from_parts(key, value)).token)?,
+                    true,
+                ),
             }
         };
 
@@ -589,5 +691,101 @@ mod tests {
         // ...and exactly one mapping exists for the key.
         assert_eq!(store.list(&session, "PERSON").await.expect("list").len(), 1);
         assert_eq!(store.get(&session, &k).await.expect("get"), Some(winner));
+    }
+
+    #[tokio::test]
+    async fn secrets_are_zeroized_on_flush_and_drop() {
+        // Verifies the memory-lifetime half of the privacy contract: originals
+        // and tokens live in zeroize-on-drop secure memory, and the flush / store
+        // drop paths run that zeroizing Drop.
+        //
+        // NOTE ON WITNESS STRENGTH: a byte-level post-free witness (read the
+        // freed pages and assert they are zero) is impossible here — the crate is
+        // `unsafe_code = "forbid"`, and dereferencing a freed pointer requires
+        // `unsafe`. So, exactly as `crypto::secrets` does
+        // (`secret.rs::test_zeroization_on_drop` / `test_zeroization_observable`),
+        // this asserts the *type-level* guarantee (secrets are held in
+        // `PrimitiveLockedSecret`, whose `Drop` zeroizes) plus the *behavioral*
+        // invariants around it, rather than inspecting freed memory directly.
+        const ORIGINAL: &str = "Jane Doe SSN 123-45-6789";
+        const TOKEN: &str = "<PERSON_0>";
+
+        let store = InMemoryStore::silent();
+        let session = SessionId::new("s1");
+        let k = key("PERSON", ORIGINAL);
+
+        store
+            .put(&session, &k, TOKEN.to_string())
+            .await
+            .expect("put");
+
+        // While live, the secrets reconstruct through the locked containers.
+        assert_eq!(
+            store.get(&session, &k).await.expect("get"),
+            Some(TOKEN.to_string())
+        );
+        assert_eq!(
+            store.list(&session, "PERSON").await.expect("list"),
+            vec![(ORIGINAL.to_string(), TOKEN.to_string())]
+        );
+
+        // Flush removes the session's inner map, dropping every SecureEntry —
+        // which zeroizes each original/token via PrimitiveLockedSecret::drop.
+        // After flush the mapping is gone (the entries were destroyed, not just
+        // hidden).
+        store.flush(&session).await.expect("flush");
+        assert_eq!(store.get(&session, &k).await.expect("get"), None);
+        assert!(
+            store
+                .list(&session, "PERSON")
+                .await
+                .expect("list")
+                .is_empty()
+        );
+
+        // The Debug guarantee holds across the whole lifetime: neither the
+        // original PII nor the token is ever reachable via `{:?}`.
+        store
+            .put(&session, &k, TOKEN.to_string())
+            .await
+            .expect("re-put");
+        let dbg = format!("{store:?}");
+        assert!(
+            !dbg.contains(ORIGINAL),
+            "original PII must never appear in Debug"
+        );
+        assert!(!dbg.contains(TOKEN), "token must never appear in Debug");
+
+        // Dropping the whole store zeroizes all remaining sessions the same way
+        // (transitive Drop). Nothing to assert post-drop without unsafe, but the
+        // drop must not panic.
+        drop(store);
+
+        // Direct demonstration of the container's zeroize-on-drop, mirroring
+        // `crypto::secrets`: expose the bytes while live, then drop. The
+        // `PrimitiveLockedSecret` Drop overwrites the backing buffer.
+        let secret = PrimitiveLockedSecret::new(ORIGINAL.as_bytes().to_vec());
+        assert_eq!(secret.expose_secret(), ORIGINAL.as_bytes());
+        drop(secret);
+    }
+
+    #[test]
+    fn key_digest_is_stable_and_separates_entity_type_from_original() {
+        // Same (type, original) → same digest (stability), and the 0x00 domain
+        // separator prevents ("AB","C") colliding with ("A","BC").
+        let a = key_digest(&key("PERSON", "Jane"));
+        let b = key_digest(&key("PERSON", "Jane"));
+        assert_eq!(a, b, "digest must be deterministic for a stable key");
+
+        let split_1 = key_digest(&key("AB", "C"));
+        let split_2 = key_digest(&key("A", "BC"));
+        assert_ne!(
+            split_1, split_2,
+            "the separator must keep boundary-shifted pairs distinct"
+        );
+
+        // The digest is hex of a 32-byte BLAKE3 hash and never contains the PII.
+        assert_eq!(a.len(), 64);
+        assert!(!a.contains("Jane"));
     }
 }
