@@ -4,7 +4,12 @@ Foundation library for security and observability in Rust. Named after the
 eighth color of the Discworld spectrum — the color of magic, visible only to
 wizards.
 
+[![CI](https://github.com/joshjhall/octarine/actions/workflows/ci.yml/badge.svg)](https://github.com/joshjhall/octarine/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/joshjhall/octarine/graph/badge.svg)](https://codecov.io/gh/joshjhall/octarine)
+[![crates.io](https://img.shields.io/crates/v/octarine-core.svg)](https://crates.io/crates/octarine-core)
+[![docs.rs](https://img.shields.io/docsrs/octarine-core)](https://docs.rs/octarine-core)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![MSRV](https://img.shields.io/badge/MSRV-1.95-blue.svg)](Cargo.toml)
 
 ## Features
 
