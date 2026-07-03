@@ -194,4 +194,174 @@ mod tests {
             Some(FormatType::Xml)
         ));
     }
+
+    #[test]
+    fn test_builder_read_write_xml_roundtrip() {
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+        let path = dir.path().join("doc.xml");
+        let content = "<root><child/></root>";
+
+        builder.write_xml_file(&path, content).expect("write xml");
+        let result = builder.read_xml_file(&path).expect("read xml");
+        assert!(matches!(result.format, FormatType::Xml));
+        // Content round-trips byte-for-byte.
+        assert_eq!(result.content, content);
+    }
+
+    #[test]
+    fn test_builder_read_write_yaml_roundtrip() {
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+        let path = dir.path().join("cfg.yaml");
+        let content = "key: value";
+
+        builder.write_yaml_file(&path, content).expect("write yaml");
+        let result = builder.read_yaml_file(&path).expect("read yaml");
+        assert!(matches!(result.format, FormatType::Yaml));
+        assert_eq!(result.content, content);
+    }
+
+    #[test]
+    fn test_write_file_dispatches_on_format() {
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+
+        // write_file with an explicit format, then auto-detected read back.
+        let path = dir.path().join("auto.yaml");
+        builder
+            .write_file(&path, "a: 1", FormatType::Yaml)
+            .expect("write");
+        let result = builder.read_file(&path).expect("read");
+        assert!(matches!(result.format, FormatType::Yaml));
+    }
+
+    #[test]
+    fn test_read_file_auto_detects_by_extension() {
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+        let path = dir.path().join("data.json");
+        builder.write_json_file(&path, r#"{"a":1}"#).expect("write");
+        let result = builder.read_file(&path).expect("read");
+        assert!(matches!(result.format, FormatType::Json));
+    }
+
+    #[test]
+    fn test_read_missing_file_is_err() {
+        // The Layer 3 wrapper must surface the primitive read error (and it
+        // logs a warning on the failure path).
+        let builder = FormatIoBuilder::new();
+        let result = builder.read_file(Path::new("/nonexistent/definitely/missing.json"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_json_file_missing_is_err() {
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+        let path = dir.path().join("nope.json");
+        assert!(builder.read_json_file(&path).is_err());
+    }
+
+    #[test]
+    fn test_write_to_unwritable_path_is_err() {
+        // Writing into a directory that does not exist must error and trip the
+        // warn() branch in write_file.
+        let builder = FormatIoBuilder::new();
+        let path = Path::new("/nonexistent/dir/out.json");
+        let result = builder.write_file(path, r#"{"k":1}"#, FormatType::Json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_file_with_options() {
+        use crate::primitives::io::formats::FormatReadOptions;
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+        let path = dir.path().join("data.json");
+        builder
+            .write_json_file(&path, r#"{"ok":true}"#)
+            .expect("write");
+
+        let opts = FormatReadOptions::json();
+        let result = builder
+            .read_file_with_options(&path, &opts)
+            .expect("read w/ options");
+        assert!(matches!(result.format, FormatType::Json));
+    }
+
+    #[test]
+    fn test_write_file_with_options() {
+        use crate::primitives::io::formats::FormatWriteOptions;
+        let builder = FormatIoBuilder::new();
+        let dir = tempdir().expect("temp dir");
+        let path = dir.path().join("out.json");
+
+        let opts = FormatWriteOptions::json();
+        builder
+            .write_file_with_options(&path, r#"{"k":1}"#, &opts)
+            .expect("write w/ options");
+        assert!(path.exists());
+        let result = builder.read_json_file(&path).expect("read");
+        assert!(matches!(result.format, FormatType::Json));
+    }
+
+    #[test]
+    fn test_detect_format_from_path_variants() {
+        let builder = FormatIoBuilder::new();
+        assert!(matches!(
+            builder.detect_format_from_path(Path::new("a.yaml")),
+            Some(FormatType::Yaml)
+        ));
+        assert!(matches!(
+            builder.detect_format_from_path(Path::new("a.yml")),
+            Some(FormatType::Yaml)
+        ));
+        assert!(matches!(
+            builder.detect_format_from_path(Path::new("a.xml")),
+            Some(FormatType::Xml)
+        ));
+        // Unknown extension yields None.
+        assert!(
+            builder
+                .detect_format_from_path(Path::new("a.bin"))
+                .is_none()
+        );
+        // No extension yields None.
+        assert!(
+            builder
+                .detect_format_from_path(Path::new("noext"))
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn test_detect_format_from_content_variants() {
+        let builder = FormatIoBuilder::new();
+        // JSON object and array.
+        assert!(matches!(
+            builder.detect_format_from_content(r#"{"a":1}"#),
+            Some(FormatType::Json)
+        ));
+        assert!(matches!(
+            builder.detect_format_from_content("[1,2,3]"),
+            Some(FormatType::Json)
+        ));
+        // XML.
+        assert!(matches!(
+            builder.detect_format_from_content("<a/>"),
+            Some(FormatType::Xml)
+        ));
+        // YAML document marker and key: value form.
+        assert!(matches!(
+            builder.detect_format_from_content("---\nk: v"),
+            Some(FormatType::Yaml)
+        ));
+        assert!(matches!(
+            builder.detect_format_from_content("- item"),
+            Some(FormatType::Yaml)
+        ));
+        // Unrecognized content yields None.
+        assert!(builder.detect_format_from_content("plain text").is_none());
+    }
 }

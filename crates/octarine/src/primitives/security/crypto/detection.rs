@@ -316,6 +316,7 @@ fn detect_deprecated_key_algorithm(key_type: &KeyType) -> Option<CryptoThreat> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
     #[test]
@@ -363,5 +364,383 @@ mod tests {
 
         let sha256_threat = detect_hash_threats("SHA256", &policy);
         assert!(sha256_threat.is_none());
+    }
+
+    // ========================================================================
+    // Signature algorithm threat detection
+    // ========================================================================
+
+    #[test]
+    fn test_signature_algorithm_threat_md5_always_insecure() {
+        // MD5 is flagged regardless of policy allowances.
+        let policy = CryptoPolicy::legacy();
+        let threat = detect_signature_algorithm_threat(&SignatureAlgorithm::RsaPkcs1Md5, &policy);
+        assert!(matches!(
+            threat,
+            Some(CryptoThreat::InsecureHashFunction { algorithm }) if algorithm == "MD5"
+        ));
+    }
+
+    #[test]
+    fn test_signature_algorithm_threat_sha1_policy_gated() {
+        // SHA-1 is a threat under standard policy...
+        let standard = CryptoPolicy::standard();
+        assert!(matches!(
+            detect_signature_algorithm_threat(&SignatureAlgorithm::RsaPkcs1Sha1, &standard),
+            Some(CryptoThreat::WeakSignatureAlgorithm { .. })
+        ));
+
+        // ...but permitted under legacy policy (allow_sha1_signatures = true).
+        let legacy = CryptoPolicy::legacy();
+        assert!(
+            detect_signature_algorithm_threat(&SignatureAlgorithm::RsaPkcs1Sha1, &legacy).is_none()
+        );
+    }
+
+    #[test]
+    fn test_signature_algorithm_threat_unknown() {
+        let policy = CryptoPolicy::standard();
+        assert!(matches!(
+            detect_signature_algorithm_threat(&SignatureAlgorithm::Unknown, &policy),
+            Some(CryptoThreat::DeprecatedKeyAlgorithm { .. })
+        ));
+    }
+
+    #[test]
+    fn test_signature_algorithm_threat_secure_none() {
+        let policy = CryptoPolicy::strict();
+        for algo in [
+            SignatureAlgorithm::RsaPkcs1Sha256,
+            SignatureAlgorithm::EcdsaP256Sha256,
+            SignatureAlgorithm::Ed25519,
+        ] {
+            assert!(
+                detect_signature_algorithm_threat(&algo, &policy).is_none(),
+                "{algo:?} should be considered secure"
+            );
+        }
+    }
+
+    // ========================================================================
+    // is_insecure_hash edge cases
+    // ========================================================================
+
+    #[test]
+    fn test_is_insecure_hash_table() {
+        // (input, expected_insecure)
+        let cases = [
+            ("MD5", true),
+            ("md5", true),
+            ("MD4", true),
+            ("SHA1", true),
+            ("sha-1", true),
+            ("SHA-1", true),
+            ("SHA256", false),
+            ("SHA-256", false),
+            ("SHA512", false),
+            ("BLAKE2", false),
+            ("", false),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(
+                is_insecure_hash(input),
+                expected,
+                "is_insecure_hash({input:?})"
+            );
+        }
+    }
+
+    #[test]
+    fn test_detect_hash_threats_policy_allowances() {
+        // Legacy policy allows SHA-1 but NOT MD5 ("MD5 is never acceptable").
+        let legacy = CryptoPolicy::legacy();
+        assert!(
+            detect_hash_threats("md5", &legacy).is_some(),
+            "MD5 must be flagged even under legacy policy"
+        );
+        assert!(
+            detect_hash_threats("sha1", &legacy).is_none(),
+            "SHA-1 is permitted under legacy policy"
+        );
+
+        // Development policy explicitly allows MD5.
+        let dev = CryptoPolicy::development();
+        assert!(detect_hash_threats("md5", &dev).is_none());
+        assert!(detect_hash_threats("sha1", &dev).is_none());
+
+        // Standard policy flags both MD-family and SHA-1.
+        let standard = CryptoPolicy::standard();
+        assert!(detect_hash_threats("md4", &standard).is_some());
+        assert!(detect_hash_threats("SHA-1", &standard).is_some());
+        // Unknown/secure hashes never flagged.
+        assert!(detect_hash_threats("sha384", &standard).is_none());
+    }
+
+    // ========================================================================
+    // Key size / EC / deprecated key type detection
+    // ========================================================================
+
+    #[test]
+    fn test_weak_ec_key_detection() {
+        let strict = CryptoPolicy::strict(); // min_ec_bits = 384
+        // P-256 (256 bits) is below the strict EC minimum.
+        assert!(is_weak_key_type(&KeyType::P256, &strict));
+        // P-384 meets it; P-521 exceeds it.
+        assert!(!is_weak_key_type(&KeyType::P384, &strict));
+        assert!(!is_weak_key_type(&KeyType::P521, &strict));
+
+        let standard = CryptoPolicy::standard(); // min_ec_bits = 256
+        assert!(!is_weak_key_type(&KeyType::P256, &standard));
+    }
+
+    #[test]
+    fn test_rsa_other_weak_when_below_minimum() {
+        let standard = CryptoPolicy::standard(); // min_rsa_bits = 2048
+        assert!(is_weak_key_type(&KeyType::RsaOther(1024), &standard));
+        assert!(!is_weak_key_type(&KeyType::RsaOther(4096), &standard));
+    }
+
+    #[test]
+    fn test_deprecated_ssh_dsa_algorithm() {
+        // DSA SSH keys are always flagged as deprecated.
+        assert!(matches!(
+            detect_deprecated_key_algorithm(&KeyType::SshDsa),
+            Some(CryptoThreat::DeprecatedKeyAlgorithm { algorithm, .. }) if algorithm == "DSA"
+        ));
+        // Non-DSA keys are not.
+        assert!(detect_deprecated_key_algorithm(&KeyType::SshEd25519).is_none());
+        assert!(detect_deprecated_key_algorithm(&KeyType::Rsa2048).is_none());
+    }
+
+    #[test]
+    fn test_is_deprecated_signature_algorithm_table() {
+        let cases = [
+            (SignatureAlgorithm::RsaPkcs1Md5, true),
+            (SignatureAlgorithm::RsaPkcs1Sha1, true),
+            (SignatureAlgorithm::Unknown, true),
+            (SignatureAlgorithm::RsaPkcs1Sha256, false),
+            (SignatureAlgorithm::EcdsaP256Sha256, false),
+            (SignatureAlgorithm::Ed25519, false),
+        ];
+        for (algo, expected) in cases {
+            assert_eq!(
+                is_deprecated_signature_algorithm(&algo),
+                expected,
+                "{algo:?}"
+            );
+        }
+    }
+
+    // ========================================================================
+    // Feature-gated: parsed-key / certificate threat detection + audits
+    // ========================================================================
+
+    #[cfg(feature = "crypto-validation")]
+    mod gated {
+        use super::*;
+        use crate::primitives::data::crypto::{
+            ParsedCertificate, ParsedPublicKey, ParsedSshPublicKey,
+        };
+        use crate::primitives::identifiers::crypto::KeyFormat;
+        use chrono::{Duration, Utc};
+
+        fn cert_with_validity(
+            not_before: chrono::DateTime<Utc>,
+            not_after: chrono::DateTime<Utc>,
+            self_signed: bool,
+            sig: SignatureAlgorithm,
+            key: KeyType,
+        ) -> ParsedCertificate {
+            ParsedCertificate {
+                version: 3,
+                serial_number: "01".to_string(),
+                subject: "CN=test".to_string(),
+                issuer: if self_signed {
+                    "CN=test".to_string()
+                } else {
+                    "CN=ca".to_string()
+                },
+                not_before,
+                not_after,
+                public_key_type: key,
+                signature_algorithm: sig,
+                is_ca: false,
+                key_usage: Vec::new(),
+                extended_key_usage: Vec::new(),
+                subject_alt_names: Vec::new(),
+                is_self_signed: self_signed,
+            }
+        }
+
+        #[test]
+        fn test_detect_key_threats_weak_rsa() {
+            let policy = CryptoPolicy::strict(); // requires RSA 3072+
+            let key = ParsedPublicKey::new(KeyType::Rsa2048, KeyFormat::Pem, vec![1, 2, 3]);
+            let threats = detect_key_threats(&key, &policy);
+            assert!(
+                threats
+                    .iter()
+                    .any(|t| matches!(t, CryptoThreat::WeakRsaKeySize { .. }))
+            );
+        }
+
+        #[test]
+        fn test_detect_key_threats_oversized_data() {
+            let mut policy = CryptoPolicy::standard();
+            policy.max_key_size = 4;
+            let key = ParsedPublicKey::new(KeyType::Rsa4096, KeyFormat::Pem, vec![0u8; 100]);
+            let threats = detect_key_threats(&key, &policy);
+            assert!(threats.iter().any(|t| matches!(
+                t,
+                CryptoThreat::SuspiciouslyLargeData {
+                    size: 100,
+                    threshold: 4
+                }
+            )));
+        }
+
+        #[test]
+        fn test_detect_ssh_key_threats_deprecated_dsa() {
+            let policy = CryptoPolicy::standard();
+            let key = ParsedSshPublicKey::new(KeyType::SshDsa, "ssh-dss", vec![1, 2, 3]);
+            let threats = detect_ssh_key_threats(&key, &policy);
+            assert!(threats.iter().any(|t| matches!(
+                t,
+                CryptoThreat::DeprecatedKeyAlgorithm { algorithm, .. } if algorithm == "DSA"
+            )));
+        }
+
+        #[test]
+        fn test_detect_cert_threats_expired() {
+            let policy = CryptoPolicy::standard();
+            let now = Utc::now();
+            let cert = cert_with_validity(
+                now - Duration::days(400),
+                now - Duration::days(1), // expired yesterday
+                false,
+                SignatureAlgorithm::RsaPkcs1Sha256,
+                KeyType::Rsa2048,
+            );
+            assert!(is_certificate_expired(&cert));
+            let threats = detect_cert_threats(&cert, &policy);
+            assert!(
+                threats
+                    .iter()
+                    .any(|t| matches!(t, CryptoThreat::ExpiredCertificate { .. }))
+            );
+        }
+
+        #[test]
+        fn test_detect_cert_threats_not_yet_valid() {
+            let policy = CryptoPolicy::standard();
+            let now = Utc::now();
+            let cert = cert_with_validity(
+                now + Duration::days(5), // valid in the future
+                now + Duration::days(400),
+                false,
+                SignatureAlgorithm::RsaPkcs1Sha256,
+                KeyType::Rsa2048,
+            );
+            assert!(is_certificate_not_yet_valid(&cert));
+            let threats = detect_cert_threats(&cert, &policy);
+            assert!(
+                threats
+                    .iter()
+                    .any(|t| matches!(t, CryptoThreat::NotYetValidCertificate { .. }))
+            );
+        }
+
+        #[test]
+        fn test_detect_cert_threats_expiring_soon() {
+            let policy = CryptoPolicy::standard(); // expiry_warning_days = 30
+            let now = Utc::now();
+            let cert = cert_with_validity(
+                now - Duration::days(10),
+                now + Duration::days(10), // expires within the warning window
+                false,
+                SignatureAlgorithm::RsaPkcs1Sha256,
+                KeyType::Rsa2048,
+            );
+            let threats = detect_cert_threats(&cert, &policy);
+            assert!(
+                threats
+                    .iter()
+                    .any(|t| matches!(t, CryptoThreat::CertificateExpiringSoon { .. }))
+            );
+        }
+
+        #[test]
+        fn test_detect_cert_threats_excessive_validity_and_self_signed() {
+            let policy = CryptoPolicy::standard(); // max_validity_days = 825, no self-signed
+            let now = Utc::now();
+            let cert = cert_with_validity(
+                now - Duration::days(1),
+                now + Duration::days(3650), // 10 years > 825
+                true,                       // self-signed
+                SignatureAlgorithm::RsaPkcs1Sha256,
+                KeyType::Rsa2048,
+            );
+            assert!(is_self_signed(&cert));
+            let threats = detect_cert_threats(&cert, &policy);
+            assert!(
+                threats
+                    .iter()
+                    .any(|t| matches!(t, CryptoThreat::ExcessiveValidityPeriod { .. }))
+            );
+            assert!(
+                threats
+                    .iter()
+                    .any(|t| matches!(t, CryptoThreat::SelfSignedCertificate))
+            );
+        }
+
+        #[test]
+        fn test_valid_cert_produces_no_threats() {
+            let policy = CryptoPolicy::standard();
+            let now = Utc::now();
+            let cert = cert_with_validity(
+                now - Duration::days(10),
+                now + Duration::days(200), // well inside limits, not expiring soon
+                false,
+                SignatureAlgorithm::RsaPkcs1Sha256,
+                KeyType::Rsa2048,
+            );
+            let threats = detect_cert_threats(&cert, &policy);
+            assert!(
+                threats.is_empty(),
+                "unexpected threats for a healthy cert: {threats:?}"
+            );
+        }
+
+        #[test]
+        fn test_audit_certificate_blocking() {
+            let policy = CryptoPolicy::standard();
+            let now = Utc::now();
+            // Expired (severity 8, blocking) => audit fails.
+            let cert = cert_with_validity(
+                now - Duration::days(400),
+                now - Duration::days(1),
+                false,
+                SignatureAlgorithm::RsaPkcs1Sha256,
+                KeyType::Rsa2048,
+            );
+            let result = audit_certificate(&cert, &policy);
+            assert!(!result.passed());
+            assert!(!result.blocking_threats().is_empty());
+        }
+
+        #[test]
+        fn test_audit_key_and_ssh_key() {
+            let policy = CryptoPolicy::strict();
+            let key = ParsedPublicKey::new(KeyType::Rsa2048, KeyFormat::Pem, vec![1, 2, 3]);
+            let audit = audit_key(&key, &policy);
+            // WeakRsaKeySize at 2048 has severity 5 (non-blocking) => audit passes
+            // but records a warning.
+            assert!(!audit.warnings().is_empty());
+
+            let ssh = ParsedSshPublicKey::new(KeyType::SshDsa, "ssh-dss", vec![1, 2, 3]);
+            let ssh_audit = audit_ssh_key(&ssh, &policy);
+            assert!(!ssh_audit.threats.is_empty());
+        }
     }
 }
