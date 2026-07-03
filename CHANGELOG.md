@@ -2,6 +2,19 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [0.3.0-beta.5] - 2026-07-02
+
+<!-- TODO: review and curate before push -->
+
+### CI
+
+- ci(release): install mold linker before cargo publish
+
+### Build
+
+- build(release): update just recipes to -p octarine-core after package rename
+- build(release): publish umbrella crate as octarine-core (keep lib name octarine)
+
 ## [0.3.0-beta.4] - 2026-07-02
 
 <!-- TODO: review and curate before push -->

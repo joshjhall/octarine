@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/octarine", "crates/octarine-derive", "crates/octarine-problem"]
 
 [workspace.package]
-version = "0.3.0-beta.4"
+version = "0.3.0-beta.5"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"
@@ -45,9 +45,9 @@ reqwest = { version = "0.13", features = ["json", "rustls"], default-features = 
 # Internal crates
 # `version` alongside `path` is required so `cargo publish` accepts the
 # workspace. Kept in sync with each crate manifest by `just release`.
-octarine-core = { path = "crates/octarine", version = "0.3.0-beta.4" }
+octarine-core = { path = "crates/octarine", version = "0.3.0-beta.5" }
 octarine-derive = { path = "crates/octarine-derive", version = "0.1.0" }
-octarine-problem = { path = "crates/octarine-problem", version = "0.3.0-beta.4" }
+octarine-problem = { path = "crates/octarine-problem", version = "0.3.0-beta.5" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
