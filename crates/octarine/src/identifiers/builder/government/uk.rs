@@ -279,3 +279,89 @@ impl GovernmentBuilder {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // Verified valid samples:
+    //   NINO "AB123456C" — allowed prefix, suffix A-D.
+    //   NHS "9434765919" — canonical NHS Digital test number (mod-11 check).
+    //   Passport "AB1234567" — 2 letters + 7 digits.
+    //   Driving licence "MORGA753116SM9IJ" — 16-char DVLA structural shape.
+    const VALID_NINO: &str = "AB123456C";
+    const VALID_NHS: &str = "9434765919";
+    const VALID_PASSPORT: &str = "AB1234567";
+    const VALID_DL: &str = "MORGA753116SM9IJ";
+
+    #[test]
+    fn test_uk_ni() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_uk_ni(VALID_NINO));
+        // "BG" is a disallowed NINO prefix.
+        assert!(!b.is_uk_ni("BG123456C"));
+        assert!(!b.find_uk_nis_in_text("NI AB123456C").is_empty());
+    }
+
+    #[test]
+    fn test_uk_ni_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_uk_ni(VALID_NINO));
+    }
+
+    #[test]
+    fn test_redact_uk_ni_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(
+            b.redact_uk_ni_with_strategy(VALID_NINO, NationalIdRedactionStrategy::Token),
+            "[NATIONAL_ID]"
+        );
+    }
+
+    #[test]
+    fn test_redact_uk_nis_in_text_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        let out = b.redact_uk_nis_in_text_with_strategy(
+            "NI AB123456C",
+            NationalIdRedactionStrategy::Token,
+        );
+        assert!(out.contains("[NATIONAL_ID]"));
+        assert!(!out.contains("AB123456C"));
+    }
+
+    #[test]
+    fn test_uk_nhs() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_uk_nhs(VALID_NHS));
+        assert!(b.validate_uk_nhs(VALID_NHS).is_ok());
+        // 9 digits — wrong length.
+        assert!(b.validate_uk_nhs("943476591").is_err());
+        assert!(b.validate_uk_nhs_with_checksum(VALID_NHS).is_ok());
+        // Flip last digit so the mod-11 checksum fails.
+        assert!(b.validate_uk_nhs_with_checksum("9434765910").is_err());
+        assert!(!b.find_uk_nhs_in_text("NHS 943 476 5919").is_empty());
+    }
+
+    #[test]
+    fn test_uk_passport() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_uk_passport(VALID_PASSPORT));
+        assert!(b.validate_uk_passport(VALID_PASSPORT).is_ok());
+        assert!(b.validate_uk_passport("!!!").is_err());
+        assert!(!b.find_uk_passports_in_text("passport AB1234567").is_empty());
+    }
+
+    #[test]
+    fn test_uk_driving_licence() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_uk_driving_licence(VALID_DL));
+        assert!(b.validate_uk_driving_licence(VALID_DL).is_ok());
+        assert!(b.validate_uk_driving_licence("too-short").is_err());
+        // Detection is label-anchored ("driving licence", "DVLA", ...).
+        assert!(
+            !b.find_uk_driving_licences_in_text("driving licence MORGA753116SM9IJ")
+                .is_empty()
+        );
+    }
+}

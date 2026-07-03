@@ -174,3 +174,86 @@ impl GovernmentBuilder {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // NIN/BVN are both 11 digits (no public checksum). "LAG123AB" is a
+    // current-format Nigerian plate (3 letters + 3 digits + 2 letters).
+    const VALID_NIN: &str = "12345678901";
+    const VALID_PLATE: &str = "LAG123AB";
+
+    #[test]
+    fn test_is_nigeria_nin() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_nigeria_nin(VALID_NIN));
+        assert!(!b.is_nigeria_nin("123"));
+    }
+
+    #[test]
+    fn test_is_nigeria_nin_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_nigeria_nin(VALID_NIN));
+    }
+
+    #[test]
+    fn test_find_nigeria_nins_in_text() {
+        let b = GovernmentBuilder::silent();
+        // NIN detection is label-gated.
+        let matches = b.find_nigeria_nins_in_text("NIN: 12345678901");
+        assert!(!matches.is_empty());
+        assert!(b.find_nigeria_nins_in_text("nothing").is_empty());
+    }
+
+    #[test]
+    fn test_validate_nigeria_nin() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_nigeria_nin(VALID_NIN).is_ok());
+        // 10 digits — wrong length.
+        assert!(b.validate_nigeria_nin("1234567890").is_err());
+    }
+
+    #[test]
+    fn test_is_nigeria_bvn() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_nigeria_bvn(VALID_NIN));
+        assert!(!b.is_nigeria_bvn("123"));
+    }
+
+    #[test]
+    fn test_find_nigeria_bvns_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_nigeria_bvns_in_text("BVN: 12345678901");
+        assert!(!matches.is_empty());
+    }
+
+    #[test]
+    fn test_validate_nigeria_bvn() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_nigeria_bvn(VALID_NIN).is_ok());
+        assert!(b.validate_nigeria_bvn("1234567890").is_err());
+    }
+
+    #[test]
+    fn test_is_nigeria_vehicle_registration() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_nigeria_vehicle_registration(VALID_PLATE));
+        assert!(!b.is_nigeria_vehicle_registration("!!!"));
+    }
+
+    #[test]
+    fn test_find_nigeria_vehicle_registrations_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_nigeria_vehicle_registrations_in_text("plate LAG123AB seen");
+        assert!(!matches.is_empty());
+    }
+
+    #[test]
+    fn test_validate_nigeria_vehicle_registration() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_nigeria_vehicle_registration(VALID_PLATE).is_ok());
+        assert!(b.validate_nigeria_vehicle_registration("!!!").is_err());
+    }
+}

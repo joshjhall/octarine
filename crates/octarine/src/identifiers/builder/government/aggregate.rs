@@ -75,3 +75,60 @@ impl GovernmentBuilder {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+    use crate::identifiers::types::GovernmentTextPolicy;
+
+    #[test]
+    fn test_is_government_identifier() {
+        let b = GovernmentBuilder::silent();
+        // A valid SSN is a government identifier; random text is not.
+        assert!(b.is_government_identifier("517-29-8346"));
+        assert!(!b.is_government_identifier("hello world"));
+    }
+
+    #[test]
+    fn test_is_government_present() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_government_present("contact SSN 517-29-8346 today"));
+        assert!(!b.is_government_present("nothing sensitive here"));
+    }
+
+    #[test]
+    fn test_is_government_present_events_enabled() {
+        // Exercise emit_events branch (metrics + debug event).
+        let b = GovernmentBuilder::new();
+        assert!(b.is_government_present("SSN 517-29-8346"));
+    }
+
+    #[test]
+    fn test_find_all_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_all_in_text("SSN 517-29-8346 here");
+        assert!(!matches.is_empty());
+        assert!(b.find_all_in_text("no ids").is_empty());
+    }
+
+    #[test]
+    fn test_redact_all_in_text_with_policy_complete() {
+        let b = GovernmentBuilder::silent();
+        let out =
+            b.redact_all_in_text_with_policy("SSN 517-29-8346", GovernmentTextPolicy::Complete);
+        assert!(out.contains("[SSN]"));
+        assert!(!out.contains("517-29-8346"));
+    }
+
+    #[test]
+    fn test_redact_all_in_text_with_policy_skip() {
+        let b = GovernmentBuilder::silent();
+        // Skip policy leaves the text untouched.
+        let input = "SSN 517-29-8346";
+        assert_eq!(
+            b.redact_all_in_text_with_policy(input, GovernmentTextPolicy::Skip),
+            input
+        );
+    }
+}

@@ -113,3 +113,107 @@ impl GovernmentBuilder {
         self.inner.sanitize_ssn(ssn)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+    use crate::identifiers::types::IdentifierType;
+
+    // "517-29-8346" is a structurally valid SSN (area 517, group 29,
+    // serial 8346) used in the primitive detection tests. "000-12-3456"
+    // is invalid because area 000 is never assigned.
+    const VALID_SSN: &str = "517-29-8346";
+    const INVALID_SSN: &str = "000-12-3456";
+
+    #[test]
+    fn test_is_ssn_valid_and_invalid() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_ssn(VALID_SSN));
+        assert!(!b.is_ssn(INVALID_SSN));
+        assert!(!b.is_ssn("not-an-ssn"));
+    }
+
+    #[test]
+    fn test_is_ssn_events_enabled_path() {
+        // Exercise the emit_events branch (metrics + debug event).
+        let b = GovernmentBuilder::new();
+        assert!(b.is_ssn(VALID_SSN));
+    }
+
+    #[test]
+    fn test_validate_ssn() {
+        let b = GovernmentBuilder::silent();
+        // 234-56-7890 is a valid SSN per primitive validation tests.
+        assert!(b.validate_ssn("234-56-7890").is_ok());
+        assert!(b.validate_ssn(INVALID_SSN).is_err());
+    }
+
+    #[test]
+    fn test_validate_ssn_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.validate_ssn("234-56-7890").is_ok());
+        assert!(b.validate_ssn(INVALID_SSN).is_err());
+    }
+
+    #[test]
+    fn test_find_ssns_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_ssns_in_text("my ssn is 517-29-8346 ok");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::Ssn
+        );
+        assert!(b.find_ssns_in_text("nothing here").is_empty());
+    }
+
+    #[test]
+    fn test_is_itin_area() {
+        let b = GovernmentBuilder::silent();
+        // ITINs have area 9XX; a normal SSN area is not in the ITIN range.
+        assert!(b.is_itin_area("900-70-0001"));
+        assert!(!b.is_itin_area(VALID_SSN));
+    }
+
+    #[test]
+    fn test_redact_ssn_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(
+            b.redact_ssn_with_strategy(VALID_SSN, SsnRedactionStrategy::Token),
+            "[SSN]"
+        );
+        assert_eq!(
+            b.redact_ssn_with_strategy(VALID_SSN, SsnRedactionStrategy::LastFour),
+            "***-**-8346"
+        );
+        assert_eq!(
+            b.redact_ssn_with_strategy(VALID_SSN, SsnRedactionStrategy::Mask),
+            "***-**-****"
+        );
+    }
+
+    #[test]
+    fn test_redact_ssns_in_text_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        let out =
+            b.redact_ssns_in_text_with_strategy("ssn 517-29-8346", SsnRedactionStrategy::Token);
+        assert!(out.contains("[SSN]"));
+        assert!(!out.contains("517-29-8346"));
+    }
+
+    #[test]
+    fn test_normalize_and_convert_ssn() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(b.normalize_ssn("517-29-8346"), "517298346");
+        assert_eq!(b.to_ssn_with_hyphens("517298346"), "517-29-8346");
+        assert_eq!(b.to_ssn_display("517-29-8346"), "***-**-8346");
+    }
+
+    #[test]
+    fn test_sanitize_ssn() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(b.sanitize_ssn("517-29-8346").expect("valid"), "517-29-8346");
+        assert!(b.sanitize_ssn(INVALID_SSN).is_err());
+    }
+}

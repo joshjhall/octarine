@@ -101,3 +101,116 @@ impl GovernmentBuilder {
         self.inner.validate_itin(itin)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+    use crate::identifiers::types::IdentifierType;
+
+    // "12-3456789" is a valid EIN (IRS Brookhaven campus prefix 12).
+    // "900-70-0001" is a valid ITIN (area 9XX, middle group 70 in 70-88).
+    const VALID_EIN: &str = "12-3456789";
+    const INVALID_EIN: &str = "00-0000000";
+    const VALID_ITIN: &str = "900-70-0001";
+
+    #[test]
+    fn test_is_tax_id() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_tax_id(VALID_EIN));
+        assert!(!b.is_tax_id("not-a-tax-id"));
+    }
+
+    #[test]
+    fn test_find_tax_ids_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_tax_ids_in_text("EIN: 12-3456789");
+        assert!(!matches.is_empty());
+        assert!(b.find_tax_ids_in_text("nothing").is_empty());
+    }
+
+    #[test]
+    fn test_is_ein_valid_invalid() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_ein(VALID_EIN));
+        // Prefix 00 is not a valid IRS campus code.
+        assert!(!b.is_ein(INVALID_EIN));
+    }
+
+    #[test]
+    fn test_find_eins_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_eins_in_text("company EIN 12-3456789 filed");
+        assert!(!matches.is_empty());
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::Ein
+        );
+    }
+
+    #[test]
+    fn test_validate_ein() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_ein(VALID_EIN).is_ok());
+        assert!(b.validate_ein(INVALID_EIN).is_err());
+    }
+
+    #[test]
+    fn test_redact_tax_id_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(
+            b.redact_tax_id_with_strategy(VALID_EIN, TaxIdRedactionStrategy::Token),
+            "[TAX_ID]"
+        );
+        assert_eq!(
+            b.redact_tax_id_with_strategy(VALID_EIN, TaxIdRedactionStrategy::ShowPrefix),
+            "12-*******"
+        );
+    }
+
+    #[test]
+    fn test_redact_tax_ids_in_text_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        let out =
+            b.redact_tax_ids_in_text_with_strategy("EIN 12-3456789", TaxIdRedactionStrategy::Token);
+        assert!(out.contains("[TAX_ID]"));
+        assert!(!out.contains("12-3456789"));
+    }
+
+    #[test]
+    fn test_normalize_and_convert_ein() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(b.normalize_ein("12-3456789"), "123456789");
+        assert_eq!(b.to_ein_with_hyphen("123456789"), "12-3456789");
+    }
+
+    #[test]
+    fn test_sanitize_ein() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(b.sanitize_ein("12-3456789").expect("valid"), "12-3456789");
+        assert!(b.sanitize_ein(INVALID_EIN).is_err());
+    }
+
+    #[test]
+    fn test_is_itin_valid_invalid() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_itin(VALID_ITIN));
+        // group 01 is not in a valid ITIN middle-group range.
+        assert!(!b.is_itin("900-01-0001"));
+    }
+
+    #[test]
+    fn test_find_itins_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_itins_in_text("ITIN 900-70-0001 on file");
+        assert!(!matches.is_empty());
+        assert!(b.find_itins_in_text("no itin").is_empty());
+    }
+
+    #[test]
+    fn test_validate_itin() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_itin(VALID_ITIN).is_ok());
+        assert!(b.validate_itin("900-01-0001").is_err());
+    }
+}

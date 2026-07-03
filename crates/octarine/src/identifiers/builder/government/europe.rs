@@ -569,3 +569,195 @@ impl GovernmentBuilder {
         matches
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // Verified valid samples (checksums computed with each country's
+    // official algorithm and cross-checked against the primitive tests):
+    //   Finland HETU "010190-123M" (mod-31 check char M)
+    //   Spain NIF "12345678Z" (mod-23), NIE "X1234567L" (mod-23)
+    //   Italy CF "RSSMRA85M01H501Q" (mod-26 check char Q), VAT "12345678903"
+    //   Poland PESEL "85061512347" (weighted mod-10 check 7)
+    //   Sweden personnummer "19121212-1212", orgnummer "5560160680" (Luhn)
+    const VALID_HETU: &str = "010190-123M";
+    const VALID_NIF: &str = "12345678Z";
+    const VALID_NIE: &str = "X1234567L";
+    const VALID_CF: &str = "RSSMRA85M01H501Q";
+    const VALID_VAT: &str = "12345678903";
+    const VALID_PESEL: &str = "85061512347";
+    const VALID_PERSONNUMMER: &str = "19121212-1212";
+    const VALID_ORGNUMMER: &str = "5560160680";
+
+    #[test]
+    fn test_finland_hetu() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_finland_hetu(VALID_HETU));
+        assert!(!b.is_finland_hetu("123"));
+        assert!(b.validate_finland_hetu(VALID_HETU).is_ok());
+        // Month 13 is invalid.
+        assert!(b.validate_finland_hetu("011390-1230").is_err());
+        assert!(b.validate_finland_hetu_with_checksum(VALID_HETU).is_ok());
+        // Wrong check char.
+        assert!(
+            b.validate_finland_hetu_with_checksum("010190-123A")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_finland_hetu_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_finland_hetu(VALID_HETU));
+        assert!(b.validate_finland_hetu(VALID_HETU).is_ok());
+    }
+
+    #[test]
+    fn test_spain_nif() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_spain_nif(VALID_NIF));
+        assert!(b.validate_spain_nif(VALID_NIF).is_ok());
+        // 8 chars — wrong length.
+        assert!(b.validate_spain_nif("1234567A").is_err());
+        assert!(b.validate_spain_nif_with_checksum(VALID_NIF).is_ok());
+        // Wrong check letter.
+        assert!(b.validate_spain_nif_with_checksum("12345678A").is_err());
+    }
+
+    #[test]
+    fn test_spain_nie() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_spain_nie(VALID_NIE));
+        assert!(b.validate_spain_nie(VALID_NIE).is_ok());
+        assert!(b.validate_spain_nie("X123456A").is_err());
+        assert!(b.validate_spain_nie_with_checksum(VALID_NIE).is_ok());
+        // Wrong check letter.
+        assert!(b.validate_spain_nie_with_checksum("X1234567A").is_err());
+    }
+
+    #[test]
+    fn test_italy_fiscal_code() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_italy_fiscal_code(VALID_CF));
+        assert!(b.validate_italy_fiscal_code(VALID_CF).is_ok());
+        // 14 chars — wrong length.
+        assert!(b.validate_italy_fiscal_code("RSSMRA85M01H50").is_err());
+        assert!(b.validate_italy_fiscal_code_with_checksum(VALID_CF).is_ok());
+        // Wrong check char (Q -> A).
+        assert!(
+            b.validate_italy_fiscal_code_with_checksum("RSSMRA85M01H501A")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_italy_vat() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_italy_vat(VALID_VAT));
+        assert!(b.validate_italy_vat(VALID_VAT).is_ok());
+        assert!(b.validate_italy_vat("123").is_err());
+        assert!(b.validate_italy_vat_with_checksum(VALID_VAT).is_ok());
+        // Break the Luhn-style checksum (last digit 3 -> 4).
+        assert!(b.validate_italy_vat_with_checksum("12345678904").is_err());
+        assert!(!b.find_italy_vats_in_text("VAT 12345678903").is_empty());
+    }
+
+    #[test]
+    fn test_italy_passport() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_italy_passport("AA1234567"));
+        assert!(b.validate_italy_passport("AA1234567").is_ok());
+        assert!(b.validate_italy_passport("!!!").is_err());
+        assert!(
+            !b.find_italy_passports_in_text("passport AA1234567")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn test_italy_identity_card() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_italy_identity_card("CA1234567"));
+        assert!(b.validate_italy_identity_card("CA1234567").is_ok());
+        assert!(b.validate_italy_identity_card("!!!").is_err());
+        // Detection is label-anchored ("identity card", "CIE", ...).
+        assert!(
+            !b.find_italy_identity_cards_in_text("identity card CA1234567")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn test_italy_driver_license() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_italy_driver_license("AB1234567C"));
+        assert!(b.validate_italy_driver_license("AB1234567C").is_ok());
+        assert!(b.validate_italy_driver_license("!!!").is_err());
+        assert!(
+            !b.find_italy_driver_licenses_in_text("patente AB1234567C")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn test_poland_pesel() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_poland_pesel(VALID_PESEL));
+        assert!(b.validate_poland_pesel(VALID_PESEL).is_ok());
+        // 10 digits — wrong length.
+        assert!(b.validate_poland_pesel("1234567890").is_err());
+        assert!(b.validate_poland_pesel_with_checksum(VALID_PESEL).is_ok());
+        // Break the checksum (last digit 7 -> 8).
+        assert!(
+            b.validate_poland_pesel_with_checksum("85061512348")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_sweden_personnummer() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_sweden_personnummer(VALID_PERSONNUMMER));
+        assert!(b.validate_sweden_personnummer(VALID_PERSONNUMMER).is_ok());
+        assert!(b.validate_sweden_personnummer("123").is_err());
+        assert!(
+            b.validate_sweden_personnummer_with_checksum(VALID_PERSONNUMMER)
+                .is_ok()
+        );
+        // Break the Luhn checksum (last digit 2 -> 3).
+        assert!(
+            b.validate_sweden_personnummer_with_checksum("19121212-1213")
+                .is_err()
+        );
+        // Detection is label-anchored ("personnummer:", ...).
+        assert!(
+            !b.find_sweden_personnummers_in_text("personnummer: 19121212-1212")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn test_sweden_orgnummer() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_sweden_orgnummer(VALID_ORGNUMMER));
+        assert!(b.validate_sweden_orgnummer(VALID_ORGNUMMER).is_ok());
+        // Third digit < 2 → not an orgnummer.
+        assert!(b.validate_sweden_orgnummer("5510160687").is_err());
+        assert!(
+            b.validate_sweden_orgnummer_with_checksum(VALID_ORGNUMMER)
+                .is_ok()
+        );
+        // Break the Luhn checksum (last digit 0 -> 1).
+        assert!(
+            b.validate_sweden_orgnummer_with_checksum("5560160681")
+                .is_err()
+        );
+        // Detection is label-anchored ("orgnr:", ...).
+        assert!(
+            !b.find_sweden_orgnummers_in_text("orgnr: 556016-0680")
+                .is_empty()
+        );
+    }
+}

@@ -118,3 +118,78 @@ impl GovernmentBuilder {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // "S1234567D" is an NRIC whose check letter (D) is computed with the
+    // official weighted mod-11 algorithm for the S-prefix table.
+    // "12345678K" is a valid UEN business layout.
+    const VALID_NRIC: &str = "S1234567D";
+    const VALID_UEN: &str = "12345678K";
+
+    #[test]
+    fn test_is_singapore_nric() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_singapore_nric(VALID_NRIC));
+        assert!(!b.is_singapore_nric("not-a-nric"));
+    }
+
+    #[test]
+    fn test_is_singapore_nric_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_singapore_nric(VALID_NRIC));
+    }
+
+    #[test]
+    fn test_find_singapore_nrics_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_singapore_nrics_in_text("NRIC S1234567D on file");
+        assert!(!matches.is_empty());
+        assert!(b.find_singapore_nrics_in_text("nothing").is_empty());
+    }
+
+    #[test]
+    fn test_validate_singapore_nric() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_singapore_nric(VALID_NRIC).is_ok());
+        // Invalid prefix 'A'.
+        assert!(b.validate_singapore_nric("A1234567B").is_err());
+        // 8 chars — wrong length.
+        assert!(b.validate_singapore_nric("S123456A").is_err());
+    }
+
+    #[test]
+    fn test_validate_singapore_nric_with_checksum() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_singapore_nric_with_checksum(VALID_NRIC).is_ok());
+        // Wrong check letter (D is correct, use A).
+        assert!(
+            b.validate_singapore_nric_with_checksum("S1234567A")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_is_singapore_uen() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_singapore_uen(VALID_UEN));
+        assert!(!b.is_singapore_uen("!!!"));
+    }
+
+    #[test]
+    fn test_find_singapore_uens_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_singapore_uens_in_text("UEN 12345678K registered");
+        assert!(!matches.is_empty());
+    }
+
+    #[test]
+    fn test_validate_singapore_uen() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_singapore_uen(VALID_UEN).is_ok());
+        assert!(b.validate_singapore_uen("12345678K201912345K").is_err());
+    }
+}
