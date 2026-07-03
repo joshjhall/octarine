@@ -225,3 +225,207 @@ impl TokenIdentifierBuilder {
         sanitization::mask_discord_webhook(url)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    fn builder() -> TokenIdentifierBuilder {
+        TokenIdentifierBuilder::new()
+    }
+
+    // A known-valid Stripe key (matches the API_KEY_STRIPE pattern), reused
+    // from the sanitization test suite. Split to avoid secret scanners.
+    fn stripe_key() -> String {
+        format!("sk_live_{}", "EXAMPLE000000000KEY01abcdef")
+    }
+
+    // ========================================================================
+    // Provider redaction with ShowProvider — prefix-driven, so the expected
+    // token is fully determined by the key's leading bytes (RFC-style prefixes).
+    // ========================================================================
+
+    #[test]
+    fn test_redact_aws_key_show_provider() {
+        let b = builder();
+        // AKIA-prefixed access keys map to the AWS provider token.
+        let key = format!("AKIA{}", "IOSFODNN7EXAMPLE");
+        assert_eq!(b.redact_aws_key(&key), "[AWS_KEY]");
+    }
+
+    #[test]
+    fn test_redact_github_token_show_provider() {
+        let b = builder();
+        // ghp_ (and gho_/ghs_/ghr_) prefixes map to the GitHub token.
+        let token = format!("ghp_{}", "0123456789abcdefghij0123456789abcdef");
+        assert_eq!(b.redact_github_token(&token), "[GITHUB_TOKEN]");
+    }
+
+    #[test]
+    fn test_redact_gcp_key_show_provider() {
+        let b = builder();
+        let key = format!("AIza{}", "0123456789abcdefghij0123456789abcde");
+        assert_eq!(b.redact_gcp_key(&key), "[GCP_KEY]");
+    }
+
+    #[test]
+    fn test_redact_azure_key_show_provider_falls_back_to_generic() {
+        let b = builder();
+        // Azure keys have no distinct textual prefix, so ShowProvider yields
+        // the generic API key token.
+        let key = "0123456789abcdef0123456789abcdef";
+        assert_eq!(b.redact_azure_key(key), "[API_KEY]");
+    }
+
+    #[test]
+    fn test_redact_aws_session_token_show_provider() {
+        let b = builder();
+        // Session tokens are not AKIA-prefixed; ShowProvider yields generic.
+        let token = "0123456789abcdefghijklmnopqrstuvwxyz";
+        assert_eq!(b.redact_aws_session_token(token), "[API_KEY]");
+    }
+
+    #[test]
+    fn test_redact_stripe_key_show_prefix() {
+        let b = builder();
+        // Stripe uses ShowPrefix by default: everything through the final
+        // underscore is retained, the secret body is masked with ****.
+        assert_eq!(b.redact_stripe_key(&stripe_key()), "sk_live_****");
+    }
+
+    // ========================================================================
+    // mask_* backed by mask_api_key — first 12 chars shown, rest "***"
+    // ========================================================================
+
+    #[test]
+    fn test_mask_api_key_backed_valid_shows_prefix() {
+        let b = builder();
+        // First 12 chars of "sk_live_EXAMPLE..." then "***".
+        assert_eq!(b.mask_stripe_key(&stripe_key()), "sk_live_EXAM***");
+    }
+
+    #[test]
+    fn test_mask_api_key_backed_invalid_returns_token() {
+        let b = builder();
+        // Non-key input is not recognized; masking returns the type token.
+        assert_eq!(b.mask_aws_key("not-a-key"), "[API_KEY]");
+        assert_eq!(b.mask_gcp_key("short"), "[API_KEY]");
+    }
+
+    // ========================================================================
+    // Structured provider masks — format-preserving, no detection required.
+    // ========================================================================
+
+    #[test]
+    fn test_mask_telegram_bot_token() {
+        let b = builder();
+        // Numeric id retained, secret masked.
+        assert_eq!(
+            b.mask_telegram_bot_token("123456789:AAExampleSecretTokenBody"),
+            "123456789:****"
+        );
+        // No colon => sentinel.
+        assert_eq!(b.mask_telegram_bot_token("nocolon"), "[TELEGRAM_TOKEN]");
+    }
+
+    #[test]
+    fn test_mask_sendgrid_key() {
+        let b = builder();
+        // SG. prefix + first 4 of the body.
+        assert_eq!(b.mask_sendgrid_key("SG.abcdEFGH.ijklMNOP"), "SG.abcd****");
+        assert_eq!(b.mask_sendgrid_key("notprefixed"), "[SENDGRID_KEY]");
+    }
+
+    #[test]
+    fn test_mask_twilio_sids() {
+        let b = builder();
+        assert_eq!(
+            b.mask_twilio_account_sid(&format!("AC{}", "0123456789abcdef0123456789abcdef")),
+            "AC0123****"
+        );
+        assert_eq!(
+            b.mask_twilio_api_key_sid(&format!("SK{}", "0123456789abcdef0123456789abcdef")),
+            "SK0123****"
+        );
+        assert_eq!(b.mask_twilio_account_sid("XX123"), "[TWILIO_SID]");
+    }
+
+    #[test]
+    fn test_mask_slack_token_and_webhook() {
+        let b = builder();
+        assert_eq!(b.mask_slack_token("xoxb-123-456-secret"), "xoxb-****");
+        assert_eq!(b.mask_slack_token("xapp-1-abc"), "xapp-****");
+        assert_eq!(b.mask_slack_token("random-token"), "[SLACK_TOKEN]");
+
+        assert_eq!(
+            b.mask_slack_webhook("https://hooks.slack.com/services/T00/B00/XXXX"),
+            "https://hooks.slack.com/services/****"
+        );
+        assert_eq!(
+            b.mask_slack_webhook("https://example.com/x"),
+            "[SLACK_WEBHOOK]"
+        );
+    }
+
+    #[test]
+    fn test_mask_discord_token_and_webhook() {
+        let b = builder();
+        // Discord bot tokens start with M or N; first segment retained.
+        assert_eq!(
+            b.mask_discord_token("MTAxaBcDeF.GhIjKl.MnOpQrStUv"),
+            "MTAxaBcDeF.****"
+        );
+        assert_eq!(
+            b.mask_discord_token("invalid.token.here"),
+            "[DISCORD_TOKEN]"
+        );
+
+        assert_eq!(
+            b.mask_discord_webhook("https://discord.com/api/webhooks/12345/abcdeToken"),
+            "https://discord.com/api/webhooks/12345/****"
+        );
+        assert_eq!(
+            b.mask_discord_webhook("https://discordapp.com/api/webhooks/999/tok"),
+            "https://discordapp.com/api/webhooks/999/****"
+        );
+        assert_eq!(
+            b.mask_discord_webhook("https://x.com/y"),
+            "[DISCORD_WEBHOOK]"
+        );
+    }
+
+    // ========================================================================
+    // Remaining mask_api_key-backed wrappers exercise the full public surface.
+    // For an unrecognized input they must all return the generic token; this
+    // guards against a wrapper accidentally calling the wrong sanitizer.
+    // ========================================================================
+
+    #[test]
+    fn test_generic_masks_on_invalid_input() {
+        let b = builder();
+        let invalid = "x";
+        for masked in [
+            b.mask_github_token(invalid),
+            b.mask_azure_key(invalid),
+            b.mask_aws_session_token(invalid),
+            b.mask_square_token(invalid),
+            b.mask_shopify_token(invalid),
+            b.mask_paypal_token(invalid),
+            b.mask_mailchimp_key(invalid),
+            b.mask_mailgun_key(invalid),
+            b.mask_resend_key(invalid),
+            b.mask_brevo_key(invalid),
+            b.mask_databricks_token(invalid),
+            b.mask_vault_token(invalid),
+            b.mask_cloudflare_ca_key(invalid),
+            b.mask_npm_token(invalid),
+            b.mask_pypi_token(invalid),
+            b.mask_nuget_key(invalid),
+            b.mask_artifactory_token(invalid),
+            b.mask_docker_hub_token(invalid),
+        ] {
+            assert_eq!(masked, "[API_KEY]");
+        }
+    }
+}

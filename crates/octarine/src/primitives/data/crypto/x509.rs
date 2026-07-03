@@ -211,16 +211,27 @@ fn detect_public_key_type(cert: &x509_parser::certificate::X509Certificate<'_>) 
             }
         }
         Ok(PublicKey::EC(_)) => {
-            // Try to determine curve from OID
-            let oid = cert.public_key().algorithm.algorithm.to_string();
-            if oid.contains("prime256v1") || oid.contains("secp256r1") {
-                KeyType::P256
-            } else if oid.contains("secp384r1") {
-                KeyType::P384
-            } else if oid.contains("secp521r1") {
-                KeyType::P521
-            } else {
-                KeyType::Unknown
+            // For EC keys the algorithm OID is always `id-ecPublicKey`
+            // (1.2.840.10045.2.1); the *named curve* is carried in the
+            // AlgorithmIdentifier parameters as its own OID. Match on the
+            // curve OID id-string (RFC 5480 / SEC 2):
+            //   - prime256v1/secp256r1 => 1.2.840.10045.3.1.7 (P-256)
+            //   - secp384r1            => 1.3.132.0.34         (P-384)
+            //   - secp521r1            => 1.3.132.0.35         (P-521)
+            let curve_oid = cert
+                .public_key()
+                .algorithm
+                .parameters
+                .as_ref()
+                .and_then(|params| params.as_oid().ok())
+                .map(|oid| oid.to_id_string())
+                .unwrap_or_default();
+
+            match curve_oid.as_str() {
+                "1.2.840.10045.3.1.7" => KeyType::P256,
+                "1.3.132.0.34" => KeyType::P384,
+                "1.3.132.0.35" => KeyType::P521,
+                _ => KeyType::Unknown,
             }
         }
         _ => KeyType::Unknown,
@@ -316,5 +327,177 @@ mod tests {
         let huge = "x".repeat(super::MAX_CERT_SIZE + 1);
         let result = super::validate_certificate_format_pem(&huge);
         assert!(result.is_err());
+    }
+
+    // ========================================================================
+    // Feature-gated parsing tests (require `crypto-validation`)
+    //
+    // Test fixtures are real certificates generated with OpenSSL 3.x with
+    // KNOWN structure, so expected values are derived from the certificate
+    // spec / generation parameters, NOT from current parser output.
+    // ========================================================================
+
+    // Self-signed RSA-2048 / SHA-256 CA certificate.
+    //   Subject/Issuer: C=US, O=Octarine, CN=octarine.test
+    //   Validity: 2026-07-03 .. 2036-06-30 (10 years, CA:TRUE)
+    //   SAN: DNS:octarine.test, DNS:www.octarine.test, email:test@octarine.test
+    //   keyUsage: digitalSignature, keyCertSign
+    #[cfg(feature = "crypto-validation")]
+    const RSA_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIDoTCCAomgAwIBAgIUIBqYDTwPs0w1FbKM9mMOE7PJUoYwDQYJKoZIhvcNAQEL
+BQAwODEWMBQGA1UEAwwNb2N0YXJpbmUudGVzdDERMA8GA1UECgwIT2N0YXJpbmUx
+CzAJBgNVBAYTAlVTMB4XDTI2MDcwMzE3MDQ1NFoXDTM2MDYzMDE3MDQ1NFowODEW
+MBQGA1UEAwwNb2N0YXJpbmUudGVzdDERMA8GA1UECgwIT2N0YXJpbmUxCzAJBgNV
+BAYTAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmrg8ir1LmYXF
+TjrgU3U7xXa8U25MWcVM17Af0IG3jPPpriGs/IClbYHOi/gHCfJFnU23q1+FVDUW
+whaDnymCBWvrcCu0eYMMleF/P/dwOYbjII+9JuTTermGFCT2k3ccwYRFJvXjsfcP
+U/Tfq9Rq3yu5mOW014FGf5CCYhG1W9bosJPSfh0GWBDGi9Ohdaw+tlRdvU+pNWSk
+IXLGe1rXCU1u3u7cK4/mHSOksW2k1Iz483B5xGX5ifKX6x2XqRtzooP45et6TLWr
+qkaUIwPkX4dXpJ4JKM3G4ZeMDPXPm8lhUKUXL4TfNALMNs7nPM+0Aqfd2roRUWg3
+TI2uwB1seQIDAQABo4GiMIGfMB0GA1UdDgQWBBRxWIHTY+24T212hsxG8kRS0A4a
+wjAfBgNVHSMEGDAWgBRxWIHTY+24T212hsxG8kRS0A4awjA/BgNVHREEODA2gg1v
+Y3RhcmluZS50ZXN0ghF3d3cub2N0YXJpbmUudGVzdIESdGVzdEBvY3RhcmluZS50
+ZXN0MAsGA1UdDwQEAwIChDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUA
+A4IBAQAxCxOT/4l3/e9LspAEXohIWzGd03m/7eHCtqKwRBbTxtLQR6uXxJcTw+ou
+FhjoJXM0NpuoEX67kYPhK/xlGdSA38erqPIvfRCvWSz0PkvVnGU3wICQYijr61gX
+NqkABZp7la/v+Ri4Z0mA6e8Jjn+3y9/kSHAlPVtB2M6LpD+9TRXbY017fzMob95r
+TgJHncR9NUia7FyIlgFQD2mAviwTKXo62jwClR/4UbMDyW7WDB7RYsJtlD1ljV5Y
+s65IEVG6SQCLEcR2Or1dlnSJEs1Yd2lh/Mm8okWlW+ku4i3Y1VFzlXPchg0qQZ1+
+LMkl8mNtd2MbHD07VEPVzgaZQaEg
+-----END CERTIFICATE-----";
+
+    // Self-signed EC P-256 (prime256v1) / ecdsa-with-SHA256 certificate.
+    //   Subject/Issuer: CN=ec.octarine.test
+    //   Validity: 2026-07-03 .. 2027-07-03 (1 year, CA:TRUE)
+    #[cfg(feature = "crypto-validation")]
+    const EC_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIBizCCATGgAwIBAgIUFs+d9rRzFKfmSyUhQNMPC7KQX8AwCgYIKoZIzj0EAwIw
+GzEZMBcGA1UEAwwQZWMub2N0YXJpbmUudGVzdDAeFw0yNjA3MDMxNzA1MTJaFw0y
+NzA3MDMxNzA1MTJaMBsxGTAXBgNVBAMMEGVjLm9jdGFyaW5lLnRlc3QwWTATBgcq
+hkjOPQIBBggqhkjOPQMBBwNCAAS3UM4g/lq/Y+P2fpf0uVMaJ9G6VKdb0RCE856P
+LrW5YmRAt6y/Xid7JCBNzySQCDQcDiAAsa/DmZ/S98EqOFFwo1MwUTAdBgNVHQ4E
+FgQUZLvoZBYJkxcUeJIgFeH3kUdhl08wHwYDVR0jBBgwFoAUZLvoZBYJkxcUeJIg
+FeH3kUdhl08wDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAKqbXj
+ICwfgCFx9yL32pXjno3ne+WvyycDPx0M67PUKwIhALFW9Z3MKtB4mecGRfBIcqmS
+gHpkvc/082nbRHV5AjR2
+-----END CERTIFICATE-----";
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_parse_rsa_certificate_structure() {
+        use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
+
+        let cert = super::parse_certificate_pem(RSA_CERT_PEM).expect("valid RSA cert");
+
+        // X.509 v3 (three extensions present)
+        assert_eq!(cert.version, 3);
+
+        // Self-signed: subject == issuer, both carry the expected RDNs.
+        assert!(cert.is_self_signed);
+        assert!(cert.subject.contains("octarine.test"));
+        assert!(cert.subject.contains("Octarine"));
+        assert_eq!(cert.subject, cert.issuer);
+
+        // RSA-2048 public key, SHA-256 signature.
+        assert_eq!(cert.public_key_type, KeyType::Rsa2048);
+        assert_eq!(cert.signature_algorithm, SignatureAlgorithm::RsaPkcs1Sha256);
+
+        // basicConstraints CA:TRUE.
+        assert!(cert.is_ca);
+
+        // not_before strictly precedes not_after; ~10-year validity.
+        assert!(cert.not_before < cert.not_after);
+        let validity_days = (cert.not_after - cert.not_before).num_days();
+        assert!(
+            (3600..3700).contains(&validity_days),
+            "expected ~10y validity, got {validity_days} days"
+        );
+
+        // keyUsage bits set at generation time.
+        assert!(cert.key_usage.contains(&"digitalSignature".to_string()));
+        assert!(cert.key_usage.contains(&"keyCertSign".to_string()));
+
+        // Serial number is a non-empty lowercase hex string.
+        assert!(!cert.serial_number.is_empty());
+        assert!(cert.serial_number.chars().all(|c| c.is_ascii_hexdigit()));
+
+        // Subject Alternative Names: the two DNS names and the RFC822 email.
+        assert!(cert.subject_alt_names.iter().any(|s| s == "octarine.test"));
+        assert!(
+            cert.subject_alt_names
+                .iter()
+                .any(|s| s == "www.octarine.test")
+        );
+        assert!(
+            cert.subject_alt_names
+                .iter()
+                .any(|s| s == "email:test@octarine.test")
+        );
+    }
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_parse_ec_certificate_curve_detection() {
+        use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
+
+        let cert = super::parse_certificate_pem(EC_CERT_PEM).expect("valid EC cert");
+
+        // The curve is prime256v1 (P-256). The named curve lives in the
+        // AlgorithmIdentifier parameters, NOT the algorithm OID, so this
+        // asserts the parser reads parameters correctly.
+        assert_eq!(
+            cert.public_key_type,
+            KeyType::P256,
+            "EC prime256v1 cert must be classified as P-256"
+        );
+        assert_eq!(
+            cert.signature_algorithm,
+            SignatureAlgorithm::EcdsaP256Sha256
+        );
+        assert!(cert.is_self_signed);
+        assert!(cert.subject.contains("ec.octarine.test"));
+    }
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_parse_der_matches_pem() {
+        // Decoding the PEM body and parsing as DER must yield an identical
+        // ParsedCertificate to parsing the PEM directly.
+        let pem = ::pem::parse(RSA_CERT_PEM).expect("pem parses");
+        let from_der = super::parse_certificate_der(pem.contents()).expect("der parses");
+        let from_pem = super::parse_certificate_pem(RSA_CERT_PEM).expect("pem parses");
+        assert_eq!(from_der, from_pem);
+    }
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_parse_pem_wrong_tag_rejected() {
+        // A valid PEM block whose tag is not CERTIFICATE must be rejected.
+        let key_pem = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\n-----END PUBLIC KEY-----";
+        let result = super::parse_certificate_pem(key_pem);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_parse_invalid_der_rejected() {
+        let result = super::parse_certificate_der(&[0x00, 0x01, 0x02, 0x03]);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_parse_der_size_limit() {
+        let huge = vec![0u8; super::MAX_CERT_SIZE + 1];
+        let result = super::parse_certificate_der(&huge);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "crypto-validation")]
+    #[test]
+    fn test_validate_format_der_ok_and_pem_ok() {
+        assert!(super::validate_certificate_format_pem(RSA_CERT_PEM).is_ok());
+        let pem = ::pem::parse(RSA_CERT_PEM).expect("pem parses");
+        assert!(super::validate_certificate_format_der(pem.contents()).is_ok());
     }
 }

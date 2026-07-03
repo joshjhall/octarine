@@ -787,4 +787,436 @@ mod tests {
         assert!(!invalid.is_valid);
         assert_eq!(invalid.errors.len(), 1);
     }
+
+    // ========================================================================
+    // Platform: Display + round-trip conversions to/from the primitive type.
+    // ========================================================================
+
+    #[test]
+    fn test_platform_display_all_variants() {
+        assert_eq!(Platform::Unix.to_string(), "Unix");
+        assert_eq!(Platform::Windows.to_string(), "Windows");
+        assert_eq!(Platform::Auto.to_string(), "Auto");
+    }
+
+    #[test]
+    fn test_platform_roundtrip_conversion() {
+        use crate::primitives::data::paths::Platform as P;
+        for (public, prim) in [
+            (Platform::Unix, P::Unix),
+            (Platform::Windows, P::Windows),
+            (Platform::Auto, P::Auto),
+        ] {
+            // public -> primitive -> public is the identity.
+            let back: Platform = P::from(public).into();
+            assert_eq!(back, public);
+            // primitive -> public matches the paired variant.
+            assert_eq!(Platform::from(prim), public);
+        }
+    }
+
+    // ========================================================================
+    // PathType: classification predicates + platform mapping (spec-derived).
+    // ========================================================================
+
+    #[test]
+    fn test_path_type_classification_table() {
+        // (variant, is_absolute, is_relative, is_unix, is_windows, platform)
+        let cases = [
+            (
+                PathType::UnixAbsolute,
+                true,
+                false,
+                true,
+                false,
+                Platform::Unix,
+            ),
+            (
+                PathType::UnixRelative,
+                false,
+                true,
+                true,
+                false,
+                Platform::Unix,
+            ),
+            (
+                PathType::WindowsAbsolute,
+                true,
+                false,
+                false,
+                true,
+                Platform::Windows,
+            ),
+            (
+                PathType::WindowsUnc,
+                true,
+                false,
+                false,
+                true,
+                Platform::Windows,
+            ),
+            (
+                PathType::WindowsRelative,
+                false,
+                true,
+                false,
+                true,
+                Platform::Windows,
+            ),
+            (
+                PathType::Unknown,
+                false,
+                false,
+                false,
+                false,
+                Platform::Auto,
+            ),
+        ];
+        for (pt, abs, rel, unix, win, plat) in cases {
+            assert_eq!(pt.is_absolute(), abs, "{pt} is_absolute");
+            assert_eq!(pt.is_relative(), rel, "{pt} is_relative");
+            assert_eq!(pt.is_unix(), unix, "{pt} is_unix");
+            assert_eq!(pt.is_windows(), win, "{pt} is_windows");
+            assert_eq!(pt.platform(), plat, "{pt} platform");
+        }
+    }
+
+    #[test]
+    fn test_path_type_display_and_default() {
+        assert_eq!(PathType::default(), PathType::Unknown);
+        assert_eq!(PathType::UnixAbsolute.to_string(), "Unix Absolute");
+        assert_eq!(PathType::WindowsUnc.to_string(), "Windows UNC");
+        assert_eq!(PathType::Unknown.to_string(), "Unknown");
+    }
+
+    #[test]
+    fn test_path_type_from_primitive_all_variants() {
+        use crate::primitives::data::paths::PathType as P;
+        let cases = [
+            (P::UnixAbsolute, PathType::UnixAbsolute),
+            (P::UnixRelative, PathType::UnixRelative),
+            (P::WindowsAbsolute, PathType::WindowsAbsolute),
+            (P::WindowsUnc, PathType::WindowsUnc),
+            (P::WindowsRelative, PathType::WindowsRelative),
+            (P::Unknown, PathType::Unknown),
+        ];
+        for (prim, expected) in cases {
+            assert_eq!(PathType::from(prim), expected);
+        }
+    }
+
+    // ========================================================================
+    // FileCategory: predicate groupings + Display + conversion.
+    // ========================================================================
+
+    #[test]
+    fn test_file_category_predicate_groups() {
+        // Sensitive == credential/certificate/key only.
+        for c in [
+            FileCategory::Credential,
+            FileCategory::Certificate,
+            FileCategory::Key,
+        ] {
+            assert!(c.is_sensitive(), "{c} should be sensitive");
+        }
+        assert!(!FileCategory::Text.is_sensitive());
+
+        // Executable grouping.
+        for c in [
+            FileCategory::Executable,
+            FileCategory::Script,
+            FileCategory::Library,
+        ] {
+            assert!(c.is_executable(), "{c} should be executable");
+        }
+        assert!(!FileCategory::Image.is_executable());
+
+        // Text-based grouping (note: Script is both executable and text-based).
+        for c in [
+            FileCategory::Text,
+            FileCategory::SourceCode,
+            FileCategory::Script,
+            FileCategory::Config,
+            FileCategory::Data,
+        ] {
+            assert!(c.is_text_based(), "{c} should be text-based");
+        }
+        assert!(!FileCategory::Executable.is_text_based());
+
+        // Media grouping.
+        for c in [
+            FileCategory::Image,
+            FileCategory::Audio,
+            FileCategory::Video,
+        ] {
+            assert!(c.is_media(), "{c} should be media");
+        }
+        assert!(!FileCategory::Document.is_media());
+    }
+
+    #[test]
+    fn test_file_category_display_and_default() {
+        assert_eq!(FileCategory::default(), FileCategory::Unknown);
+        assert_eq!(FileCategory::SourceCode.to_string(), "Source Code");
+        assert_eq!(FileCategory::Credential.to_string(), "Credential");
+    }
+
+    #[test]
+    fn test_file_category_from_primitive_roundtrips_all() {
+        use crate::primitives::data::paths::FileCategory as P;
+        // Every primitive variant maps to the matching public variant. We
+        // check a representative spread across all groups.
+        let cases = [
+            (P::Text, FileCategory::Text),
+            (P::Document, FileCategory::Document),
+            (P::Spreadsheet, FileCategory::Spreadsheet),
+            (P::Presentation, FileCategory::Presentation),
+            (P::SourceCode, FileCategory::SourceCode),
+            (P::Script, FileCategory::Script),
+            (P::Config, FileCategory::Config),
+            (P::Data, FileCategory::Data),
+            (P::Image, FileCategory::Image),
+            (P::Audio, FileCategory::Audio),
+            (P::Video, FileCategory::Video),
+            (P::Archive, FileCategory::Archive),
+            (P::Compressed, FileCategory::Compressed),
+            (P::Executable, FileCategory::Executable),
+            (P::Library, FileCategory::Library),
+            (P::System, FileCategory::System),
+            (P::Hidden, FileCategory::Hidden),
+            (P::Temporary, FileCategory::Temporary),
+            (P::Credential, FileCategory::Credential),
+            (P::Certificate, FileCategory::Certificate),
+            (P::Key, FileCategory::Key),
+            (P::Unknown, FileCategory::Unknown),
+        ];
+        for (prim, expected) in cases {
+            assert_eq!(FileCategory::from(prim), expected);
+        }
+    }
+
+    // ========================================================================
+    // PathDetectionResult: severity aggregation + primitive conversion.
+    // ========================================================================
+
+    #[test]
+    fn test_detection_result_threat_aggregation() {
+        let result = PathDetectionResult {
+            threats: vec![
+                ThreatAnnotation {
+                    cwe: "CWE-22",
+                    severity: 4,
+                    description: "traversal",
+                },
+                ThreatAnnotation {
+                    cwe: "CWE-78",
+                    severity: 5,
+                    description: "cmd injection",
+                },
+            ],
+            ..Default::default()
+        };
+        assert!(!result.is_safe());
+        assert!(result.is_threat_detected());
+        assert_eq!(result.threat_count(), 2);
+        assert_eq!(result.max_severity(), Some(5));
+    }
+
+    #[test]
+    fn test_detection_result_from_primitive() {
+        use crate::primitives::data::paths as prim;
+        let prim_result = prim::PathDetectionResult {
+            path_type: prim::PathType::UnixAbsolute,
+            platform: prim::Platform::Unix,
+            file_category: Some(prim::FileCategory::SourceCode),
+            is_absolute: true,
+            is_hidden: false,
+            has_extension: true,
+            extension: Some("rs".to_string()),
+            threats: Vec::new(),
+        };
+        let public: PathDetectionResult = prim_result.into();
+        assert_eq!(public.path_type, PathType::UnixAbsolute);
+        assert_eq!(public.platform, Platform::Unix);
+        assert_eq!(public.file_category, Some(FileCategory::SourceCode));
+        assert!(public.is_absolute);
+        assert_eq!(public.extension.as_deref(), Some("rs"));
+        assert!(public.is_safe());
+    }
+
+    // ========================================================================
+    // ThreatAnnotation: Display + From<SecurityThreat>.
+    // ========================================================================
+
+    #[test]
+    fn test_threat_annotation_from_security_threat() {
+        // Use a real primitive SecurityThreat so cwe/severity/description come
+        // from the security concern, not hand-copied constants.
+        use crate::primitives::data::paths::SecurityThreat;
+        let ann: ThreatAnnotation = SecurityThreat::Traversal.into();
+        assert_eq!(ann.cwe, SecurityThreat::Traversal.cwe());
+        assert_eq!(ann.severity, SecurityThreat::Traversal.severity());
+        assert_eq!(ann.description, SecurityThreat::Traversal.description());
+        // Display renders "<description> (<cwe>)".
+        let shown = ann.to_string();
+        assert!(shown.contains(ann.cwe));
+        assert!(shown.contains(ann.description));
+    }
+
+    // ========================================================================
+    // PathValidationResult: warnings + primitive conversion.
+    // ========================================================================
+
+    #[test]
+    fn test_validation_result_warnings_and_conversion() {
+        let mut r = PathValidationResult::valid();
+        assert!(!r.is_warning_present());
+        r.warnings.push("suspicious but allowed".to_string());
+        assert!(r.is_warning_present());
+
+        use crate::primitives::data::paths::PathValidationResult as P;
+        let prim = P {
+            is_valid: false,
+            errors: vec!["bad".to_string()],
+            warnings: vec!["warn".to_string()],
+        };
+        let public: PathValidationResult = prim.into();
+        assert!(!public.is_valid);
+        assert_eq!(public.errors, vec!["bad".to_string()]);
+        assert_eq!(public.warnings, vec!["warn".to_string()]);
+    }
+
+    // ========================================================================
+    // BoundaryStrategy / FilenameSanitizationStrategy.
+    // ========================================================================
+
+    #[test]
+    fn test_boundary_strategy_conversion_and_default() {
+        use crate::primitives::data::paths::BoundaryStrategy as P;
+        assert_eq!(BoundaryStrategy::default(), BoundaryStrategy::Reject);
+        for (public, prim) in [
+            (BoundaryStrategy::Reject, P::Reject),
+            (BoundaryStrategy::Constrain, P::Constrain),
+            (BoundaryStrategy::Resolve, P::Resolve),
+        ] {
+            assert_eq!(P::from(public), prim);
+        }
+    }
+
+    #[test]
+    fn test_filename_sanitization_strategy_replacement_char() {
+        assert_eq!(
+            FilenameSanitizationStrategy::default(),
+            FilenameSanitizationStrategy::ReplaceWithUnderscore
+        );
+        assert_eq!(
+            FilenameSanitizationStrategy::ReplaceWithUnderscore.replacement(),
+            Some('_')
+        );
+        assert_eq!(
+            FilenameSanitizationStrategy::ReplaceWithDash.replacement(),
+            Some('-')
+        );
+        // Remove and Reject have no replacement character.
+        assert_eq!(FilenameSanitizationStrategy::Remove.replacement(), None);
+        assert_eq!(FilenameSanitizationStrategy::Reject.replacement(), None);
+    }
+
+    // ========================================================================
+    // PathFormat + SeparatorStyle: predicates, Display, conversions.
+    // ========================================================================
+
+    #[test]
+    fn test_path_format_predicates_and_default() {
+        assert_eq!(PathFormat::default(), PathFormat::Portable);
+        // Unix-like set.
+        for f in [PathFormat::Unix, PathFormat::Wsl, PathFormat::Portable] {
+            assert!(f.is_unix_like(), "{f} unix-like");
+            assert!(!f.is_windows_like(), "{f} not windows-like");
+        }
+        // Windows-like set.
+        for f in [PathFormat::Windows, PathFormat::PowerShell] {
+            assert!(f.is_windows_like(), "{f} windows-like");
+            assert!(!f.is_unix_like(), "{f} not unix-like");
+        }
+    }
+
+    #[test]
+    fn test_path_format_display_and_roundtrip() {
+        use crate::primitives::data::paths::PathFormat as P;
+        let cases = [
+            (PathFormat::Unix, P::Unix, "Unix"),
+            (PathFormat::Windows, P::Windows, "Windows"),
+            (PathFormat::PowerShell, P::PowerShell, "PowerShell"),
+            (PathFormat::Wsl, P::Wsl, "WSL"),
+            (PathFormat::Portable, P::Portable, "Portable"),
+        ];
+        for (public, prim, disp) in cases {
+            assert_eq!(public.to_string(), disp);
+            assert_eq!(PathFormat::from(prim), public);
+            assert_eq!(P::from(public), prim);
+        }
+    }
+
+    #[test]
+    fn test_separator_style_predicates_display_conversion() {
+        use crate::primitives::data::paths::SeparatorStyle as P;
+        assert_eq!(SeparatorStyle::default(), SeparatorStyle::None);
+
+        // (variant, separators_present, consistent, display)
+        let cases = [
+            (SeparatorStyle::Forward, true, true, "Forward", P::Forward),
+            (SeparatorStyle::Back, true, true, "Back", P::Back),
+            (SeparatorStyle::Mixed, true, false, "Mixed", P::Mixed),
+            (SeparatorStyle::None, false, true, "None", P::None),
+        ];
+        for (style, present, consistent, disp, prim) in cases {
+            assert_eq!(style.is_separators_present(), present, "{style} present");
+            assert_eq!(style.is_consistent(), consistent, "{style} consistent");
+            assert_eq!(style.to_string(), disp);
+            assert_eq!(SeparatorStyle::from(prim), style);
+        }
+    }
+
+    // ========================================================================
+    // SanitizationContext: Display + bidirectional conversion.
+    // ========================================================================
+
+    #[test]
+    fn test_sanitization_context_display_and_roundtrip() {
+        use crate::primitives::data::paths::SanitizationContext as P;
+        assert_eq!(
+            SanitizationContext::default(),
+            SanitizationContext::UserFile
+        );
+        let cases = [
+            (SanitizationContext::UserFile, P::UserFile, "User File"),
+            (
+                SanitizationContext::SystemFile,
+                P::SystemFile,
+                "System File",
+            ),
+            (
+                SanitizationContext::SecureFile,
+                P::SecureFile,
+                "Secure File",
+            ),
+            (
+                SanitizationContext::ConfigFile,
+                P::ConfigFile,
+                "Config File",
+            ),
+            (
+                SanitizationContext::UploadFile,
+                P::UploadFile,
+                "Upload File",
+            ),
+        ];
+        for (public, prim, disp) in cases {
+            assert_eq!(public.to_string(), disp);
+            // Round-trip both directions.
+            assert_eq!(P::from(public), prim);
+            assert_eq!(SanitizationContext::from(prim), public);
+        }
+    }
 }

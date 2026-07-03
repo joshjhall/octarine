@@ -141,3 +141,124 @@ impl ObserveBuilder {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+    use crate::observe::compliance::{
+        GdprBasis, HipaaSafeguard, Iso27001Control, PciDssRequirement, Soc2Control,
+    };
+
+    fn base() -> ObserveBuilder {
+        ObserveBuilder::for_operation("test.op")
+    }
+
+    #[test]
+    fn test_soc2_single_and_multiple() {
+        // Single control is recorded.
+        let b = base().soc2_control(Soc2Control::CC6_1);
+        assert!(b.compliance_tags.soc2.contains(&Soc2Control::CC6_1));
+
+        // Multiple controls accumulate; duplicates are deduplicated by
+        // ComplianceTags::with_soc2.
+        let b = base().soc2_controls([Soc2Control::CC6_1, Soc2Control::CC8_1, Soc2Control::CC6_1]);
+        assert_eq!(b.compliance_tags.soc2.len(), 2);
+        assert!(b.compliance_tags.soc2.contains(&Soc2Control::CC8_1));
+    }
+
+    #[test]
+    fn test_hipaa_single_and_multiple() {
+        let b = base().hipaa_safeguard(HipaaSafeguard::Technical);
+        assert!(b.compliance_tags.hipaa.contains(&HipaaSafeguard::Technical));
+
+        let b = base().hipaa_safeguards([
+            HipaaSafeguard::Technical,
+            HipaaSafeguard::Administrative,
+            HipaaSafeguard::Technical,
+        ]);
+        assert_eq!(b.compliance_tags.hipaa.len(), 2);
+    }
+
+    #[test]
+    fn test_gdpr_basis_sets_option() {
+        let b = base().gdpr_basis(GdprBasis::Consent);
+        assert_eq!(b.compliance_tags.gdpr_basis, Some(GdprBasis::Consent));
+        // Setting again replaces the basis.
+        let b = b.gdpr_basis(GdprBasis::LegalObligation);
+        assert_eq!(
+            b.compliance_tags.gdpr_basis,
+            Some(GdprBasis::LegalObligation)
+        );
+    }
+
+    #[test]
+    fn test_pci_dss_single_and_multiple() {
+        let b = base().pci_dss_requirement(PciDssRequirement::Req3);
+        assert!(b.compliance_tags.pci_dss.contains(&PciDssRequirement::Req3));
+
+        let b = base().pci_dss_requirements([
+            PciDssRequirement::Req3,
+            PciDssRequirement::Req8,
+            PciDssRequirement::Req3,
+        ]);
+        assert_eq!(b.compliance_tags.pci_dss.len(), 2);
+    }
+
+    #[test]
+    fn test_iso27001_single_and_multiple() {
+        let b = base().iso27001_control(Iso27001Control::A8_5);
+        assert!(b.compliance_tags.iso27001.contains(&Iso27001Control::A8_5));
+
+        let b = base().iso27001_controls([
+            Iso27001Control::A8_5,
+            Iso27001Control::A8_15,
+            Iso27001Control::A8_5,
+        ]);
+        assert_eq!(b.compliance_tags.iso27001.len(), 2);
+    }
+
+    #[test]
+    fn test_compliance_evidence_flag() {
+        let b = base();
+        assert!(!b.compliance_tags.is_evidence);
+        let b = b.compliance_evidence();
+        assert!(b.compliance_tags.is_evidence);
+    }
+
+    #[test]
+    fn test_compliance_replaces_all_tags() {
+        // Start with some tags, then replace wholesale.
+        let b = base()
+            .soc2_control(Soc2Control::CC6_1)
+            .iso27001_control(Iso27001Control::A8_5);
+        assert!(!b.compliance_tags.is_empty());
+
+        let replacement = ComplianceTags::new().with_gdpr(GdprBasis::Consent);
+        let b = b.compliance(replacement);
+        // Prior SOC2/ISO tags are gone; only the GDPR basis remains.
+        assert!(b.compliance_tags.soc2.is_empty());
+        assert!(b.compliance_tags.iso27001.is_empty());
+        assert_eq!(b.compliance_tags.gdpr_basis, Some(GdprBasis::Consent));
+    }
+
+    #[test]
+    fn test_chained_builders_compose() {
+        // The fluent chain merges tags from every framework into one set.
+        let b = base()
+            .soc2_control(Soc2Control::CC6_1)
+            .hipaa_safeguard(HipaaSafeguard::Technical)
+            .gdpr_basis(GdprBasis::Consent)
+            .pci_dss_requirement(PciDssRequirement::Req8)
+            .iso27001_control(Iso27001Control::A8_15)
+            .compliance_evidence();
+        let tags = &b.compliance_tags;
+        assert_eq!(tags.soc2.len(), 1);
+        assert_eq!(tags.hipaa.len(), 1);
+        assert!(tags.gdpr_basis.is_some());
+        assert_eq!(tags.pci_dss.len(), 1);
+        assert_eq!(tags.iso27001.len(), 1);
+        assert!(tags.is_evidence);
+        assert!(!tags.is_empty());
+    }
+}

@@ -326,4 +326,114 @@ mod tests {
         assert_eq!(Iso27001Control::A8_5.theme(), "Technological");
         assert_eq!(Iso27001Control::A8_26.theme(), "Technological");
     }
+
+    /// All Annex A controls represented in the enum. Used to drive exhaustive
+    /// table checks. If a variant is added, this list must be extended too
+    /// (the `theme()`/`as_str()` matches are already exhaustive at compile time).
+    const ALL: &[Iso27001Control] = &[
+        Iso27001Control::A5_1,
+        Iso27001Control::A5_2,
+        Iso27001Control::A5_3,
+        Iso27001Control::A5_7,
+        Iso27001Control::A5_15,
+        Iso27001Control::A5_16,
+        Iso27001Control::A5_17,
+        Iso27001Control::A5_18,
+        Iso27001Control::A5_22,
+        Iso27001Control::A5_24,
+        Iso27001Control::A5_25,
+        Iso27001Control::A5_26,
+        Iso27001Control::A5_28,
+        Iso27001Control::A5_33,
+        Iso27001Control::A5_34,
+        Iso27001Control::A6_1,
+        Iso27001Control::A6_3,
+        Iso27001Control::A7_4,
+        Iso27001Control::A8_2,
+        Iso27001Control::A8_3,
+        Iso27001Control::A8_4,
+        Iso27001Control::A8_5,
+        Iso27001Control::A8_7,
+        Iso27001Control::A8_8,
+        Iso27001Control::A8_9,
+        Iso27001Control::A8_10,
+        Iso27001Control::A8_11,
+        Iso27001Control::A8_12,
+        Iso27001Control::A8_15,
+        Iso27001Control::A8_16,
+        Iso27001Control::A8_17,
+        Iso27001Control::A8_20,
+        Iso27001Control::A8_24,
+        Iso27001Control::A8_25,
+        Iso27001Control::A8_28,
+    ];
+
+    #[test]
+    fn test_as_str_matches_dotted_control_id() {
+        // The ISO control identifier for `Ax_y` is the dotted form `A.x.y`.
+        // Derive the expectation mechanically from the variant name via its
+        // Debug representation rather than hand-copying every string.
+        for ctrl in ALL {
+            let debug = format!("{ctrl:?}"); // e.g. "A8_15"
+            let (theme_num, sub) = debug
+                .trim_start_matches('A')
+                .split_once('_')
+                .expect("variant name has form Ax_y");
+            let expected = format!("A.{theme_num}.{sub}");
+            assert_eq!(ctrl.as_str(), expected, "as_str for {debug}");
+            // Display delegates to as_str.
+            assert_eq!(ctrl.to_string(), expected);
+        }
+    }
+
+    #[test]
+    fn test_theme_matches_control_number_prefix() {
+        // 2022 reorganization: A.5 => Organizational, A.6 => People,
+        // A.7 => Physical, A.8 => Technological. Derive the family from the
+        // variant name so every variant is checked against the spec rule.
+        for ctrl in ALL {
+            let debug = format!("{ctrl:?}");
+            let family = debug
+                .trim_start_matches('A')
+                .split('_')
+                .next()
+                .expect("variant name has form Ax_y");
+            let expected = match family {
+                "5" => "Organizational",
+                "6" => "People",
+                "7" => "Physical",
+                "8" => "Technological",
+                other => panic!("unexpected control family A{other}"),
+            };
+            assert_eq!(ctrl.theme(), expected, "theme for {debug}");
+        }
+    }
+
+    #[test]
+    fn test_description_non_empty_and_unique() {
+        use std::collections::HashSet;
+        let mut seen = HashSet::new();
+        for ctrl in ALL {
+            let desc = ctrl.description();
+            assert!(!desc.is_empty(), "empty description for {ctrl:?}");
+            // Each control should have a distinct description.
+            assert!(
+                seen.insert(desc),
+                "duplicate description {desc:?} for {ctrl:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_serde_roundtrip_and_rename() {
+        // Serialized form uses the SCREAMING variant name (e.g. "A8_15"),
+        // NOT the dotted display form, and round-trips losslessly.
+        for ctrl in ALL {
+            let json = serde_json::to_string(ctrl).expect("serialize");
+            let debug = format!("{ctrl:?}");
+            assert_eq!(json, format!("\"{debug}\""), "serialized form for {debug}");
+            let back: Iso27001Control = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(&back, ctrl);
+        }
+    }
 }

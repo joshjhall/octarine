@@ -619,4 +619,234 @@ mod tests {
         assert_eq!(fb.from_parts("doc", "pdf"), "doc.pdf");
         assert_eq!(fb.with_number("file.txt", 1), "file_1.txt");
     }
+
+    // ========================================================================
+    // Detection: accessor + classification wrappers.
+    // ========================================================================
+
+    #[test]
+    fn test_detection_accessors() {
+        let fb = FilenameBuilder::silent();
+
+        // Extension accessors.
+        assert_eq!(fb.find_extension("archive.tar.gz"), Some("gz"));
+        assert_eq!(fb.find_extension("noext"), None);
+        assert_eq!(fb.stem("report.pdf"), "report");
+        assert!(fb.is_extension_present("a.txt"));
+        assert!(!fb.is_extension_present("a"));
+
+        // Extension matching.
+        assert!(fb.is_extension_found("photo.JPG", "jpg")); // case-insensitive
+        assert!(fb.is_extension_in_list("main.rs", &["rs", "toml"]));
+        assert!(!fb.is_extension_in_list("main.py", &["rs", "toml"]));
+
+        // Classification.
+        assert!(fb.is_dot_file(".bashrc"));
+        assert!(!fb.is_dot_file("file.txt"));
+        assert!(fb.is_directory_ref(".."));
+        assert!(fb.is_directory_ref("."));
+        assert!(!fb.is_directory_ref("dir"));
+    }
+
+    #[test]
+    fn test_detection_threat_predicates() {
+        let fb = FilenameBuilder::silent();
+
+        assert!(fb.is_null_bytes_present("a\0b"));
+        assert!(!fb.is_null_bytes_present("ab"));
+        assert!(fb.is_control_characters_present("a\nb"));
+        assert!(fb.is_shell_chars_present("a;b"));
+        assert!(fb.is_command_substitution_present("$(id)"));
+        // is_variable_expansion_present matches the $VAR form ($ followed by a
+        // letter/underscore); the ${VAR} brace form is not this function's job.
+        assert!(fb.is_variable_expansion_present("back$HOME.txt"));
+        assert!(!fb.is_variable_expansion_present("plain.txt"));
+        assert!(fb.is_injection_present("file`whoami`.txt"));
+        assert!(fb.is_dangerous_extension_present("evil.exe"));
+        assert!(!fb.is_dangerous_extension_present("doc.pdf"));
+        assert!(fb.is_non_ascii_present("café.txt"));
+        assert!(!fb.is_non_ascii_present("cafe.txt"));
+    }
+
+    // ========================================================================
+    // Validation wrappers (strict-by-default per Issue #182).
+    // ========================================================================
+
+    #[test]
+    fn test_validation_wrappers() {
+        let fb = FilenameBuilder::new();
+
+        // Cross-platform: reserved names / trailing dots are rejected.
+        assert!(fb.is_cross_platform_safe("document.txt"));
+        assert!(fb.validate_cross_platform("document.txt").is_ok());
+        assert!(!fb.is_cross_platform_safe("CON"));
+        assert!(fb.validate_cross_platform("CON").is_err());
+
+        // Shell safety.
+        assert!(fb.is_shell_safe("plain.txt"));
+        assert!(!fb.is_shell_safe("a;rm -rf b"));
+        assert!(fb.validate_shell_safe("plain.txt").is_ok());
+        assert!(fb.validate_shell_safe("a;b").is_err());
+
+        // Upload safety + validation.
+        assert!(fb.validate_upload_safe("photo.png").is_ok());
+        assert!(fb.validate_upload_safe("shell.exe").is_err());
+
+        // Extension allow-list.
+        assert!(fb.is_extension_allowed("image.png", &["png", "jpg"]));
+        assert!(!fb.is_extension_allowed("image.gif", &["png", "jpg"]));
+        assert!(
+            fb.validate_allowed_extension("image.png", &["png", "jpg"])
+                .is_ok()
+        );
+        assert!(
+            fb.validate_allowed_extension("image.gif", &["png", "jpg"])
+                .is_err()
+        );
+
+        // Extension safety.
+        assert!(fb.is_extension_safe("notes.txt"));
+        assert!(!fb.is_extension_safe("payload.bat"));
+    }
+
+    #[test]
+    fn test_length_validation() {
+        let fb = FilenameBuilder::new();
+        assert!(fb.is_within_length("short.txt", 255));
+        assert!(!fb.is_within_length("aaaa.txt", 4));
+        assert!(fb.validate_within_length("short.txt", 255).is_ok());
+        assert!(fb.validate_within_length("toolong.txt", 3).is_err());
+    }
+
+    #[test]
+    fn test_validate_safe_and_generic_validate() {
+        let fb = FilenameBuilder::new();
+        assert!(fb.validate_safe("file.txt").is_ok());
+        assert!(fb.validate_safe("CON").is_err());
+    }
+
+    // ========================================================================
+    // Sanitization: strip / replace / normalize / to_safe wrappers.
+    // ========================================================================
+
+    #[test]
+    fn test_strip_wrappers() {
+        let fb = FilenameBuilder::silent();
+
+        assert_eq!(fb.strip_null_bytes("a\0b.txt"), "ab.txt");
+        assert_eq!(fb.strip_control_chars("a\nb.txt"), "ab.txt");
+        // Path separators removed (Cow may borrow or own).
+        assert!(!fb.strip_path_separators("a/b\\c.txt").contains('/'));
+        assert!(!fb.strip_path_separators("a/b\\c.txt").contains('\\'));
+        // Shell metacharacters removed.
+        let cleaned = fb.strip_shell_chars("a;b|c.txt");
+        assert!(!cleaned.contains(';'));
+        assert!(!cleaned.contains('|'));
+    }
+
+    #[test]
+    fn test_replace_and_normalize_wrappers() {
+        let fb = FilenameBuilder::silent();
+
+        assert_eq!(fb.replace_spaces("my file.txt"), "my_file.txt");
+        assert_eq!(fb.replace_spaces_with_hyphens("my file.txt"), "my-file.txt");
+        assert_eq!(fb.normalize_case("MyFile.TXT"), "myfile.txt");
+        // Only the extension is lowercased.
+        assert_eq!(fb.normalize_extension("Report.PDF"), "Report.pdf");
+    }
+
+    #[test]
+    fn test_sanitize_context_and_strict() {
+        let fb = FilenameBuilder::new();
+
+        // Strict sanitization REJECTS (errors) when threats are present, and
+        // passes a clean name through unchanged.
+        assert_eq!(fb.sanitize_strict("clean.txt").expect("clean"), "clean.txt");
+        assert!(
+            fb.sanitize_strict("../a;b.txt").is_err(),
+            "strict sanitize must reject threats, not strip them"
+        );
+
+        // Lenient sanitize DOES strip threats.
+        let lenient = fb.sanitize("../a;b.txt").expect("lenient");
+        assert!(!lenient.contains(".."));
+        assert!(!lenient.contains(';'));
+
+        // Context-driven sanitization for a secure file.
+        let secure = fb
+            .sanitize_with_context("weird name!.txt", SanitizationContext::SecureFile)
+            .expect("context");
+        assert!(!secure.is_empty());
+
+        // to_safe_filename fallback for empty/garbage input.
+        assert_eq!(fb.to_safe_filename(""), "unnamed");
+        assert_eq!(fb.to_safe_filename_or("", "fallback"), "fallback");
+    }
+
+    #[test]
+    fn test_shell_escape_wrappers() {
+        let fb = FilenameBuilder::new();
+        assert_eq!(fb.shell_escape("file.txt"), "'file.txt'");
+        // Strict shell escape errors on control chars / null bytes.
+        assert!(fb.shell_escape_strict("clean.txt").is_ok());
+        assert!(fb.shell_escape_strict("bad\0.txt").is_err());
+    }
+
+    // ========================================================================
+    // Construction: strict variants + stem / part manipulation.
+    // ========================================================================
+
+    #[test]
+    fn test_construction_strict_and_stem() {
+        let fb = FilenameBuilder::new();
+
+        assert_eq!(
+            fb.set_extension_strict("file.txt", "pdf").expect("strict"),
+            "file.pdf"
+        );
+        assert!(fb.set_extension_strict("file.txt", "e/x").is_err());
+
+        assert_eq!(fb.strip_all_extensions("a.tar.gz"), "a");
+        assert_eq!(fb.append_to_stem("file.txt", "_v2"), "file_v2.txt");
+        assert_eq!(fb.with_padded_number("f.txt", 7, 3), "f_007.txt");
+
+        assert_eq!(
+            fb.from_parts_strict("doc", "pdf").expect("parts"),
+            "doc.pdf"
+        );
+        assert_eq!(
+            fb.with_stem_strict("old.txt", "new").expect("stem"),
+            "new.txt"
+        );
+    }
+
+    #[test]
+    fn test_timestamp_and_uuid_construction() {
+        let fb = FilenameBuilder::new();
+
+        // Timestamp-based filename carries the prefix and extension.
+        let ts = fb.with_timestamp("backup", "tar");
+        assert!(ts.starts_with("backup"));
+        assert!(ts.ends_with(".tar"));
+
+        // UUID-based filenames are unique across calls and well-formed.
+        let a = fb.with_uuid("upload", "bin");
+        let b = fb.with_uuid("upload", "bin");
+        assert!(a.starts_with("upload"));
+        assert!(a.ends_with(".bin"));
+        assert_ne!(a, b, "UUID filenames must be unique");
+    }
+
+    #[test]
+    fn test_pattern_matching_and_detect_issues() {
+        let fb = FilenameBuilder::silent();
+        assert!(fb.is_pattern_found("report.txt", "*.txt"));
+        assert!(!fb.is_pattern_found("report.md", "*.txt"));
+
+        // detect_issues surfaces problems for a hostile filename.
+        let issues = fb.detect_issues("../$(id).txt");
+        assert!(!issues.is_empty());
+        // A clean filename yields no issues.
+        assert!(fb.detect_issues("clean.txt").is_empty());
+    }
 }

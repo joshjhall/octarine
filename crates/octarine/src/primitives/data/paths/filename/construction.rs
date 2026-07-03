@@ -515,21 +515,37 @@ pub fn with_timestamp(prefix: &str, extension: &str) -> String {
 /// use octarine::primitives::paths::filename::construction;
 ///
 /// let name = construction::with_uuid("upload", "jpg");
-/// // Returns something like "upload_a1b2c3d4.jpg"
+/// // Returns something like "upload_a1b2c3d400000001.jpg"
 /// ```
 #[must_use]
 pub fn with_uuid(prefix: &str, extension: &str) -> String {
-    // Simple pseudo-UUID using timestamp and random-ish value
+    // Pseudo-unique 16-hex identifier = clock bits ++ atomic counter.
+    //
+    // The two halves are *concatenated*, not combined arithmetically, so each
+    // contributes independently:
+    //   - the low 32 bits of the nanosecond clock distinguish separate process
+    //     runs (a fresh process starts its counter at 0, so the clock is what
+    //     keeps runs from colliding);
+    //   - a process-lifetime `AtomicU32` counter guarantees that no two calls
+    //     *within one process* ever collide — it is strictly monotonic and only
+    //     repeats after 2^32 calls.
+    //
+    // XOR-ing the two (an earlier attempt) does NOT guarantee within-process
+    // uniqueness: the clock delta can cancel the counter delta, so two distinct
+    // calls can hash to the same value. Concatenation cannot cancel.
+    use std::sync::atomic::{AtomicU32, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    let timestamp = SystemTime::now()
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
 
-    // Create a simple hex-like identifier
-    let id = format!("{:016x}", timestamp);
-    let short_id = &id[..8.min(id.len())];
+    let clock = nanos as u32;
+    let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let short_id = format!("{clock:08x}{seq:08x}");
 
     let ext = extension.trim_start_matches('.');
     if ext.is_empty() {
@@ -737,13 +753,20 @@ mod tests {
         assert!(name.starts_with("file_"));
         assert!(!name.contains('.'));
 
-        // Each call should be unique
-        let name1 = with_uuid("test", "txt");
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        let name2 = with_uuid("test", "txt");
-        // They might be equal in fast tests, so just check format
-        assert!(name1.starts_with("test_"));
-        assert!(name2.starts_with("test_"));
+        // Each call must be unique within the process, even for rapid
+        // back-to-back calls with no sleep (the atomic counter guarantees
+        // this — the previous timestamp-high-bits implementation collided).
+        use std::collections::HashSet;
+        let mut seen = HashSet::new();
+        for _ in 0..1000 {
+            let name = with_uuid("test", "txt");
+            assert!(name.starts_with("test_"));
+            assert!(name.ends_with(".txt"));
+            assert!(
+                seen.insert(name.clone()),
+                "with_uuid produced a duplicate: {name}"
+            );
+        }
     }
 
     // ------------------------------------------------------------------------
