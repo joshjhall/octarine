@@ -1,5 +1,8 @@
 [package]
-name = "octarine"
+# Published to crates.io as `octarine-core` — the bare `octarine` name is owned
+# by an unrelated crate (see #655). The library name below stays `octarine`, so
+# downstream depends on `octarine-core` but still writes `use octarine::`.
+name = "octarine-core"
 description = "Foundation library for security and observability in Rust - The color of magic"
 version = "0.3.0-beta.4"
 edition.workspace = true
@@ -10,6 +13,11 @@ authors.workspace = true
 readme = "../../README.md"
 keywords = ["security", "validation", "sanitization", "observability", "audit"]
 categories = ["development-tools", "web-programming"]
+
+[lib]
+# Keep the import path `octarine` even though the package publishes as
+# `octarine-core`; package and lib names are allowed to differ.
+name = "octarine"
 
 [dependencies]
 # Error handling

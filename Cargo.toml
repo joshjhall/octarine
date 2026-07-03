@@ -45,7 +45,7 @@ reqwest = { version = "0.13", features = ["json", "rustls"], default-features = 
 # Internal crates
 # `version` alongside `path` is required so `cargo publish` accepts the
 # workspace. Kept in sync with each crate manifest by `just release`.
-octarine = { path = "crates/octarine", version = "0.3.0-beta.4" }
+octarine-core = { path = "crates/octarine", version = "0.3.0-beta.4" }
 octarine-derive = { path = "crates/octarine-derive", version = "0.1.0" }
 octarine-problem = { path = "crates/octarine-problem", version = "0.3.0-beta.4" }
 

@@ -476,7 +476,7 @@ release ARG:
     # `path = ...` so `cargo publish` accepts the workspace. Keep them in
     # lockstep with the crate manifests they point to. octarine-derive is
     # independently versioned and never touched here.
-    sed -i "s|^octarine = { path = \"crates/octarine\", version = \"[^\"]*\" }|octarine = { path = \"crates/octarine\", version = \"$VERSION\" }|" Cargo.toml
+    sed -i "s|^octarine-core = { path = \"crates/octarine\", version = \"[^\"]*\" }|octarine-core = { path = \"crates/octarine\", version = \"$VERSION\" }|" Cargo.toml
     sed -i "s|^octarine-problem = { path = \"crates/octarine-problem\", version = \"[^\"]*\" }|octarine-problem = { path = \"crates/octarine-problem\", version = \"$VERSION\" }|" Cargo.toml
     echo "  Cargo.toml → $VERSION"
 

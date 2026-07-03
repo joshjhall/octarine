@@ -22,14 +22,15 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.4" }
+# Published as `octarine-core`; the library is still imported as `use octarine::`.
+octarine-core = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.4" }
 ```
 
 Enable only the features you need:
 
 ```toml
 [dependencies]
-octarine = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.4", default-features = false, features = ["observe", "security"] }
+octarine-core = { git = "https://github.com/joshjhall/octarine", tag = "v0.3.0-beta.4", default-features = false, features = ["observe", "security"] }
 ```
 
 ## Feature Flags

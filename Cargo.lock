@@ -2856,7 +2856,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "octarine"
+name = "octarine-core"
 version = "0.3.0-beta.4"
 dependencies = [
  "addr",
