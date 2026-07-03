@@ -107,6 +107,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
+      - name: Install mold linker
+        # .cargo/config.toml pins clang + -fuse-ld=mold for Linux targets, so
+        # cargo publish's verification build links with mold. Install it (as CI
+        # does) or the link step fails with "invalid linker name '-fuse-ld=mold'".
+        run: sudo apt-get update && sudo apt-get install -y mold clang
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: release
@@ -132,6 +137,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
+      - name: Install mold linker
+        # .cargo/config.toml pins clang + -fuse-ld=mold for Linux targets, so
+        # cargo publish's verification build links with mold. Install it (as CI
+        # does) or the link step fails with "invalid linker name '-fuse-ld=mold'".
+        run: sudo apt-get update && sudo apt-get install -y mold clang
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: release
@@ -157,6 +167,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
+      - name: Install mold linker
+        # .cargo/config.toml pins clang + -fuse-ld=mold for Linux targets, so
+        # cargo publish's verification build links with mold. Install it (as CI
+        # does) or the link step fails with "invalid linker name '-fuse-ld=mold'".
+        run: sudo apt-get update && sudo apt-get install -y mold clang
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: release
