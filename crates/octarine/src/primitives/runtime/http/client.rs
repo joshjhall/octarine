@@ -504,4 +504,351 @@ mod tests {
         assert_eq!(builder.method, Method::POST);
         assert_eq!(builder.headers.len(), 2);
     }
+
+    // =========================================================================
+    // I/O path tests via wiremock.
+    //
+    // These drive the real request/retry/timeout/error machinery of `send()`
+    // against a local stub server. Expected results are derived from HTTP
+    // retry semantics (retry 5xx/429/timeouts, never retry 4xx, surface the
+    // final response for non-2xx), NOT from the current output.
+    //
+    // Retry backoff uses a 1ms fixed delay so exhausting attempts stays fast;
+    // this is the retry mechanism under test, not a fixed sleep in the test
+    // body (octarine-test-resilience Rule 4).
+    // =========================================================================
+    mod io_paths {
+        #![allow(clippy::panic, clippy::expect_used)]
+        use super::*;
+        use crate::primitives::runtime::r#async::backoff::RetryPolicy;
+        use crate::primitives::runtime::r#async::circuit_breaker::CircuitBreakerConfig;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::time::Duration;
+        use wiremock::matchers::{method as m, path as p};
+        use wiremock::{Mock, MockServer, Respond, ResponseTemplate};
+
+        /// Fixed retry policy with a negligible backoff so tests exercising
+        /// exhausted retries do not spend real time sleeping.
+        fn fast_retry(attempts: u32) -> RetryPolicy {
+            RetryPolicy::fixed(attempts, Duration::from_millis(1))
+        }
+
+        /// A responder that returns `first` for the initial `fail_count`
+        /// requests, then `then` for every subsequent request. Lets us drive
+        /// the "fail N times then succeed" retry path with a real request
+        /// counter instead of relying on mock ordering.
+        struct SequenceResponder {
+            calls: Arc<AtomicUsize>,
+            fail_count: usize,
+            first: u16,
+            then: u16,
+        }
+
+        impl Respond for SequenceResponder {
+            fn respond(&self, _req: &wiremock::Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n < self.fail_count {
+                    ResponseTemplate::new(self.first)
+                } else {
+                    ResponseTemplate::new(self.then)
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn get_success_single_attempt() {
+            let server = MockServer::start().await;
+            Mock::given(m("GET"))
+                .and(p("/ok"))
+                .respond_with(ResponseTemplate::new(200).set_body_string("hello"))
+                .mount(&server)
+                .await;
+
+            let client = HttpClient::new(HttpClientConfig::default()).expect("client should build");
+            let resp = client
+                .get(&format!("{}/ok", server.uri()))
+                .send()
+                .await
+                .expect("request should succeed");
+
+            assert_eq!(resp.status().as_u16(), 200);
+            // A first-try success must report exactly one attempt and no retry.
+            assert_eq!(resp.attempts(), 1);
+            assert!(!resp.retried());
+            assert_eq!(resp.text().await.expect("body"), "hello");
+        }
+
+        #[tokio::test]
+        async fn retries_500_then_succeeds() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            // Fail twice with 500, then return 200.
+            Mock::given(m("GET"))
+                .and(p("/flaky"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: 2,
+                    first: 500,
+                    then: 200,
+                })
+                .mount(&server)
+                .await;
+
+            let config = HttpClientConfig::builder()
+                .retry_policy(fast_retry(5))
+                .no_circuit_breaker()
+                .build();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let resp = client
+                .get(&format!("{}/flaky", server.uri()))
+                .send()
+                .await
+                .expect("request should eventually succeed");
+
+            // Two 500s then a 200: the client must retry past the failures and
+            // return the successful response on the third attempt.
+            assert_eq!(resp.status().as_u16(), 200);
+            assert_eq!(resp.attempts(), 3);
+            assert!(resp.retried());
+            assert_eq!(calls.load(Ordering::SeqCst), 3);
+        }
+
+        #[tokio::test]
+        async fn exhausts_retries_and_returns_last_5xx() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            Mock::given(m("GET"))
+                .and(p("/down"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: usize::MAX, // always 500
+                    first: 500,
+                    then: 500,
+                })
+                .mount(&server)
+                .await;
+
+            let config = HttpClientConfig::builder()
+                .retry_policy(fast_retry(3))
+                .no_circuit_breaker()
+                .build();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let resp = client
+                .get(&format!("{}/down", server.uri()))
+                .send()
+                .await
+                .expect("primitive surfaces the final response, not an Err, for 5xx");
+
+            // Retry semantics: after exhausting all attempts on a retryable
+            // status, the primitive returns the LAST response (Ok) with the
+            // 5xx status rather than fabricating an error. It made exactly
+            // max_attempts requests.
+            assert_eq!(resp.status().as_u16(), 500);
+            assert_eq!(resp.attempts(), 3);
+            assert!(resp.retried());
+            assert_eq!(calls.load(Ordering::SeqCst), 3);
+        }
+
+        #[tokio::test]
+        async fn does_not_retry_4xx() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            Mock::given(m("GET"))
+                .and(p("/missing"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: usize::MAX,
+                    first: 404,
+                    then: 404,
+                })
+                .mount(&server)
+                .await;
+
+            let config = HttpClientConfig::builder()
+                .retry_policy(fast_retry(5))
+                .no_circuit_breaker()
+                .build();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let resp = client
+                .get(&format!("{}/missing", server.uri()))
+                .send()
+                .await
+                .expect("4xx is a valid response, not a transport error");
+
+            // 404 is a client error: not retryable. Must return after a single
+            // request with no retry, even though retries were configured.
+            assert_eq!(resp.status().as_u16(), 404);
+            assert_eq!(resp.attempts(), 1);
+            assert!(!resp.retried());
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+        }
+
+        #[tokio::test]
+        async fn retries_429_rate_limited() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            Mock::given(m("GET"))
+                .and(p("/limited"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: 1,
+                    first: 429,
+                    then: 200,
+                })
+                .mount(&server)
+                .await;
+
+            let config = HttpClientConfig::builder()
+                .retry_policy(fast_retry(3))
+                .no_circuit_breaker()
+                .build();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let resp = client
+                .get(&format!("{}/limited", server.uri()))
+                .send()
+                .await
+                .expect("should recover after rate-limit backoff");
+
+            // 429 is retryable (with longer backoff); one 429 then 200 must
+            // surface the 200 on the second attempt.
+            assert_eq!(resp.status().as_u16(), 200);
+            assert_eq!(resp.attempts(), 2);
+            assert!(resp.retried());
+        }
+
+        #[tokio::test]
+        async fn no_retry_policy_makes_single_attempt() {
+            let server = MockServer::start().await;
+            let calls = Arc::new(AtomicUsize::new(0));
+            Mock::given(m("GET"))
+                .and(p("/once"))
+                .respond_with(SequenceResponder {
+                    calls: Arc::clone(&calls),
+                    fail_count: usize::MAX,
+                    first: 503,
+                    then: 503,
+                })
+                .mount(&server)
+                .await;
+
+            // no_retry() => retry_policy None => max_attempts 1.
+            let config = HttpClientConfig::no_retry();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let resp = client
+                .get(&format!("{}/once", server.uri()))
+                .send()
+                .await
+                .expect("returns the 503 response");
+
+            assert_eq!(resp.status().as_u16(), 503);
+            assert_eq!(resp.attempts(), 1);
+            assert!(!resp.retried());
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+        }
+
+        #[tokio::test]
+        async fn timeout_produces_request_failed_error() {
+            let server = MockServer::start().await;
+            // Respond after a delay far exceeding the per-request timeout.
+            Mock::given(m("GET"))
+                .and(p("/slow"))
+                .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(30)))
+                .mount(&server)
+                .await;
+
+            let config = HttpClientConfig::no_retry();
+            let client = HttpClient::new(config).expect("client should build");
+
+            let err = client
+                .get(&format!("{}/slow", server.uri()))
+                .timeout(Duration::from_millis(100))
+                .send()
+                .await
+                .expect_err("a request that never returns in time must error");
+
+            // A timeout is a transport failure: with no retries it surfaces as
+            // RequestFailed reporting the single attempt made.
+            match err {
+                HttpClientError::RequestFailed { attempts, .. } => {
+                    assert_eq!(attempts, 1);
+                }
+                other => panic!("expected RequestFailed, got {other:?}"),
+            }
+        }
+
+        #[tokio::test]
+        async fn circuit_breaker_opens_after_threshold() {
+            let server = MockServer::start().await;
+            Mock::given(m("GET"))
+                .and(p("/err"))
+                .respond_with(ResponseTemplate::new(500))
+                .mount(&server)
+                .await;
+
+            // No retries so each send() records exactly one failure; open after
+            // 2 failures.
+            let config = HttpClientConfig::builder()
+                .no_retry()
+                .circuit_breaker(CircuitBreakerConfig::default().with_failure_threshold(2))
+                .build();
+            let client = HttpClient::new(config).expect("client should build");
+            let url = format!("{}/err", server.uri());
+
+            // First two requests reach the server (500 responses, Ok) and trip
+            // the breaker.
+            let r1 = client.get(&url).send().await.expect("reaches server");
+            assert_eq!(r1.status().as_u16(), 500);
+            let r2 = client.get(&url).send().await.expect("reaches server");
+            assert_eq!(r2.status().as_u16(), 500);
+
+            // Third request must be rejected locally by the open circuit
+            // without hitting the server.
+            let err = client
+                .get(&url)
+                .send()
+                .await
+                .expect_err("open circuit must reject the request");
+            assert!(
+                matches!(err, HttpClientError::CircuitOpen { .. }),
+                "expected CircuitOpen, got {err:?}"
+            );
+        }
+
+        #[tokio::test]
+        async fn sends_body_and_headers() {
+            use wiremock::matchers::{body_string, header};
+            let server = MockServer::start().await;
+            Mock::given(m("POST"))
+                .and(p("/submit"))
+                .and(header("x-custom", "abc"))
+                .and(header("authorization", "Bearer tok"))
+                .and(body_string("payload"))
+                .respond_with(ResponseTemplate::new(201))
+                .expect(1)
+                .mount(&server)
+                .await;
+
+            let client =
+                HttpClient::new(HttpClientConfig::no_retry()).expect("client should build");
+            let resp = client
+                .post(&format!("{}/submit", server.uri()))
+                .header("X-Custom", "abc")
+                .bearer_auth("tok")
+                .body("payload")
+                .send()
+                .await
+                .expect("request should be accepted");
+
+            // The builder must actually transmit the configured headers and
+            // body; the mock only matches (and returns 201) if they arrived.
+            assert_eq!(resp.status().as_u16(), 201);
+            // `expect(1)` on the mock is verified on server drop.
+        }
+    }
 }
