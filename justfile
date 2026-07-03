@@ -96,18 +96,18 @@ test-verbose:
 
 # Run tests for the octarine crate only
 test-octarine:
-    cargo nextest run -p octarine --all-features --build-jobs 4
+    cargo nextest run -p octarine-core --all-features --build-jobs 4
 
 # Run performance/timing tests (ignored by default, run before releases).
 # Filterset unions three regex patterns matched against the prior cargo
 # substring filters, in a single nextest invocation.
 test-perf:
-    cargo nextest run -p octarine --all-features --build-jobs 4 --run-ignored ignored-only \
+    cargo nextest run -p octarine-core --all-features --build-jobs 4 --run-ignored ignored-only \
         -E 'test(/^test_perf_/) + test(/^test_adversarial_/) + test(test_batch_processor_time_flush)'
 
 # Run tests with the testing feature enabled (kept for explicit minimal-feature runs)
 test-with-fixtures:
-    cargo nextest run -p octarine --build-jobs 4 --features testing
+    cargo nextest run -p octarine-core --build-jobs 4 --features testing
 
 # Run a specific test by name pattern
 test-filter PATTERN:
@@ -118,7 +118,7 @@ test-filter PATTERN:
 #   just test-mod correlation::proximity
 #   just test-mod observe::writers::database sqlite,postgres
 test-mod PATTERN FEATURES='':
-    cargo nextest run -p octarine --lib --build-jobs 4 --features "{{FEATURES}}" -E 'test(/{{PATTERN}}/)'
+    cargo nextest run -p octarine-core --lib --build-jobs 4 --features "{{FEATURES}}" -E 'test(/{{PATTERN}}/)'
 
 # ─── Coverage ────────────────────────────────────────────────────────────────
 
