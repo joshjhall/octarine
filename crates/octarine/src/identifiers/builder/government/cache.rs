@@ -47,3 +47,37 @@ impl GovernmentBuilder {
         self.inner.clear_caches();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn test_cache_stats_and_subcaches() {
+        let b = GovernmentBuilder::silent();
+        // Caches populate lazily on validation with checksum work.
+        b.clear_caches();
+        let _ = b.validate_ssn("234-56-7890");
+        let _ = b.validate_vin_with_checksum("1HGBH41JXMN109186");
+
+        let combined = b.cache_stats();
+        let ssn = b.ssn_cache_stats();
+        let vin = b.vin_cache_stats();
+
+        // Combined capacity is the sum of the sub-cache capacities.
+        assert_eq!(combined.capacity, ssn.capacity.saturating_add(vin.capacity));
+        // Combined size equals the sum of the sub-cache sizes.
+        assert_eq!(combined.size, ssn.size.saturating_add(vin.size));
+        // Hit rate is a valid ratio.
+        assert!((0.0..=100.0).contains(&combined.hit_rate()));
+    }
+
+    #[test]
+    fn test_clear_caches_resets_size() {
+        let b = GovernmentBuilder::silent();
+        let _ = b.validate_vin_with_checksum("1HGBH41JXMN109186");
+        b.clear_caches();
+        assert_eq!(b.cache_stats().size, 0);
+    }
+}

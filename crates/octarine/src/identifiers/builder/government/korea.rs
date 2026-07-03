@@ -331,3 +331,99 @@ impl GovernmentBuilder {
         self.inner.validate_korea_brn_with_checksum(brn)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // Verified valid samples (birth 900115). Detection (`is_*`) requires the
+    // dashed form; the bare 13-digit form is accepted only by validators.
+    //   RRN "900115-1234567" — gender digit 1 (citizen), weighted mod-11 check 7.
+    //   FRN "900115-5234568" — gender digit 5 (foreigner), check 8.
+    //   BRN "123-45-67891" — weighted mod-10 check 1.
+    //   DL "11-90-123456-78" — region 11; Passport "M12345678".
+    const VALID_RRN: &str = "900115-1234567";
+    const VALID_FRN: &str = "900115-5234568";
+    const VALID_BRN: &str = "123-45-67891";
+    const VALID_DL: &str = "11-90-123456-78";
+    const VALID_PASSPORT: &str = "M12345678";
+
+    #[test]
+    fn test_rrn() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_korea_rrn(VALID_RRN));
+        assert!(!b.is_korea_rrn("123"));
+        assert!(b.validate_korea_rrn(VALID_RRN).is_ok());
+        // Gender digit 0 is invalid.
+        assert!(b.validate_korea_rrn("900115-0234567").is_err());
+        assert!(b.validate_korea_rrn_with_checksum(VALID_RRN).is_ok());
+        // Tamper the check digit (7 -> 6).
+        assert!(
+            b.validate_korea_rrn_with_checksum("900115-1234566")
+                .is_err()
+        );
+        assert!(!b.find_korea_rrns_in_text("RRN 900115-1234567").is_empty());
+    }
+
+    #[test]
+    fn test_rrn_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_korea_rrn(VALID_RRN));
+        assert!(b.validate_korea_rrn(VALID_RRN).is_ok());
+    }
+
+    #[test]
+    fn test_frn() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_korea_frn(VALID_FRN));
+        assert!(b.validate_korea_frn(VALID_FRN).is_ok());
+        // Gender digit 9 is invalid for FRN.
+        assert!(b.validate_korea_frn("900115-9234567").is_err());
+        assert!(b.validate_korea_frn_with_checksum(VALID_FRN).is_ok());
+        // Tamper the check digit (8 -> 7).
+        assert!(
+            b.validate_korea_frn_with_checksum("900115-5234567")
+                .is_err()
+        );
+        assert!(!b.find_korea_frns_in_text("FRN 900115-5234567").is_empty());
+    }
+
+    #[test]
+    fn test_brn() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_korea_brn(VALID_BRN));
+        assert!(b.validate_korea_brn("123-45-67890").is_ok());
+        // 9 digits — wrong length.
+        assert!(b.validate_korea_brn("123-45-6789").is_err());
+        assert!(b.validate_korea_brn_with_checksum(VALID_BRN).is_ok());
+        // Tamper the check digit (1 -> 2).
+        assert!(b.validate_korea_brn_with_checksum("123-45-67892").is_err());
+        assert!(!b.find_korea_brns_in_text("BRN 123-45-67890").is_empty());
+    }
+
+    #[test]
+    fn test_driver_license() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_korea_driver_license(VALID_DL));
+        assert!(b.validate_korea_driver_license(VALID_DL).is_ok());
+        // Region 99 is invalid.
+        assert!(b.validate_korea_driver_license("99-90-123456-78").is_err());
+        assert!(
+            !b.find_korea_driver_licenses_in_text("DL 11-90-123456-78")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn test_passport() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_korea_passport(VALID_PASSPORT));
+        assert!(b.validate_korea_passport(VALID_PASSPORT).is_ok());
+        assert!(b.validate_korea_passport("!!!").is_err());
+        assert!(
+            !b.find_korea_passports_in_text("passport M12345678")
+                .is_empty()
+        );
+    }
+}

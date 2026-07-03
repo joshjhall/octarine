@@ -63,3 +63,56 @@ impl GovernmentBuilder {
         self.inner.validate_thailand_tnin_with_checksum(tnin)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // "1234567890121" is a 13-digit TNIN whose final check digit (1) is
+    // computed with the official weighted mod-11 algorithm over the first
+    // 12 digits.
+    const VALID_TNIN: &str = "1234567890121";
+
+    #[test]
+    fn test_is_thailand_tnin() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_thailand_tnin(VALID_TNIN));
+        assert!(!b.is_thailand_tnin("not-a-tnin"));
+    }
+
+    #[test]
+    fn test_is_thailand_tnin_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_thailand_tnin(VALID_TNIN));
+    }
+
+    #[test]
+    fn test_find_thailand_tnins_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_thailand_tnins_in_text("TNIN 1234567890121 ok");
+        assert!(!matches.is_empty());
+        assert!(b.find_thailand_tnins_in_text("nothing").is_empty());
+    }
+
+    #[test]
+    fn test_validate_thailand_tnin() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_thailand_tnin(VALID_TNIN).is_ok());
+        // 10 digits — wrong length.
+        assert!(b.validate_thailand_tnin("1234567890").is_err());
+        // All-identical digits are rejected.
+        assert!(b.validate_thailand_tnin("1111111111111").is_err());
+    }
+
+    #[test]
+    fn test_validate_thailand_tnin_with_checksum() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_thailand_tnin_with_checksum(VALID_TNIN).is_ok());
+        // Tamper the check digit (1 -> 2).
+        assert!(
+            b.validate_thailand_tnin_with_checksum("1234567890122")
+                .is_err()
+        );
+    }
+}

@@ -120,3 +120,90 @@ impl GovernmentBuilder {
         self.inner.validate_brazil_cnpj_with_checksum(cnpj)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // "111.444.777-35" is a CPF with genuinely valid mod-11 check digits.
+    // "11.222.333/0001-81" is a CNPJ with valid mod-11 check digits.
+    const VALID_CPF: &str = "111.444.777-35";
+    const VALID_CNPJ: &str = "11.222.333/0001-81";
+
+    #[test]
+    fn test_is_brazil_cpf() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_brazil_cpf(VALID_CPF));
+        assert!(!b.is_brazil_cpf("not-a-cpf"));
+    }
+
+    #[test]
+    fn test_is_brazil_cpf_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.is_brazil_cpf(VALID_CPF));
+    }
+
+    #[test]
+    fn test_find_brazil_cpfs_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_brazil_cpfs_in_text("CPF 111.444.777-35 registrado");
+        assert!(!matches.is_empty());
+        assert!(b.find_brazil_cpfs_in_text("nada aqui").is_empty());
+    }
+
+    #[test]
+    fn test_validate_brazil_cpf() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_brazil_cpf(VALID_CPF).is_ok());
+        // 10 digits — wrong length.
+        assert!(b.validate_brazil_cpf("1234567890").is_err());
+        // All-identical digits are rejected.
+        assert!(b.validate_brazil_cpf("111.111.111-11").is_err());
+    }
+
+    #[test]
+    fn test_validate_brazil_cpf_with_checksum() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_brazil_cpf_with_checksum(VALID_CPF).is_ok());
+        // Tamper the final check digit (35 -> 34).
+        assert!(
+            b.validate_brazil_cpf_with_checksum("111.444.777-34")
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_is_brazil_cnpj() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_brazil_cnpj(VALID_CNPJ));
+        assert!(!b.is_brazil_cnpj("not-a-cnpj"));
+    }
+
+    #[test]
+    fn test_find_brazil_cnpjs_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_brazil_cnpjs_in_text("CNPJ 11.222.333/0001-81");
+        assert!(!matches.is_empty());
+        assert!(b.find_brazil_cnpjs_in_text("nada").is_empty());
+    }
+
+    #[test]
+    fn test_validate_brazil_cnpj() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_brazil_cnpj(VALID_CNPJ).is_ok());
+        // All-identical digits are rejected.
+        assert!(b.validate_brazil_cnpj("11.111.111/1111-11").is_err());
+    }
+
+    #[test]
+    fn test_validate_brazil_cnpj_with_checksum() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_brazil_cnpj_with_checksum(VALID_CNPJ).is_ok());
+        // Tamper the final check digit (81 -> 80).
+        assert!(
+            b.validate_brazil_cnpj_with_checksum("11.222.333/0001-80")
+                .is_err()
+        );
+    }
+}

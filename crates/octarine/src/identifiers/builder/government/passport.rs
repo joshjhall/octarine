@@ -54,3 +54,68 @@ impl GovernmentBuilder {
             .redact_passports_in_text_with_strategy(text, strategy)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    // "L83726159" is a valid generic passport number (letter + 8 digits)
+    // per the primitive validation tests.
+    const VALID_PASSPORT: &str = "L83726159";
+
+    #[test]
+    fn test_is_passport() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.is_passport(VALID_PASSPORT));
+        assert!(!b.is_passport("!!!"));
+    }
+
+    #[test]
+    fn test_find_passports_in_text() {
+        let b = GovernmentBuilder::silent();
+        let matches = b.find_passports_in_text("passport L83726159 issued");
+        assert!(!matches.is_empty());
+        assert!(b.find_passports_in_text("no passport").is_empty());
+    }
+
+    #[test]
+    fn test_validate_passport() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_passport(VALID_PASSPORT).is_ok());
+        // Too short / non-conforming.
+        assert!(b.validate_passport("!!!").is_err());
+    }
+
+    #[test]
+    fn test_validate_passport_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.validate_passport(VALID_PASSPORT).is_ok());
+        assert!(b.validate_passport("!!!").is_err());
+    }
+
+    #[test]
+    fn test_redact_passport_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        assert_eq!(
+            b.redact_passport_with_strategy(VALID_PASSPORT, PassportRedactionStrategy::Token),
+            "[PASSPORT]"
+        );
+        // ShowCountry keeps the first two characters, masks the rest.
+        assert_eq!(
+            b.redact_passport_with_strategy(VALID_PASSPORT, PassportRedactionStrategy::ShowCountry),
+            "L8*******"
+        );
+    }
+
+    #[test]
+    fn test_redact_passports_in_text_with_strategy() {
+        let b = GovernmentBuilder::silent();
+        let out = b.redact_passports_in_text_with_strategy(
+            "passport L83726159",
+            PassportRedactionStrategy::Token,
+        );
+        assert!(out.contains("[PASSPORT]"));
+        assert!(!out.contains("L83726159"));
+    }
+}
