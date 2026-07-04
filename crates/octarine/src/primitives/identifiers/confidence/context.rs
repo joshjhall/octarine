@@ -7,6 +7,7 @@
 use super::keywords::context_keywords;
 use super::types::ContextConfig;
 use crate::primitives::identifiers::IdentifierType;
+use crate::primitives::identifiers::common::KeywordLanguage;
 
 // ============================================================================
 // ContextAnalyzer
@@ -132,11 +133,6 @@ impl ContextAnalyzer {
         match_end: usize,
         entity_type: &IdentifierType,
     ) -> bool {
-        let keywords = context_keywords(entity_type);
-        if keywords.is_empty() {
-            return false;
-        }
-
         // Calculate window boundaries (byte offsets, clamped to text bounds)
         let window_start = match_start.saturating_sub(self.config.window_size);
         let window_end = match_end
@@ -157,8 +153,15 @@ impl ContextAnalyzer {
         // Case-insensitive: lowercase the window (keywords are already lowercase)
         let window_lower = window.to_lowercase();
 
-        // Check for any keyword — first match is sufficient (no double-boost)
-        keywords.iter().any(|kw| window_lower.contains(kw))
+        // Scan every language's keyword table. With no language hint the analyzer
+        // matches any known keyword regardless of script — preserving the
+        // pre-refactor behavior where non-Latin keywords lived in the same list.
+        // First match is sufficient (no double-boost).
+        KeywordLanguage::all().any(|language| {
+            context_keywords(entity_type, language)
+                .iter()
+                .any(|kw| window_lower.contains(kw))
+        })
     }
 }
 

@@ -1,225 +1,46 @@
-//! Per-entity keyword dictionaries for context-aware confidence scoring
+//! Per-entity, per-language keyword lookup for context-aware confidence scoring
 //!
-//! Maps identifier types to contextual keywords that, when found near a
-//! pattern match, indicate higher confidence. Keywords are lowercase and
-//! drawn from Presidio's context-aware approach.
+//! Maps `(identifier type, language)` to contextual keywords that, when found
+//! near a pattern match, indicate higher confidence. The keyword data lives in
+//! [`crate::primitives::identifiers::common::keywords`], one file per language
+//! mirroring Presidio's per-language layout; this module is the lookup over
+//! those tables. Keywords are lowercase and drawn from Presidio's
+//! context-aware approach.
 
 use crate::primitives::identifiers::IdentifierType;
+use crate::primitives::identifiers::common::KeywordLanguage;
 
 // ============================================================================
-// Keyword Dictionaries
+// Keyword Lookup
 // ============================================================================
 
-/// Returns context keywords for the given identifier type.
+/// Returns context keywords for the given identifier type in one language.
 ///
 /// Keywords are lowercase strings that, when found in the text window
 /// surrounding a pattern match, suggest the match is a true positive.
 ///
-/// Returns an empty slice for identifier types without defined keywords.
+/// Returns an empty slice for identifier types that have no keywords defined
+/// in the requested language.
 ///
 /// # Examples
 ///
 /// ```ignore
-/// use octarine::primitives::identifiers::confidence::context_keywords;
+/// use octarine::primitives::identifiers::confidence::{context_keywords, KeywordLanguage};
 /// use octarine::primitives::identifiers::IdentifierType;
 ///
-/// let keywords = context_keywords(&IdentifierType::Ssn);
+/// let keywords = context_keywords(&IdentifierType::Ssn, KeywordLanguage::En);
 /// assert!(keywords.contains(&"social security"));
 /// ```
 #[must_use]
-pub fn context_keywords(entity_type: &IdentifierType) -> &'static [&'static str] {
-    match entity_type {
-        IdentifierType::Ssn => &[
-            "social security",
-            "ssn",
-            "ss#",
-            "social security number",
-            "tax id",
-            "taxpayer",
-            "itin",
-            "individual taxpayer",
-        ],
-        IdentifierType::CreditCard => &[
-            "credit card",
-            "card number",
-            "card no",
-            "card #",
-            "cc#",
-            "cc number",
-            "debit card",
-            "visa",
-            "mastercard",
-            "amex",
-            "american express",
-            "payment card",
-            "pan",
-        ],
-        IdentifierType::Email => &[
-            "email",
-            "e-mail",
-            "mail",
-            "email address",
-            "contact",
-            "send to",
-            "reply to",
-        ],
-        IdentifierType::PhoneNumber => &[
-            "phone",
-            "telephone",
-            "tel",
-            "mobile",
-            "cell",
-            "fax",
-            "call",
-            "phone number",
-            "contact number",
-        ],
-        IdentifierType::BankAccount => &[
-            "bank account",
-            "account number",
-            "account no",
-            "acct",
-            "iban",
-            "routing",
-            "aba",
-            "swift",
-            "bic",
-            "checking",
-            "savings",
-        ],
-        IdentifierType::DriverLicense => &[
-            "driver license",
-            "driver's license",
-            "driving license",
-            "dl",
-            "dl#",
-            "license number",
-            "licence",
-        ],
-        IdentifierType::Passport => &[
-            "passport",
-            "passport number",
-            "passport no",
-            "travel document",
-        ],
-        IdentifierType::Birthdate => &[
-            "date of birth",
-            "dob",
-            "birth date",
-            "birthday",
-            "born",
-            "birth",
-        ],
-        IdentifierType::IpAddress => &[
-            "ip address",
-            "ip addr",
-            "ip",
-            "source ip",
-            "destination ip",
-            "client ip",
-            "server ip",
-            "remote addr",
-            "host",
-        ],
-        IdentifierType::ApiKey => &[
-            "api key",
-            "api_key",
-            "apikey",
-            "api token",
-            "api secret",
-            "access key",
-            "secret key",
-            "auth token",
-            "authorization",
-            // Japanese
-            "apiキー",
-            "認証",
-            "トークン",
-            "秘密鍵",
-            // Chinese (Simplified)
-            "api密钥",
-            "认证",
-            "令牌",
-            "密钥",
-            // Chinese (Traditional)
-            "api密鑰",
-            "認證",
-            "密鑰",
-            // Korean
-            "api키",
-            "인증",
-            "토큰",
-            "비밀키",
-            // Arabic
-            "مفتاح api",
-            "رمز",
-            "مصادقة",
-            // Hindi
-            "एपीआई कुंजी",
-            "टोकन",
-            "प्रमाणीकरण",
-        ],
-        IdentifierType::AwsAccessKey => &[
-            "aws",
-            "aws_access_key",
-            "aws_secret",
-            "access key id",
-            "secret access key",
-            "iam",
-            "amazon web services",
-        ],
-        IdentifierType::PersonalName => &[
-            "name",
-            "full name",
-            "first name",
-            "last name",
-            "surname",
-            "given name",
-            "family name",
-            "patient name",
-            "customer name",
-        ],
-        IdentifierType::RoutingNumber => &[
-            "routing",
-            "routing number",
-            "aba",
-            "transit number",
-            "bank routing",
-        ],
-        IdentifierType::NamedLocation => &[
-            "live in",
-            "lives in",
-            "lived in",
-            "from",
-            "visiting",
-            "visit to",
-            "located in",
-            "located at",
-            "located near",
-            "address",
-            "addressed to",
-            "near",
-            "traveled to",
-            "travelled to",
-            "flew to",
-            "flying to",
-            "moving to",
-            "moved to",
-            "city of",
-            "country of",
-            "town of",
-            "village of",
-            "hometown",
-            "birthplace",
-            "born in",
-            "residing in",
-            "resides in",
-            "based in",
-            "headquartered in",
-            "stationed in",
-        ],
-        _ => &[],
-    }
+pub fn context_keywords(
+    entity_type: &IdentifierType,
+    language: KeywordLanguage,
+) -> &'static [&'static str] {
+    language
+        .keywords()
+        .iter()
+        .find(|(ty, _)| ty == entity_type)
+        .map_or(&[], |(_, keywords)| *keywords)
 }
 
 // ============================================================================
@@ -233,7 +54,7 @@ mod tests {
 
     #[test]
     fn test_ssn_keywords() {
-        let keywords = context_keywords(&IdentifierType::Ssn);
+        let keywords = context_keywords(&IdentifierType::Ssn, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"social security"));
         assert!(keywords.contains(&"ssn"));
@@ -241,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_credit_card_keywords() {
-        let keywords = context_keywords(&IdentifierType::CreditCard);
+        let keywords = context_keywords(&IdentifierType::CreditCard, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"credit card"));
         assert!(keywords.contains(&"card number"));
@@ -249,14 +70,14 @@ mod tests {
 
     #[test]
     fn test_email_keywords() {
-        let keywords = context_keywords(&IdentifierType::Email);
+        let keywords = context_keywords(&IdentifierType::Email, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"email"));
     }
 
     #[test]
     fn test_phone_keywords() {
-        let keywords = context_keywords(&IdentifierType::PhoneNumber);
+        let keywords = context_keywords(&IdentifierType::PhoneNumber, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"phone"));
         assert!(keywords.contains(&"mobile"));
@@ -264,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_bank_account_keywords() {
-        let keywords = context_keywords(&IdentifierType::BankAccount);
+        let keywords = context_keywords(&IdentifierType::BankAccount, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"bank account"));
         assert!(keywords.contains(&"iban"));
@@ -272,21 +93,21 @@ mod tests {
 
     #[test]
     fn test_driver_license_keywords() {
-        let keywords = context_keywords(&IdentifierType::DriverLicense);
+        let keywords = context_keywords(&IdentifierType::DriverLicense, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"driver license"));
     }
 
     #[test]
     fn test_passport_keywords() {
-        let keywords = context_keywords(&IdentifierType::Passport);
+        let keywords = context_keywords(&IdentifierType::Passport, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"passport"));
     }
 
     #[test]
     fn test_birthdate_keywords() {
-        let keywords = context_keywords(&IdentifierType::Birthdate);
+        let keywords = context_keywords(&IdentifierType::Birthdate, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"date of birth"));
         assert!(keywords.contains(&"dob"));
@@ -294,93 +115,139 @@ mod tests {
 
     #[test]
     fn test_ip_address_keywords() {
-        let keywords = context_keywords(&IdentifierType::IpAddress);
+        let keywords = context_keywords(&IdentifierType::IpAddress, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"ip address"));
     }
 
     #[test]
     fn test_api_key_keywords() {
-        let keywords = context_keywords(&IdentifierType::ApiKey);
+        let keywords = context_keywords(&IdentifierType::ApiKey, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"api key"));
     }
 
     #[test]
-    fn test_api_key_keywords_include_non_latin_scripts() {
-        let keywords = context_keywords(&IdentifierType::ApiKey);
-        // Spot-check one keyword per script family. Existing
-        // `test_all_keywords_are_lowercase` enforces the lowercase invariant
-        // across every entry.
-        assert!(keywords.contains(&"apiキー"), "Japanese api key missing");
-        assert!(keywords.contains(&"api密钥"), "Chinese Simplified missing");
-        assert!(keywords.contains(&"api密鑰"), "Chinese Traditional missing");
-        assert!(keywords.contains(&"api키"), "Korean missing");
-        assert!(keywords.contains(&"مفتاح api"), "Arabic missing");
-        assert!(keywords.contains(&"एपीआई कुंजी"), "Hindi missing");
+    fn test_api_key_keywords_resolve_per_language() {
+        // The non-Latin ApiKey keywords now live in their own language tables
+        // rather than being flat-appended to the English list. Spot-check one
+        // keyword per script family. `test_all_keywords_are_lowercase` enforces
+        // the lowercase invariant across every entry and language.
+        assert!(
+            context_keywords(&IdentifierType::ApiKey, KeywordLanguage::Ja).contains(&"apiキー"),
+            "Japanese api key missing"
+        );
+        assert!(
+            context_keywords(&IdentifierType::ApiKey, KeywordLanguage::ZhHans).contains(&"api密钥"),
+            "Chinese Simplified missing"
+        );
+        assert!(
+            context_keywords(&IdentifierType::ApiKey, KeywordLanguage::ZhHant).contains(&"api密鑰"),
+            "Chinese Traditional missing"
+        );
+        assert!(
+            context_keywords(&IdentifierType::ApiKey, KeywordLanguage::Ko).contains(&"api키"),
+            "Korean missing"
+        );
+        assert!(
+            context_keywords(&IdentifierType::ApiKey, KeywordLanguage::Ar).contains(&"مفتاح api"),
+            "Arabic missing"
+        );
+        assert!(
+            context_keywords(&IdentifierType::ApiKey, KeywordLanguage::Hi).contains(&"एपीआई कुंजी"),
+            "Hindi missing"
+        );
+    }
+
+    #[test]
+    fn test_api_key_english_excludes_non_latin() {
+        // The English table must no longer carry the non-Latin keywords.
+        let en = context_keywords(&IdentifierType::ApiKey, KeywordLanguage::En);
+        assert!(!en.contains(&"apiキー"));
+        assert!(!en.contains(&"api密钥"));
     }
 
     #[test]
     fn test_aws_keywords() {
-        let keywords = context_keywords(&IdentifierType::AwsAccessKey);
+        let keywords = context_keywords(&IdentifierType::AwsAccessKey, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"aws"));
     }
 
     #[test]
     fn test_personal_name_keywords() {
-        let keywords = context_keywords(&IdentifierType::PersonalName);
+        let keywords = context_keywords(&IdentifierType::PersonalName, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"name"));
     }
 
     #[test]
     fn test_routing_number_keywords() {
-        let keywords = context_keywords(&IdentifierType::RoutingNumber);
+        let keywords = context_keywords(&IdentifierType::RoutingNumber, KeywordLanguage::En);
         assert!(!keywords.is_empty());
         assert!(keywords.contains(&"routing"));
     }
 
     #[test]
+    fn test_low3_backfill_non_empty() {
+        // LOW-3: entities that previously returned `&[]` now have English
+        // context keywords.
+        let backfilled = [
+            IdentifierType::Iban,
+            IdentifierType::CryptoAddress,
+            IdentifierType::MacAddress,
+            IdentifierType::Url,
+            IdentifierType::Jwt,
+            IdentifierType::BearerToken,
+            IdentifierType::OAuthToken,
+            IdentifierType::SshKey,
+            IdentifierType::SessionId,
+            IdentifierType::Uuid,
+            IdentifierType::Username,
+            IdentifierType::Password,
+            IdentifierType::ConnectionString,
+            IdentifierType::HighEntropyString,
+            IdentifierType::OnePasswordToken,
+            IdentifierType::OnePasswordVaultRef,
+            IdentifierType::UrlWithCredentials,
+        ];
+        for ty in &backfilled {
+            assert!(
+                !context_keywords(ty, KeywordLanguage::En).is_empty(),
+                "LOW-3 backfill missing English keywords for {ty:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_unknown_type_returns_empty() {
-        let keywords = context_keywords(&IdentifierType::Unknown);
-        assert!(keywords.is_empty());
+        // Unknown resolves to an empty slice in every language.
+        for language in KeywordLanguage::all() {
+            assert!(context_keywords(&IdentifierType::Unknown, language).is_empty());
+        }
     }
 
     #[test]
     fn test_all_keywords_are_lowercase() {
-        let types_with_keywords = [
-            IdentifierType::Ssn,
-            IdentifierType::CreditCard,
-            IdentifierType::Email,
-            IdentifierType::PhoneNumber,
-            IdentifierType::BankAccount,
-            IdentifierType::DriverLicense,
-            IdentifierType::Passport,
-            IdentifierType::Birthdate,
-            IdentifierType::IpAddress,
-            IdentifierType::ApiKey,
-            IdentifierType::AwsAccessKey,
-            IdentifierType::PersonalName,
-            IdentifierType::RoutingNumber,
-        ];
-
-        for entity_type in &types_with_keywords {
-            for keyword in context_keywords(entity_type) {
-                assert_eq!(
-                    *keyword,
-                    keyword.to_lowercase(),
-                    "Keyword '{}' for {:?} is not lowercase",
-                    keyword,
-                    entity_type
-                );
+        // Walk every identifier type present in every language table and confirm
+        // the lowercase invariant holds across all scripts.
+        for language in KeywordLanguage::all() {
+            for (entity_type, keywords) in language.keywords() {
+                for keyword in *keywords {
+                    assert_eq!(
+                        *keyword,
+                        keyword.to_lowercase(),
+                        "Keyword '{keyword}' for {entity_type:?} ({language:?}) is not lowercase"
+                    );
+                }
             }
         }
     }
 
     #[test]
     fn test_minimum_entity_coverage() {
-        // Ensure at least 11 entity types have keywords (acceptance criteria)
+        // Ensure at least 11 entity types have English keywords (acceptance
+        // criteria from the original context-keyword work).
         let all_types = [
             IdentifierType::Ssn,
             IdentifierType::CreditCard,
@@ -399,13 +266,21 @@ mod tests {
 
         let covered = all_types
             .iter()
-            .filter(|t| !context_keywords(t).is_empty())
+            .filter(|t| !context_keywords(t, KeywordLanguage::En).is_empty())
             .count();
 
         assert!(
             covered >= 11,
-            "Expected at least 11 entity types with keywords, got {}",
-            covered
+            "Expected at least 11 entity types with keywords, got {covered}"
         );
+    }
+
+    #[test]
+    fn test_every_language_table_resolves() {
+        // Every KeywordLanguage variant must resolve to a (possibly empty)
+        // table without panicking.
+        for language in KeywordLanguage::all() {
+            let _ = language.keywords();
+        }
     }
 }

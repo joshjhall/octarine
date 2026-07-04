@@ -6,6 +6,7 @@
 //! - `luhn` - Luhn algorithm for credit card validation
 //! - `masking` - Masking and redaction strategies
 //! - `utils` - Common validation utilities
+//! - `keywords` - Per-language context keyword dictionaries
 //!
 //! ## Design Principles
 //!
@@ -13,10 +14,14 @@
 //! 2. **No Dependencies**: Only external crates (regex, etc.)
 //! 3. **Reusable**: Used by all domain modules
 
+pub(crate) mod keywords;
 pub(crate) mod luhn;
 pub(crate) mod masking;
 pub(crate) mod patterns;
 pub(crate) mod utils;
+
+// Re-export the language selector used by confidence scoring
+pub(crate) use keywords::KeywordLanguage;
 
 // Re-export commonly used utilities for sibling modules
 pub use luhn::{

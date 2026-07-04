@@ -37,7 +37,7 @@ use once_cell::sync::Lazy;
 use super::super::super::common::patterns::location::gazetteer::{
     AMBIGUOUS_PLACE_NAMES, CITIES, COUNTRIES,
 };
-use super::super::super::confidence::context_keywords;
+use super::super::super::confidence::{KeywordLanguage, context_keywords};
 use super::super::super::types::{DetectionConfidence, IdentifierMatch, IdentifierType};
 
 /// Maximum input length for ReDoS protection.
@@ -164,7 +164,7 @@ fn has_word_boundaries(bytes: &[u8], start: usize, end: usize) -> bool {
 /// byte panics, so a non-ASCII codepoint inside the window must not cause
 /// a split mid-codepoint.
 fn is_in_location_context(text: &str, match_start: usize, match_end: usize) -> bool {
-    let keywords = context_keywords(&IdentifierType::NamedLocation);
+    let keywords = context_keywords(&IdentifierType::NamedLocation, KeywordLanguage::En);
     if keywords.is_empty() {
         return false;
     }
