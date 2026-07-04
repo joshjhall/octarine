@@ -91,6 +91,8 @@ pub enum PiiType {
     Ein,
     /// US Individual Taxpayer Identification Number (area 9XX, IRS middle group 50-65/70-88/90-92/94-99)
     Itin,
+    /// US Medicare Beneficiary Identifier (11-char CMS layout, letters exclude S/L/O/I/B/Z; Medicare PHI)
+    Mbi,
     /// Tax ID (generic)
     TaxId,
     /// National ID number (non-US government identifiers)

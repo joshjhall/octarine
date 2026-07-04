@@ -42,7 +42,7 @@ pub(crate) use personal::{
     employee_id, finland_hetu, germany_id_card, germany_passport, germany_tax_id, india_aadhaar,
     india_gstin, india_pan, india_passport, india_vehicle_reg, india_voter_id,
     italy_driver_license, italy_fiscal_code, italy_identity_card, italy_passport, italy_vat,
-    korea_brn, korea_driver_license, korea_frn, korea_passport, korea_rrn, mexico_curp,
+    korea_brn, korea_driver_license, korea_frn, korea_passport, korea_rrn, mbi, mexico_curp,
     national_id, nigeria_bvn, nigeria_nin, nigeria_vehicle_reg, passport, personal_name,
     poland_pesel, singapore_nric, singapore_uen, spain_nie, spain_nif, ssn, student_id,
     sweden_orgnummer, sweden_personnummer, tax_id, thailand_tnin, turkey_license_plate,

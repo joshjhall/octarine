@@ -253,6 +253,16 @@ fn test_country_specific_government_classifications() {
         assert!(!pii.is_secret(), "{pii:?} not a secret");
     }
 
+    // MBI is a Medicare identifier: government domain, high-risk, and HIPAA
+    // PHI (mirrors UkNhs), but not GDPR/PCI/secret.
+    assert_eq!(PiiType::Mbi.domain(), "government");
+    assert!(PiiType::Mbi.is_high_risk());
+    assert!(PiiType::Mbi.is_hipaa_protected());
+    assert!(!PiiType::Mbi.is_gdpr_protected());
+    assert!(!PiiType::Mbi.is_pci_protected());
+    assert!(!PiiType::Mbi.is_secret());
+    assert_eq!(PiiType::Mbi.name(), "mbi");
+
     // Names follow the IdentifierType variant naming
     assert_eq!(PiiType::KoreaRrn.name(), "korea_rrn");
     assert_eq!(PiiType::ItalyFiscalCode.name(), "italy_fiscal_code");

@@ -54,6 +54,7 @@ mod test_patterns;
 mod thailand;
 mod turkey;
 mod uk;
+mod us_mbi;
 mod vehicle_id;
 
 crate::define_metrics! {

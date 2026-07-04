@@ -67,6 +67,7 @@ pub enum IdentifierType {
     Passport,
     Ein,   // Employer Identification Number (XX-XXXXXXX, IRS campus prefix)
     Itin, // US Individual Taxpayer Identification Number (area 9XX, IRS middle group 50-65/70-88/90-92/94-99)
+    Mbi, // US Medicare Beneficiary Identifier (11-char CMS layout C A AN N A AN N A A N N, letters exclude S/L/O/I/B/Z)
     TaxId, // Generic TIN — EIN and ITIN have their own variants
     NationalId,
     KoreaRrn,           // South Korea Resident Registration Number (citizens, gender 1-4)

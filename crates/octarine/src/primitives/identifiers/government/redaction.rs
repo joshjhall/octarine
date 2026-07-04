@@ -57,8 +57,9 @@
 //! ```
 
 use super::sanitization::{
-    DriverLicenseRedactionStrategy, NationalIdRedactionStrategy, PassportRedactionStrategy,
-    SsnRedactionStrategy, TaxIdRedactionStrategy, VehicleIdRedactionStrategy,
+    DriverLicenseRedactionStrategy, MbiRedactionStrategy, NationalIdRedactionStrategy,
+    PassportRedactionStrategy, SsnRedactionStrategy, TaxIdRedactionStrategy,
+    VehicleIdRedactionStrategy,
 };
 
 /// Generic redaction policy for text scanning
@@ -131,6 +132,17 @@ impl TextRedactionPolicy {
             Self::Partial => NationalIdRedactionStrategy::LastFour,
             Self::Complete => NationalIdRedactionStrategy::Token,
             Self::Anonymous => NationalIdRedactionStrategy::Anonymous,
+        }
+    }
+
+    /// Convert policy to MBI redaction strategy
+    #[must_use]
+    pub const fn to_mbi_strategy(self) -> MbiRedactionStrategy {
+        match self {
+            Self::Skip => MbiRedactionStrategy::Skip,
+            Self::Partial => MbiRedactionStrategy::LastFour,
+            Self::Complete => MbiRedactionStrategy::Token,
+            Self::Anonymous => MbiRedactionStrategy::Anonymous,
         }
     }
 
@@ -254,6 +266,26 @@ mod tests {
         assert_eq!(
             TextRedactionPolicy::Anonymous.to_national_id_strategy(),
             NationalIdRedactionStrategy::Anonymous
+        );
+    }
+
+    #[test]
+    fn test_text_policy_to_mbi_strategy() {
+        assert_eq!(
+            TextRedactionPolicy::Skip.to_mbi_strategy(),
+            MbiRedactionStrategy::Skip
+        );
+        assert_eq!(
+            TextRedactionPolicy::Partial.to_mbi_strategy(),
+            MbiRedactionStrategy::LastFour
+        );
+        assert_eq!(
+            TextRedactionPolicy::Complete.to_mbi_strategy(),
+            MbiRedactionStrategy::Token
+        );
+        assert_eq!(
+            TextRedactionPolicy::Anonymous.to_mbi_strategy(),
+            MbiRedactionStrategy::Anonymous
         );
     }
 
