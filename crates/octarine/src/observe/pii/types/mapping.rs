@@ -120,6 +120,9 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::UkDrivingLicence => Self::UkDrivingLicence,
             IdentifierType::SwedenPersonnummer => Self::SwedenPersonnummer,
             IdentifierType::SwedenOrgnummer => Self::SwedenOrgnummer,
+            IdentifierType::GermanyTaxId => Self::GermanyTaxId,
+            IdentifierType::GermanyIdCard => Self::GermanyIdCard,
+            IdentifierType::GermanyPassport => Self::GermanyPassport,
 
             // Organizational
             IdentifierType::EmployeeId => Self::EmployeeId,

@@ -209,7 +209,10 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::UkPassport
             | PiiType::UkDrivingLicence
             | PiiType::SwedenPersonnummer
-            | PiiType::SwedenOrgnummer => {
+            | PiiType::SwedenOrgnummer
+            | PiiType::GermanyTaxId
+            | PiiType::GermanyIdCard
+            | PiiType::GermanyPassport => {
                 // Generic government ID redaction routes through
                 // redact_all_government_ids_in_text_with_policy, which already
                 // covers all country-specific finders.

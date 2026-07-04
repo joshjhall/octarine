@@ -277,6 +277,18 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             GovernmentIdentifierBuilder::find_sweden_orgnummers_in_text,
             PiiType::SwedenOrgnummer,
         ),
+        (
+            GovernmentIdentifierBuilder::find_germany_tax_ids_in_text,
+            PiiType::GermanyTaxId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_germany_id_cards_in_text,
+            PiiType::GermanyIdCard,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_germany_passports_in_text,
+            PiiType::GermanyPassport,
+        ),
     ];
 
     let government = GovernmentIdentifierBuilder::new();
