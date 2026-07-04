@@ -37,7 +37,7 @@ use std::time::{Duration, Instant};
 use sha1::{Digest, Sha1};
 
 use crate::observe;
-use crate::primitives::types::Problem;
+use crate::observe::Problem;
 
 // ============================================================================
 // Configuration

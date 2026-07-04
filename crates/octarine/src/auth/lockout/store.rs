@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::Duration;
 
+use crate::observe::Problem;
 use crate::primitives::auth::lockout::LockoutStatus;
-use crate::primitives::types::Problem;
 
 // ============================================================================
 // Lockout Store Trait

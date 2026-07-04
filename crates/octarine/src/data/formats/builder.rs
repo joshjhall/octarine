@@ -7,10 +7,10 @@ use std::time::Instant;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 
+use crate::observe::Result;
 use crate::observe::metrics::record;
 use crate::observe::{debug, warn};
 use crate::primitives::data::formats::{FormatBuilder as PrimBuilder, FormatType, XmlDocument};
-use crate::primitives::types::Result;
 
 crate::define_metrics! {
     parse_ms => "data.formats.parse_ms",

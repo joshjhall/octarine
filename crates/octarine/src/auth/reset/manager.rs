@@ -3,10 +3,10 @@
 //! Provides password reset operations with audit logging for ASVS V2.5 compliance.
 
 use crate::observe;
+use crate::observe::Problem;
 use crate::primitives::auth::reset::{
     ResetConfig, ResetToken, generate_reset_token, validate_rate_limit, validate_reset_token,
 };
-use crate::primitives::types::Problem;
 
 use super::store::ResetTokenStore;
 

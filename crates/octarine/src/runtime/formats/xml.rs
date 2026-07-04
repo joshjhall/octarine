@@ -4,10 +4,10 @@
 
 use std::path::Path;
 
+use crate::observe::Result;
 use crate::observe::{debug, info};
 use crate::primitives::data::formats::{FormatBuilder, XmlDocument};
 use crate::primitives::security::formats::{FormatSecurityBuilder, XmlPolicy};
-use crate::primitives::types::Result;
 
 /// Secure XML reader with XXE prevention
 ///

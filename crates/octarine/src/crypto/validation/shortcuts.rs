@@ -3,7 +3,7 @@
 //! Convenience functions for common crypto validation operations.
 
 use super::{CryptoPolicy, KeyType, SignatureAlgorithm};
-use crate::primitives::types::Problem;
+use crate::observe::Problem;
 
 #[cfg(feature = "crypto-validation")]
 use super::CryptoAuditResult;

@@ -5,8 +5,8 @@
 use std::sync::Arc;
 
 use crate::observe;
+use crate::observe::Problem;
 use crate::primitives::auth::session::{Session, SessionBinding, SessionConfig, SessionId};
-use crate::primitives::types::Problem;
 
 use super::store::SessionStore;
 

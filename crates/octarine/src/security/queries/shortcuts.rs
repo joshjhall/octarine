@@ -4,7 +4,7 @@
 //! These wrap the QueryBuilder for simple use cases.
 
 use super::{GraphqlAnalysis, QueryBuilder, QueryThreat, QueryType};
-use crate::primitives::types::Problem;
+use crate::observe::Problem;
 
 // ============================================================================
 // SQL Shortcuts

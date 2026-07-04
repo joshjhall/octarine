@@ -4,11 +4,11 @@
 
 use crate::crypto::secrets::{Secret, SecretString};
 use crate::observe;
+use crate::observe::Problem;
 use crate::primitives::auth::remember::{
     RememberConfig, RememberToken, RememberTokenPair, generate_remember_token, parse_cookie_value,
     validate_remember_token,
 };
-use crate::primitives::types::Problem;
 
 use super::store::RememberTokenStore;
 

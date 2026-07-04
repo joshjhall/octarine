@@ -5,10 +5,10 @@
 use std::sync::Arc;
 
 use crate::observe;
+use crate::observe::Problem;
 use crate::primitives::auth::lockout::{
     LockoutConfig, LockoutDecision, LockoutStatus, calculate_backoff_duration, evaluate_lockout,
 };
-use crate::primitives::types::Problem;
 
 use super::store::LockoutStore;
 

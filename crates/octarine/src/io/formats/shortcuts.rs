@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
+use crate::observe::Result;
 use crate::primitives::data::formats::FormatType;
-use crate::primitives::types::Result;
 
 use super::{FormatIoBuilder, ReadResult};
 

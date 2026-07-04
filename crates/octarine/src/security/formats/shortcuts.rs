@@ -2,8 +2,8 @@
 //!
 //! Convenience functions for common format security operations.
 
+use crate::observe::Result;
 use crate::primitives::data::formats::FormatType;
-use crate::primitives::types::Result;
 
 use super::{FormatSecurityBuilder, FormatThreat, JsonPolicy, XmlPolicy, YamlPolicy};
 

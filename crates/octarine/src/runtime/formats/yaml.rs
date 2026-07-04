@@ -6,10 +6,10 @@ use std::path::Path;
 
 use serde_yaml::Value as YamlValue;
 
+use crate::observe::Result;
 use crate::observe::{debug, info};
 use crate::primitives::data::formats::FormatBuilder;
 use crate::primitives::security::formats::{FormatSecurityBuilder, YamlPolicy};
-use crate::primitives::types::Result;
 
 /// Secure YAML reader with code execution prevention
 ///

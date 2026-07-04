@@ -4,12 +4,12 @@
 
 use std::path::Path;
 
+use crate::observe::Result;
 use crate::observe::{debug, warn};
 use crate::primitives::data::formats::FormatType;
 use crate::primitives::io::formats::{
     FormatIoBuilder as PrimBuilder, FormatReadOptions, FormatWriteOptions, ReadResult,
 };
-use crate::primitives::types::Result;
 
 /// Builder for format-aware I/O operations with observability
 ///
