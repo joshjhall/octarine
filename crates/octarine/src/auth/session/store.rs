@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use crate::observe::Problem;
 use crate::primitives::auth::session::{Session, SessionId};
-use crate::primitives::types::Problem;
 
 // ============================================================================
 // Session Store Trait

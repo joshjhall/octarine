@@ -5,8 +5,8 @@
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 
+use crate::observe::Result;
 use crate::primitives::data::formats::{FormatType, XmlDocument};
-use crate::primitives::types::Result;
 
 use super::FormatBuilder;
 

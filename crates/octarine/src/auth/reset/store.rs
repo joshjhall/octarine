@@ -7,8 +7,8 @@ use std::sync::RwLock;
 use std::time::{Duration, Instant};
 use zeroize::Zeroize;
 
+use crate::observe::Problem;
 use crate::primitives::auth::reset::ResetToken;
-use crate::primitives::types::Problem;
 
 // ============================================================================
 // Reset Token Store Trait

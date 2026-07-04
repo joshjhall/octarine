@@ -6,10 +6,10 @@ use std::path::Path;
 
 use serde_json::Value as JsonValue;
 
+use crate::observe::Result;
 use crate::observe::{debug, info};
 use crate::primitives::data::formats::FormatBuilder;
 use crate::primitives::security::formats::{FormatSecurityBuilder, JsonPolicy};
-use crate::primitives::types::Result;
 
 /// Secure JSON reader with policy enforcement
 ///

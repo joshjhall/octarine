@@ -26,8 +26,8 @@ mod hibp;
 use std::time::Instant;
 
 use crate::observe;
+use crate::observe::Problem;
 use crate::primitives::auth::password as prim;
-use crate::primitives::types::Problem;
 
 // Re-export types from primitives
 pub use prim::{PasswordPolicy, PasswordPolicyBuilder, PasswordPolicyViolation, PasswordStrength};

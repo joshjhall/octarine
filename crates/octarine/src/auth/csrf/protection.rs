@@ -3,10 +3,10 @@
 //! Provides CSRF protection operations with audit logging.
 
 use crate::observe;
+use crate::observe::Problem;
 use crate::primitives::auth::csrf::{
     CsrfConfig, CsrfToken, generate_csrf_token, tokens_match, validate_csrf_token,
 };
-use crate::primitives::types::Problem;
 
 // ============================================================================
 // CSRF Protection

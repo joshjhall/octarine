@@ -4,13 +4,13 @@
 
 use std::time::Instant;
 
+use crate::observe::Result;
 use crate::observe::metrics::{increment_by, record};
 use crate::observe::{debug, warn};
 use crate::primitives::data::formats::FormatType;
 use crate::primitives::security::formats::{
     FormatSecurityBuilder as PrimBuilder, FormatThreat, JsonPolicy, XmlPolicy, YamlPolicy,
 };
-use crate::primitives::types::Result;
 
 crate::define_metrics! {
     validate_ms => "security.formats.validate_ms",

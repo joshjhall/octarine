@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use crate::observe::Problem;
 use crate::primitives::auth::remember::RememberToken;
-use crate::primitives::types::Problem;
 
 // ============================================================================
 // Remember Token Store Trait

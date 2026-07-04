@@ -5,12 +5,12 @@
 use std::time::Instant;
 
 use crate::observe;
+use crate::observe::Problem;
 use crate::observe::metrics::{increment_by, record};
 use crate::primitives::security::queries::{
     GraphqlAnalysis, GraphqlConfig, GraphqlSchema, QuerySecurityBuilder as PrimitiveBuilder,
     QueryThreat, QueryType,
 };
-use crate::primitives::types::Problem;
 
 crate::define_metrics! {
     validate_ms => "security.queries.validate_ms",

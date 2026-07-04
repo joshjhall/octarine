@@ -5,8 +5,8 @@
 use std::fmt::Write;
 
 use super::DefaultLabels;
+use crate::observe::Problem;
 use crate::observe::metrics::{CounterSnapshot, GaugeSnapshot, HistogramSnapshot, MetricSnapshot};
-use crate::primitives::types::Problem;
 
 /// Result type for Prometheus rendering operations.
 pub type Result<T> = std::result::Result<T, Problem>;
