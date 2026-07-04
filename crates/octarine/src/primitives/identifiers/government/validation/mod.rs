@@ -42,6 +42,7 @@ mod cache;
 mod driver_license;
 mod ein;
 mod finland;
+mod germany;
 mod india;
 mod italy;
 mod itin;
@@ -104,6 +105,13 @@ pub use finland::{
 // Re-export Poland functions
 pub use poland::{
     is_test_poland_pesel, validate_poland_pesel, validate_poland_pesel_with_checksum,
+};
+
+// Re-export Germany functions
+pub use germany::{
+    is_test_germany_tax_id, validate_germany_id_card, validate_germany_id_card_with_checksum,
+    validate_germany_passport, validate_germany_passport_with_checksum, validate_germany_tax_id,
+    validate_germany_tax_id_with_checksum,
 };
 
 // Re-export Italy functions

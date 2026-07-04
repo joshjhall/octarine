@@ -47,6 +47,7 @@ mod australia;
 mod brazil;
 mod driver_license;
 mod europe;
+mod germany;
 mod helpers;
 mod india;
 mod itin;
@@ -84,6 +85,10 @@ pub use europe::{
     find_uk_nhs_in_text, find_uk_passports_in_text, is_finland_hetu, is_italy_driver_license,
     is_italy_fiscal_code, is_italy_identity_card, is_italy_passport, is_italy_vat, is_poland_pesel,
     is_spain_nie, is_spain_nif, is_uk_driving_licence, is_uk_nhs, is_uk_passport,
+};
+pub use germany::{
+    find_germany_id_cards_in_text, find_germany_passports_in_text, find_germany_tax_ids_in_text,
+    is_germany_id_card, is_germany_passport, is_germany_tax_id,
 };
 pub use india::{
     find_india_aadhaars_in_text, find_india_gstins_in_text, find_india_pans_in_text,
@@ -211,6 +216,14 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::SwedenPersonnummer)
     } else if is_sweden_orgnummer(value) {
         Some(IdentifierType::SwedenOrgnummer)
+    } else if is_germany_tax_id(value) {
+        // Checksum + structure verified, so a bare 11-digit value only
+        // reaches here if it is a genuine Steuer-IdNr.
+        Some(IdentifierType::GermanyTaxId)
+    } else if is_germany_id_card(value) {
+        Some(IdentifierType::GermanyIdCard)
+    } else if is_germany_passport(value) {
+        Some(IdentifierType::GermanyPassport)
     } else if is_italy_fiscal_code(value) {
         Some(IdentifierType::ItalyFiscalCode)
     } else if is_spain_nif(value) {
@@ -294,6 +307,9 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_poland_pesels_in_text(text));
     all_matches.extend(find_sweden_personnummers_in_text(text));
     all_matches.extend(find_sweden_orgnummers_in_text(text));
+    all_matches.extend(find_germany_tax_ids_in_text(text));
+    all_matches.extend(find_germany_id_cards_in_text(text));
+    all_matches.extend(find_germany_passports_in_text(text));
     all_matches.extend(find_italy_fiscal_codes_in_text(text));
     all_matches.extend(find_italy_vats_in_text(text));
     all_matches.extend(find_italy_passports_in_text(text));

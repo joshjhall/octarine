@@ -490,6 +490,18 @@ impl StreamingScanner {
                 GovernmentIdentifierBuilder::find_sweden_orgnummers_in_text,
             ),
             (
+                |t| matches!(t, IdentifierType::GermanyTaxId),
+                GovernmentIdentifierBuilder::find_germany_tax_ids_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::GermanyIdCard),
+                GovernmentIdentifierBuilder::find_germany_id_cards_in_text,
+            ),
+            (
+                |t| matches!(t, IdentifierType::GermanyPassport),
+                GovernmentIdentifierBuilder::find_germany_passports_in_text,
+            ),
+            (
                 |t| matches!(t, IdentifierType::VehicleId),
                 GovernmentIdentifierBuilder::find_vehicle_ids_in_text,
             ),

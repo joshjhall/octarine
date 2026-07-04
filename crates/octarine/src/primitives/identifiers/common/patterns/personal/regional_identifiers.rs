@@ -762,6 +762,110 @@ pub(crate) mod sweden_orgnummer {
     }
 }
 
+/// Germany Steuer-IdNr (tax identification number) patterns — 11 digits
+///
+/// Format: 11 bare digits (may be grouped `NN NNN NNN NNN`). The first 10
+/// digits carry an ISO 7064 mod-11,10 check digit in position 11, plus the
+/// structural "exactly one repeated digit" rule enforced by
+/// `is_germany_tax_id` / `validate_germany_tax_id`. A bare 11-digit run
+/// collides with Nigeria NIN/BVN and Italy VAT, so text scanning is
+/// label-anchored only.
+pub(crate) mod germany_tax_id {
+    use super::*;
+
+    /// Bare 11-digit shape (optionally space-grouped as `NN NNN NNN NNN`).
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b\d{2}[ ]?\d{3}[ ]?\d{3}[ ]?\d{3}\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Steuer-IdNr with explicit label (German + English aliases).
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:steuer[\s-]?identifikationsnummer|steuer[\s-]?id(?:nr)?|steuerliche[\s-]?identifikationsnummer|idnr|tax[\s-]?id(?:entification)?(?:[\s-]?number)?)[\s:#-]*((?:\d[ ]?){11})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — the bare 11-digit shape collides with Nigeria
+    /// NIN/BVN and Italy VAT, so scanning requires surrounding context.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Germany Personalausweis (nPA / national identity card) patterns
+///
+/// Format: 9 alphanumeric document-number characters + ICAO Doc 9303 check
+/// digit. The document-number alphabet excludes `A B D E I O Q S U`
+/// (letters that could be confused with digits or each other). The ICAO
+/// check digit is verified by `validate_germany_id_card` via the shared
+/// `icao_doc_9303` helper.
+pub(crate) mod germany_id_card {
+    use super::*;
+
+    /// Shape: 9 chars from the reduced alphabet `[C-HJ-NPR-TV-Z0-9]` + 1
+    /// check digit. (Excludes A,B,D,E,I,O,Q,S,U per German nPA rules.)
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[C-HJ-NPR-TV-Z0-9]{9}\d\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// nPA with explicit label (German + English aliases).
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:personalausweis(?:nummer)?|ausweisnummer|npa|(?:german[\s-]?)?id[\s-]?card(?:[\s-]?number|[\s-]?no\.?)?)[\s:#-]*([C-HJ-NPR-TV-Z0-9]{9}\d)\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — the bare 10-char alphanumeric shape collides
+    /// with the German passport and other document numbers.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
+/// Germany Reisepass (passport) patterns
+///
+/// Same ICAO Doc 9303 structure and reduced alphabet as the nPA: 9
+/// document-number characters + 1 check digit, alphabet excluding
+/// `A B D E I O Q S U`. Verified by `validate_germany_passport` via the
+/// shared `icao_doc_9303` helper.
+pub(crate) mod germany_passport {
+    use super::*;
+
+    /// Shape: 9 chars from the reduced alphabet `[C-HJ-NPR-TV-Z0-9]` + 1
+    /// check digit.
+    pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?i)\b[C-HJ-NPR-TV-Z0-9]{9}\d\b").expect("BUG: Invalid regex pattern")
+    });
+
+    /// Reisepass with explicit label (German + English aliases).
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:reisepass(?:nummer)?|passnummer|(?:german[\s-]?)?passport(?:[\s-]?number|[\s-]?no\.?)?)[\s:#-]*([C-HJ-NPR-TV-Z0-9]{9}\d)\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — the bare 10-char alphanumeric shape collides
+    /// with the German nPA and other document numbers.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
 pub(crate) mod personal_name {
     use super::*;
 

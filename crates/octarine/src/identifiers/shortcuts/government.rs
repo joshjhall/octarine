@@ -576,6 +576,100 @@ pub fn validate_sweden_orgnummer_with_checksum(value: &str) -> Result<(), Proble
     GovernmentBuilder::new().validate_sweden_orgnummer_with_checksum(value)
 }
 
+// ============================================================================
+// Germany — Steuer-IdNr, Personalausweis (nPA), Reisepass
+// ============================================================================
+
+/// Check if value is a valid German Steuer-IdNr (tax ID)
+#[must_use]
+pub fn is_germany_tax_id(value: &str) -> bool {
+    GovernmentBuilder::new().is_germany_tax_id(value)
+}
+
+/// Find all German Steuer-IdNr mentions in text (label-anchored only)
+#[must_use]
+pub fn find_germany_tax_ids(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_germany_tax_ids_in_text(text)
+}
+
+/// Validate a German Steuer-IdNr format (structural + checksum rules)
+///
+/// # Errors
+///
+/// Returns `Problem` if the value is not a valid Steuer-IdNr.
+pub fn validate_germany_tax_id(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_germany_tax_id(value)
+}
+
+/// Validate a German Steuer-IdNr with ISO 7064 mod-11,10 checksum verification
+///
+/// # Errors
+///
+/// Returns `Problem` if the format, structural rule, or checksum is invalid.
+pub fn validate_germany_tax_id_with_checksum(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_germany_tax_id_with_checksum(value)
+}
+
+/// Check if value is a valid German Personalausweis (nPA) number
+#[must_use]
+pub fn is_germany_id_card(value: &str) -> bool {
+    GovernmentBuilder::new().is_germany_id_card(value)
+}
+
+/// Find all German Personalausweis mentions in text (label-anchored only)
+#[must_use]
+pub fn find_germany_id_cards(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_germany_id_cards_in_text(text)
+}
+
+/// Validate a German Personalausweis format
+///
+/// # Errors
+///
+/// Returns `Problem` if the value is not a valid nPA number.
+pub fn validate_germany_id_card(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_germany_id_card(value)
+}
+
+/// Validate a German Personalausweis with ICAO Doc 9303 check-digit verification
+///
+/// # Errors
+///
+/// Returns `Problem` if the format or check digit is invalid.
+pub fn validate_germany_id_card_with_checksum(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_germany_id_card_with_checksum(value)
+}
+
+/// Check if value is a valid German Reisepass (passport) number
+#[must_use]
+pub fn is_germany_passport(value: &str) -> bool {
+    GovernmentBuilder::new().is_germany_passport(value)
+}
+
+/// Find all German Reisepass mentions in text (label-anchored only)
+#[must_use]
+pub fn find_germany_passports(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_germany_passports_in_text(text)
+}
+
+/// Validate a German Reisepass format
+///
+/// # Errors
+///
+/// Returns `Problem` if the value is not a valid passport number.
+pub fn validate_germany_passport(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_germany_passport(value)
+}
+
+/// Validate a German Reisepass with ICAO Doc 9303 check-digit verification
+///
+/// # Errors
+///
+/// Returns `Problem` if the format or check digit is invalid.
+pub fn validate_germany_passport_with_checksum(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_germany_passport_with_checksum(value)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -751,5 +845,41 @@ mod tests {
         // Label-gated text scanning.
         assert!(!find_sweden_orgnummers("orgnr: 556016-0680").is_empty());
         assert!(find_sweden_orgnummers("556016-0680").is_empty());
+    }
+
+    #[test]
+    fn test_germany_tax_id_shortcuts() {
+        // 10002345676: valid ISO 7064 mod-11,10 checksum + structural rule.
+        assert!(is_germany_tax_id("10002345676"));
+        assert!(validate_germany_tax_id("10002345676").is_ok());
+        assert!(validate_germany_tax_id_with_checksum("10002345676").is_ok());
+        assert!(validate_germany_tax_id("").is_err());
+        // Tampered check digit rejected.
+        assert!(validate_germany_tax_id_with_checksum("10002345675").is_err());
+        // Label-gated text scanning — bare 11 digits collide with other IDs.
+        assert!(!find_germany_tax_ids("Steuer-IdNr: 10002345676").is_empty());
+        assert!(find_germany_tax_ids("10002345676").is_empty());
+    }
+
+    #[test]
+    fn test_germany_id_card_shortcuts() {
+        assert!(is_germany_id_card("CH20064148"));
+        assert!(validate_germany_id_card("CH20064148").is_ok());
+        assert!(validate_germany_id_card_with_checksum("CH20064148").is_ok());
+        assert!(validate_germany_id_card("").is_err());
+        // Tampered check digit rejected.
+        assert!(validate_germany_id_card_with_checksum("CH20064149").is_err());
+        assert!(!find_germany_id_cards("Personalausweis CH20064148").is_empty());
+    }
+
+    #[test]
+    fn test_germany_passport_shortcuts() {
+        assert!(is_germany_passport("T220001293"));
+        assert!(validate_germany_passport("T220001293").is_ok());
+        assert!(validate_germany_passport_with_checksum("T220001293").is_ok());
+        assert!(validate_germany_passport("").is_err());
+        // Tampered check digit rejected.
+        assert!(validate_germany_passport_with_checksum("T220001294").is_err());
+        assert!(!find_germany_passports("Reisepass T220001293").is_empty());
     }
 }

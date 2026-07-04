@@ -177,6 +177,12 @@ pub enum PiiType {
     SwedenPersonnummer,
     /// Swedish organisationsnummer (company identity number)
     SwedenOrgnummer,
+    /// German Steuer-IdNr (lifelong personal tax identification number)
+    GermanyTaxId,
+    /// German Personalausweis / nPA (national identity card)
+    GermanyIdCard,
+    /// German Reisepass (passport)
+    GermanyPassport,
 
     // =========================================================================
     // Medical Domain (PHI - Protected Health Information)

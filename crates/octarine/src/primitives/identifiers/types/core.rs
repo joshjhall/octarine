@@ -110,6 +110,9 @@ pub enum IdentifierType {
     UkDrivingLicence,   // UK DVLA Driving Licence (16-char DVLA structural format)
     SwedenPersonnummer, // Swedish personal identity number (YYMMDD/YYYYMMDD + NNN + Luhn)
     SwedenOrgnummer,    // Swedish organisationsnummer (10 digits, third digit >= 2, Luhn)
+    GermanyTaxId,       // German Steuer-IdNr (11 digits, ISO 7064 mod-11,10 + structural rule)
+    GermanyIdCard,      // German Personalausweis / nPA (ICAO Doc 9303 check digit)
+    GermanyPassport,    // German Reisepass (ICAO Doc 9303 check digit)
 
     // Organizational identifiers
     EmployeeId,

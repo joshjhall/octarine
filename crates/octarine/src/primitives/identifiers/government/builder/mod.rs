@@ -58,6 +58,7 @@ mod brazil;
 mod cache;
 mod driver_license;
 mod europe;
+mod germany;
 mod india;
 mod korea;
 mod mexico;

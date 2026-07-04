@@ -31,6 +31,7 @@ impl PiiType {
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
             Self::SwedenPersonnummer | Self::SwedenOrgnummer |
+            Self::GermanyTaxId | Self::GermanyIdCard | Self::GermanyPassport |
             // Medical (HIPAA)
             Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
             // Biometric (irreplaceable)
@@ -78,6 +79,10 @@ impl PiiType {
             Self::SpainNif | Self::SpainNie | Self::UkNi |
             Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
             Self::SwedenPersonnummer | Self::SwedenOrgnummer |
+            // German IDs — Steuer-IdNr protected under §§ 139a-139e AO + DSGVO,
+            // nPA/Reisepass under BDSG. (Health insurance / KVNR is Art. 9
+            // health data and lands with the follow-up PR2.)
+            Self::GermanyTaxId | Self::GermanyIdCard | Self::GermanyPassport |
             // Financial — IBAN identifies an EU account holder (Recital 30 /
             // Art. 4(1)). Crypto addresses are pseudonymous by design and are
             // excluded unless linked to an identifiable person upstream.
