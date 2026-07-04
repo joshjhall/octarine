@@ -13,3 +13,4 @@ pub use self::builder::ConfidenceBuilder;
 pub use self::context::ContextAnalyzer;
 pub use self::keywords::context_keywords;
 pub use self::types::ContextConfig;
+pub use crate::primitives::identifiers::common::keywords::KeywordLanguage;

@@ -1,0 +1,365 @@
+//! English (`en`) context keywords for identifier confidence scoring.
+//!
+//! Holds the base English keyword dictionaries for every identifier type that
+//! has context coverage, including the 17 entities backfilled per LOW-3 of the
+//! Presidio gap analysis. Keywords are lowercase — the analyzer lowercases the
+//! text window before matching (enforced by `test_all_keywords_are_lowercase`).
+
+use crate::primitives::identifiers::IdentifierType;
+
+/// English context keyword table, keyed by identifier type.
+pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] = &[
+    (
+        IdentifierType::Ssn,
+        &[
+            "social security",
+            "ssn",
+            "ss#",
+            "social security number",
+            "tax id",
+            "taxpayer",
+            "itin",
+            "individual taxpayer",
+        ],
+    ),
+    (
+        IdentifierType::CreditCard,
+        &[
+            "credit card",
+            "card number",
+            "card no",
+            "card #",
+            "cc#",
+            "cc number",
+            "debit card",
+            "visa",
+            "mastercard",
+            "amex",
+            "american express",
+            "payment card",
+            "pan",
+        ],
+    ),
+    (
+        IdentifierType::Email,
+        &[
+            "email",
+            "e-mail",
+            "mail",
+            "email address",
+            "contact",
+            "send to",
+            "reply to",
+        ],
+    ),
+    (
+        IdentifierType::PhoneNumber,
+        &[
+            "phone",
+            "telephone",
+            "tel",
+            "mobile",
+            "cell",
+            "fax",
+            "call",
+            "phone number",
+            "contact number",
+        ],
+    ),
+    (
+        IdentifierType::BankAccount,
+        &[
+            "bank account",
+            "account number",
+            "account no",
+            "acct",
+            "iban",
+            "routing",
+            "aba",
+            "swift",
+            "bic",
+            "checking",
+            "savings",
+        ],
+    ),
+    (
+        IdentifierType::DriverLicense,
+        &[
+            "driver license",
+            "driver's license",
+            "driving license",
+            "dl",
+            "dl#",
+            "license number",
+            "licence",
+        ],
+    ),
+    (
+        IdentifierType::Passport,
+        &[
+            "passport",
+            "passport number",
+            "passport no",
+            "travel document",
+        ],
+    ),
+    (
+        IdentifierType::Birthdate,
+        &[
+            "date of birth",
+            "dob",
+            "birth date",
+            "birthday",
+            "born",
+            "birth",
+        ],
+    ),
+    (
+        IdentifierType::IpAddress,
+        &[
+            "ip address",
+            "ip addr",
+            "ip",
+            "source ip",
+            "destination ip",
+            "client ip",
+            "server ip",
+            "remote addr",
+            "host",
+        ],
+    ),
+    (
+        IdentifierType::ApiKey,
+        &[
+            "api key",
+            "api_key",
+            "apikey",
+            "api token",
+            "api secret",
+            "access key",
+            "secret key",
+            "auth token",
+            "authorization",
+        ],
+    ),
+    (
+        IdentifierType::AwsAccessKey,
+        &[
+            "aws",
+            "aws_access_key",
+            "aws_secret",
+            "access key id",
+            "secret access key",
+            "iam",
+            "amazon web services",
+        ],
+    ),
+    (
+        IdentifierType::PersonalName,
+        &[
+            "name",
+            "full name",
+            "first name",
+            "last name",
+            "surname",
+            "given name",
+            "family name",
+            "patient name",
+            "customer name",
+        ],
+    ),
+    (
+        IdentifierType::RoutingNumber,
+        &[
+            "routing",
+            "routing number",
+            "aba",
+            "transit number",
+            "bank routing",
+        ],
+    ),
+    (
+        IdentifierType::NamedLocation,
+        &[
+            "live in",
+            "lives in",
+            "lived in",
+            "from",
+            "visiting",
+            "visit to",
+            "located in",
+            "located at",
+            "located near",
+            "address",
+            "addressed to",
+            "near",
+            "traveled to",
+            "travelled to",
+            "flew to",
+            "flying to",
+            "moving to",
+            "moved to",
+            "city of",
+            "country of",
+            "town of",
+            "village of",
+            "hometown",
+            "birthplace",
+            "born in",
+            "residing in",
+            "resides in",
+            "based in",
+            "headquartered in",
+            "stationed in",
+        ],
+    ),
+    // ------------------------------------------------------------------------
+    // LOW-3 backfill: identifiers that previously returned `&[]`.
+    // ------------------------------------------------------------------------
+    (
+        IdentifierType::Iban,
+        &[
+            "iban",
+            "international bank account",
+            "bank account number",
+            "account number",
+        ],
+    ),
+    (
+        IdentifierType::CryptoAddress,
+        &[
+            "wallet",
+            "wallet address",
+            "crypto address",
+            "bitcoin",
+            "ethereum",
+            "btc",
+            "eth",
+            "blockchain",
+        ],
+    ),
+    (
+        IdentifierType::MacAddress,
+        &[
+            "mac address",
+            "mac addr",
+            "hardware address",
+            "physical address",
+            "ethernet address",
+        ],
+    ),
+    (
+        IdentifierType::Url,
+        &[
+            "url",
+            "link",
+            "website",
+            "web address",
+            "http",
+            "https",
+            "endpoint",
+        ],
+    ),
+    (
+        IdentifierType::Jwt,
+        &[
+            "jwt",
+            "json web token",
+            "bearer",
+            "token",
+            "access token",
+            "id token",
+        ],
+    ),
+    (
+        IdentifierType::BearerToken,
+        &[
+            "bearer",
+            "bearer token",
+            "authorization",
+            "auth token",
+            "access token",
+        ],
+    ),
+    (
+        IdentifierType::OAuthToken,
+        &[
+            "oauth",
+            "oauth token",
+            "access token",
+            "refresh token",
+            "authorization",
+        ],
+    ),
+    (
+        IdentifierType::SshKey,
+        &[
+            "ssh",
+            "ssh key",
+            "private key",
+            "public key",
+            "id_rsa",
+            "authorized_keys",
+        ],
+    ),
+    (
+        IdentifierType::SessionId,
+        &["session", "session id", "session token", "sid", "cookie"],
+    ),
+    (
+        IdentifierType::Uuid,
+        &["uuid", "guid", "unique id", "identifier", "correlation id"],
+    ),
+    (
+        IdentifierType::Username,
+        &[
+            "username",
+            "user name",
+            "login",
+            "user id",
+            "userid",
+            "account",
+        ],
+    ),
+    (
+        IdentifierType::Password,
+        &["password", "passwd", "pwd", "pass", "secret", "credential"],
+    ),
+    (
+        IdentifierType::ConnectionString,
+        &[
+            "connection string",
+            "connection",
+            "dsn",
+            "database url",
+            "conn str",
+        ],
+    ),
+    (
+        IdentifierType::HighEntropyString,
+        &["secret", "token", "key", "credential", "api key"],
+    ),
+    (
+        IdentifierType::OnePasswordToken,
+        &[
+            "1password",
+            "op token",
+            "service account token",
+            "onepassword",
+        ],
+    ),
+    (
+        IdentifierType::OnePasswordVaultRef,
+        &[
+            "1password",
+            "vault",
+            "op://",
+            "secret reference",
+            "onepassword",
+        ],
+    ),
+    (
+        IdentifierType::UrlWithCredentials,
+        &["url", "credentials", "username", "password", "connection"],
+    ),
+];
