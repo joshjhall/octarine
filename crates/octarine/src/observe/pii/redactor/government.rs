@@ -115,6 +115,16 @@ mod tests {
     }
 
     #[test]
+    fn test_redact_government_ids_mbi_strict() {
+        // Issue #428: MBIs (Medicare PHI) must be scrubbed by the production
+        // redaction path, not just detected.
+        let text = "Patient MBI 1EG4-TE5-MK73 enrolled";
+        let result = redact_government_ids(text, RedactionProfile::ProductionStrict);
+        assert!(result.contains("[MBI]"));
+        assert!(!result.contains("1EG4-TE5-MK73"));
+    }
+
+    #[test]
     fn test_redact_government_ids_testing_unchanged() {
         let text = "VIN: 1HGBH41JXMN109186";
         let result = redact_government_ids(text, RedactionProfile::Testing);

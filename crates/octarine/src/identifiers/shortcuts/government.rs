@@ -92,6 +92,36 @@ pub fn validate_itin(itin: &str) -> Result<(), Problem> {
 }
 
 // =============================================================================
+// US MBI (Medicare Beneficiary Identifier)
+// =============================================================================
+
+/// Check if value is a valid US Medicare Beneficiary Identifier (MBI)
+///
+/// Strict — enforces the 11-character CMS layout and the letter alphabet
+/// `ACDEFGHJKMNPQRTUVWXY` (excluding `S, L, O, I, B, Z`). Accepts both the bare
+/// and dashed `XXXX-XXX-XXXX` forms.
+#[must_use]
+pub fn is_us_mbi(value: &str) -> bool {
+    GovernmentBuilder::new().is_us_mbi(value)
+}
+
+/// Find all valid US MBIs in text
+#[must_use]
+pub fn find_us_mbis(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_us_mbis_in_text(text)
+}
+
+/// Validate a US MBI format
+///
+/// # Errors
+///
+/// Returns `Problem` if the MBI length, dash grouping, positional layout, or
+/// letter alphabet is invalid.
+pub fn validate_us_mbi(mbi: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_us_mbi(mbi)
+}
+
+// =============================================================================
 // Singapore UEN
 // =============================================================================
 
@@ -682,6 +712,16 @@ mod tests {
         // Invalid SSN (all zeros area)
         assert!(validate_ssn("000-00-0000").is_err());
         assert!(validate_ssn("not-an-ssn").is_err());
+    }
+
+    #[test]
+    fn test_us_mbi_shortcuts() {
+        assert!(is_us_mbi("1EG4TE5MK73"));
+        assert!(is_us_mbi("1EG4-TE5-MK73"));
+        assert!(!is_us_mbi("1AB2C3D4EF5")); // excluded letter / bad layout
+        assert!(validate_us_mbi("1EG4TE5MK73").is_ok());
+        assert!(validate_us_mbi("").is_err());
+        assert!(!find_us_mbis("Medicare MBI: 1EG4-TE5-MK73").is_empty());
     }
 
     #[test]

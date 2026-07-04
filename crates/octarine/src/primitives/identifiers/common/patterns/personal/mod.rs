@@ -44,4 +44,6 @@ pub(crate) use regional_identifiers::{
     sweden_personnummer, thailand_tnin, turkey_license_plate, turkey_tckn, uk_driving_licence,
     uk_nhs, uk_ni, uk_passport,
 };
-pub(crate) use us_identifiers::{driver_license, employee_id, passport, ssn, student_id, tax_id};
+pub(crate) use us_identifiers::{
+    driver_license, employee_id, mbi, passport, ssn, student_id, tax_id,
+};

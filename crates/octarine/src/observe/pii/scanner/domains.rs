@@ -102,6 +102,10 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::Itin,
         ),
         (
+            GovernmentIdentifierBuilder::find_us_mbis_in_text,
+            PiiType::Mbi,
+        ),
+        (
             GovernmentIdentifierBuilder::find_tax_ids_in_text,
             PiiType::TaxId,
         ),

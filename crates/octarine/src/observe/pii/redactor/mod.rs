@@ -167,6 +167,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::Vin
             | PiiType::Ein
             | PiiType::Itin
+            | PiiType::Mbi
             | PiiType::TaxId
             | PiiType::NationalId
             | PiiType::KoreaRrn

@@ -47,8 +47,9 @@ mod text;
 // ============================================================================
 
 pub use strategy::{
-    DriverLicenseRedactionStrategy, NationalIdRedactionStrategy, PassportRedactionStrategy,
-    SsnRedactionStrategy, TaxIdRedactionStrategy, VehicleIdRedactionStrategy,
+    DriverLicenseRedactionStrategy, MbiRedactionStrategy, NationalIdRedactionStrategy,
+    PassportRedactionStrategy, SsnRedactionStrategy, TaxIdRedactionStrategy,
+    VehicleIdRedactionStrategy,
 };
 
 // ============================================================================
@@ -56,8 +57,9 @@ pub use strategy::{
 // ============================================================================
 
 pub use redaction::{
-    redact_driver_license_with_strategy, redact_national_id_with_strategy,
-    redact_passport_with_strategy, redact_tax_id_with_strategy, redact_vehicle_id_with_strategy,
+    redact_driver_license_with_strategy, redact_mbi_with_strategy,
+    redact_national_id_with_strategy, redact_passport_with_strategy, redact_tax_id_with_strategy,
+    redact_vehicle_id_with_strategy,
 };
 
 pub use ssn::redact_ssn_with_strategy;
@@ -70,7 +72,8 @@ pub use text::{
     redact_all_government_ids_in_text_with_policy, redact_driver_licenses_in_text_with_strategy,
     redact_national_ids_in_text_with_strategy, redact_passports_in_text_with_strategy,
     redact_ssns_in_text_with_strategy, redact_tax_ids_in_text_with_strategy,
-    redact_uk_nis_in_text_with_strategy, redact_vehicle_ids_in_text_with_strategy,
+    redact_uk_nis_in_text_with_strategy, redact_us_mbis_in_text_with_strategy,
+    redact_vehicle_ids_in_text_with_strategy,
 };
 
 // ============================================================================

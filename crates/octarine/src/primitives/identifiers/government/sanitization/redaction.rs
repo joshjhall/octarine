@@ -4,8 +4,8 @@
 
 use super::super::super::common::masking;
 use super::strategy::{
-    DriverLicenseRedactionStrategy, NationalIdRedactionStrategy, PassportRedactionStrategy,
-    TaxIdRedactionStrategy, VehicleIdRedactionStrategy,
+    DriverLicenseRedactionStrategy, MbiRedactionStrategy, NationalIdRedactionStrategy,
+    PassportRedactionStrategy, TaxIdRedactionStrategy, VehicleIdRedactionStrategy,
 };
 
 // ============================================================================
@@ -298,10 +298,113 @@ pub fn redact_vehicle_id_with_strategy(
     }
 }
 
+// ============================================================================
+// MBI Redaction
+// ============================================================================
+
+/// Redact a US Medicare Beneficiary Identifier (MBI) with explicit strategy
+///
+/// # Strategies
+///
+/// - `Token` → `[MBI]`
+/// - `Mask` → `***********` (11 asterisks)
+/// - `Anonymous` → `[Redacted]`
+/// - `LastFour` → `*******MK73` (shows last 4 characters)
+/// - `Skip` → unchanged
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::government::sanitization::{
+///     redact_mbi_with_strategy, MbiRedactionStrategy
+/// };
+///
+/// let token = redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::Token);
+/// assert_eq!(token, "[MBI]");
+///
+/// let last4 = redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::LastFour);
+/// assert_eq!(last4, "*******MK73");
+/// ```
+#[must_use]
+pub fn redact_mbi_with_strategy(mbi: &str, strategy: MbiRedactionStrategy) -> String {
+    // MBIs may carry the display dashes (XXXX-XXX-XXXX); redact on the
+    // separator-free characters so masking/last-four are consistent.
+    let cleaned: String = mbi
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect::<String>()
+        .to_uppercase();
+
+    match strategy {
+        MbiRedactionStrategy::Token => "[MBI]".to_string(),
+
+        MbiRedactionStrategy::Mask => masking::mask_all(&cleaned, '*'),
+
+        MbiRedactionStrategy::Anonymous => "[Redacted]".to_string(),
+
+        MbiRedactionStrategy::LastFour => {
+            if cleaned.chars().count() >= 4 {
+                let last_four: String = cleaned
+                    .chars()
+                    .skip(cleaned.chars().count().saturating_sub(4))
+                    .collect();
+                format!("*******{last_four}")
+            } else {
+                "[MBI]".to_string()
+            }
+        }
+
+        MbiRedactionStrategy::Skip => mbi.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
+    use super::super::strategy::MbiRedactionStrategy;
     use super::*;
+
+    // ========================================================================
+    // MBI Tests
+    // ========================================================================
+
+    #[test]
+    fn test_redact_mbi_with_strategy() {
+        assert_eq!(
+            redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::Token),
+            "[MBI]"
+        );
+        assert_eq!(
+            redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::Mask),
+            "***********"
+        );
+        assert_eq!(
+            redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::Anonymous),
+            "[Redacted]"
+        );
+        assert_eq!(
+            redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::LastFour),
+            "*******MK73"
+        );
+        // Dashed form redacts on the separator-free characters.
+        assert_eq!(
+            redact_mbi_with_strategy("1EG4-TE5-MK73", MbiRedactionStrategy::LastFour),
+            "*******MK73"
+        );
+        assert_eq!(
+            redact_mbi_with_strategy("1EG4TE5MK73", MbiRedactionStrategy::Skip),
+            "1EG4TE5MK73"
+        );
+    }
+
+    #[test]
+    fn test_redact_mbi_short() {
+        // Too short for LastFour → fallback to token.
+        assert_eq!(
+            redact_mbi_with_strategy("1A", MbiRedactionStrategy::LastFour),
+            "[MBI]"
+        );
+    }
 
     // ========================================================================
     // Tax ID Tests

@@ -7,13 +7,15 @@ use std::borrow::Cow;
 
 use super::super::super::common::patterns;
 use super::redaction::{
-    redact_driver_license_with_strategy, redact_national_id_with_strategy,
-    redact_passport_with_strategy, redact_tax_id_with_strategy, redact_vehicle_id_with_strategy,
+    redact_driver_license_with_strategy, redact_mbi_with_strategy,
+    redact_national_id_with_strategy, redact_passport_with_strategy, redact_tax_id_with_strategy,
+    redact_vehicle_id_with_strategy,
 };
 use super::ssn::redact_ssn_with_strategy;
 use super::strategy::{
-    DriverLicenseRedactionStrategy, NationalIdRedactionStrategy, PassportRedactionStrategy,
-    SsnRedactionStrategy, TaxIdRedactionStrategy, VehicleIdRedactionStrategy,
+    DriverLicenseRedactionStrategy, MbiRedactionStrategy, NationalIdRedactionStrategy,
+    PassportRedactionStrategy, SsnRedactionStrategy, TaxIdRedactionStrategy,
+    VehicleIdRedactionStrategy,
 };
 
 // ============================================================================
@@ -392,6 +394,57 @@ pub fn redact_uk_nis_in_text_with_strategy(
 }
 
 // ============================================================================
+// MBI Text Redaction
+// ============================================================================
+
+/// Redact all US MBI patterns in text with explicit strategy
+///
+/// Scans for the dashed `XXXX-XXX-XXXX` and bare 11-character forms, revalidates
+/// each candidate through `validate_us_mbi` (so non-MBI look-alike strings are
+/// left untouched), and replaces valid matches. The full match is the MBI —
+/// there is no label capture group.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::government::sanitization::{
+///     redact_us_mbis_in_text_with_strategy, MbiRedactionStrategy
+/// };
+///
+/// let text = "Medicare MBI: 1EG4-TE5-MK73";
+/// let safe = redact_us_mbis_in_text_with_strategy(text, MbiRedactionStrategy::Token);
+/// assert_eq!(safe, "Medicare MBI: [MBI]");
+/// ```
+#[must_use]
+pub fn redact_us_mbis_in_text_with_strategy(
+    text: &str,
+    strategy: MbiRedactionStrategy,
+) -> Cow<'_, str> {
+    use super::super::validation::validate_us_mbi;
+
+    let mut result = Cow::Borrowed(text);
+
+    // Dashed form first (more distinctive), then the bare 11-character form.
+    for pattern in [&*patterns::mbi::WITH_DASH, &*patterns::mbi::NO_DASH] {
+        if pattern.is_match(&result) {
+            result = Cow::Owned(
+                pattern
+                    .replace_all(&result, |caps: &regex::Captures<'_>| {
+                        let mbi = caps.get(0).map_or("", |m| m.as_str());
+                        if validate_us_mbi(mbi).is_err() {
+                            return mbi.to_string();
+                        }
+                        redact_mbi_with_strategy(mbi, strategy)
+                    })
+                    .into_owned(),
+            );
+        }
+    }
+
+    result
+}
+
+// ============================================================================
 // Vehicle ID Text Redaction
 // ============================================================================
 
@@ -500,14 +553,18 @@ pub fn redact_all_government_ids_in_text_with_policy(
     // Convert policy to individual strategies
     let ssn_strategy = policy.to_ssn_strategy();
     let tax_id_strategy = policy.to_tax_id_strategy();
+    let mbi_strategy = policy.to_mbi_strategy();
     let driver_license_strategy = policy.to_driver_license_strategy();
     let passport_strategy = policy.to_passport_strategy();
     let national_id_strategy = policy.to_national_id_strategy();
     let vehicle_id_strategy = policy.to_vehicle_id_strategy();
 
-    // Apply redaction in order
+    // Apply redaction in order. MBIs are redacted before driver licenses so the
+    // loose generic driver-license pattern (`[A-Z0-9]{6,15}`) cannot partially
+    // consume an 11-character MBI first.
     let result = redact_ssns_in_text_with_strategy(text, ssn_strategy);
     let result = redact_tax_ids_in_text_with_strategy(&result, tax_id_strategy);
+    let result = redact_us_mbis_in_text_with_strategy(&result, mbi_strategy);
     let result = redact_driver_licenses_in_text_with_strategy(&result, driver_license_strategy);
     let result = redact_passports_in_text_with_strategy(&result, passport_strategy);
     // UK NINOs first — label-preserving and prefix/suffix validated — so that
@@ -612,6 +669,34 @@ mod tests {
     }
 
     // ========================================================================
+    // MBI Text Tests
+    // ========================================================================
+
+    #[test]
+    fn test_redact_us_mbis_in_text_token() {
+        let text = "Medicare MBI: 1EG4-TE5-MK73";
+        let result = redact_us_mbis_in_text_with_strategy(text, MbiRedactionStrategy::Token);
+        assert_eq!(result, "Medicare MBI: [MBI]");
+    }
+
+    #[test]
+    fn test_redact_us_mbis_in_text_bare_and_last_four() {
+        let text = "Beneficiary 1EG4TE5MK73 enrolled";
+        let token = redact_us_mbis_in_text_with_strategy(text, MbiRedactionStrategy::Token);
+        assert_eq!(token, "Beneficiary [MBI] enrolled");
+        let last4 = redact_us_mbis_in_text_with_strategy(text, MbiRedactionStrategy::LastFour);
+        assert_eq!(last4, "Beneficiary *******MK73 enrolled");
+    }
+
+    #[test]
+    fn test_redact_us_mbis_in_text_skips_invalid() {
+        // Excluded-letter look-alike must pass through untouched.
+        let text = "Reference 1AB2C3D4EF5 stays";
+        let result = redact_us_mbis_in_text_with_strategy(text, MbiRedactionStrategy::Token);
+        assert_eq!(result, "Reference 1AB2C3D4EF5 stays");
+    }
+
+    // ========================================================================
     // Combined Redaction Tests
     // ========================================================================
 
@@ -627,6 +712,28 @@ mod tests {
         assert!(result.contains("[SSN]"));
         assert!(result.contains("[VEHICLE_ID]"));
         assert!(result.contains("[TAX_ID]"));
+    }
+
+    #[test]
+    fn test_redact_all_government_ids_includes_mbi() {
+        use crate::primitives::identifiers::GovernmentTextPolicy;
+
+        // Regression guard: the aggregate redactor must actually scrub MBIs, not
+        // just detect them (issue #428 — otherwise Medicare PHI leaks through the
+        // auto-redaction path).
+        let text = "Patient MBI 1EG4-TE5-MK73 on file";
+        let result = redact_all_government_ids_in_text_with_policy(
+            text,
+            Some(GovernmentTextPolicy::Complete),
+        );
+        assert!(
+            result.contains("[MBI]"),
+            "MBI must be redacted, got: {result}"
+        );
+        assert!(
+            !result.contains("1EG4-TE5-MK73"),
+            "raw MBI must not survive: {result}"
+        );
     }
 
     #[test]

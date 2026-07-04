@@ -63,6 +63,7 @@ mod sweden;
 mod thailand;
 mod turkey;
 mod uk;
+mod us_mbi;
 mod vin;
 
 // Re-export cache utilities
@@ -76,6 +77,9 @@ pub use ein::{is_test_ein, is_valid_ein_prefix, validate_ein};
 
 // Re-export ITIN functions
 pub use itin::{is_test_itin, is_valid_itin_group, validate_itin};
+
+// Re-export US MBI functions
+pub use us_mbi::{is_test_us_mbi, is_valid_mbi_letter, validate_us_mbi};
 
 // Re-export driver's license functions
 pub use driver_license::{is_test_driver_license, validate_driver_license};

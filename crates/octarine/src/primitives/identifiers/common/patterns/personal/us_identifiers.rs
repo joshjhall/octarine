@@ -116,6 +116,61 @@ pub(crate) mod tax_id {
     }
 }
 
+/// Medicare Beneficiary Identifier (MBI) patterns
+///
+/// The MBI is an 11-character CMS identifier that replaced SSN-based HICNs on
+/// Medicare cards in 2018. Its structure is fixed (CMS "Understanding the New
+/// MBI"):
+///
+/// ```text
+/// Format:  C  A  AN  N  A  AN  N  A  A  N  N     (11 chars)
+/// Pos:     1  2   3  4  5   6  7  8  9 10 11
+///   C / N  (pos 1,4,7,10,11) = numeric 0-9
+///   A      (pos 2,5,8,9)     = letter from ACDEFGHJKMNPQRTUVWXY (excludes S,L,O,I,B,Z)
+///   AN     (pos 3,6)         = numeric OR that same restricted letter set
+/// ```
+///
+/// The excluded letters `S, L, O, I, B, Z` avoid visual confusion with digits
+/// (e.g. `O`/`0`, `I`/`1`). The dashed display form is `XXXX-XXX-XXXX`.
+pub(crate) mod mbi {
+    use super::*;
+
+    /// Valid MBI letter alphabet — A-Z excluding S, L, O, I, B, Z.
+    const ALPHA: &str = "[ACDEFGHJKMNPQRTUVWXY]";
+    /// Numeric position.
+    const NUM: &str = "[0-9]";
+    /// Alphanumeric position — digit or a valid MBI letter.
+    const ALPHANUM: &str = "[0-9ACDEFGHJKMNPQRTUVWXY]";
+
+    /// Bare 11-character MBI (weak confidence — no separators, collides with
+    /// arbitrary alphanumeric identifiers).
+    /// Example: `1EG4TE5MK73`
+    pub static NO_DASH: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(&format!(
+            r"\b{NUM}{ALPHA}{ALPHANUM}{NUM}{ALPHA}{ALPHANUM}{NUM}{ALPHA}{ALPHA}{NUM}{NUM}\b"
+        ))
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Dashed MBI in the CMS display form `XXXX-XXX-XXXX` (medium confidence —
+    /// the layout is far more distinctive than the bare form).
+    /// Example: `1EG4-TE5-MK73`
+    pub static WITH_DASH: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(&format!(
+            r"\b{NUM}{ALPHA}{ALPHANUM}{NUM}-{ALPHA}{ALPHANUM}{NUM}-{ALPHA}{ALPHA}{NUM}{NUM}\b"
+        ))
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    /// Anchored exact-match form (bare or dashed) for the validator.
+    pub static EXACT: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(&format!(
+            r"^(?:{NUM}{ALPHA}{ALPHANUM}{NUM}{ALPHA}{ALPHANUM}{NUM}{ALPHA}{ALPHA}{NUM}{NUM}|{NUM}{ALPHA}{ALPHANUM}{NUM}-{ALPHA}{ALPHANUM}{NUM}-{ALPHA}{ALPHA}{NUM}{NUM})$"
+        ))
+        .expect("BUG: Invalid regex pattern")
+    });
+}
+
 /// Driver's license patterns
 pub(crate) mod driver_license {
     use super::*;

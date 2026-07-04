@@ -30,6 +30,7 @@ impl PiiType {
             Self::Vin => "vin",
             Self::Ein => "ein",
             Self::Itin => "itin",
+            Self::Mbi => "mbi",
             Self::TaxId => "tax_id",
             Self::NationalId => "national_id",
             Self::KoreaRrn => "korea_rrn",
@@ -190,6 +191,7 @@ impl PiiType {
             | Self::Vin
             | Self::Ein
             | Self::Itin
+            | Self::Mbi
             | Self::TaxId
             | Self::NationalId
             | Self::KoreaRrn

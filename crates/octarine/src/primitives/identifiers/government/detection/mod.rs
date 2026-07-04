@@ -66,6 +66,7 @@ mod sweden;
 mod tax_id;
 mod thailand;
 mod turkey;
+mod us_mbi;
 mod vehicle_id;
 
 pub use australia::{
@@ -124,6 +125,7 @@ pub use turkey::{
     find_turkey_license_plates_in_text, find_turkey_tckns_in_text, is_turkey_license_plate,
     is_turkey_tckn,
 };
+pub use us_mbi::{find_us_mbis_in_text, is_us_mbi};
 pub use vehicle_id::{find_vehicle_ids_in_text, is_vehicle_id};
 
 /// Detect which type of government identifier a value is
@@ -167,6 +169,12 @@ pub fn detect_government_identifier(value: &str) -> Option<IdentifierType> {
         Some(IdentifierType::Itin)
     } else if is_tax_id(value) {
         Some(IdentifierType::TaxId)
+    } else if is_us_mbi(value) {
+        // MBI is an 11-char alphanumeric with a strict CMS layout; it does not
+        // overlap the 9-digit SSN/ITIN/EIN shapes, so it is safe to check here
+        // after the tax IDs and before the looser driver-license/passport
+        // patterns that could otherwise shadow it.
+        Some(IdentifierType::Mbi)
     } else if is_driver_license(value) {
         Some(IdentifierType::DriverLicense)
     } else if is_passport(value) {
@@ -275,6 +283,7 @@ pub fn find_all_government_ids_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_eins_in_text(text));
     all_matches.extend(find_itins_in_text(text));
     all_matches.extend(find_tax_ids_in_text(text));
+    all_matches.extend(find_us_mbis_in_text(text));
     all_matches.extend(find_driver_licenses_in_text(text));
     all_matches.extend(find_passports_in_text(text));
     all_matches.extend(find_korea_rrns_in_text(text));
@@ -375,6 +384,8 @@ mod tests {
             "11-90-123456-78",   // Korea Driver License
             "M12345678",         // Korea Passport
             "123-45-67890",      // Korea BRN
+            "1EG4TE5MK73",       // US MBI (bare)
+            "1EG4-TE5-MK73",     // US MBI (dashed)
             "not an id",         // Invalid
             "",                  // Empty
         ];
@@ -436,6 +447,24 @@ mod tests {
         assert_eq!(
             detect_government_identifier("912-34-5678"),
             Some(IdentifierType::TaxId)
+        );
+    }
+
+    #[test]
+    fn test_detect_government_identifier_mbi() {
+        // Both bare and dashed MBIs dispatch to the dedicated Mbi variant.
+        assert_eq!(
+            detect_government_identifier("1EG4TE5MK73"),
+            Some(IdentifierType::Mbi)
+        );
+        assert_eq!(
+            detect_government_identifier("1EG4-TE5-MK73"),
+            Some(IdentifierType::Mbi)
+        );
+        // The issue's invalid fixture (excluded letter) is not classified as MBI.
+        assert_ne!(
+            detect_government_identifier("1AB2C3D4EF5"),
+            Some(IdentifierType::Mbi)
         );
     }
 

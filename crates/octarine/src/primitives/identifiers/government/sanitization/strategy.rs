@@ -172,10 +172,45 @@ impl VehicleIdRedactionStrategy {
     }
 }
 
+// ============================================================================
+// MBI Redaction Strategies
+// ============================================================================
+
+/// US Medicare Beneficiary Identifier (MBI) redaction strategy
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MbiRedactionStrategy {
+    /// Replace with `[MBI]` token
+    #[default]
+    Token,
+    /// Replace all characters with asterisks
+    Mask,
+    /// Replace with generic `[REDACTED]`
+    Anonymous,
+    /// Show last 4 characters: `*******MK73`
+    LastFour,
+    /// Skip redaction (pass-through)
+    Skip,
+}
+
+impl MbiRedactionStrategy {
+    /// Check if strategy is risky for production use
+    #[must_use]
+    pub fn is_risky(&self) -> bool {
+        matches!(self, Self::Skip)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
+
+    #[test]
+    fn test_mbi_strategy_risky() {
+        assert!(!MbiRedactionStrategy::Token.is_risky());
+        assert!(!MbiRedactionStrategy::LastFour.is_risky());
+        assert!(MbiRedactionStrategy::Skip.is_risky());
+    }
 
     #[test]
     fn test_ssn_strategy_risky() {
