@@ -273,28 +273,29 @@ impl BatchAnonymizerEngine {
     /// [`anonymize_list`](Self::anonymize_list).
     ///
     /// `results_by_path` maps a JSON **path** to the detections for the string
-    /// at that path. Paths are dot-separated: object keys join with `.` and
-    /// array elements use their numeric index, so the email in
-    /// `{"users":[{"email":"a@b.co"}]}` is at path `users.0.email`. The root
+    /// at that path. Paths are RFC 6901 JSON Pointers: each object key or array
+    /// index is a `/`-prefixed segment, so the email in
+    /// `{"users":[{"email":"a@b.co"}]}` is at path `/users/0/email`. The root
     /// value's own path is the empty string `""`.
     ///
     /// Strings with no entry in `results_by_path` are returned unchanged.
     /// Non-string scalars (numbers, booleans, null) always pass through
     /// unchanged. Object key sets and array lengths are preserved.
     ///
-    /// # Path ambiguity (caller contract)
+    /// # Path encoding (caller contract)
     ///
-    /// The `.` separator is **not escaped**, so the dotted path is ambiguous
-    /// when an object key itself contains `.` or is an all-digits string. For
-    /// example a top-level key `"user.email"` and the nested field in
-    /// `{"user": {"email": …}}` both render as the path `user.email`, and a
-    /// top-level key `"0"` collides with the first element of a sibling array.
-    /// Such a collision routes a detection to the wrong field (or skips one),
-    /// which in a PII context risks leaving a value un-anonymized. Callers whose
-    /// keys may contain `.` or be numeric must disambiguate upstream (rename or
-    /// pre-escape the keys) before building `results_by_path`. A future revision
-    /// may switch to an escaped encoding (e.g. JSON Pointer, RFC 6901); the
-    /// dot-path form is the documented contract until then.
+    /// Paths follow [RFC 6901](https://www.rfc-editor.org/rfc/rfc6901) JSON
+    /// Pointer syntax, which is unambiguous for **any** key. Each object key is
+    /// emitted as a `/`-prefixed reference token with `~` escaped to `~0` and
+    /// `/` escaped to `~1`; each array element uses its `/`-prefixed numeric
+    /// index; the root path is the empty string `""`. Because every segment is
+    /// explicitly delimited, a key that contains `.` or is an all-digits string
+    /// no longer collides with a nested field or a sibling array index — e.g.
+    /// a top-level key `"user.email"` is `/user.email` (a `.` is a literal token
+    /// character, not a separator), distinct from the nested field
+    /// `{"user": {"email": …}}` at `/user/email`, and a top-level key `"0"` is
+    /// `/0`, distinct from a sibling array's first element `/arr/0`. Callers
+    /// build `results_by_path` keys with the same encoding.
     ///
     /// # Errors
     ///
@@ -312,7 +313,7 @@ impl BatchAnonymizerEngine {
     /// let input = json!({ "user": { "email": "a@b.co" }, "age": 42 });
     /// let mut by_path = HashMap::new();
     /// by_path.insert(
-    ///     "user.email".to_string(),
+    ///     "/user/email".to_string(),
     ///     vec![RecognizerResult::new("EMAIL_ADDRESS", 0, 6, 0.95)?],
     /// );
     /// let mut ops = HashMap::new();
@@ -712,11 +713,11 @@ impl BatchDeanonymizeEngine {
     /// [`deanonymize_list`](Self::deanonymize_list).
     ///
     /// `operator_results_by_path` maps a JSON **path** to the operator items for
-    /// the string at that path, using the same dot-separated path encoding as
-    /// [`BatchAnonymizerEngine::anonymize_dict`] (object keys join with `.`,
-    /// array elements use their numeric index, the root path is `""`). The same
-    /// path-ambiguity caller contract applies — see that method for the full
-    /// note.
+    /// the string at that path, using the same RFC 6901 JSON Pointer path
+    /// encoding as [`BatchAnonymizerEngine::anonymize_dict`] (each object key or
+    /// array index is a `/`-prefixed segment with `~`/`/` escaped as `~0`/`~1`,
+    /// the root path is `""`). The same path-encoding caller contract applies —
+    /// see that method for the full note.
     ///
     /// Strings with no entry in `operator_results_by_path` are returned
     /// unchanged. Non-string scalars always pass through unchanged. Object key
@@ -881,24 +882,25 @@ fn is_error_result(result: &EngineResult) -> bool {
         .any(|item| item.entity_type == DEANONYMIZE_ERROR_ENTITY)
 }
 
-/// Joins a parent `path` with an object `key`, using `.` as the separator.
-/// At the root (`path` empty) the key stands alone.
-fn join_path(path: &str, key: &str) -> String {
-    if path.is_empty() {
-        key.to_string()
-    } else {
-        format!("{path}.{key}")
-    }
+/// Escapes one JSON Pointer reference token per RFC 6901 §3: `~` becomes `~0`
+/// and `/` becomes `~1`. `~` MUST be escaped before `/` so that an existing
+/// `~1` sequence in a key is not corrupted by the second replacement.
+fn escape_token(key: &str) -> String {
+    key.replace('~', "~0").replace('/', "~1")
 }
 
-/// Joins a parent `path` with an array `index`, using `.` as the separator.
-/// At the root (`path` empty) the index stands alone.
+/// Joins a parent `path` with an object `key` as an RFC 6901 JSON Pointer
+/// segment: a `/`-prefixed, escaped reference token. At the root (`path` empty)
+/// a first-level key `foo` becomes `/foo`.
+fn join_path(path: &str, key: &str) -> String {
+    format!("{path}/{}", escape_token(key))
+}
+
+/// Joins a parent `path` with an array `index` as an RFC 6901 JSON Pointer
+/// segment. An index is all-digit, so it needs no escaping. At the root
+/// (`path` empty) index `0` becomes `/0`.
 fn join_index(path: &str, index: usize) -> String {
-    if path.is_empty() {
-        index.to_string()
-    } else {
-        format!("{path}.{index}")
-    }
+    format!("{path}/{index}")
 }
 
 #[cfg(test)]
@@ -1011,8 +1013,14 @@ mod tests {
         });
         let mut by_path = HashMap::new();
         // Whole-string email spans (0..len of each address).
-        by_path.insert("users.0.email".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
-        by_path.insert("users.1.email".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        by_path.insert(
+            "/users/0/email".to_string(),
+            vec![rr("EMAIL_ADDRESS", 0, 6)],
+        );
+        by_path.insert(
+            "/users/1/email".to_string(),
+            vec![rr("EMAIL_ADDRESS", 0, 6)],
+        );
 
         let out = batch
             .anonymize_dict(&input, &by_path, &redact_ops())
@@ -1040,7 +1048,7 @@ mod tests {
             "score": 3.5,
         });
         let mut by_path = HashMap::new();
-        by_path.insert("name".to_string(), vec![rr("PERSON", 0, 3)]);
+        by_path.insert("/name".to_string(), vec![rr("PERSON", 0, 3)]);
 
         let out = batch
             .anonymize_dict(&input, &by_path, &HashMap::new())
@@ -1059,8 +1067,8 @@ mod tests {
         let batch = BatchAnonymizerEngine::new();
         let input = json!({ "tags": ["a@b.co", "c@d.co"] });
         let mut by_path = HashMap::new();
-        by_path.insert("tags.0".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
-        by_path.insert("tags.1".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        by_path.insert("/tags/0".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        by_path.insert("/tags/1".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
 
         let out = batch
             .anonymize_dict(&input, &by_path, &redact_ops())
@@ -1086,7 +1094,7 @@ mod tests {
         let batch = BatchAnonymizerEngine::new();
         let input = json!({ "note": "hi" });
         let mut by_path = HashMap::new();
-        by_path.insert("note".to_string(), vec![rr("X", 2, 99)]);
+        by_path.insert("/note".to_string(), vec![rr("X", 2, 99)]);
         let err = batch.anonymize_dict(&input, &by_path, &HashMap::new());
         assert!(err.is_err());
     }
@@ -1109,7 +1117,7 @@ mod tests {
         let batch = BatchAnonymizerEngine::new().silent();
         let input = json!({ "name": "Bob" });
         let mut by_path = HashMap::new();
-        by_path.insert("name".to_string(), vec![rr("PERSON", 0, 3)]);
+        by_path.insert("/name".to_string(), vec![rr("PERSON", 0, 3)]);
         let out = batch
             .anonymize_dict(&input, &by_path, &HashMap::new())
             .expect("anonymize_dict");
@@ -1131,7 +1139,7 @@ mod tests {
         // not the all-string fast path.
         let input = json!({ "vals": ["Bob", 7] });
         let mut by_path = HashMap::new();
-        by_path.insert("vals.0".to_string(), vec![rr("PERSON", 0, 3)]);
+        by_path.insert("/vals/0".to_string(), vec![rr("PERSON", 0, 3)]);
 
         let out = batch
             .anonymize_dict(&input, &by_path, &HashMap::new())
@@ -1164,6 +1172,66 @@ mod tests {
             .anonymize_list(&texts, &results, &HashMap::new())
             .expect("anonymize_list");
         assert_eq!(out.first().expect("item").text.as_deref(), Some("<PERSON>"));
+    }
+
+    #[test]
+    fn dict_dotted_key_does_not_collide_with_nested_field() {
+        // Regression for #643: a top-level key containing `.` must not collide
+        // with the nested field of the same dotted rendering. Under the old
+        // dot-path encoding both `{"user.email"}` and `{"user":{"email"}}`
+        // rendered as `user.email`, so one detection routed to both (or the
+        // wrong one) and a value could leak un-anonymized. JSON Pointer keeps
+        // them distinct: `/user.email` (a literal `.`) vs `/user/email`.
+        let batch = BatchAnonymizerEngine::new();
+        let input = json!({ "user.email": "a@b.co", "user": { "email": "c@d.co" } });
+
+        // Detect ONLY the nested field. The dotted-key string must stay intact.
+        let mut nested_only = HashMap::new();
+        nested_only.insert("/user/email".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        let out = batch
+            .anonymize_dict(&input, &nested_only, &redact_ops())
+            .expect("anonymize_dict");
+        assert_eq!(
+            out,
+            json!({ "user.email": "a@b.co", "user": { "email": "" } })
+        );
+
+        // Detect ONLY the dotted top-level key. The nested field must stay intact.
+        let mut dotted_only = HashMap::new();
+        dotted_only.insert("/user.email".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        let out = batch
+            .anonymize_dict(&input, &dotted_only, &redact_ops())
+            .expect("anonymize_dict");
+        assert_eq!(
+            out,
+            json!({ "user.email": "", "user": { "email": "c@d.co" } })
+        );
+    }
+
+    #[test]
+    fn dict_numeric_key_does_not_collide_with_array_index() {
+        // Regression for #643: an all-digit object key `"0"` must not collide
+        // with a sibling array's element 0. Both rendered as `0` / `arr.0`
+        // ambiguously under the old encoding; JSON Pointer keeps `/0` (object
+        // key) distinct from `/arr/0` (array index).
+        let batch = BatchAnonymizerEngine::new();
+        let input = json!({ "0": "secret", "arr": ["elem0"] });
+
+        // Detect ONLY the top-level numeric key. The array element must survive.
+        let mut key_only = HashMap::new();
+        key_only.insert("/0".to_string(), vec![rr("PERSON", 0, 6)]);
+        let out = batch
+            .anonymize_dict(&input, &key_only, &redact_ops())
+            .expect("anonymize_dict");
+        assert_eq!(out, json!({ "0": "", "arr": ["elem0"] }));
+
+        // Detect ONLY the array element. The numeric object key must survive.
+        let mut elem_only = HashMap::new();
+        elem_only.insert("/arr/0".to_string(), vec![rr("PERSON", 0, 5)]);
+        let out = batch
+            .anonymize_dict(&input, &elem_only, &redact_ops())
+            .expect("anonymize_dict");
+        assert_eq!(out, json!({ "0": "secret", "arr": [""] }));
     }
 
     // --- Batch deanonymize -----------------------------------------------------
@@ -1384,7 +1452,7 @@ mod tests {
         let anon = BatchAnonymizerEngine::new();
         let input = json!({ "ssn": "123-45-6789", "note": "plain" });
         let mut by_path = HashMap::new();
-        by_path.insert("ssn".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/ssn".to_string(), vec![rr("US_SSN", 0, 11)]);
         let sealed = anon
             .anonymize_dict(&input, &by_path, &encrypt_ops("US_SSN"))
             .expect("anonymize_dict");
@@ -1392,7 +1460,7 @@ mod tests {
 
         let mut rev = HashMap::new();
         rev.insert(
-            "ssn".to_string(),
+            "/ssn".to_string(),
             vec![OperatorResult::new("US_SSN", 0, sealed_ssn.len(), None, None).expect("op")],
         );
         // Wrong key → the ssn decrypt fails; lenient mode keeps it anonymized.
@@ -1464,8 +1532,8 @@ mod tests {
         let anon = BatchAnonymizerEngine::new();
         let input = json!({ "users": [{ "ssn": "123-45-6789" }, { "ssn": "987-65-4321" }] });
         let mut by_path = HashMap::new();
-        by_path.insert("users.0.ssn".to_string(), vec![rr("US_SSN", 0, 11)]);
-        by_path.insert("users.1.ssn".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/users/0/ssn".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/users/1/ssn".to_string(), vec![rr("US_SSN", 0, 11)]);
         let sealed = anon
             .anonymize_dict(&input, &by_path, &encrypt_ops("US_SSN"))
             .expect("anonymize_dict");
@@ -1476,8 +1544,8 @@ mod tests {
         // Build the reverse path map: each anonymized string is one whole span.
         let mut rev_by_path = HashMap::new();
         for (path, sealed_text) in [
-            ("users.0.ssn", value_at(&sealed, &["users", "0", "ssn"])),
-            ("users.1.ssn", value_at(&sealed, &["users", "1", "ssn"])),
+            ("/users/0/ssn", value_at(&sealed, &["users", "0", "ssn"])),
+            ("/users/1/ssn", value_at(&sealed, &["users", "1", "ssn"])),
         ] {
             rev_by_path.insert(
                 path.to_string(),
@@ -1508,14 +1576,14 @@ mod tests {
         let anon = BatchAnonymizerEngine::new();
         let input = json!({ "tags": ["123-45-6789", "987-65-4321"] });
         let mut by_path = HashMap::new();
-        by_path.insert("tags.0".to_string(), vec![rr("US_SSN", 0, 11)]);
-        by_path.insert("tags.1".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/tags/0".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/tags/1".to_string(), vec![rr("US_SSN", 0, 11)]);
         let sealed = anon
             .anonymize_dict(&input, &by_path, &encrypt_ops("US_SSN"))
             .expect("anonymize_dict");
 
         let mut rev = HashMap::new();
-        for (i, key) in ["tags.0", "tags.1"].iter().enumerate() {
+        for (i, key) in ["/tags/0", "/tags/1"].iter().enumerate() {
             let s = value_at(&sealed, &["tags", &i.to_string()]);
             rev.insert(
                 (*key).to_string(),
@@ -1536,7 +1604,7 @@ mod tests {
         let anon = BatchAnonymizerEngine::new();
         let input = json!({ "vals": ["123-45-6789", 7] });
         let mut by_path = HashMap::new();
-        by_path.insert("vals.0".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/vals/0".to_string(), vec![rr("US_SSN", 0, 11)]);
         let sealed = anon
             .anonymize_dict(&input, &by_path, &encrypt_ops("US_SSN"))
             .expect("anonymize_dict");
@@ -1544,7 +1612,7 @@ mod tests {
         let s = value_at(&sealed, &["vals", "0"]);
         let mut rev = HashMap::new();
         rev.insert(
-            "vals.0".to_string(),
+            "/vals/0".to_string(),
             vec![OperatorResult::new("US_SSN", 0, s.len(), None, None).expect("op")],
         );
         let restored = BatchDeanonymizeEngine::new()
@@ -1571,7 +1639,7 @@ mod tests {
         let input = json!({ "note": "hi" });
         let mut by_path = HashMap::new();
         by_path.insert(
-            "note".to_string(),
+            "/note".to_string(),
             vec![OperatorResult::new("X", 2, 99, None, None).expect("op")],
         );
         let err = batch.deanonymize_dict(&input, &by_path, &HashMap::new());
@@ -1622,6 +1690,66 @@ mod tests {
             .deanonymize_list(&texts, &items, &HashMap::new())
             .expect("deanonymize_list");
         assert_eq!(out.first().expect("0").text.as_deref(), Some("plain"));
+    }
+
+    #[test]
+    fn deanonymize_dict_dotted_and_numeric_keys_round_trip() {
+        // Regression for #643 on the reverse path: encrypt a document whose keys
+        // exercise both collision cases (a `.`-containing key vs a nested field,
+        // and an all-digit key vs a sibling array index), then deanonymize_dict
+        // back. Under the old dot-path encoding the colliding keys cross-routed
+        // and the round-trip would not reproduce the original; JSON Pointer keeps
+        // every field independent.
+        let anon = BatchAnonymizerEngine::new();
+        let input = json!({
+            "user.email": "a@b.co",
+            "user": { "email": "c@d.co" },
+            "0": "123-45-6789",
+            "arr": ["987-65-4321"],
+        });
+        let mut by_path = HashMap::new();
+        by_path.insert("/user.email".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        by_path.insert("/user/email".to_string(), vec![rr("EMAIL_ADDRESS", 0, 6)]);
+        by_path.insert("/0".to_string(), vec![rr("US_SSN", 0, 11)]);
+        by_path.insert("/arr/0".to_string(), vec![rr("US_SSN", 0, 11)]);
+
+        // Encrypt every field so each has a distinct reversible ciphertext.
+        let mut enc = encrypt_ops("EMAIL_ADDRESS");
+        enc.extend(encrypt_ops("US_SSN"));
+        let sealed = anon
+            .anonymize_dict(&input, &by_path, &enc)
+            .expect("anonymize_dict");
+        // Every string was transformed — the round-trip has real work to undo.
+        assert_ne!(sealed, input);
+
+        // Build reverse spans from the sealed lengths, keyed by the same
+        // pointers. `serde_json::Value::pointer` is itself an RFC 6901 resolver,
+        // so resolving our keys through it also confirms the encoding is a valid
+        // JSON Pointer that addresses exactly the intended field.
+        let mut rev = HashMap::new();
+        for (ptr, entity) in [
+            ("/user.email", "EMAIL_ADDRESS"),
+            ("/user/email", "EMAIL_ADDRESS"),
+            ("/0", "US_SSN"),
+            ("/arr/0", "US_SSN"),
+        ] {
+            let sealed_text = sealed
+                .pointer(ptr)
+                .and_then(Value::as_str)
+                .expect("sealed string at pointer");
+            rev.insert(
+                ptr.to_string(),
+                vec![OperatorResult::new(entity, 0, sealed_text.len(), None, None).expect("op")],
+            );
+        }
+
+        let mut dec = decrypt_ops("EMAIL_ADDRESS");
+        dec.extend(decrypt_ops("US_SSN"));
+        let restored = BatchDeanonymizeEngine::new()
+            .deanonymize_dict(&sealed, &rev, &dec)
+            .expect("deanonymize_dict");
+
+        assert_eq!(restored, input);
     }
 
     /// Reads the string at a dotted key path out of a `serde_json::Value`,

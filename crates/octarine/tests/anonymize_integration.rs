@@ -228,11 +228,11 @@ fn batch_anonymize_dict_through_public_api() {
 
     let mut by_path = HashMap::new();
     by_path.insert(
-        "users.0.email".to_string(),
+        "/users/0/email".to_string(),
         vec![detect("EMAIL_ADDRESS", 0, 6, 0.95)],
     );
     by_path.insert(
-        "users.1.email".to_string(),
+        "/users/1/email".to_string(),
         vec![detect("EMAIL_ADDRESS", 0, 6, 0.95)],
     );
 
