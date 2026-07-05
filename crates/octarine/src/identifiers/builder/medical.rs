@@ -142,6 +142,12 @@ impl MedicalBuilder {
         self.inner.is_dea_number(value)
     }
 
+    /// Check if value is a US CLIA lab certificate number (shape + state code)
+    #[must_use]
+    pub fn is_us_clia(&self, value: &str) -> bool {
+        self.inner.is_us_clia(value)
+    }
+
     /// Check if text contains any medical identifier
     #[must_use]
     pub fn is_medical_identifier_present(&self, text: &str) -> bool {
@@ -186,6 +192,25 @@ impl MedicalBuilder {
     #[must_use]
     pub fn find_dea_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         self.inner.find_dea_numbers_in_text(text)
+    }
+
+    /// Find all US CLIA lab certificate numbers in text (context-required)
+    #[must_use]
+    pub fn find_us_clias_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
+        let matches = self.inner.find_us_clias_in_text(text);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !matches.is_empty() {
+                increment_by(metric_names::detected(), matches.len() as u64);
+            }
+        }
+
+        matches
     }
 
     /// Find all medical identifiers in text
@@ -274,6 +299,25 @@ impl MedicalBuilder {
     /// Returns `Problem` if the NPI is invalid or a known test pattern
     pub fn validate_npi_no_test(&self, npi: &str) -> Result<(), Problem> {
         self.inner.validate_npi_no_test(npi)
+    }
+
+    /// Validate US CLIA lab certificate number format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CLIA shape or state code is invalid
+    pub fn validate_us_clia(&self, clia: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_us_clia(clia);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+        }
+
+        result
     }
 
     // =========================================================================
@@ -378,6 +422,24 @@ impl MedicalBuilder {
         policy: MedicalTextPolicy,
     ) -> Cow<'a, str> {
         self.inner.redact_medical_codes_in_text(text, policy)
+    }
+
+    /// Redact US CLIA lab certificate numbers in text using text redaction policy
+    #[must_use]
+    pub fn redact_us_clias_in_text<'a>(
+        &self,
+        text: &'a str,
+        policy: MedicalTextPolicy,
+    ) -> Cow<'a, str> {
+        self.inner.redact_us_clias_in_text(text, policy)
+    }
+
+    /// Redact US CLIA lab certificate numbers in text using the Complete policy
+    #[must_use]
+    pub fn redact_us_clia(&self, text: &str) -> String {
+        self.inner
+            .redact_us_clias_in_text(text, MedicalTextPolicy::Complete)
+            .into_owned()
     }
 
     /// Redact all medical identifiers in text using Complete policy
@@ -531,5 +593,24 @@ mod tests {
     fn test_mrn_detection() {
         let builder = MedicalBuilder::silent();
         assert!(builder.is_mrn("MRN: 12345678"));
+    }
+
+    #[test]
+    fn test_clia_detection_and_validation() {
+        let builder = MedicalBuilder::silent();
+        assert!(builder.is_us_clia("05D0123456"));
+        assert!(!builder.is_us_clia("67D1234567")); // invalid state code
+        assert!(builder.validate_us_clia("05D0123456").is_ok());
+        assert!(builder.validate_us_clia("5DD0123456").is_err());
+    }
+
+    #[test]
+    fn test_clia_redaction_and_scan() {
+        let builder = MedicalBuilder::silent();
+        let text = "Laboratory ID 05D0123456 on the report";
+        let redacted = builder.redact_us_clia(text);
+        assert!(redacted.contains("[CLIA_NUMBER]"));
+        assert!(!redacted.contains("05D0123456"));
+        assert_eq!(builder.find_us_clias_in_text(text).len(), 1);
     }
 }

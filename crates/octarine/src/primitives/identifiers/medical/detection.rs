@@ -192,6 +192,11 @@ pub fn detect_medical_identifier(value: &str) -> Option<IdentifierType> {
     if is_dea_number(value) {
         return Some(IdentifierType::MedicalLicense);
     }
+    // CLIA before MRN — CLIA has a precise NNDNNNNNNN shape + state-code check,
+    // while unlabeled MRN is very broad and would otherwise swallow a CLIA.
+    if is_us_clia(value) {
+        return Some(IdentifierType::UsClia);
+    }
     if is_medical_record_number(value) {
         return Some(IdentifierType::MedicalRecordNumber);
     }
@@ -512,6 +517,7 @@ pub fn find_all_medical_in_text(text: &str) -> Vec<IdentifierMatch> {
     all_matches.extend(find_provider_ids_in_text(text));
     all_matches.extend(find_medical_codes_in_text(text));
     all_matches.extend(find_dea_numbers_in_text(text));
+    all_matches.extend(find_us_clias_in_text(text));
 
     deduplicate_matches(all_matches)
 }
@@ -658,6 +664,95 @@ pub fn find_dea_numbers_in_text(text: &str) -> Vec<IdentifierMatch> {
                 full_match.as_str().to_string(),
                 IdentifierType::MedicalLicense,
                 DetectionConfidence::Medium,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
+// ============================================================================
+// CLIA Number Detection
+// ============================================================================
+
+/// Valid CLIA state-code prefixes (first two digits of a CLIA number).
+///
+/// CLIA numbers embed the SSA state code as their first two digits. The set is
+/// the SSA `GEO_SSA_STATE_TB` table: `01`–`53` (50 states, DC=09, Puerto
+/// Rico=40, Virgin Islands=48) plus the SSA territory / foreign-possession
+/// codes `54`–`66`, `97`, `98`, `99`.
+const CLIA_STATE_CODES: &[&str] = &[
+    "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16",
+    "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32",
+    "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48",
+    "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64",
+    "65", "66", "97", "98", "99",
+];
+
+/// Check if a 2-character prefix is a valid CLIA/SSA state code
+fn is_valid_clia_state_code(prefix: &str) -> bool {
+    CLIA_STATE_CODES.contains(&prefix)
+}
+
+/// Check if a value is a US CLIA (Clinical Laboratory Improvement Amendments) number
+///
+/// CLIA numbers are 10 characters: a 2-digit SSA state code, the literal letter
+/// `D` (case-insensitive), and 7 digits (`NNDNNNNNNN`). There is no publicly
+/// documented check-digit algorithm, so detection enforces the shape plus the
+/// state-code whitelist only.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::medical::detection;
+///
+/// assert!(detection::is_us_clia("05D0123456"));  // California prefix
+/// assert!(detection::is_us_clia("05d0123456"));  // case-insensitive D
+/// assert!(!detection::is_us_clia("5DD0123456"));  // D in wrong position
+/// assert!(!detection::is_us_clia("67D1234567"));  // 67 is not a valid state code
+/// ```
+#[must_use]
+pub fn is_us_clia(value: &str) -> bool {
+    let trimmed = value.trim();
+
+    // Shape check first (exact 10-char NNDNNNNNNN, case-insensitive D)
+    if !patterns::medical::CLIA_EXACT.is_match(trimmed) {
+        return false;
+    }
+
+    // First two characters are the state code (guaranteed ASCII digits by regex)
+    match trimmed.get(0..2) {
+        Some(prefix) => is_valid_clia_state_code(prefix),
+        None => false,
+    }
+}
+
+/// Find all US CLIA numbers in text
+///
+/// Scans text for CLIA numbers that appear alongside a positive context keyword
+/// (`CLIA`, `lab cert`, `laboratory ID`, `lab number`, …). Each candidate is
+/// validated with [`is_us_clia`] (shape + state code) before being reported.
+/// CLIA has no checksum, so requiring context avoids false positives on bare
+/// 10-character strings.
+#[must_use]
+pub fn find_us_clias_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for capture in patterns::medical::CLIA_LABELED.captures_iter(text) {
+        let full_match = get_full_match(&capture);
+        // The CLIA token itself is captured in group 1; validate it directly.
+        let clia_value = capture.get(1).map_or(full_match.as_str(), |m| m.as_str());
+        if is_us_clia(clia_value) {
+            matches.push(IdentifierMatch::new(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::UsClia,
+                DetectionConfidence::High,
             ));
         }
     }
@@ -1121,6 +1216,87 @@ mod tests {
         assert_eq!(
             detect_medical_identifier("AB1234563"),
             Some(IdentifierType::MedicalLicense)
+        );
+    }
+
+    // ===== CLIA Number Tests =====
+
+    #[test]
+    fn test_is_us_clia_valid() {
+        assert!(is_us_clia("05D0123456")); // California prefix
+        assert!(is_us_clia("01D0000001")); // Alabama prefix
+        assert!(is_us_clia("45D9876543")); // Texas prefix
+        assert!(is_us_clia("48D1234567")); // Virgin Islands (territory)
+        // Case-insensitive D
+        assert!(is_us_clia("05d0123456"));
+        // Whitespace trimmed
+        assert!(is_us_clia("  05D0123456  "));
+    }
+
+    #[test]
+    fn test_is_us_clia_invalid_letter_position() {
+        // D must be at position 3 (index 2), not elsewhere
+        assert!(!is_us_clia("5DD0123456"));
+        assert!(!is_us_clia("0DD0123456"));
+        assert!(!is_us_clia("05E0123456")); // wrong letter
+        assert!(!is_us_clia("0510123456")); // digit where D belongs
+    }
+
+    #[test]
+    fn test_is_us_clia_invalid_state_code() {
+        // 67 is outside the SSA state-code set
+        assert!(!is_us_clia("67D1234567"));
+        // 00 is not a valid state code
+        assert!(!is_us_clia("00D0000000"));
+        // 96 sits in the gap between 66 and 97
+        assert!(!is_us_clia("96D1234567"));
+    }
+
+    #[test]
+    fn test_is_us_clia_length_band_edges() {
+        assert!(!is_us_clia("05D012345")); // 9 chars — too short
+        assert!(!is_us_clia("05D01234567")); // 11 chars — too long
+        assert!(!is_us_clia("")); // empty
+        assert!(!is_us_clia("05D")); // truncated
+    }
+
+    #[test]
+    fn test_find_us_clias_in_text_context_boost() {
+        let text = "Laboratory ID 05D0123456 was on the report";
+        let matches = find_us_clias_in_text(text);
+        assert_eq!(matches.len(), 1);
+        let first = matches.first().expect("Should detect CLIA");
+        assert_eq!(first.identifier_type, IdentifierType::UsClia);
+        assert_eq!(first.confidence, DetectionConfidence::High);
+
+        // Explicit CLIA: prefix
+        let text2 = "CLIA: 45D9876543 on file";
+        assert_eq!(find_us_clias_in_text(text2).len(), 1);
+
+        // "lab certificate" context
+        let text3 = "lab certificate 01D0000001 issued";
+        assert_eq!(find_us_clias_in_text(text3).len(), 1);
+    }
+
+    #[test]
+    fn test_find_us_clias_requires_context() {
+        // A bare CLIA-shaped token with no lab/CLIA context is not surfaced
+        let text = "The value 05D0123456 appears here";
+        assert_eq!(find_us_clias_in_text(text).len(), 0);
+    }
+
+    #[test]
+    fn test_find_us_clias_rejects_invalid_state_code() {
+        // Context present, but the state code is invalid → not reported
+        let text = "CLIA: 67D1234567 is malformed";
+        assert_eq!(find_us_clias_in_text(text).len(), 0);
+    }
+
+    #[test]
+    fn test_detect_medical_identifier_clia() {
+        assert_eq!(
+            detect_medical_identifier("05D0123456"),
+            Some(IdentifierType::UsClia)
         );
     }
 }

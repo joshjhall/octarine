@@ -295,6 +295,37 @@ pub fn validate_npi_no_test(npi: &str) -> Result<(), Problem> {
 }
 
 // ============================================================================
+// CLIA Number Validation
+// ============================================================================
+
+/// Validate US CLIA (Clinical Laboratory Improvement Amendments) number
+///
+/// Validates the CMS lab-certificate format: a 2-digit SSA state code, the
+/// literal letter `D`, and 7 digits (`NNDNNNNNNN`, 10 chars, case-insensitive
+/// `D`).
+///
+/// Format requirements:
+/// - Must match CLIA detection (exact shape + state-code whitelist)
+/// - CLIA has no publicly documented checksum, so shape + state code is the
+///   full validation
+///
+/// # Errors
+///
+/// Returns `Problem::validation` if:
+/// - Does not match the `NNDNNNNNNN` shape
+/// - The first two digits are not a valid SSA/CLIA state code
+pub fn validate_us_clia(clia: &str) -> Result<(), Problem> {
+    // Use detection layer first (DRY principle + type safety)
+    if !detection::is_us_clia(clia) {
+        return Err(Problem::Validation(
+            "Invalid CLIA number: expected NNDNNNNNNN with a valid state code".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -516,5 +547,32 @@ mod tests {
         assert!(validate_insurance_number("  INS-123456789  ").is_ok());
         assert!(validate_prescription_number("  RX-123456  ").is_ok());
         assert!(validate_npi("  1245319599  ").is_ok());
+    }
+
+    // ===== CLIA Tests =====
+
+    #[test]
+    fn test_clia_valid() {
+        assert!(validate_us_clia("05D0123456").is_ok()); // California
+        assert!(validate_us_clia("01D0000001").is_ok()); // Alabama
+        assert!(validate_us_clia("45D9876543").is_ok()); // Texas
+        assert!(validate_us_clia("05d0123456").is_ok()); // case-insensitive D
+        assert!(validate_us_clia("  05D0123456  ").is_ok()); // trimmed
+    }
+
+    #[test]
+    fn test_clia_invalid_shape() {
+        assert!(validate_us_clia("5DD0123456").is_err()); // D in wrong position
+        assert!(validate_us_clia("05E0123456").is_err()); // wrong letter
+        assert!(validate_us_clia("05D012345").is_err()); // too short
+        assert!(validate_us_clia("05D01234567").is_err()); // too long
+        assert!(validate_us_clia("").is_err()); // empty
+    }
+
+    #[test]
+    fn test_clia_invalid_state_code() {
+        assert!(validate_us_clia("67D1234567").is_err()); // outside SSA set
+        assert!(validate_us_clia("00D0000000").is_err()); // 00 not valid
+        assert!(validate_us_clia("96D1234567").is_err()); // gap between 66 and 97
     }
 }

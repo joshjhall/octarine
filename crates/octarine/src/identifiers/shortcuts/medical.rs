@@ -43,6 +43,12 @@ pub fn is_medical_code(value: &str) -> bool {
     MedicalBuilder::new().is_medical_code(value)
 }
 
+/// Check if value is a US CLIA lab certificate number (shape + state code)
+#[must_use]
+pub fn is_us_clia(value: &str) -> bool {
+    MedicalBuilder::new().is_us_clia(value)
+}
+
 /// Validate a medical record number format
 ///
 /// # Errors
@@ -61,10 +67,25 @@ pub fn validate_npi(npi: &str) -> Result<(), Problem> {
     MedicalBuilder::new().validate_npi(npi)
 }
 
+/// Validate a US CLIA lab certificate number format
+///
+/// # Errors
+///
+/// Returns `Problem` if the CLIA shape or state code is invalid.
+pub fn validate_us_clia(clia: &str) -> Result<(), Problem> {
+    MedicalBuilder::new().validate_us_clia(clia)
+}
+
 /// Find all medical record numbers in text
 #[must_use]
 pub fn find_medical_records(text: &str) -> Vec<IdentifierMatch> {
     MedicalBuilder::new().find_mrns_in_text(text)
+}
+
+/// Find all US CLIA lab certificate numbers in text (context-required)
+#[must_use]
+pub fn find_us_clias(text: &str) -> Vec<IdentifierMatch> {
+    MedicalBuilder::new().find_us_clias_in_text(text)
 }
 
 /// Redact all medical identifiers in text
@@ -109,5 +130,18 @@ mod tests {
         assert!(validate_npi("1245319599").is_ok()); // valid checksum
         assert!(validate_npi("1234567890").is_err()); // invalid checksum
         assert!(validate_npi("not-an-npi").is_err());
+    }
+
+    #[test]
+    fn test_clia_shortcuts() {
+        assert!(is_us_clia("05D0123456")); // California prefix
+        assert!(!is_us_clia("67D1234567")); // invalid state code
+        assert!(!is_us_clia("5DD0123456")); // D in wrong position
+
+        assert!(validate_us_clia("05D0123456").is_ok());
+        assert!(validate_us_clia("00D0000000").is_err()); // invalid state code
+
+        let matches = find_us_clias("Laboratory ID 05D0123456 on file");
+        assert_eq!(matches.len(), 1);
     }
 }

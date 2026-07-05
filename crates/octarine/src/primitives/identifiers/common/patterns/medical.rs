@@ -105,6 +105,32 @@ pub static DEA_UNLABELED: Lazy<Regex> =
 pub static DEA_EXACT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[A-Za-z]{2}\d{7}$").expect("BUG: Invalid regex pattern"));
 
+/// CLIA (Clinical Laboratory Improvement Amendments) number - EXACT
+/// Format: 2-digit SSA state code + literal `D` + 7 digits (10 chars total).
+/// Case-insensitive on the `D`. State-code whitelist enforced in detection.
+/// Reference: https://www.cms.gov/medicare/quality/clinical-laboratory-improvement-amendments
+pub static CLIA_EXACT: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)^\d{2}D\d{7}$").expect("BUG: Invalid regex pattern"));
+
+/// CLIA number - LABELED / CONTEXT
+/// Requires a positive context keyword (`CLIA`, `lab cert(ificate)`,
+/// `laboratory ID`, `lab number`, `lab id`) before the 10-char CLIA token.
+/// CLIA has no checksum, so a bare `NNDNNNNNNN` is too weak to surface
+/// unlabeled — context is required to avoid false positives. The token is
+/// captured in group 1.
+pub static CLIA_LABELED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?i)\b(?:CLIA|lab(?:oratory)?[\s-]*(?:cert(?:ificate)?|id|number|no|#))[\s:#-]*(\d{2}D\d{7})\b",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
+/// Patterns matching context-labeled CLIA lab certificate numbers
+/// (`CLIA: 05D0123456`, `Laboratory ID 05D0123456`).
+pub fn clia() -> Vec<&'static Regex> {
+    vec![&*CLIA_LABELED]
+}
+
 /// Patterns matching DEA (Drug Enforcement Administration) registration numbers,
 /// both labeled (`DEA: AB1234567`) and unlabeled (raw `AB1234567`).
 pub fn dea_numbers() -> Vec<&'static Regex> {
@@ -137,7 +163,7 @@ pub fn medical_codes() -> Vec<&'static Regex> {
 }
 
 /// All medical patterns from this module — MRN, insurance (Medicare/policy/group),
-/// prescription, NPI, ICD-10, CPT, and DEA (labeled + unlabeled).
+/// prescription, NPI, ICD-10, CPT, DEA (labeled + unlabeled), and CLIA (labeled).
 pub fn all() -> Vec<&'static Regex> {
     vec![
         &*MRN_LABELED,
@@ -150,5 +176,6 @@ pub fn all() -> Vec<&'static Regex> {
         &*CPT,
         &*DEA_LABELED,
         &*DEA_UNLABELED,
+        &*CLIA_LABELED,
     ]
 }

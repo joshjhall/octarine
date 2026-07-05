@@ -258,6 +258,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::IcdCode => redact_medical_codes(&result, profile),
             PiiType::PrescriptionNumber => redact_prescriptions(&result, profile),
             PiiType::DeaNumber => redact_dea_numbers(&result, profile),
+            PiiType::UsClia => redact_us_clias(&result, profile),
             // Biometric
             PiiType::FingerprintId => redact_fingerprints(&result, profile),
             PiiType::FaceId => redact_facial_data(&result, profile),

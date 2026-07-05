@@ -81,6 +81,18 @@ pub(super) fn redact_dea_numbers(text: &str, profile: RedactionProfile) -> Strin
     }
 }
 
+/// Redact US CLIA lab certificate numbers based on profile
+pub(super) fn redact_us_clias(text: &str, profile: RedactionProfile) -> String {
+    match profile {
+        RedactionProfile::ProductionStrict | RedactionProfile::ProductionLenient => {
+            let builder = MedicalIdentifierBuilder::new();
+            let policy = policy_from_profile(profile);
+            builder.redact_us_clias_in_text(text, policy).into_owned()
+        }
+        RedactionProfile::Development | RedactionProfile::Testing => text.to_string(),
+    }
+}
+
 /// Redact prescriptions based on profile
 pub(super) fn redact_prescriptions(text: &str, profile: RedactionProfile) -> String {
     match profile {
@@ -216,6 +228,30 @@ mod tests {
     fn test_redact_dea_numbers_no_pii() {
         let text = "Pharmacy compliance review complete";
         let result = redact_dea_numbers(text, RedactionProfile::ProductionStrict);
+        assert_eq!(result, text);
+    }
+
+    // ===== CLIA Numbers =====
+
+    #[test]
+    fn test_redact_us_clias_strict() {
+        let text = "Laboratory ID 05D0123456 on the report";
+        let result = redact_us_clias(text, RedactionProfile::ProductionStrict);
+        assert!(result.contains("[CLIA_NUMBER]"));
+        assert!(!result.contains("05D0123456"));
+    }
+
+    #[test]
+    fn test_redact_us_clias_testing_unchanged() {
+        let text = "Laboratory ID 05D0123456 on the report";
+        let result = redact_us_clias(text, RedactionProfile::Testing);
+        assert_eq!(result, text);
+    }
+
+    #[test]
+    fn test_redact_us_clias_no_pii() {
+        let text = "Lab results reviewed and filed";
+        let result = redact_us_clias(text, RedactionProfile::ProductionStrict);
         assert_eq!(result, text);
     }
 

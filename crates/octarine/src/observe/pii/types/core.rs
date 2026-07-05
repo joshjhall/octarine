@@ -84,6 +84,7 @@ impl PiiType {
             Self::IcdCode => "icd_code",
             Self::PrescriptionNumber => "prescription_number",
             Self::DeaNumber => "dea_number",
+            Self::UsClia => "us_clia",
             // Biometric
             Self::FingerprintId => "fingerprint_id",
             Self::FaceId => "face_id",
@@ -243,7 +244,8 @@ impl PiiType {
             | Self::InsuranceNumber
             | Self::IcdCode
             | Self::PrescriptionNumber
-            | Self::DeaNumber => "medical",
+            | Self::DeaNumber
+            | Self::UsClia => "medical",
             Self::FingerprintId
             | Self::FaceId
             | Self::VoiceId

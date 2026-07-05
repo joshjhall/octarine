@@ -134,6 +134,7 @@ pub enum IdentifierType {
     ProviderID,          // NPI (National Provider Identifier)
     MedicalCode,         // ICD-10, CPT codes
     MedicalLicense,      // DEA numbers, state medical board licenses
+    UsClia, // US CLIA lab certificate (NNDNNNNNNN — SSA state code + literal D + 7 digits)
 
     // Biometric identifiers (GDPR Article 9, BIPA)
     Fingerprint,       // Fingerprint hashes/identifiers
