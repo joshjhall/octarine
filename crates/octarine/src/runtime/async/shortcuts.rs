@@ -3,10 +3,8 @@
 //! These functions provide convenient access to the most common runtime operations
 //! without needing to construct the full types.
 
-use crate::observe::{self, Result};
+use crate::observe::Result;
 use std::future::Future;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
 use tokio::task::JoinError;
 
 use super::{
@@ -123,54 +121,14 @@ where
 // Blocking Operations
 // ============================================================================
 
-/// Global statistics for spawn_blocking calls
-static SPAWN_BLOCKING_STATS: SpawnBlockingStats = SpawnBlockingStats::new();
-
-struct SpawnBlockingStats {
-    total_spawned: AtomicU64,
-    total_completed: AtomicU64,
-    total_failed: AtomicU64,
-}
-
-impl SpawnBlockingStats {
-    const fn new() -> Self {
-        Self {
-            total_spawned: AtomicU64::new(0),
-            total_completed: AtomicU64::new(0),
-            total_failed: AtomicU64::new(0),
-        }
-    }
-}
-
-/// Statistics for spawn_blocking operations
-#[derive(Debug, Clone, Default)]
-pub struct SpawnBlockingStatistics {
-    /// Total blocking tasks spawned
-    pub total_spawned: u64,
-    /// Total blocking tasks completed successfully
-    pub total_completed: u64,
-    /// Total blocking tasks that failed (panicked or cancelled)
-    pub total_failed: u64,
-}
-
-/// Get statistics for spawn_blocking operations
-pub fn spawn_blocking_stats() -> SpawnBlockingStatistics {
-    SpawnBlockingStatistics {
-        total_spawned: SPAWN_BLOCKING_STATS.total_spawned.load(Ordering::Relaxed),
-        total_completed: SPAWN_BLOCKING_STATS.total_completed.load(Ordering::Relaxed),
-        total_failed: SPAWN_BLOCKING_STATS.total_failed.load(Ordering::Relaxed),
-    }
-}
-
 /// Run a blocking operation on a dedicated thread pool with observability
 ///
 /// Use this for CPU-intensive work or blocking I/O operations that shouldn't
 /// block the async runtime. Context (correlation ID, tenant, user, session) is
 /// automatically propagated to the blocking thread.
 ///
-/// This is the Layer 3 wrapper that adds observe instrumentation. For use within
-/// other Layer 3 modules (like crypto), use the primitive version directly and
-/// add your own observe calls.
+/// Shortcut for `Executor::new().spawn_blocking(f)` — the Layer 3 `Executor`
+/// owns the observe instrumentation and statistics.
 ///
 /// # When to Use
 ///
@@ -203,39 +161,7 @@ where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
 {
-    SPAWN_BLOCKING_STATS
-        .total_spawned
-        .fetch_add(1, Ordering::Relaxed);
-
-    let start = Instant::now();
-    observe::trace("spawn_blocking", "Spawning blocking task");
-
-    let result = crate::primitives::runtime::r#async::async_utils::spawn_blocking(f).await;
-
-    let elapsed = start.elapsed();
-
-    match &result {
-        Ok(_) => {
-            SPAWN_BLOCKING_STATS
-                .total_completed
-                .fetch_add(1, Ordering::Relaxed);
-            observe::debug(
-                "spawn_blocking",
-                format!("Blocking task completed in {:?}", elapsed),
-            );
-        }
-        Err(e) => {
-            SPAWN_BLOCKING_STATS
-                .total_failed
-                .fetch_add(1, Ordering::Relaxed);
-            observe::warn(
-                "spawn_blocking",
-                format!("Blocking task failed after {:?}: {}", elapsed, e),
-            );
-        }
-    }
-
-    result
+    Executor::new().spawn_blocking(f).await
 }
 
 // ============================================================================
@@ -458,14 +384,5 @@ mod tests {
             .expect("spawn_blocking should succeed");
 
         assert_eq!(result, Ok(42));
-    }
-
-    #[test]
-    fn test_spawn_blocking_stats() {
-        let stats = spawn_blocking_stats();
-        // Just verify we can access the stats - actual values depend on other tests
-        let _ = stats.total_spawned;
-        let _ = stats.total_completed;
-        let _ = stats.total_failed;
     }
 }

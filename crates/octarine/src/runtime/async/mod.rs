@@ -34,8 +34,9 @@ pub use channel::{
 
 // Executor exports
 pub use executor::{
-    Executor, ExecutorConfig, ExecutorStatistics, GlobalExecutorStatistics, executor_stats,
-    executors_healthy, executors_is_degraded,
+    Executor, ExecutorConfig, ExecutorStatistics, GlobalExecutorStatistics,
+    SpawnBlockingStatistics, executor_stats, executors_healthy, executors_is_degraded,
+    spawn_blocking_stats,
 };
 
 // Worker pool exports
@@ -49,9 +50,8 @@ pub use backoff::{BackoffStrategy, RetryPolicy};
 
 // Shortcut functions and health monitoring
 pub use shortcuts::{
-    RuntimeHealth, RuntimeStats, SpawnBlockingStatistics, bounded_channel, circuit_breaker,
-    executor, runtime_health, runtime_stats, spawn, spawn_blocking, spawn_blocking_stats,
-    worker_pool,
+    RuntimeHealth, RuntimeStats, bounded_channel, circuit_breaker, executor, runtime_health,
+    runtime_stats, spawn, spawn_blocking, worker_pool,
 };
 
 // Context management (correlation ID, user, tenant, session)

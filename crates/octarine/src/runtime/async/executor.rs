@@ -47,6 +47,8 @@ use crate::primitives::runtime::r#async::{
 };
 use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
+use tokio::task::JoinError;
 
 /// Global executor statistics
 static EXECUTOR_STATS: ExecutorStats = ExecutorStats::new();
@@ -65,6 +67,25 @@ impl ExecutorStats {
             total_spawns: AtomicU64::new(0),
             sync_executions: AtomicU64::new(0),
             async_executions: AtomicU64::new(0),
+        }
+    }
+}
+
+/// Global statistics for spawn_blocking calls
+static SPAWN_BLOCKING_STATS: SpawnBlockingStats = SpawnBlockingStats::new();
+
+struct SpawnBlockingStats {
+    total_spawned: AtomicU64,
+    total_completed: AtomicU64,
+    total_failed: AtomicU64,
+}
+
+impl SpawnBlockingStats {
+    const fn new() -> Self {
+        Self {
+            total_spawned: AtomicU64::new(0),
+            total_completed: AtomicU64::new(0),
+            total_failed: AtomicU64::new(0),
         }
     }
 }
@@ -258,6 +279,64 @@ impl Executor {
         self.inner.spawn(future)
     }
 
+    /// Run a blocking operation on a dedicated thread pool with observability
+    ///
+    /// Use this for CPU-intensive work or blocking I/O operations that shouldn't
+    /// block the async runtime. Context (correlation ID, tenant, user, session)
+    /// is automatically propagated to the blocking thread by the primitive.
+    ///
+    /// # Errors
+    ///
+    /// Returns `JoinError` if the blocking task panics or is cancelled.
+    pub async fn spawn_blocking<F, R>(&self, f: F) -> std::result::Result<R, JoinError>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        SPAWN_BLOCKING_STATS
+            .total_spawned
+            .fetch_add(1, Ordering::Relaxed);
+
+        let start = Instant::now();
+        observe::trace(
+            "executor_spawn_blocking",
+            format!("Executor '{}' spawning blocking task", self.name),
+        );
+
+        let result = crate::primitives::runtime::r#async::async_utils::spawn_blocking(f).await;
+
+        let elapsed = start.elapsed();
+
+        match &result {
+            Ok(_) => {
+                SPAWN_BLOCKING_STATS
+                    .total_completed
+                    .fetch_add(1, Ordering::Relaxed);
+                observe::debug(
+                    "executor_spawn_blocking",
+                    format!(
+                        "Executor '{}' blocking task completed in {:?}",
+                        self.name, elapsed
+                    ),
+                );
+            }
+            Err(e) => {
+                SPAWN_BLOCKING_STATS
+                    .total_failed
+                    .fetch_add(1, Ordering::Relaxed);
+                observe::warn(
+                    "executor_spawn_blocking",
+                    format!(
+                        "Executor '{}' blocking task failed after {:?}: {}",
+                        self.name, elapsed, e
+                    ),
+                );
+            }
+        }
+
+        result
+    }
+
     /// Run a closure that returns a future
     ///
     /// Convenience wrapper around `block_on`.
@@ -354,6 +433,26 @@ pub fn executor_stats() -> GlobalExecutorStatistics {
     }
 }
 
+/// Statistics for spawn_blocking operations
+#[derive(Debug, Clone, Default)]
+pub struct SpawnBlockingStatistics {
+    /// Total blocking tasks spawned
+    pub total_spawned: u64,
+    /// Total blocking tasks completed successfully
+    pub total_completed: u64,
+    /// Total blocking tasks that failed (panicked or cancelled)
+    pub total_failed: u64,
+}
+
+/// Get statistics for spawn_blocking operations
+pub fn spawn_blocking_stats() -> SpawnBlockingStatistics {
+    SpawnBlockingStatistics {
+        total_spawned: SPAWN_BLOCKING_STATS.total_spawned.load(Ordering::Relaxed),
+        total_completed: SPAWN_BLOCKING_STATS.total_completed.load(Ordering::Relaxed),
+        total_failed: SPAWN_BLOCKING_STATS.total_failed.load(Ordering::Relaxed),
+    }
+}
+
 /// Check if executors are performing well
 ///
 /// Returns true if most executions are in async context (not creating runtimes).
@@ -430,6 +529,30 @@ mod tests {
         let handle = executor.spawn(async { 123 }).expect("spawn should succeed");
         let result = handle.await.expect("task should complete");
         assert_eq!(result, 123);
+    }
+
+    #[tokio::test]
+    async fn test_executor_spawn_blocking() {
+        let executor = Executor::new();
+
+        let result = executor
+            .spawn_blocking(|| {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                42
+            })
+            .await
+            .expect("spawn_blocking should succeed");
+
+        assert_eq!(result, 42);
+    }
+
+    #[test]
+    fn test_spawn_blocking_stats() {
+        let stats = spawn_blocking_stats();
+        // Just verify we can access the stats - actual values depend on other tests
+        let _ = stats.total_spawned;
+        let _ = stats.total_completed;
+        let _ = stats.total_failed;
     }
 
     #[test]
