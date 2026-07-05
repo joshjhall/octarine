@@ -48,7 +48,7 @@ partial error.
 3. Sanitization fn  primitives/identifiers/{domain}/sanitization/ sanitize_{type}() or redact_{type}()
 4. Prim builder     primitives/identifiers/{domain}/builder/      delegation methods
 5. Public builder   identifiers/builder/{domain}.rs               wrapped methods + observe
-6. Shortcuts        identifiers/shortcuts.rs                      convenience functions
+6. Shortcuts        identifiers/shortcuts/                        convenience functions
 ```
 
 ## Workflow
@@ -104,7 +104,7 @@ For common operations, check shortcuts:
 
 ```text
 Grep pattern="fn is_{type}\|fn validate_{type}\|fn redact_{type}" \
-  path="crates/octarine/src/identifiers/shortcuts.rs"
+  path="crates/octarine/src/identifiers/shortcuts/"
 ```
 
 ### octarine-identifiers/incomplete-dual-api (severity: medium)

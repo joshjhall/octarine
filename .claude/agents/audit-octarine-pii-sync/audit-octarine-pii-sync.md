@@ -35,17 +35,31 @@ MUST NOT:
 
 | Registry | File | Role |
 |----------|------|------|
-| `IdentifierType` | `crates/octarine/src/primitives/identifiers/types.rs` | Primitives-level enum (source of truth) |
-| `PiiType` | `crates/octarine/src/observe/pii/types.rs` | PII classification enum |
+| `IdentifierType` | `crates/octarine/src/primitives/identifiers/types/core.rs` | Primitives-level enum (source of truth) |
+| `PiiType` | `crates/octarine/src/observe/pii/types/mod.rs` | PII classification enum |
 | Scanner domains | `crates/octarine/src/observe/pii/scanner/domains.rs` | Detection dispatch |
+
+Both `types/` entries are directories that may re-split in future refactors.
+To stay robust against a move without misreading sibling enums, **locate the
+enum by its declaration, then read only that block** — grep the whole `types/`
+directory for `pub enum IdentifierType` / `pub enum PiiType` to find the file,
+then extract variants from between that `{` and its matching `}`. Do NOT scan
+every capitalized line across the directory: `types/` holds other public enums
+(`CreditCardType`, `CryptoAddressType`, `PhoneRegion`, `CredentialType`,
+`DetectionConfidence`), and a blanket capitalized-token grep would fold their
+variants into the `IdentifierType` set and produce false `missing-pii-variant`
+findings.
 
 ## Workflow
 
 1. Parse the manifest from the task prompt
-2. Verify all three registry files exist. If any missing, return a critical
+2. Verify all three registries resolve (the `types/` directories exist and the
+   `scanner/domains.rs` file exists). If any missing, return a critical
    finding with category `octarine-pii-sync/registry-not-found` and stop
-3. Read `primitives/identifiers/types.rs` and extract `IdentifierType` variants
-4. Read `observe/pii/types.rs` and extract `PiiType` variants
+3. Read `primitives/identifiers/types/core.rs` (scan the `types/` directory if
+   the enum has moved) and extract `IdentifierType` variants
+4. Read `observe/pii/types/mod.rs` (scan the `types/` directory if the enum has
+   moved) and extract `PiiType` variants
 5. Compare variant sets — every `IdentifierType` should have a `PiiType`
 6. Read `observe/pii/scanner/domains.rs` and extract builder method calls
 7. Cross-reference scanner calls against identifier builder methods

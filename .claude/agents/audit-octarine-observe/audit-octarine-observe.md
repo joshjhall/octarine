@@ -43,7 +43,7 @@ When invoked, you receive a work manifest in the task prompt containing:
 Every builder in these directories wraps primitives with observe:
 
 - `crates/octarine/src/identifiers/builder/`
-- `crates/octarine/src/data/*/builder/`
+- `crates/octarine/src/data/*/builder*`
 - `crates/octarine/src/security/*/builder*`
 - `crates/octarine/src/crypto/*/builder*`
 
