@@ -8,33 +8,105 @@ use super::super::super::types::{IdentifierMatch, IdentifierType};
 /// Maximum input length for ReDoS protection
 const MAX_INPUT_LENGTH: usize = 10_000;
 
-/// Country-specific IBAN lengths (ISO 13616)
+/// Country-specific IBAN lengths (full ISO 13616 registry).
+///
+/// Complete SWIFT IBAN Registry coverage — total character length keyed by the
+/// two-letter ISO 3166-1 country code. A known code whose length does not match
+/// is rejected before the MOD-97 check, which closes the country-coverage gap
+/// where non-listed codes were accepted at any length 15–34 on checksum alone.
+/// Overseas-territory codes that fold into a parent country's IBAN (e.g. FR/FI
+/// dependencies) are intentionally omitted; they are validated under the parent
+/// code. Kept alphabetically sorted.
 const COUNTRY_LENGTHS: &[(&str, usize)] = &[
+    ("AD", 24),
+    ("AE", 23),
     ("AL", 28),
     ("AT", 20),
+    ("AZ", 28),
+    ("BA", 20),
     ("BE", 16),
+    ("BG", 22),
+    ("BH", 22),
+    ("BR", 29),
+    ("BY", 28),
+    ("CG", 27),
     ("CH", 21),
+    ("CR", 22),
+    ("CY", 28),
     ("CZ", 24),
     ("DE", 22),
+    ("DJ", 27),
     ("DK", 18),
+    ("DO", 28),
+    ("EE", 20),
+    ("EG", 29),
     ("ES", 24),
     ("FI", 18),
+    ("FK", 18),
+    ("FO", 18),
     ("FR", 27),
     ("GB", 22),
+    ("GE", 22),
+    ("GI", 23),
+    ("GL", 18),
     ("GR", 27),
+    ("GT", 28),
+    ("HN", 28),
     ("HR", 21),
     ("HU", 28),
     ("IE", 22),
+    ("IL", 23),
+    ("IQ", 23),
+    ("IS", 26),
     ("IT", 27),
+    ("JO", 30),
+    ("KW", 30),
+    ("KZ", 20),
+    ("LB", 28),
+    ("LC", 32),
+    ("LI", 21),
+    ("LT", 20),
     ("LU", 20),
+    ("LV", 21),
+    ("LY", 25),
+    ("MC", 27),
+    ("MD", 24),
+    ("ME", 22),
+    ("MK", 19),
+    ("MN", 20),
+    ("MR", 27),
+    ("MT", 31),
+    ("MU", 30),
+    ("NI", 28),
     ("NL", 18),
     ("NO", 15),
+    ("OM", 23),
+    ("PK", 24),
     ("PL", 28),
+    ("PS", 29),
     ("PT", 25),
+    ("QA", 29),
     ("RO", 24),
+    ("RS", 22),
+    ("RU", 33),
+    ("SA", 24),
+    ("SC", 31),
+    ("SD", 18),
     ("SE", 24),
     ("SI", 19),
     ("SK", 24),
+    ("SM", 27),
+    ("SO", 23),
+    ("ST", 25),
+    ("SV", 28),
+    ("TL", 23),
+    ("TN", 24),
+    ("TR", 26),
+    ("UA", 29),
+    ("VA", 22),
+    ("VG", 24),
+    ("XK", 20),
+    ("YE", 30),
 ];
 
 // ============================================================================
@@ -266,5 +338,38 @@ mod tests {
     fn test_mod97_checksum_directly() {
         assert!(is_iban_checksum_valid("DE89370400440532013000"));
         assert!(!is_iban_checksum_valid("DE00370400440532013000"));
+    }
+
+    #[test]
+    fn test_valid_ibans_extended_countries() {
+        // Canonical registry example IBANs from countries that were NOT in the
+        // original 25-country table. Each passes MOD-97 and matches its
+        // country-specific length, so it exercises the extended COUNTRY_LENGTHS.
+        let extended = [
+            "LI21088100002324013AA",           // Liechtenstein (21) — issue example
+            "AD1200012030200359100100",        // Andorra (24)
+            "NO9386011117947",                 // Norway (15) — shortest IBAN
+            "MT84MALT011000012345MTLCAST001S", // Malta (31)
+            "SM86U0322509800000000270100",     // San Marino (27)
+            "AZ21NABZ00000000137010001944",    // Azerbaijan (28)
+            "BR9700360305000010009795493P1",   // Brazil (29)
+            "VG96VPVG0000012345678901",        // British Virgin Islands (24)
+        ];
+        for iban in extended {
+            assert!(is_iban(iban), "expected valid IBAN to be accepted: {iban}");
+        }
+    }
+
+    #[test]
+    fn test_iban_wrong_length_new_country() {
+        // Liechtenstein is now length-gated at 21. The valid LI example is
+        // accepted, but the same value with an extra character (wrong length
+        // for LI) must be rejected on the length check — proving the extended
+        // table gates newly-covered countries, not just the original 25.
+        assert!(is_iban("LI21088100002324013AA"));
+        assert!(
+            !is_iban("LI21088100002324013AAX"),
+            "LI IBAN of wrong length must be rejected"
+        );
     }
 }
