@@ -4,7 +4,9 @@
 >
 > **Audience**: Developers extending the identifier system or understanding design decisions.
 >
-> **Location**: `src/security/data/{detection,validation,sanitization}/identifiers/`
+> **Location**: `src/primitives/identifiers/` (Layer 1 detection,
+> validation, sanitization) and `src/identifiers/` (Layer 3
+> observability-instrumented API)
 
 ______________________________________________________________________
 
@@ -880,7 +882,7 @@ ______________________________________________________________________
 ### Internal Documentation
 
 - `docs/architecture/refactor-plan.md`: Refactor status summary (v0.3.0-beta.1)
-- `src/security/data/MODULE_QUALITY_SCORECARD.md`: Quality metrics framework
+- `docs/module-quality.md`: Quality metrics framework
 - `CLAUDE.md`: Zero-trust security philosophy
 - `docs/security/patterns/detection-validation-sanitization.md`: Layer separation philosophy
 

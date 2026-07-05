@@ -743,7 +743,7 @@ ______________________________________________________________________
 
 ```text
 Please evaluate the {module_name} module using the Module Quality Scorecard
-at /workspace/octarine/src/security/data/MODULE_QUALITY_SCORECARD.md
+at docs/module-quality.md
 
 Provide:
 1. Completed scorecard with point values and justification for each category

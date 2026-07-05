@@ -21,8 +21,11 @@ The observe module captures user identity and access context:
 
 ```rust
 use octarine::observe::{set_tenant, TenantContext, TenantId, info};
+use octarine::runtime::r#async::set_user_id;
 
-// Set user context at authentication boundary
+// Set user and tenant context at the authentication boundary
+set_user_id("user-123");
+
 let tenant_id = TenantId::new("acme-corp").expect("valid");
 let ctx = TenantContext {
     tenant_id,
@@ -40,7 +43,7 @@ info("resource_access", "User accessed customer record");
 
 | Requirement | Feature |
 |-------------|---------|
-| User identification | `TenantContext.user_id` captured in events |
+| User identification | `EventContext.user_id` captured in events |
 | Access logging | Every event includes context metadata |
 | Session tracking | Correlation ID propagation |
 | Multi-tenant isolation | Thread-local tenant context |
