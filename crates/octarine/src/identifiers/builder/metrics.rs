@@ -3,6 +3,7 @@
 //! This is the **public API** (Layer 3) that wraps the primitive builder
 //! with observe instrumentation for compliance-grade audit trails.
 
+use super::emit_security_event;
 use crate::observe::Problem;
 use crate::primitives::identifiers::{MetricViolation, MetricsBuilder as PrimitiveMetricsBuilder};
 
@@ -130,23 +131,56 @@ impl MetricsBuilder {
     // ========================================================================
 
     /// Validate a metric name (returns Result)
+    ///
+    /// When observe events are enabled, an injection-pattern detection
+    /// (surfaced by the primitive as [`Problem::PermissionDenied`]) is emitted
+    /// as a CRITICAL security event, preserving the attack-detection audit trail.
     pub fn validate_name(&self, name: &str) -> Result<(), Problem> {
-        self.inner.validate_name(name)
+        let result = self.inner.validate_name(name);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.metrics.name", name);
+        }
+        result
     }
 
     /// Validate a label key (returns Result)
     pub fn validate_label_key(&self, key: &str) -> Result<(), Problem> {
-        self.inner.validate_label_key(key)
+        let result = self.inner.validate_label_key(key);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.metrics.label_key", key);
+        }
+        result
     }
 
     /// Validate a label value (returns Result)
+    ///
+    /// When observe events are enabled, a severe-injection detection (surfaced
+    /// by the primitive as [`Problem::PermissionDenied`]) is emitted as a
+    /// CRITICAL security event.
     pub fn validate_label_value(&self, value: &str) -> Result<(), Problem> {
-        self.inner.validate_label_value(value)
+        let result = self.inner.validate_label_value(value);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.metrics.label_value", value);
+        }
+        result
     }
 
     /// Validate label count (returns Result)
+    ///
+    /// When observe events are enabled, a cardinality-limit breach (surfaced by
+    /// the primitive as [`Problem::PermissionDenied`]) is emitted as a CRITICAL
+    /// security event — unbounded label cardinality is a denial-of-service
+    /// vector.
     pub fn validate_label_count(&self, count: usize) -> Result<(), Problem> {
-        self.inner.validate_label_count(count)
+        let result = self.inner.validate_label_count(count);
+        if self.emit_events {
+            emit_security_event(
+                &result,
+                "identifiers.metrics.label_count",
+                &count.to_string(),
+            );
+        }
+        result
     }
 
     // ========================================================================
@@ -176,18 +210,38 @@ impl MetricsBuilder {
     // ========================================================================
 
     /// Sanitize a metric name, returning an error if invalid
+    ///
+    /// When observe events are enabled, an injection pattern that is rejected
+    /// rather than silently sanitized (surfaced by the primitive as
+    /// [`Problem::PermissionDenied`]) is emitted as a CRITICAL security event.
     pub fn sanitize_name(&self, name: &str) -> Result<String, Problem> {
-        self.inner.sanitize_name(name)
+        let result = self.inner.sanitize_name(name);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.metrics.sanitize_name", name);
+        }
+        result
     }
 
     /// Sanitize a label key, returning an error if invalid
     pub fn sanitize_label_key(&self, key: &str) -> Result<String, Problem> {
-        self.inner.sanitize_label_key(key)
+        let result = self.inner.sanitize_label_key(key);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.metrics.sanitize_label_key", key);
+        }
+        result
     }
 
     /// Sanitize a label value, returning an error if invalid
+    ///
+    /// When observe events are enabled, a severe-injection pattern that is
+    /// rejected rather than sanitized (surfaced by the primitive as
+    /// [`Problem::PermissionDenied`]) is emitted as a CRITICAL security event.
     pub fn sanitize_label_value(&self, value: &str) -> Result<String, Problem> {
-        self.inner.sanitize_label_value(value)
+        let result = self.inner.sanitize_label_value(value);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.metrics.sanitize_label_value", value);
+        }
+        result
     }
 }
 

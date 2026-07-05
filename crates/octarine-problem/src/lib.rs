@@ -106,6 +106,133 @@ pub enum Problem {
 pub type Result<T> = std::result::Result<T, Problem>;
 
 // =============================================================================
+// Event-free constructors (Layer 0 — no observe dependency)
+// =============================================================================
+
+/// Event-free constructors for [`Problem`].
+///
+/// This is the **Layer 1 (primitives)** constructor surface. It mirrors the
+/// method names of `observe::ProblemExt` so call sites read identically
+/// (`Problem::validation(msg)`), but building a problem through this trait has
+/// **no side effects** — it never dispatches an observability event.
+///
+/// `octarine::primitives` re-exports this trait (aliased as `ProblemExt`) so
+/// pure primitives can construct typed problems without reaching into the
+/// observe layer, keeping the dependency graph unidirectional. Layer 2
+/// (`observe`) has its own same-named trait whose constructors additionally
+/// emit audit events for security- and user-attributable failures; Layer 3
+/// wrappers are where that audit coverage belongs.
+///
+/// Each method returns the same [`Problem`] variant the observe-layer
+/// constructor produces, so the two paths differ only in the event side
+/// effect — the error value is identical.
+pub trait ProblemConstructors: Sized {
+    /// Create a validation error (input doesn't meet requirements)
+    fn validation(msg: impl Into<String>) -> Self;
+
+    /// Create a conversion error (failed to convert between types)
+    fn conversion(msg: impl Into<String>) -> Self;
+
+    /// Create a sanitization error (failed to sanitize input)
+    fn sanitization(msg: impl Into<String>) -> Self;
+
+    /// Create a configuration error (invalid configuration)
+    fn config(msg: impl Into<String>) -> Self;
+
+    /// Create a not found error (resource doesn't exist)
+    fn not_found(what: impl Into<String>) -> Self;
+
+    /// Create an authentication error (failed to authenticate)
+    fn auth(msg: impl Into<String>) -> Self;
+
+    /// Create a permission denied error (insufficient privileges)
+    fn permission_denied(msg: impl Into<String>) -> Self;
+
+    /// Create a security error (security violation detected)
+    ///
+    /// Returns the [`Problem::PermissionDenied`] variant, matching the
+    /// observe-layer `security` constructor.
+    fn security(msg: impl Into<String>) -> Self;
+
+    /// Create a network error (network operation failed)
+    fn network(msg: impl Into<String>) -> Self;
+
+    /// Create a database error (database operation failed)
+    fn database(msg: impl Into<String>) -> Self;
+
+    /// Create a parse error (failed to parse input)
+    fn parse(msg: impl Into<String>) -> Self;
+
+    /// Create a timeout error (operation exceeded time limit)
+    fn timeout(msg: impl Into<String>) -> Self;
+
+    /// Create an operation failed error (generic operation failure)
+    fn operation_failed(msg: impl Into<String>) -> Self;
+
+    /// Create an other/unknown error (catch-all for uncategorized errors)
+    fn other(msg: impl Into<String>) -> Self;
+}
+
+impl ProblemConstructors for Problem {
+    fn validation(msg: impl Into<String>) -> Self {
+        Self::Validation(msg.into())
+    }
+
+    fn conversion(msg: impl Into<String>) -> Self {
+        Self::Conversion(msg.into())
+    }
+
+    fn sanitization(msg: impl Into<String>) -> Self {
+        Self::Sanitization(msg.into())
+    }
+
+    fn config(msg: impl Into<String>) -> Self {
+        Self::Config(msg.into())
+    }
+
+    fn not_found(what: impl Into<String>) -> Self {
+        Self::NotFound(what.into())
+    }
+
+    fn auth(msg: impl Into<String>) -> Self {
+        Self::Auth(msg.into())
+    }
+
+    fn permission_denied(msg: impl Into<String>) -> Self {
+        Self::PermissionDenied(msg.into())
+    }
+
+    fn security(msg: impl Into<String>) -> Self {
+        // Matches observe's `create_security`, which returns PermissionDenied.
+        Self::PermissionDenied(msg.into())
+    }
+
+    fn network(msg: impl Into<String>) -> Self {
+        Self::Network(msg.into())
+    }
+
+    fn database(msg: impl Into<String>) -> Self {
+        Self::Database(msg.into())
+    }
+
+    fn parse(msg: impl Into<String>) -> Self {
+        Self::Parse(msg.into())
+    }
+
+    fn timeout(msg: impl Into<String>) -> Self {
+        Self::Timeout(msg.into())
+    }
+
+    fn operation_failed(msg: impl Into<String>) -> Self {
+        Self::OperationFailed(msg.into())
+    }
+
+    fn other(msg: impl Into<String>) -> Self {
+        Self::Other(msg.into())
+    }
+}
+
+// =============================================================================
 // Primitive helper functions (no observe dependency)
 // =============================================================================
 
@@ -179,5 +306,50 @@ mod tests {
     fn test_result_err() {
         let r: Result<i32> = Err(Problem::NotFound("item".into()));
         assert!(r.is_err());
+    }
+
+    #[test]
+    fn test_constructors_input_variants() {
+        assert!(matches!(Problem::validation("m"), Problem::Validation(_)));
+        assert!(matches!(Problem::conversion("m"), Problem::Conversion(_)));
+        assert!(matches!(
+            Problem::sanitization("m"),
+            Problem::Sanitization(_)
+        ));
+        assert!(matches!(Problem::parse("m"), Problem::Parse(_)));
+    }
+
+    #[test]
+    fn test_constructors_security_variants() {
+        assert!(matches!(Problem::auth("m"), Problem::Auth(_)));
+        assert!(matches!(
+            Problem::permission_denied("m"),
+            Problem::PermissionDenied(_)
+        ));
+        // security maps to PermissionDenied, matching observe's create_security.
+        assert!(matches!(
+            Problem::security("m"),
+            Problem::PermissionDenied(_)
+        ));
+    }
+
+    #[test]
+    fn test_constructors_operational_variants() {
+        assert!(matches!(Problem::config("m"), Problem::Config(_)));
+        assert!(matches!(Problem::not_found("m"), Problem::NotFound(_)));
+        assert!(matches!(Problem::network("m"), Problem::Network(_)));
+        assert!(matches!(Problem::database("m"), Problem::Database(_)));
+        assert!(matches!(Problem::timeout("m"), Problem::Timeout(_)));
+        assert!(matches!(
+            Problem::operation_failed("m"),
+            Problem::OperationFailed(_)
+        ));
+        assert!(matches!(Problem::other("m"), Problem::Other(_)));
+    }
+
+    #[test]
+    fn test_constructors_preserve_message() {
+        let p = Problem::validation("bad input");
+        assert_eq!(p.to_string(), "Validation error: bad input");
     }
 }
