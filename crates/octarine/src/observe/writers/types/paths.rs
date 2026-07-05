@@ -216,7 +216,31 @@ impl FilenamePattern {
         &self.0
     }
 
+    /// Sanitize a template variable into a single safe path component
+    ///
+    /// Each substituted value is reduced to a safe filename before
+    /// interpolation so no variable can introduce path separators (`/`, `\`),
+    /// parent-directory references (`..`), null bytes, or shell
+    /// metacharacters. This prevents a caller-supplied value — most notably a
+    /// runtime tenant ID in the `multi_tenant()` preset — from escaping the
+    /// configured log directory via path traversal.
+    ///
+    /// Uses the same lenient sanitizer as [`LogFilename::new`]
+    /// (`FilenameBuilder::to_safe_filename`), which preserves `-`, `_`, and
+    /// digits, so legitimate tenants, dates, and datetimes pass through
+    /// unchanged while a value that sanitizes to empty falls back to a safe
+    /// placeholder (never an empty segment).
+    fn sanitize_component(value: &str) -> String {
+        FilenameBuilder::new().to_safe_filename(value)
+    }
+
     /// Expand the pattern with the given variables
+    ///
+    /// Each string variable is sanitized into a single safe path component
+    /// before substitution, so a
+    /// malicious value such as a `../../etc/cron.d` tenant ID cannot traverse
+    /// out of the log directory. Numeric variables (`sequence`, `timestamp`)
+    /// cannot carry traversal and are inserted as-is.
     ///
     /// # Arguments
     ///
@@ -234,16 +258,16 @@ impl FilenamePattern {
         let mut result = self.0.clone();
 
         if let Some(d) = date {
-            result = result.replace("{date}", d);
+            result = result.replace("{date}", &Self::sanitize_component(d));
         }
         if let Some(dt) = datetime {
-            result = result.replace("{datetime}", dt);
+            result = result.replace("{datetime}", &Self::sanitize_component(dt));
         }
         if let Some(seq) = sequence {
             result = result.replace("{sequence}", &seq.to_string());
         }
         if let Some(t) = tenant {
-            result = result.replace("{tenant}", t);
+            result = result.replace("{tenant}", &Self::sanitize_component(t));
         }
 
         // Expand timestamp
@@ -258,7 +282,7 @@ impl FilenamePattern {
             let hostname = hostname::get()
                 .map(|h| h.to_string_lossy().to_string())
                 .unwrap_or_else(|_| "unknown".to_string());
-            result = result.replace("{host}", &hostname);
+            result = result.replace("{host}", &Self::sanitize_component(&hostname));
         }
 
         result
@@ -376,6 +400,45 @@ mod tests {
 
         let expanded = pattern.expand(Some("2025-11-29"), None, None, Some("acme-corp"));
         assert_eq!(expanded, "acme-corp/audit-2025-11-29.log");
+    }
+
+    #[test]
+    fn test_filename_pattern_tenant_traversal_sanitized() {
+        // A malicious tenant ID must not escape the log directory.
+        let pattern = FilenamePattern::multi_tenant("audit");
+        let expanded = pattern.expand(Some("2025-11-29"), None, None, Some("../../etc/cron.d"));
+
+        // No parent-directory references and no separators survive in the
+        // tenant segment, so the result stays within the configured dir.
+        assert!(
+            !expanded.contains(".."),
+            "traversal sequence leaked into expanded path: {expanded}"
+        );
+        let tenant_segment = expanded
+            .split('/')
+            .next()
+            .expect("expanded pattern has a leading component");
+        assert!(
+            !tenant_segment.contains('/') && !tenant_segment.contains('\\'),
+            "tenant segment retained a separator: {tenant_segment}"
+        );
+    }
+
+    #[test]
+    fn test_filename_pattern_tenant_separator_flattened() {
+        // An embedded separator collapses to a single safe component.
+        let pattern = FilenamePattern::multi_tenant("audit");
+        let expanded = pattern.expand(Some("2025-11-29"), None, None, Some("acme/corp"));
+        assert_eq!(expanded, "acmecorp/audit-2025-11-29.log");
+    }
+
+    #[test]
+    fn test_filename_pattern_tenant_null_byte_sanitized() {
+        // Null bytes are stripped from substituted values.
+        let pattern = FilenamePattern::multi_tenant("audit");
+        let expanded = pattern.expand(Some("2025-11-29"), None, None, Some("acme\0corp"));
+        assert!(!expanded.contains('\0'));
+        assert_eq!(expanded, "acmecorp/audit-2025-11-29.log");
     }
 
     #[test]
