@@ -218,6 +218,47 @@ pub fn validate_crypto_address(addr: &str) -> Result<CryptoAddressType, Problem>
     }
 }
 
+// ============================================================================
+// Indian UPI Validation
+// ============================================================================
+
+/// Validate an Indian UPI VPA (`account@psp`).
+///
+/// Enforces the VPA shape and NPCI PSP-allowlist membership by delegating to
+/// [`detection::is_india_upi`] (detection-first, per the project contract).
+/// On failure the error names the offending suffix when one is present so the
+/// caller can see *why* it was rejected.
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` when the value is not a well-formed VPA or the
+/// PSP handle is not on the NPCI allowlist.
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::financial::validation;
+///
+/// assert!(validation::validate_india_upi("alice@oksbi").is_ok());
+/// assert!(validation::validate_india_upi("alice@fakebank").is_err());
+/// ```
+pub fn validate_india_upi(value: &str) -> Result<(), Problem> {
+    if detection::is_india_upi(value) {
+        return Ok(());
+    }
+
+    // Craft a specific message: if the value at least has an `@`, call out the
+    // unrecognized suffix; otherwise report the shape failure.
+    match value.trim().rsplit_once('@') {
+        Some((account, psp)) if !account.is_empty() && !psp.is_empty() => Err(Problem::Validation(
+            format!("Unknown UPI PSP suffix '{psp}' — not on the NPCI allowlist"),
+        )),
+        _ => Err(Problem::Validation(
+            "Invalid UPI VPA format (expected account@psp)".into(),
+        )),
+    }
+}
+
 /// Classify a checksum-valid Bitcoin address by prefix.
 fn classify_bitcoin(addr: &str) -> Option<CryptoAddressType> {
     if addr.starts_with("bc1p") {
@@ -634,5 +675,38 @@ mod tests {
         let result = validate_crypto_address("not_a_crypto_address");
         let err = result.expect_err("Garbage should fail");
         assert!(err.to_string().contains("format"));
+    }
+
+    // ===== Indian UPI Validation Tests =====
+
+    #[test]
+    fn test_validate_india_upi_valid() {
+        assert!(validate_india_upi("alice@oksbi").is_ok());
+        assert!(validate_india_upi("9876543210@paytm").is_ok());
+        assert!(validate_india_upi("BOB@Paytm").is_ok());
+    }
+
+    #[test]
+    fn test_validate_india_upi_unknown_psp() {
+        let err = validate_india_upi("alice@fakebank").expect_err("unknown PSP should fail");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("fakebank"),
+            "message should name the suffix: {msg}"
+        );
+        assert!(msg.contains("NPCI"));
+    }
+
+    #[test]
+    fn test_validate_india_upi_rejects_email() {
+        assert!(validate_india_upi("alice@paytm.com").is_err());
+    }
+
+    #[test]
+    fn test_validate_india_upi_malformed() {
+        let err = validate_india_upi("noatsign").expect_err("no @ should fail");
+        assert!(err.to_string().contains("format"));
+        assert!(validate_india_upi("").is_err());
+        assert!(validate_india_upi("@oksbi").is_err());
     }
 }

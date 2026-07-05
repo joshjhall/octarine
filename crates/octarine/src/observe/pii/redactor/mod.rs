@@ -231,6 +231,9 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             PiiType::RoutingNumber | PiiType::PaymentToken | PiiType::CryptoAddress => {
                 redact_payment_tokens(&result, profile)
             }
+            // Indian UPI VPAs — dedicated PSP-allowlist redactor (DPDP Act 2023
+            // payment PII).
+            PiiType::IndiaUpi => redact_india_upis(&result, profile),
             // Personal
             PiiType::Email => redact_emails(&result, profile),
             PiiType::Phone => redact_phones(&result, profile),

@@ -183,6 +183,25 @@ pub(crate) mod bank_account {
     }
 }
 
+/// Indian UPI (Unified Payments Interface) VPA patterns
+pub(crate) mod upi {
+    use super::*;
+
+    /// Candidate UPI VPA token: `account@host`.
+    ///
+    /// Deliberately broad — the `@host` part is captured **including any dots
+    /// and hyphens** so that an email like `alice@paytm.com` surfaces its full
+    /// host `paytm.com`, which the PSP-allowlist gate in
+    /// `detection::is_india_upi` then rejects (only the dotless bare handle
+    /// `paytm` is in the allowlist). This regex only enumerates candidates for
+    /// text scanning; the allowlist does the real discrimination.
+    /// Example: "9876543210@paytm", "alice@oksbi"
+    pub static CANDIDATE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"\b[A-Za-z0-9][A-Za-z0-9.\-_]{1,255}@[A-Za-z][A-Za-z0-9.\-]{1,64}\b")
+            .expect("BUG: Invalid regex pattern")
+    });
+}
+
 /// Cryptocurrency wallet address patterns
 pub(crate) mod crypto {
     use super::*;

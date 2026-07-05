@@ -25,6 +25,7 @@ mod credit_card;
 mod crypto;
 mod iban;
 mod routing;
+mod upi;
 
 // Re-export cache utilities
 pub use cache::{
@@ -49,6 +50,9 @@ pub use bank_account::detect_payment_tokens_in_text;
 
 // Re-export IBAN functions
 pub use iban::{detect_iban_country, detect_ibans_in_text, is_iban, is_iban_checksum_valid};
+
+// Re-export UPI functions
+pub use upi::{find_india_upis_in_text, is_india_upi};
 
 // Re-export crypto functions
 pub use crypto::{

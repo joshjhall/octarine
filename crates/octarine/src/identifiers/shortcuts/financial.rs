@@ -3,7 +3,9 @@
 //! Convenience functions over [`FinancialBuilder`](super::super::FinancialBuilder).
 
 use crate::observe::Problem;
-use crate::primitives::identifiers::{CreditCardRedactionStrategy, CryptoAddressRedactionStrategy};
+use crate::primitives::identifiers::{
+    CreditCardRedactionStrategy, CryptoAddressRedactionStrategy, IndiaUpiRedactionStrategy,
+};
 
 use super::super::FinancialBuilder;
 use super::super::types::{CreditCardType, CryptoAddressType, IdentifierMatch};
@@ -142,9 +144,47 @@ pub fn redact_crypto_addresses(text: &str) -> String {
         .to_string()
 }
 
+// ============================================================
+// INDIAN UPI SHORTCUTS
+// ============================================================
+
+/// Check if value is an Indian UPI VPA (`account@psp`, NPCI PSP allowlist)
+#[must_use]
+pub fn is_india_upi(value: &str) -> bool {
+    FinancialBuilder::new().is_india_upi(value)
+}
+
+/// Find all Indian UPI VPAs in text (PSP allowlist + context boost)
+#[must_use]
+pub fn find_india_upis(text: &str) -> Vec<IdentifierMatch> {
+    FinancialBuilder::new().find_india_upis_in_text(text)
+}
+
+/// Validate an Indian UPI VPA (shape + NPCI PSP-allowlist membership)
+pub fn validate_india_upi(value: &str) -> Result<(), Problem> {
+    FinancialBuilder::new().validate_india_upi(value)
+}
+
+/// Redact a single Indian UPI VPA using the partial default
+/// (`****@psp` — account masked, PSP handle visible).
+#[must_use]
+pub fn redact_india_upi(value: &str) -> String {
+    FinancialBuilder::new().redact_india_upi(value)
+}
+
+/// Redact all Indian UPI VPAs found in text with the partial default
+/// (account masked, PSP handle visible).
+#[must_use]
+pub fn redact_india_upis(text: &str) -> String {
+    FinancialBuilder::new()
+        .redact_india_upis_in_text_with_strategy(text, IndiaUpiRedactionStrategy::ShowPsp)
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
+    use super::super::super::types::{DetectionConfidence, IdentifierType};
     use super::*;
 
     #[test]
@@ -204,5 +244,43 @@ mod tests {
         assert!(out.contains("1A1z"));
         assert!(out.contains("vfNa"));
         assert!(!out.contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+    }
+
+    // ===== Indian UPI Shortcut Tests =====
+
+    #[test]
+    fn test_is_india_upi_shortcut() {
+        assert!(is_india_upi("alice@oksbi"));
+        assert!(is_india_upi("9876543210@paytm"));
+        assert!(!is_india_upi("alice@paytm.com"));
+        assert!(!is_india_upi("alice@fakebank"));
+    }
+
+    #[test]
+    fn test_find_india_upis_shortcut() {
+        let matches = find_india_upis("Send UPI to 9876543210@paytm");
+        assert_eq!(matches.len(), 1);
+        let m = matches.first().expect("one match");
+        assert_eq!(m.identifier_type, IdentifierType::IndiaUpi);
+        // Context keyword "UPI" present → High confidence.
+        assert_eq!(m.confidence, DetectionConfidence::High);
+    }
+
+    #[test]
+    fn test_validate_india_upi_shortcut() {
+        assert!(validate_india_upi("alice@oksbi").is_ok());
+        assert!(validate_india_upi("alice@fakebank").is_err());
+    }
+
+    #[test]
+    fn test_redact_india_upi_shortcut() {
+        assert_eq!(redact_india_upi("alice@oksbi"), "****@oksbi");
+    }
+
+    #[test]
+    fn test_redact_india_upis_in_text_shortcut() {
+        let out = redact_india_upis("Pay alice@oksbi via UPI");
+        assert!(out.contains("****@oksbi"));
+        assert!(!out.contains("alice@oksbi"));
     }
 }

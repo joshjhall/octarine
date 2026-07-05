@@ -42,6 +42,7 @@ pub enum IdentifierType {
     PaymentToken,  // Stripe, PayPal tokens
     CryptoAddress, // Bitcoin, Ethereum wallet addresses
     Iban,          // International Bank Account Number
+    IndiaUpi,      // Indian UPI VPA (account@psp — NPCI PSP allowlist)
 
     // Token/Key identifiers
     GitHubToken,

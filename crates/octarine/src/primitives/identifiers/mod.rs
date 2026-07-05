@@ -158,7 +158,7 @@ pub use personal::TextRedactionPolicy as PersonalTextPolicy;
 // Re-export domain-specific redaction strategies for observe/pii config
 pub(crate) use financial::{
     BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
-    PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy,
+    IndiaUpiRedactionStrategy, PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy,
 };
 pub(crate) use government::{
     DriverLicenseRedactionStrategy, NationalIdRedactionStrategy, PassportRedactionStrategy,

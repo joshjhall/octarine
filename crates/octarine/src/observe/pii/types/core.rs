@@ -23,6 +23,7 @@ impl PiiType {
             Self::PaymentToken => "payment_token",
             Self::Iban => "iban",
             Self::CryptoAddress => "crypto_address",
+            Self::IndiaUpi => "india_upi",
             // Government
             Self::Ssn => "ssn",
             Self::DriverLicense => "driver_license",
@@ -184,7 +185,8 @@ impl PiiType {
             | Self::RoutingNumber
             | Self::PaymentToken
             | Self::Iban
-            | Self::CryptoAddress => "financial",
+            | Self::CryptoAddress
+            | Self::IndiaUpi => "financial",
             Self::Ssn
             | Self::DriverLicense
             | Self::Passport

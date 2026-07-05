@@ -48,6 +48,7 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::PaymentToken => Self::PaymentToken,
             IdentifierType::CryptoAddress => Self::CryptoAddress,
             IdentifierType::Iban => Self::Iban,
+            IdentifierType::IndiaUpi => Self::IndiaUpi,
 
             // Token/Key
             IdentifierType::Jwt => Self::Jwt,

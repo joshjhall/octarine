@@ -22,7 +22,8 @@ use super::conversion;
 use super::detection;
 use super::redaction::{
     BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
-    PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy, TextRedactionPolicy,
+    IndiaUpiRedactionStrategy, PaymentTokenRedactionStrategy, RoutingNumberRedactionStrategy,
+    TextRedactionPolicy,
 };
 use super::validation;
 use crate::primitives::Problem;
@@ -450,6 +451,102 @@ pub fn redact_crypto_addresses_in_text_with_strategy(
 }
 
 // ============================================================================
+// Indian UPI Sanitization
+// ============================================================================
+
+/// Redact an Indian UPI VPA with an explicit strategy.
+///
+/// Returns the type token `[UPI_ID]` when the input is not a recognized UPI VPA
+/// — keeps invalid/unknown input from leaking through unchanged. Otherwise the
+/// strategy decides what to reveal; `ShowPsp` masks the account and keeps the
+/// PSP handle (`****@oksbi`).
+///
+/// # Examples
+///
+/// ```ignore
+/// use crate::primitives::identifiers::financial::{
+///     IndiaUpiRedactionStrategy, sanitization,
+/// };
+///
+/// assert_eq!(
+///     sanitization::redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::ShowPsp),
+///     "****@oksbi",
+/// );
+/// assert_eq!(
+///     sanitization::redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::Token),
+///     "[UPI_ID]",
+/// );
+/// ```
+#[must_use]
+pub fn redact_india_upi_with_strategy(value: &str, strategy: IndiaUpiRedactionStrategy) -> String {
+    if matches!(strategy, IndiaUpiRedactionStrategy::Skip) {
+        return value.to_string();
+    }
+
+    if !detection::is_india_upi(value) {
+        return RedactionTokenCore::IndiaUpi.into();
+    }
+
+    let trimmed = value.trim();
+
+    match strategy {
+        IndiaUpiRedactionStrategy::Skip => value.to_string(),
+        IndiaUpiRedactionStrategy::ShowPsp => match trimmed.rsplit_once('@') {
+            // Mask the account with a fixed 4-char mask (does not reveal the
+            // account length), keep the PSP handle visible.
+            Some((_account, psp)) => format!("{}@{psp}", masking::create_mask(4, '*')),
+            None => RedactionTokenCore::IndiaUpi.into(),
+        },
+        IndiaUpiRedactionStrategy::Token => RedactionTokenCore::IndiaUpi.into(),
+        IndiaUpiRedactionStrategy::Anonymous => RedactionTokenCore::Redacted.into(),
+        IndiaUpiRedactionStrategy::Asterisks => masking::create_mask(trimmed.chars().count(), '*'),
+        IndiaUpiRedactionStrategy::Hashes => masking::create_mask(trimmed.chars().count(), '#'),
+    }
+}
+
+/// Redact all Indian UPI VPAs in `text` with an explicit strategy.
+///
+/// Scans for candidate VPA tokens, redacts each recognized UPI VPA via
+/// [`redact_india_upi_with_strategy`], and leaves everything else untouched.
+/// Returns `Cow::Borrowed` when nothing is redacted so callers avoid an
+/// allocation on clean text.
+#[must_use]
+pub fn redact_india_upis_in_text_with_strategy(
+    text: &str,
+    strategy: IndiaUpiRedactionStrategy,
+) -> Cow<'_, str> {
+    if matches!(strategy, IndiaUpiRedactionStrategy::Skip) {
+        return Cow::Borrowed(text);
+    }
+
+    let pattern = &patterns::financial::upi::CANDIDATE;
+    if !pattern.is_match(text) {
+        return Cow::Borrowed(text);
+    }
+
+    let mut changed = false;
+    let owned = pattern
+        .replace_all(text, |caps: &regex::Captures<'_>| {
+            let matched = caps.get(0).map_or("", |m| m.as_str());
+            // Only redact genuine UPI VPAs; pass through email-like candidates
+            // (unknown PSP) unchanged.
+            if detection::is_india_upi(matched) {
+                changed = true;
+                redact_india_upi_with_strategy(matched, strategy)
+            } else {
+                matched.to_string()
+            }
+        })
+        .into_owned();
+
+    if changed {
+        Cow::Owned(owned)
+    } else {
+        Cow::Borrowed(text)
+    }
+}
+
+// ============================================================================
 // Payment Token Sanitization
 // ============================================================================
 
@@ -670,6 +767,8 @@ pub fn redact_all_financial_in_text_with_policy(text: &str, policy: TextRedactio
     // Apply crypto address redaction with strategy
     let result =
         redact_crypto_addresses_in_text_with_strategy(&result, policy.to_crypto_address_strategy());
+    // Apply Indian UPI redaction with strategy
+    let result = redact_india_upis_in_text_with_strategy(&result, policy.to_india_upi_strategy());
 
     result.into_owned()
 }
@@ -1137,5 +1236,88 @@ mod tests {
         assert!(out.contains("[CREDIT_CARD]"));
         assert!(out.contains("[CRYPTO_ADDRESS]"));
         assert!(!out.contains(SATOSHI));
+    }
+
+    // ===== Indian UPI Redaction Tests =====
+
+    #[test]
+    fn test_redact_india_upi_show_psp() {
+        assert_eq!(
+            redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::ShowPsp),
+            "****@oksbi"
+        );
+    }
+
+    #[test]
+    fn test_redact_india_upi_token() {
+        assert_eq!(
+            redact_india_upi_with_strategy("9876543210@paytm", IndiaUpiRedactionStrategy::Token),
+            "[UPI_ID]"
+        );
+    }
+
+    #[test]
+    fn test_redact_india_upi_anonymous() {
+        assert_eq!(
+            redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::Anonymous),
+            "[REDACTED]"
+        );
+    }
+
+    #[test]
+    fn test_redact_india_upi_length_preserving() {
+        let asterisks =
+            redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::Asterisks);
+        assert_eq!(asterisks.chars().count(), "alice@oksbi".chars().count());
+        assert!(asterisks.chars().all(|c| c == '*'));
+    }
+
+    #[test]
+    fn test_redact_india_upi_skip() {
+        assert_eq!(
+            redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::Skip),
+            "alice@oksbi"
+        );
+    }
+
+    #[test]
+    fn test_redact_india_upi_invalid_returns_token() {
+        // Unknown PSP → safe token fallback.
+        assert_eq!(
+            redact_india_upi_with_strategy("alice@fakebank", IndiaUpiRedactionStrategy::ShowPsp),
+            "[UPI_ID]"
+        );
+    }
+
+    #[test]
+    fn test_redact_india_upis_in_text() {
+        let out = redact_india_upis_in_text_with_strategy(
+            "pay 9876543210@paytm now",
+            IndiaUpiRedactionStrategy::Token,
+        );
+        assert!(out.contains("[UPI_ID]"));
+        assert!(!out.contains("9876543210@paytm"));
+    }
+
+    #[test]
+    fn test_redact_india_upis_in_text_leaves_email() {
+        // Email candidate (unknown PSP) is passed through unchanged.
+        let out = redact_india_upis_in_text_with_strategy(
+            "mail alice@paytm.com",
+            IndiaUpiRedactionStrategy::Token,
+        );
+        assert!(out.contains("alice@paytm.com"));
+        assert!(matches!(out, Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn test_redact_all_financial_in_text_covers_upi() {
+        let out = redact_all_financial_in_text_with_policy(
+            "UPI alice@oksbi and card 4242-4242-4242-4242",
+            TextRedactionPolicy::Complete,
+        );
+        assert!(out.contains("[UPI_ID]"));
+        assert!(out.contains("[CREDIT_CARD]"));
+        assert!(!out.contains("alice@oksbi"));
     }
 }

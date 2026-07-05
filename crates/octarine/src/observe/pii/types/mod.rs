@@ -75,6 +75,8 @@ pub enum PiiType {
     Iban,
     /// Cryptocurrency wallet address (Bitcoin, Ethereum)
     CryptoAddress,
+    /// Indian UPI VPA (account@psp — NPCI PSP allowlist; DPDP Act 2023 payment PII)
+    IndiaUpi,
 
     // =========================================================================
     // Government Domain
