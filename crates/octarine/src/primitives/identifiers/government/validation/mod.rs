@@ -130,7 +130,7 @@ pub use italy::{
 // Re-export Spain functions
 pub use spain::{
     is_test_spain_nie, is_test_spain_nif, validate_spain_nie, validate_spain_nie_with_checksum,
-    validate_spain_nif, validate_spain_nif_with_checksum,
+    validate_spain_nif, validate_spain_nif_with_checksum, validate_spain_passport,
 };
 
 // Re-export Sweden functions

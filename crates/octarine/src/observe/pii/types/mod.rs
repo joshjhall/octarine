@@ -167,6 +167,8 @@ pub enum PiiType {
     SpainNif,
     /// Spanish NIE (Numero de Identidad de Extranjero)
     SpainNie,
+    /// Spanish passport (3 letters + 6 digits, no checksum)
+    SpainPassport,
     /// UK National Insurance Number (NINO)
     UkNi,
     /// UK NHS Number (10 digits, mod-11 weighted checksum)

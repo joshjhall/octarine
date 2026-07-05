@@ -528,6 +528,36 @@ pub(crate) mod spain_nie {
     }
 }
 
+/// Spain passport patterns
+///
+/// Format: 3 letters + 6 digits (`[A-Z]{3}[0-9]{6}`). No checksum — matches
+/// Presidio's `EsPassportRecognizer`.
+pub(crate) mod spain_passport {
+    use super::*;
+
+    /// Passport format: 3 letters + 6 digits
+    pub static STANDARD: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\b[A-Z]{3}\d{6}\b").expect("BUG: Invalid regex pattern"));
+
+    /// Passport with explicit label (Spanish + English aliases)
+    pub static LABELED: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(?:pasaporte(?:\s+español)?|(?:n[uú]mero[\s-]?de[\s-]?)?pasaporte|passport(?:[\s-]?number|[\s-]?no\.?)?)[\s:#-]*([A-Z]{3}\d{6})\b",
+        )
+        .expect("BUG: Invalid regex pattern")
+    });
+
+    pub fn all() -> Vec<&'static Regex> {
+        vec![&*LABELED, &*STANDARD]
+    }
+
+    /// Label-anchored only — the bare 3-letter + 6-digit shape is too loose
+    /// for unlabeled text scanning.
+    pub fn labeled_only() -> Vec<&'static Regex> {
+        vec![&*LABELED]
+    }
+}
+
 /// Italy Codice Fiscale (fiscal code) patterns
 pub(crate) mod italy_fiscal_code {
     use super::*;

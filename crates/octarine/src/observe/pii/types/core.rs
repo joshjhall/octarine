@@ -68,6 +68,7 @@ impl PiiType {
             Self::ItalyDriverLicense => "italy_driver_license",
             Self::SpainNif => "spain_nif",
             Self::SpainNie => "spain_nie",
+            Self::SpainPassport => "spain_passport",
             Self::UkNi => "uk_ni",
             Self::UkNhs => "uk_nhs",
             Self::UkPassport => "uk_passport",
@@ -229,6 +230,7 @@ impl PiiType {
             | Self::ItalyDriverLicense
             | Self::SpainNif
             | Self::SpainNie
+            | Self::SpainPassport
             | Self::UkNi
             | Self::UkNhs
             | Self::UkPassport

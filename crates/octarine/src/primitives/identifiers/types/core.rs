@@ -105,6 +105,7 @@ pub enum IdentifierType {
     ItalyDriverLicense, // Italian Patente di Guida (standard + U1 Carta Conducente)
     SpainNif,           // Spanish NIF (Numero de Identificacion Fiscal)
     SpainNie,           // Spanish NIE (Numero de Identidad de Extranjero)
+    SpainPassport,      // Spanish passport (3 letters + 6 digits, no checksum)
     UkNi,               // UK National Insurance Number (NINO)
     UkNhs,              // UK NHS Number (10 digits, mod-11 weighted checksum)
     UkPassport,         // UK Passport (2 letters + 7 digits)

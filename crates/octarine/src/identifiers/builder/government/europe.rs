@@ -131,6 +131,62 @@ impl GovernmentBuilder {
         self.inner.validate_spain_nie_with_checksum(nie)
     }
 
+    // ---- Spain passport ------------------------------------------------------
+
+    /// Check if value matches a Spanish passport pattern
+    #[must_use]
+    pub fn is_spain_passport(&self, value: &str) -> bool {
+        let start = Instant::now();
+        let result = self.inner.is_spain_passport(value);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result {
+                increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::government_data_found(), 1);
+            }
+        }
+        result
+    }
+
+    /// Find all Spanish passport mentions in text (label-anchored only)
+    #[must_use]
+    pub fn find_spain_passports_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let start = Instant::now();
+        let matches = self.inner.find_spain_passports_in_text(text);
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if !matches.is_empty() {
+                increment_by(metric_names::detected(), matches.len() as u64);
+            }
+        }
+        matches
+    }
+
+    /// Validate Spanish passport format (3 letters + 6 digits, no checksum)
+    pub fn validate_spain_passport(&self, value: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_spain_passport(value);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                observe::warn(
+                    "spain_passport_validation_failed",
+                    "Invalid Spain passport format",
+                );
+            }
+        }
+        result
+    }
+
     // ---- Italy Codice Fiscale ------------------------------------------------
 
     /// Check if value matches an Italian Codice Fiscale pattern

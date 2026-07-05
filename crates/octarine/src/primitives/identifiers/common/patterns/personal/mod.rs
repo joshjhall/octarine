@@ -40,9 +40,9 @@ pub(crate) use regional_identifiers::{
     birthdate, brazil_cnpj, brazil_cpf, finland_hetu, germany_id_card, germany_passport,
     germany_tax_id, italy_driver_license, italy_fiscal_code, italy_identity_card, italy_passport,
     italy_vat, mexico_curp, nigeria_bvn, nigeria_nin, nigeria_vehicle_reg, personal_name,
-    poland_pesel, singapore_nric, singapore_uen, spain_nie, spain_nif, sweden_orgnummer,
-    sweden_personnummer, thailand_tnin, turkey_license_plate, turkey_tckn, uk_driving_licence,
-    uk_nhs, uk_ni, uk_passport,
+    poland_pesel, singapore_nric, singapore_uen, spain_nie, spain_nif, spain_passport,
+    sweden_orgnummer, sweden_personnummer, thailand_tnin, turkey_license_plate, turkey_tckn,
+    uk_driving_licence, uk_nhs, uk_ni, uk_passport,
 };
 pub(crate) use us_identifiers::{
     driver_license, employee_id, mbi, passport, ssn, student_id, tax_id,

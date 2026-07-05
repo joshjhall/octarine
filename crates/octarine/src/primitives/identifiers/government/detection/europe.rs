@@ -112,6 +112,44 @@ pub fn find_spain_nies_in_text(text: &str) -> Vec<IdentifierMatch> {
     deduplicate_matches(matches)
 }
 
+/// Check if a value matches Spain passport format
+#[must_use]
+pub fn is_spain_passport(value: &str) -> bool {
+    if exceeds_safe_length(value, MAX_IDENTIFIER_LENGTH) {
+        return false;
+    }
+    patterns::spain_passport::all()
+        .iter()
+        .any(|p| p.is_match(value))
+}
+
+/// Find all Spain passport patterns in text
+///
+/// Label-anchored only: the bare 3-letter + 6-digit shape is too loose to
+/// scan for in unlabeled text without excessive false positives.
+#[must_use]
+pub fn find_spain_passports_in_text(text: &str) -> Vec<IdentifierMatch> {
+    if exceeds_safe_length(text, MAX_INPUT_LENGTH) {
+        return Vec::new();
+    }
+
+    let mut matches = Vec::new();
+
+    for pattern in patterns::spain_passport::labeled_only() {
+        for capture in pattern.captures_iter(text) {
+            let full_match = get_full_match(&capture);
+            matches.push(IdentifierMatch::high_confidence(
+                full_match.start(),
+                full_match.end(),
+                full_match.as_str().to_string(),
+                IdentifierType::SpainPassport,
+            ));
+        }
+    }
+
+    deduplicate_matches(matches)
+}
+
 /// Check if a value matches Italy Codice Fiscale format
 #[must_use]
 pub fn is_italy_fiscal_code(value: &str) -> bool {
@@ -558,6 +596,47 @@ mod tests {
     #[test]
     fn test_find_uk_driving_licences_dvla_label_accepted() {
         let matches = find_uk_driving_licences_in_text("DVLA MORGA753116SM9IJ");
+        assert_eq!(matches.len(), 1);
+    }
+
+    // ----- Spain Passport -----
+
+    #[test]
+    fn test_is_spain_passport_accepts_valid_shape() {
+        assert!(is_spain_passport("ABC123456"));
+        assert!(is_spain_passport("XYZ987654"));
+        // Case-insensitive.
+        assert!(is_spain_passport("abc123456"));
+    }
+
+    #[test]
+    fn test_is_spain_passport_rejects_wrong_shape() {
+        assert!(!is_spain_passport("AB1234567")); // 2 letters + 7 digits
+        assert!(!is_spain_passport("ABCD12345")); // 4 letters + 5 digits
+        assert!(!is_spain_passport("ABC12345")); // only 5 digits
+        assert!(!is_spain_passport("123456789")); // all digits
+    }
+
+    #[test]
+    fn test_find_spain_passports_in_text_requires_label() {
+        let matches = find_spain_passports_in_text("pasaporte ABC123456 emitido en Madrid");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::SpainPassport
+        );
+    }
+
+    #[test]
+    fn test_find_spain_passports_in_text_no_label_no_match() {
+        // Bare 3-letter + 6-digit run without a label should not be picked up.
+        let matches = find_spain_passports_in_text("Reference code ABC123456 attached.");
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn test_find_spain_passports_in_text_english_label() {
+        let matches = find_spain_passports_in_text("Passport number: XYZ987654");
         assert_eq!(matches.len(), 1);
     }
 }

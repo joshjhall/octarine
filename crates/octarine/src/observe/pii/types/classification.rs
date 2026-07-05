@@ -28,7 +28,7 @@ impl PiiType {
             Self::TurkeyTckn | Self::TurkeyLicensePlate |
             Self::SingaporeNric | Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
-            Self::SpainNif | Self::SpainNie | Self::UkNi |
+            Self::SpainNif | Self::SpainNie | Self::SpainPassport | Self::UkNi |
             Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
             Self::SwedenPersonnummer | Self::SwedenOrgnummer |
             Self::GermanyTaxId | Self::GermanyIdCard | Self::GermanyPassport |
@@ -76,7 +76,7 @@ impl PiiType {
             // PIPA/Privacy Act 1988/DPDPA/PDPA — not GDPR)
             Self::FinlandHetu | Self::PolandPesel | Self::ItalyFiscalCode |
             Self::ItalyVat | Self::ItalyPassport | Self::ItalyIdentityCard | Self::ItalyDriverLicense |
-            Self::SpainNif | Self::SpainNie | Self::UkNi |
+            Self::SpainNif | Self::SpainNie | Self::SpainPassport | Self::UkNi |
             Self::UkNhs | Self::UkPassport | Self::UkDrivingLicence |
             Self::SwedenPersonnummer | Self::SwedenOrgnummer |
             // German IDs — Steuer-IdNr protected under §§ 139a-139e AO + DSGVO,

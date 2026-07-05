@@ -239,6 +239,35 @@ pub fn is_test_spain_nie(value: &str) -> bool {
 }
 
 // ============================================================================
+// Passport Validation
+// ============================================================================
+
+/// Validate Spain passport format (3 letters + 6 digits, no checksum)
+///
+/// The Spanish passport number has no check digit — validation is purely
+/// structural. Calls detection first (DRY: validators depend on detectors).
+///
+/// # Errors
+///
+/// Returns `Problem::Validation` if the value is not a valid passport format.
+pub fn validate_spain_passport(value: &str) -> Result<(), Problem> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(Problem::Validation(
+            "Spain passport cannot be empty".to_string(),
+        ));
+    }
+
+    if !super::super::detection::is_spain_passport(trimmed) {
+        return Err(Problem::Validation(
+            "Spain passport must be 3 letters followed by 6 digits".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -472,6 +501,34 @@ mod tests {
     fn test_is_test_nie_wrong_length() {
         assert!(!is_test_spain_nie("12345"));
         assert!(!is_test_spain_nie(""));
+    }
+
+    // ===== Passport format validation =====
+
+    #[test]
+    fn test_validate_passport_valid() {
+        assert!(validate_spain_passport("AAA123456").is_ok());
+        assert!(validate_spain_passport("XYZ987654").is_ok());
+    }
+
+    #[test]
+    fn test_validate_passport_case_insensitive() {
+        assert!(validate_spain_passport("aaa123456").is_ok());
+    }
+
+    #[test]
+    fn test_validate_passport_empty() {
+        assert!(validate_spain_passport("").is_err());
+        assert!(validate_spain_passport("   ").is_err());
+    }
+
+    #[test]
+    fn test_validate_passport_wrong_shape() {
+        assert!(validate_spain_passport("AA1234567").is_err()); // 2 letters + 7 digits
+        assert!(validate_spain_passport("AAAA12345").is_err()); // 4 letters + 5 digits
+        assert!(validate_spain_passport("AAA12345").is_err()); // only 5 digits
+        assert!(validate_spain_passport("123456789").is_err()); // all digits
+        assert!(validate_spain_passport("ABC12345X").is_err()); // trailing letter
     }
 
     // ===== Check letters verification =====
