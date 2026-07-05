@@ -700,6 +700,31 @@ pub fn validate_germany_passport_with_checksum(value: &str) -> Result<(), Proble
     GovernmentBuilder::new().validate_germany_passport_with_checksum(value)
 }
 
+// ============================================================================
+// Spain — Passport
+// ============================================================================
+
+/// Check if value is a valid Spanish passport number (3 letters + 6 digits)
+#[must_use]
+pub fn is_spain_passport(value: &str) -> bool {
+    GovernmentBuilder::new().is_spain_passport(value)
+}
+
+/// Find all Spanish passport mentions in text (label-anchored only)
+#[must_use]
+pub fn find_spain_passports(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_spain_passports_in_text(text)
+}
+
+/// Validate a Spanish passport format (3 letters + 6 digits, no checksum)
+///
+/// # Errors
+///
+/// Returns `Problem` if the value is not a valid passport format.
+pub fn validate_spain_passport(value: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_spain_passport(value)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -921,5 +946,17 @@ mod tests {
         // Tampered check digit rejected.
         assert!(validate_germany_passport_with_checksum("T220001294").is_err());
         assert!(!find_germany_passports("Reisepass T220001293").is_empty());
+    }
+
+    #[test]
+    fn test_spain_passport_shortcuts() {
+        assert!(is_spain_passport("ABC123456"));
+        assert!(validate_spain_passport("ABC123456").is_ok());
+        assert!(validate_spain_passport("").is_err());
+        // Wrong shape rejected.
+        assert!(validate_spain_passport("AB1234567").is_err());
+        // Label-gated text scanning — bare shape does not match.
+        assert!(!find_spain_passports("pasaporte ABC123456").is_empty());
+        assert!(find_spain_passports("ABC123456").is_empty());
     }
 }

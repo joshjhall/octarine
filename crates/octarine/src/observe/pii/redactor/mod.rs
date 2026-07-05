@@ -205,6 +205,7 @@ pub fn redact_pii_with_profile(text: &str, profile: RedactionProfile) -> String 
             | PiiType::ItalyDriverLicense
             | PiiType::SpainNif
             | PiiType::SpainNie
+            | PiiType::SpainPassport
             | PiiType::UkNi
             | PiiType::UkNhs
             | PiiType::UkPassport

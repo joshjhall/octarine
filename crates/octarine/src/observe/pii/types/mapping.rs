@@ -115,6 +115,7 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::ItalyDriverLicense => Self::ItalyDriverLicense,
             IdentifierType::SpainNif => Self::SpainNif,
             IdentifierType::SpainNie => Self::SpainNie,
+            IdentifierType::SpainPassport => Self::SpainPassport,
             IdentifierType::UkNi => Self::UkNi,
             IdentifierType::UkNhs => Self::UkNhs,
             IdentifierType::UkPassport => Self::UkPassport,

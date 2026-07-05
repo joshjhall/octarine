@@ -258,6 +258,10 @@ pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
             PiiType::SpainNie,
         ),
         (
+            GovernmentIdentifierBuilder::find_spain_passports_in_text,
+            PiiType::SpainPassport,
+        ),
+        (
             GovernmentIdentifierBuilder::find_uk_nis_in_text,
             PiiType::UkNi,
         ),

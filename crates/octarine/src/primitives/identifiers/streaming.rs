@@ -478,6 +478,10 @@ impl StreamingScanner {
                 GovernmentIdentifierBuilder::find_spain_nies_in_text,
             ),
             (
+                |t| matches!(t, IdentifierType::SpainPassport),
+                GovernmentIdentifierBuilder::find_spain_passports_in_text,
+            ),
+            (
                 |t| matches!(t, IdentifierType::UkNi),
                 GovernmentIdentifierBuilder::find_uk_nis_in_text,
             ),

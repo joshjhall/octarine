@@ -114,6 +114,27 @@ impl GovernmentIdentifierBuilder {
         validation::is_test_spain_nie(nie)
     }
 
+    /// Check if value matches Spain passport format
+    #[must_use]
+    pub fn is_spain_passport(&self, value: &str) -> bool {
+        detection::is_spain_passport(value)
+    }
+
+    /// Find all Spain passports in text (label-anchored)
+    #[must_use]
+    pub fn find_spain_passports_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_spain_passports_in_text(text)
+    }
+
+    /// Validate Spain passport format (3 letters + 6 digits, no checksum)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the passport format is invalid
+    pub fn validate_spain_passport(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_spain_passport(value)
+    }
+
     /// Check if value matches Italy Codice Fiscale format
     #[must_use]
     pub fn is_italy_fiscal_code(&self, value: &str) -> bool {
