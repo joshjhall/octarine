@@ -6,9 +6,9 @@ overview and [docs/architecture/](docs/architecture/) for the three-layer
 design.
 
 This file is deliberately minimal — it covers dev setup and the SemVer policy.
-Branching and the full PR workflow are documented in the project skills under
-`.claude/skills/git-workflow/`. Commit format is enforced automatically — see
-[Commit Format](#commit-format) below.
+The three-layer design and module layout live in
+[docs/architecture/](docs/architecture/). Commit format is enforced
+automatically — see [Commit Format](#commit-format) below.
 
 ## Commit Format
 
