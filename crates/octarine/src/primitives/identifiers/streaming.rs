@@ -338,7 +338,8 @@ impl StreamingScanner {
             | IdentifierType::RoutingNumber
             | IdentifierType::PaymentToken
             | IdentifierType::CryptoAddress
-            | IdentifierType::Iban => {
+            | IdentifierType::Iban
+            | IdentifierType::IndiaUpi => {
                 // Financial module covers all via detect_all_in_text; filter to
                 // the requested type only.
                 Some(self.push_matching(financial.detect_all_in_text(text), id_type))

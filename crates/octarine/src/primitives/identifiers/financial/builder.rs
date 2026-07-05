@@ -83,6 +83,12 @@ impl FinancialIdentifierBuilder {
         detection::detect_iban_country(value)
     }
 
+    /// Check if value is an Indian UPI VPA (`account@psp`, NPCI PSP allowlist)
+    #[must_use]
+    pub fn is_india_upi(&self, value: &str) -> bool {
+        detection::is_india_upi(value)
+    }
+
     /// Check if value is a Bitcoin address (P2PKH, P2SH, or Bech32/Bech32m)
     #[must_use]
     pub fn is_bitcoin_address(&self, value: &str) -> bool {
@@ -179,6 +185,12 @@ impl FinancialIdentifierBuilder {
         detection::detect_ibans_in_text(text)
     }
 
+    /// Find all Indian UPI VPAs in text (PSP allowlist + context boost)
+    #[must_use]
+    pub fn find_india_upis_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_india_upis_in_text(text)
+    }
+
     /// Detect all cryptocurrency addresses in text
     ///
     /// Covers Bitcoin (P2PKH, P2SH, Bech32/Bech32m) and Ethereum address patterns.
@@ -262,6 +274,16 @@ impl FinancialIdentifierBuilder {
         validation::validate_crypto_address(addr)
     }
 
+    /// Validate an Indian UPI VPA (shape + NPCI PSP-allowlist membership).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem::Validation` when the value is not a well-formed VPA or
+    /// the PSP handle is not on the NPCI allowlist.
+    pub fn validate_india_upi(&self, value: &str) -> Result<(), Problem> {
+        validation::validate_india_upi(value)
+    }
+
     /// Check if text contains payment data
     #[must_use]
     pub fn is_payment_data_present(&self, text: &str) -> bool {
@@ -320,6 +342,26 @@ impl FinancialIdentifierBuilder {
         strategy: super::CryptoAddressRedactionStrategy,
     ) -> String {
         sanitization::redact_crypto_address_with_strategy(addr, strategy)
+    }
+
+    /// Redact an Indian UPI VPA with explicit strategy.
+    #[must_use]
+    pub fn redact_india_upi_with_strategy(
+        &self,
+        value: &str,
+        strategy: super::IndiaUpiRedactionStrategy,
+    ) -> String {
+        sanitization::redact_india_upi_with_strategy(value, strategy)
+    }
+
+    /// Redact all Indian UPI VPAs in text with explicit strategy.
+    #[must_use]
+    pub fn redact_india_upis_in_text_with_strategy<'a>(
+        &self,
+        text: &'a str,
+        strategy: super::IndiaUpiRedactionStrategy,
+    ) -> Cow<'a, str> {
+        sanitization::redact_india_upis_in_text_with_strategy(text, strategy)
     }
 
     /// Sanitize a crypto address strict (trim + validate checksum).
@@ -674,6 +716,49 @@ mod tests {
             matches
                 .iter()
                 .all(|m| m.identifier_type == IdentifierType::Iban)
+        );
+    }
+
+    #[test]
+    fn test_is_india_upi() {
+        let builder = FinancialIdentifierBuilder::new();
+        assert!(builder.is_india_upi("alice@oksbi"));
+        assert!(builder.is_india_upi("9876543210@paytm"));
+        assert!(!builder.is_india_upi("alice@paytm.com"));
+        assert!(!builder.is_india_upi("alice@fakebank"));
+    }
+
+    #[test]
+    fn test_find_india_upis_in_text() {
+        let builder = FinancialIdentifierBuilder::new();
+        let matches = builder.find_india_upis_in_text("UPI: 9876543210@paytm and bob@oksbi");
+        assert_eq!(matches.len(), 2);
+        assert!(
+            matches
+                .iter()
+                .all(|m| m.identifier_type == IdentifierType::IndiaUpi)
+        );
+    }
+
+    #[test]
+    fn test_validate_india_upi() {
+        let builder = FinancialIdentifierBuilder::new();
+        assert!(builder.validate_india_upi("alice@oksbi").is_ok());
+        assert!(builder.validate_india_upi("alice@fakebank").is_err());
+    }
+
+    #[test]
+    fn test_redact_india_upi_with_strategy_builder() {
+        use super::super::IndiaUpiRedactionStrategy;
+        let builder = FinancialIdentifierBuilder::new();
+        assert_eq!(
+            builder
+                .redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::ShowPsp),
+            "****@oksbi"
+        );
+        assert_eq!(
+            builder.redact_india_upi_with_strategy("alice@oksbi", IndiaUpiRedactionStrategy::Token),
+            "[UPI_ID]"
         );
     }
 

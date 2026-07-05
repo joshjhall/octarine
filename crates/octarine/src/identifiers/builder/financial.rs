@@ -21,7 +21,8 @@ use crate::observe::Problem;
 use crate::observe::metrics::{increment_by, record};
 use crate::primitives::identifiers::{
     BankAccountRedactionStrategy, CreditCardRedactionStrategy, CryptoAddressRedactionStrategy,
-    CryptoAddressType, FinancialIdentifierBuilder, RoutingNumberRedactionStrategy,
+    CryptoAddressType, FinancialIdentifierBuilder, IndiaUpiRedactionStrategy,
+    RoutingNumberRedactionStrategy,
 };
 
 use super::super::types::{
@@ -166,6 +167,12 @@ impl FinancialBuilder {
     #[must_use]
     pub fn detect_iban_country<'a>(&self, value: &'a str) -> Option<&'a str> {
         self.inner.detect_iban_country(value)
+    }
+
+    /// Check if value is an Indian UPI VPA (`account@psp`, NPCI PSP allowlist)
+    #[must_use]
+    pub fn is_india_upi(&self, value: &str) -> bool {
+        self.inner.is_india_upi(value)
     }
 
     /// Check if value is a Bitcoin address (P2PKH, P2SH, or Bech32/Bech32m)
@@ -318,6 +325,22 @@ impl FinancialBuilder {
         matches
     }
 
+    /// Find all Indian UPI VPAs in text (PSP allowlist + context boost)
+    ///
+    /// Emits `pci_data_found` — UPI VPAs are regulated payment PII under
+    /// India's DPDP Act 2023 / RBI framework.
+    #[must_use]
+    pub fn find_india_upis_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        let matches = self.inner.find_india_upis_in_text(text);
+
+        if self.emit_events && !matches.is_empty() {
+            increment_by(metric_names::detected(), matches.len() as u64);
+            increment_by(metric_names::pci_data_found(), matches.len() as u64);
+        }
+
+        matches
+    }
+
     /// Detect all cryptocurrency addresses in text
     ///
     /// Covers Bitcoin (P2PKH, P2SH, Bech32/Bech32m) and Ethereum.
@@ -425,6 +448,28 @@ impl FinancialBuilder {
         result
     }
 
+    /// Validate an Indian UPI VPA (shape + NPCI PSP-allowlist membership).
+    ///
+    /// Emits `validate_ms` timing and a `debug` event on failure when observe
+    /// events are enabled (silent mode skips both).
+    pub fn validate_india_upi(&self, value: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_india_upi(value);
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+
+            if result.is_err() {
+                observe::debug("upi_validation_failed", "UPI validation failed");
+            }
+        }
+
+        result
+    }
+
     // ========================================================================
     // Sanitization Methods (Strategy Required)
     // ========================================================================
@@ -513,6 +558,35 @@ impl FinancialBuilder {
     ) -> Cow<'a, str> {
         self.inner
             .redact_crypto_addresses_in_text_with_strategy(text, strategy)
+    }
+
+    /// Redact an Indian UPI VPA with explicit strategy.
+    #[must_use]
+    pub fn redact_india_upi_with_strategy(
+        &self,
+        value: &str,
+        strategy: IndiaUpiRedactionStrategy,
+    ) -> String {
+        self.inner.redact_india_upi_with_strategy(value, strategy)
+    }
+
+    /// Redact an Indian UPI VPA using the default partial display
+    /// (`****@psp` — masks the account, keeps the PSP handle visible).
+    #[must_use]
+    pub fn redact_india_upi(&self, value: &str) -> String {
+        self.inner
+            .redact_india_upi_with_strategy(value, IndiaUpiRedactionStrategy::ShowPsp)
+    }
+
+    /// Redact all Indian UPI VPAs in text with explicit strategy.
+    #[must_use]
+    pub fn redact_india_upis_in_text_with_strategy<'a>(
+        &self,
+        text: &'a str,
+        strategy: IndiaUpiRedactionStrategy,
+    ) -> Cow<'a, str> {
+        self.inner
+            .redact_india_upis_in_text_with_strategy(text, strategy)
     }
 
     /// Redact all credit cards in text with explicit strategy

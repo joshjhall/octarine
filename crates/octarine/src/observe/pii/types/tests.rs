@@ -189,6 +189,22 @@ fn test_crypto_address_classifications() {
 }
 
 #[test]
+fn test_india_upi_classifications() {
+    assert_eq!(PiiType::IndiaUpi.name(), "india_upi");
+    assert_eq!(PiiType::IndiaUpi.domain(), "financial");
+    assert!(PiiType::IndiaUpi.is_high_risk());
+    // DPDP Act 2023 + RBI treat UPI VPAs as regulated payment PII.
+    assert!(PiiType::IndiaUpi.is_pci_protected());
+    assert!(!PiiType::IndiaUpi.is_hipaa_protected());
+    assert!(!PiiType::IndiaUpi.is_secret());
+}
+
+#[test]
+fn test_india_upi_identifier_mapping() {
+    assert_eq!(PiiType::from(IdentifierType::IndiaUpi), PiiType::IndiaUpi);
+}
+
+#[test]
 fn test_national_id_classifications() {
     assert_eq!(PiiType::NationalId.name(), "national_id");
     assert_eq!(PiiType::NationalId.domain(), "government");

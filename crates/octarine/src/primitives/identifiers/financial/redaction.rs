@@ -217,6 +217,43 @@ pub enum CryptoAddressRedactionStrategy {
     Hashes,
 }
 
+/// Indian UPI VPA redaction strategies.
+///
+/// A UPI VPA is `account@psp`. The PSP handle is not itself secret (it only
+/// names the payment app / bank), so the conventional partial display keeps the
+/// PSP visible and masks the account — the UPI analog of showing a card's last
+/// four digits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IndiaUpiRedactionStrategy {
+    /// Skip redaction (⚠️ Use only in development/testing)
+    Skip,
+
+    /// Mask the account, keep the PSP suffix visible.
+    ///
+    /// Example: `****@oksbi`
+    ShowPsp,
+
+    /// Type token
+    ///
+    /// Example: `[UPI_ID]`
+    Token,
+
+    /// Generic redaction token
+    ///
+    /// Example: `[REDACTED]`
+    Anonymous,
+
+    /// Asterisks (length-preserving)
+    ///
+    /// Example: `**********`
+    Asterisks,
+
+    /// Hashes (length-preserving)
+    ///
+    /// Example: `##########`
+    Hashes,
+}
+
 /// Generic redaction policy for text scanning
 ///
 /// Provides a simplified API for scanning text and redacting all
@@ -313,6 +350,21 @@ impl TextRedactionPolicy {
             Self::Partial => CryptoAddressRedactionStrategy::ShowPrefix,
             Self::Complete => CryptoAddressRedactionStrategy::Token,
             Self::Anonymous => CryptoAddressRedactionStrategy::Anonymous,
+        }
+    }
+
+    /// Map policy to Indian UPI strategy.
+    ///
+    /// `Partial` maps to `ShowPsp` (mask account, keep the PSP handle) —
+    /// enough to recognize which payment app is involved without exposing the
+    /// account handle.
+    #[must_use]
+    pub const fn to_india_upi_strategy(self) -> IndiaUpiRedactionStrategy {
+        match self {
+            Self::Skip => IndiaUpiRedactionStrategy::Skip,
+            Self::Partial => IndiaUpiRedactionStrategy::ShowPsp,
+            Self::Complete => IndiaUpiRedactionStrategy::Token,
+            Self::Anonymous => IndiaUpiRedactionStrategy::Anonymous,
         }
     }
 }

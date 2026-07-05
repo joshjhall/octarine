@@ -18,7 +18,7 @@ impl PiiType {
             self,
             // Financial
             Self::CreditCard | Self::BankAccount | Self::RoutingNumber | Self::PaymentToken |
-            Self::Iban | Self::CryptoAddress |
+            Self::Iban | Self::CryptoAddress | Self::IndiaUpi |
             // Government (identity theft risk)
             Self::Ssn | Self::DriverLicense | Self::Passport | Self::Ein | Self::Itin | Self::Mbi | Self::TaxId | Self::NationalId | Self::Vin |
             Self::KoreaRrn | Self::KoreaFrn | Self::KoreaDriverLicense | Self::KoreaPassport | Self::KoreaBrn |
@@ -106,6 +106,7 @@ impl PiiType {
                 | Self::PaymentToken
                 | Self::Iban
                 | Self::CryptoAddress
+                | Self::IndiaUpi
         )
     }
 

@@ -4,7 +4,8 @@
 
 use super::super::config::RedactionProfile;
 use crate::primitives::identifiers::{
-    BankAccountRedactionStrategy, FinancialIdentifierBuilder, PaymentTokenRedactionStrategy,
+    BankAccountRedactionStrategy, FinancialIdentifierBuilder, IndiaUpiRedactionStrategy,
+    PaymentTokenRedactionStrategy,
 };
 
 /// Redact credit cards based on profile using primitives
@@ -29,6 +30,22 @@ pub(super) fn redact_bank_accounts(text: &str, profile: RedactionProfile) -> Str
     let builder = FinancialIdentifierBuilder::new();
     builder
         .redact_bank_accounts_in_text_with_strategy(text, strategy)
+        .into_owned()
+}
+
+/// Redact Indian UPI VPAs based on profile
+pub(super) fn redact_india_upis(text: &str, profile: RedactionProfile) -> String {
+    let strategy = match profile {
+        RedactionProfile::ProductionStrict | RedactionProfile::ProductionLenient => {
+            IndiaUpiRedactionStrategy::Token
+        }
+        RedactionProfile::Development | RedactionProfile::Testing => {
+            IndiaUpiRedactionStrategy::Skip
+        }
+    };
+    let builder = FinancialIdentifierBuilder::new();
+    builder
+        .redact_india_upis_in_text_with_strategy(text, strategy)
         .into_owned()
 }
 

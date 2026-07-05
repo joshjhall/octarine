@@ -79,6 +79,9 @@ pub(super) fn scan_financial(text: &str, pii_types: &mut Vec<PiiType>) {
         if !financial.detect_crypto_addresses_in_text(text).is_empty() {
             pii_types.push(PiiType::CryptoAddress);
         }
+        if !financial.find_india_upis_in_text(text).is_empty() {
+            pii_types.push(PiiType::IndiaUpi);
+        }
     }
 }
 

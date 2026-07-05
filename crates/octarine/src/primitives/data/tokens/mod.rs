@@ -58,6 +58,8 @@ pub(crate) enum RedactionTokenCore {
     PaymentToken,
     /// Cryptocurrency wallet address (Bitcoin, Ethereum)
     CryptoAddress,
+    /// Indian UPI VPA (account@psp)
+    IndiaUpi,
 
     // =========================================================================
     // Identifiers: Government
@@ -230,6 +232,7 @@ impl RedactionTokenCore {
             Self::RoutingNumber => "[ROUTING_NUMBER]",
             Self::PaymentToken => "[PAYMENT_TOKEN]",
             Self::CryptoAddress => "[CRYPTO_ADDRESS]",
+            Self::IndiaUpi => "[UPI_ID]",
 
             // Government
             Self::Ssn => "[SSN]",
@@ -327,6 +330,7 @@ impl RedactionTokenCore {
             Self::RoutingNumber => "ROUTING_NUMBER",
             Self::PaymentToken => "PAYMENT_TOKEN",
             Self::CryptoAddress => "CRYPTO_ADDRESS",
+            Self::IndiaUpi => "UPI_ID",
 
             // Government
             Self::Ssn => "SSN",
@@ -416,7 +420,8 @@ impl RedactionTokenCore {
             | Self::BankAccount
             | Self::RoutingNumber
             | Self::PaymentToken
-            | Self::CryptoAddress => "financial",
+            | Self::CryptoAddress
+            | Self::IndiaUpi => "financial",
 
             Self::Ssn
             | Self::DriverLicense
