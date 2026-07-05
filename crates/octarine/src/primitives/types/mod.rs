@@ -57,7 +57,11 @@ pub(crate) use dates::{
 pub use network::PortRange;
 pub use octarine_problem::{Problem, Result};
 
-// Re-export the observability-enabled constructors trait so call sites that
-// import `Problem` from `primitives::types` can also pick up
-// `Problem::validation(..)`, `Problem::network(..)`, etc.
-pub use crate::observe::ProblemExt;
+// Re-export the event-free constructors trait from Layer 0 (octarine-problem)
+// under the familiar `ProblemExt` name, so call sites that import `Problem` from
+// `primitives::types` can also pick up `Problem::validation(..)`,
+// `Problem::network(..)`, etc. Layer 1 must NOT reach observe's same-named
+// `ProblemExt`, whose constructors dispatch observability events as a side
+// effect (that audit coverage belongs in the Layer 3 wrappers). Layer 2/3 code
+// continues to import the event-dispatching trait from `crate::observe`.
+pub use octarine_problem::ProblemConstructors as ProblemExt;

@@ -3,6 +3,7 @@
 //! This is the **public API** (Layer 3) that wraps the primitive builder
 //! with observe instrumentation for compliance-grade audit trails.
 
+use super::emit_security_event;
 use crate::observe::Problem;
 use crate::primitives::identifiers::GenericBuilder as PrimitiveGenericBuilder;
 
@@ -83,8 +84,17 @@ impl GenericBuilder {
     // ========================================================================
 
     /// Validate a generic identifier (returns Result)
+    ///
+    /// When observe events are enabled, an injection-pattern detection
+    /// (surfaced by the primitive as [`Problem::PermissionDenied`]) is emitted
+    /// as a CRITICAL security event, preserving the audit trail these
+    /// attack-detection paths require for SOC2/PCI-DSS logging.
     pub fn validate_identifier(&self, name: &str) -> Result<(), Problem> {
-        self.inner.validate_identifier(name)
+        let result = self.inner.validate_identifier(name);
+        if self.emit_events {
+            emit_security_event(&result, "identifiers.generic", name);
+        }
+        result
     }
 }
 
