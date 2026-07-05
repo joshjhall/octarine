@@ -203,6 +203,8 @@ pub enum PiiType {
     PrescriptionNumber,
     /// DEA (Drug Enforcement Administration) number
     DeaNumber,
+    /// US CLIA (Clinical Laboratory Improvement Amendments) lab certificate number
+    UsClia,
 
     // =========================================================================
     // Biometric Domain

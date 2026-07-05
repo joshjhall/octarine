@@ -145,6 +145,7 @@ impl From<IdentifierType> for PiiType {
             IdentifierType::ProviderID => Self::Npi,
             IdentifierType::MedicalCode => Self::IcdCode,
             IdentifierType::MedicalLicense => Self::DeaNumber,
+            IdentifierType::UsClia => Self::UsClia,
 
             // Biometric
             IdentifierType::Fingerprint => Self::FingerprintId,

@@ -355,11 +355,45 @@ pub fn redact_dea_numbers_in_text(text: &str, policy: TextRedactionPolicy) -> Co
     Cow::Owned(result)
 }
 
+/// Redact all US CLIA lab-certificate numbers in text using text redaction policy
+///
+/// Scans text for context-labeled CLIA numbers (validated shape + state code)
+/// and replaces the matched span. CLIA has no partial-reveal strategy, so every
+/// non-`Skip` policy replaces with a token (`Anonymous` uses `[REDACTED]`).
+#[must_use]
+pub fn redact_us_clias_in_text(text: &str, policy: TextRedactionPolicy) -> Cow<'_, str> {
+    if matches!(policy, TextRedactionPolicy::Skip) {
+        return Cow::Borrowed(text);
+    }
+
+    use super::super::detection;
+    let matches = detection::find_us_clias_in_text(text);
+
+    if matches.is_empty() {
+        return Cow::Borrowed(text);
+    }
+
+    let token = match policy {
+        TextRedactionPolicy::Complete | TextRedactionPolicy::Partial => "[CLIA_NUMBER]",
+        TextRedactionPolicy::Anonymous => "[REDACTED]",
+        TextRedactionPolicy::Skip => return Cow::Borrowed(text),
+    };
+
+    let mut result = text.to_string();
+    // Replace in reverse order to keep earlier match offsets valid.
+    for m in matches.iter().rev() {
+        result.replace_range(m.start..m.end, token);
+    }
+
+    Cow::Owned(result)
+}
+
 /// Redact every medical identifier type in `text` using the given policy.
 ///
 /// Composes all per-identifier text redactors (MRN, insurance, prescription,
-/// NPI/provider, ICD-10/CPT codes, DEA numbers) in a single pass so callers
-/// get a fully sanitized `String` without managing the order themselves.
+/// NPI/provider, ICD-10/CPT codes, DEA numbers, CLIA numbers) in a single pass
+/// so callers get a fully sanitized `String` without managing the order
+/// themselves.
 ///
 /// # Arguments
 ///
@@ -378,6 +412,7 @@ pub fn redact_all_medical_in_text(text: &str, policy: TextRedactionPolicy) -> St
     let result = redact_provider_ids_in_text(&result, policy);
     let result = redact_medical_codes_in_text(&result, policy);
     let result = redact_dea_numbers_in_text(&result, policy);
+    let result = redact_us_clias_in_text(&result, policy);
 
     result.into_owned()
 }
@@ -470,6 +505,32 @@ mod tests {
         assert!(result.contains("[INSURANCE_INFO]"));
         assert!(result.contains("[PRESCRIPTION]"));
         assert!(result.contains("[PROVIDER_ID]"));
+    }
+
+    #[test]
+    fn test_redact_us_clias_in_text() {
+        let text = "Laboratory ID 05D0123456 on the report";
+        let result = redact_us_clias_in_text(text, TextRedactionPolicy::Complete);
+        assert!(result.contains("[CLIA_NUMBER]"));
+        assert!(!result.contains("05D0123456"));
+    }
+
+    #[test]
+    fn test_redact_all_medical_scrubs_clia() {
+        // CLIA must be scrubbed by the aggregate redactor, not just detected.
+        let text = "CLIA: 45D9876543 and Patient MRN: 12345678";
+        let result = redact_all_medical_in_text(text, TextRedactionPolicy::Complete);
+        assert!(result.contains("[CLIA_NUMBER]"));
+        assert!(!result.contains("45D9876543"));
+        assert!(result.contains("[MEDICAL_RECORD]"));
+    }
+
+    #[test]
+    fn test_redact_us_clias_anonymous() {
+        let text = "CLIA: 05D0123456";
+        let result = redact_us_clias_in_text(text, TextRedactionPolicy::Anonymous);
+        assert!(result.contains("[REDACTED]"));
+        assert!(!result.contains("05D0123456"));
     }
 
     #[test]

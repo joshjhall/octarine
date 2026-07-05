@@ -107,6 +107,12 @@ impl MedicalIdentifierBuilder {
         detection::is_dea_number(value)
     }
 
+    /// Check if value is a US CLIA lab certificate number (shape + state code)
+    #[must_use]
+    pub fn is_us_clia(&self, value: &str) -> bool {
+        detection::is_us_clia(value)
+    }
+
     /// Check if text contains any medical identifier
     #[must_use]
     pub fn is_medical_identifier_present(&self, text: &str) -> bool {
@@ -151,6 +157,12 @@ impl MedicalIdentifierBuilder {
     #[must_use]
     pub fn find_dea_numbers_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
         detection::find_dea_numbers_in_text(text)
+    }
+
+    /// Find all US CLIA lab certificate numbers in text (context-required)
+    #[must_use]
+    pub fn find_us_clias_in_text(&self, text: &str) -> Vec<IdentifierMatch> {
+        detection::find_us_clias_in_text(text)
     }
 
     /// Find all medical identifiers in text
@@ -206,6 +218,15 @@ impl MedicalIdentifierBuilder {
     /// Returns `Problem` if the NPI is invalid or a known test pattern
     pub fn validate_npi_no_test(&self, npi: &str) -> Result<(), Problem> {
         validation::validate_npi_no_test(npi)
+    }
+
+    /// Validate US CLIA lab certificate number format
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the CLIA shape or state code is invalid
+    pub fn validate_us_clia(&self, clia: &str) -> Result<(), Problem> {
+        validation::validate_us_clia(clia)
     }
 
     // =========================================================================
@@ -400,6 +421,16 @@ impl MedicalIdentifierBuilder {
         policy: TextRedactionPolicy,
     ) -> Cow<'a, str> {
         sanitization::redact_dea_numbers_in_text(text, policy)
+    }
+
+    /// Redact US CLIA lab certificate numbers in text using text redaction policy
+    #[must_use]
+    pub fn redact_us_clias_in_text<'a>(
+        &self,
+        text: &'a str,
+        policy: TextRedactionPolicy,
+    ) -> Cow<'a, str> {
+        sanitization::redact_us_clias_in_text(text, policy)
     }
 
     /// Redact all medical identifiers in text using Complete policy

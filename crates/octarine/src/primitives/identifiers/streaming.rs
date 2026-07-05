@@ -541,7 +541,8 @@ impl StreamingScanner {
             | IdentifierType::Prescription
             | IdentifierType::ProviderID
             | IdentifierType::MedicalCode
-            | IdentifierType::MedicalLicense => {
+            | IdentifierType::MedicalLicense
+            | IdentifierType::UsClia => {
                 let medical = MedicalIdentifierBuilder::new();
                 Some(self.push_matching(medical.find_all_in_text(text), id_type))
             }

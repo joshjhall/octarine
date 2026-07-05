@@ -33,7 +33,7 @@ impl PiiType {
             Self::SwedenPersonnummer | Self::SwedenOrgnummer |
             Self::GermanyTaxId | Self::GermanyIdCard | Self::GermanyPassport |
             // Medical (HIPAA)
-            Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber |
+            Self::Mrn | Self::Npi | Self::InsuranceNumber | Self::DeaNumber | Self::IcdCode | Self::PrescriptionNumber | Self::UsClia |
             // Biometric (irreplaceable)
             Self::FingerprintId | Self::FaceId | Self::VoiceId | Self::IrisId | Self::DnaId | Self::BiometricTemplate |
             // GDPR Article 9 special-category data — racial origin (nationality),
@@ -119,6 +119,7 @@ impl PiiType {
                 | Self::IcdCode
                 | Self::PrescriptionNumber
                 | Self::DeaNumber
+                | Self::UsClia // CLIA lab certificate — HIPAA-relevant when linked to patient data
                 | Self::Ssn // SSN is also PHI in medical context
                 | Self::Itin // ITIN is also PHI in medical context (IRS-issued tax ID for patients)
                 | Self::Mbi // MBI is Medicare PHI — it appears on every claim/prescription/EHR field (mirrors UkNhs HIPAA-equivalent treatment)
