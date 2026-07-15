@@ -67,7 +67,7 @@ hex = "0.4"
 zeroize = { version = "1.8", features = ["derive"] }
 chacha20poly1305 = "0.11.0"
 aes-gcm = "0.11.0"
-argon2 = "0.5"
+argon2 = { version = "0.5", features = ["std"] }
 
 # Cryptocurrency address validation (BTC base58check, Bech32/Bech32m, ETH EIP-55)
 bs58 = { version = "0.5", features = ["check"] }
@@ -125,7 +125,7 @@ rand_core = "0.10"
 getrandom = { version = "0.4", features = ["sys_rng"] }
 
 # Classical elliptic curve cryptography
-x25519-dalek = { version = "2.0", features = ["static_secrets", "getrandom", "zeroize"] }
+x25519-dalek = { version = "3.0", features = ["static_secrets", "getrandom", "zeroize"] }
 
 # Database support (optional)
 sqlx = { version = "0.9", optional = true, default-features = false, features = [
