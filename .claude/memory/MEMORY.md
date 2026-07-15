@@ -1,5 +1,7 @@
 - [Use just recipes](feedback_just_recipes.md) — reference just recipes in plans/docs, never raw cargo/bash commands
+- [Backlog blocked-by filter](feedback_backlog_blocked_by_filter.md) — orchestrate track/backlog selection must apply per-candidate blocked-by exclusion, not just severity/effort+status labels
 - [Complete provider integration](feedback_complete_provider_integration.md) — new providers need builder, sanitization, and Layer 3 wrapping, not just detection
+- [Aggregate redactor gap](project_aggregate_redactor_gap.md) — most country gov IDs are detected+classified but NOT scrubbed by the aggregate text redactor; adding an identifier isn't done until it's in `redact_all_government_ids_in_text_with_policy` (tracked: #672)
 - [Audit severity and dedup](feedback_audit_severity.md) — file all findings incl. low severity, but dedup aggressively against open issues
 - [GitHub status labels](feedback_github_labels.md) — verify all four `status/*` labels exist before `/next-issue-ship` (pr-pending was missing)
 - [audit-ai-config scans gitignored file](project_audit_ai_config_gitignored.md) — findings against .claude/settings.local.json can't be PR'd; fix locally and close with comment
@@ -15,4 +17,7 @@
 - [Anonymize sans-IO split](project-anonymize-sans-io-split.md) — anonymize engine: sync splice core shared by sync + async shells; AsyncOperator coexists with Operator; vault access is async-only by invariant (#609)
 - [Unpushed dep fixes on local main](project_unpushed_dep_fixes_local_main.md) — before writing a dep-bump PR for a security advisory, check `git log origin/main..main`; the fix may already be committed-but-unpushed on local main — cherry-pick it into a deps/ branch
 - [CodeQL hard-coded crypto FP](project-codeql-hardcoded-crypto-fp.md) — CodeQL flags `[0u8; N]`/`[9u8; N]` array literals reaching AEAD key/nonce sinks even when overwritten; build arrays from a Vec via `try_into`, promote test-key literals to named consts. Token can't dismiss alerts (403).
+- [Worktree submodule blocks commits](project_worktree_submodule_hooks.md) — fresh worktree commits fail lefthook 127 (`containers/bin/fix-*.sh not found`); run `git submodule update --init --force --checkout containers`
 - [crypto::secrets mlock stub + SecureMap leaks keys](project_crypto_secrets_mlock_stub.md) — mlock is a no-op stub (no real syscall, unsafe forbidden); SecureMap logs keys in cleartext & Layer-3 wrappers log on construct. Use Layer-1 `PrimitiveLockedSecret` + `blake3_hex` for keyed PII.
+- [Flaky test_cache_cleanup](project_flaky_cache_cleanup_test.md) — collections/cache/lru.rs timing test flakes under parallel load; passes in isolation, treat as pre-existing not a regression
+- [L3 merge authority](feedback_l3_merge_authority.md) — at L3 the orchestrator must NOT merge golem PRs; surface green+clean PRs for the human to merge (push/PR-create are auto-drivable, merge is not)
