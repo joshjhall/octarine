@@ -37,6 +37,17 @@ impl FinancialIdentifierBuilder {
         detection::find_financial_identifier(value)
     }
 
+    /// Find financial identifier with surrounding-text context.
+    ///
+    /// Precision counterpart to [`Self::find`]: returns the full
+    /// [`DetectionResult`] (including `confidence`), and a bank-account keyword
+    /// in `context` lifts a bank-account match from `Low` to `Medium`. See
+    /// [`detection::find_financial_identifier_with_context`].
+    #[must_use]
+    pub fn find_with_context(&self, value: &str, context: Option<&str>) -> Option<DetectionResult> {
+        detection::find_financial_identifier_with_context(value, context)
+    }
+
     /// Check if value is any financial identifier
     #[must_use]
     pub fn is_financial_identifier(&self, value: &str) -> bool {
@@ -652,6 +663,25 @@ mod tests {
             builder.find("121000358"),
             Some(IdentifierType::RoutingNumber)
         );
+    }
+
+    #[test]
+    fn test_find_with_context() {
+        // #694: builder pass-through must forward `context` to the aggregate
+        // (not drop it or call `find`). No context → Low; bank keyword → Medium.
+        let builder = FinancialIdentifierBuilder::new();
+
+        let no_ctx = builder
+            .find_with_context("12345678", None)
+            .expect("bare 8-digit string is a Low-confidence bank account");
+        assert_eq!(no_ctx.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(no_ctx.confidence, DetectionConfidence::Low);
+
+        let with_ctx = builder
+            .find_with_context("12345678", Some("bank account number"))
+            .expect("8-digit string with bank context is a candidate account");
+        assert_eq!(with_ctx.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(with_ctx.confidence, DetectionConfidence::Medium);
     }
 
     #[test]
