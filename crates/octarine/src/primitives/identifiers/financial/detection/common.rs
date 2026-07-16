@@ -72,6 +72,13 @@ pub fn find_financial_identifier(value: &str) -> Option<IdentifierType> {
 ///
 /// Use this when the caller has the text surrounding `value` and wants
 /// confidence-scored classification rather than the lenient context-free type.
+///
+/// Like the other confidence-aware `*_with_context` detectors
+/// (`detect_bank_account_with_context`, `detect_credit_card_with_context`), this
+/// aggregate has **no top-level `shortcuts::financial` wrapper** by design —
+/// shortcuts cover the bare `is_*` / `detect_*_in_text` calls, not the
+/// context-taking precision variants. Construct a `FinancialBuilder` (Layer 3)
+/// or call this primitive directly.
 #[must_use]
 pub fn find_financial_identifier_with_context(
     value: &str,
