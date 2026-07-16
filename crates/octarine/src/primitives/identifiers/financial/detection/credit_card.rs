@@ -258,10 +258,18 @@ pub fn detect_credit_card_with_context(
     }
 
     // Step 6: Context analysis (high confidence boost)
-    if let Some(ctx) = context
-        && patterns::credit_card::CONTEXT_KEYWORDS.is_match(ctx)
-    {
-        confidence_score += 0.2;
+    // Bound the keyword scan to MAX_INPUT_LENGTH chars before matching, capping
+    // the cost of an unbounded caller-supplied `context` blob — mirrors the
+    // guard in bank_account.rs's has_bank_account_context so both branches of
+    // the aggregate detectors enforce a consistent context-size ceiling.
+    if let Some(ctx) = context {
+        let ctx_bounded: &str = match ctx.char_indices().nth(MAX_INPUT_LENGTH) {
+            Some((byte_idx, _)) => ctx.get(..byte_idx).unwrap_or(ctx),
+            None => ctx,
+        };
+        if patterns::credit_card::CONTEXT_KEYWORDS.is_match(ctx_bounded) {
+            confidence_score += 0.2;
+        }
     }
 
     // Step 7: Entropy check (cards shouldn't be sequential)
@@ -590,6 +598,26 @@ mod tests {
 
         let result = detect_credit_card_with_context("4242-4242-4242-4242", None);
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_context_length_cap() {
+        // #697: an oversized context must not crash or scan unbounded; the
+        // keyword boost is capped to MAX_INPUT_LENGTH chars. A keyword INSIDE
+        // the bound still boosts confidence...
+        let mut ctx = String::from("credit card ");
+        ctx.push_str(&"x".repeat(MAX_INPUT_LENGTH * 2));
+        let boosted = detect_credit_card_with_context("4242424242424242", Some(&ctx))
+            .expect("valid card should classify");
+        assert_eq!(boosted.confidence, DetectionConfidence::High);
+
+        // ...but a keyword only PAST the bound is not seen (no boost), proving
+        // the scan is actually truncated rather than reading the whole blob.
+        let mut ctx_far = "y".repeat(MAX_INPUT_LENGTH * 2);
+        ctx_far.push_str(" credit card");
+        let far = detect_credit_card_with_context("4242424242424242", Some(&ctx_far))
+            .expect("valid card should still classify without the boost");
+        assert_eq!(far.confidence, DetectionConfidence::Medium);
     }
 
     #[test]
