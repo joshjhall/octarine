@@ -4,7 +4,7 @@
 # downstream depends on `octarine-core` but still writes `use octarine::`.
 name = "octarine-core"
 description = "Foundation library for security and observability in Rust - The color of magic"
-version = "0.3.0-beta.5"
+version = "0.3.0-beta.6"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

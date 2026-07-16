@@ -2,6 +2,74 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [0.3.0-beta.6] - 2026-07-16
+
+> **MSRV bump — action required.** The minimum supported Rust version is now
+> **1.97.0** (was 1.95.0). Downstream consumers must build with Rust ≥ 1.97.0.
+> Pre-1.0 SemVer treats this as a notable change; it is bundled in this beta so
+> it lands before the 0.3.0 stable line. See #701 / #703.
+
+### Added
+
+- feat(identifiers): add context-aware find_financial_identifier_with_context (#696)
+- feat(identifiers): extend IBAN COUNTRY_LENGTHS to full ISO 13616 registry (#680)
+- feat(identifiers): add Indian UPI ID (IN_UPI) payment-PII detector (#679)
+- feat(identifiers): US CLIA number (medical lab cert) (#677)
+- feat(identifiers): add Spanish Passport (ES_PASSPORT) (#676)
+- feat(identifiers): add US Medicare Beneficiary Identifier (MBI) (#673)
+- feat(identifiers): add German core identifier suite (TaxId, IdCard, Passport) (#669)
+
+### Fixed
+
+- fix(identifiers): restore Warning audit events for L3 validation failures (#700)
+- fix(identifiers): bank-account input guard + PCI metric + i18n keywords (#699)
+- fix(identifiers): bound credit-card context scan to MAX_INPUT_LENGTH (#698)
+- fix(devcontainer): build CodeGraph index under Zed via recover-entrypoint (#690)
+- fix(identifiers): drop inverted Luhn exclusion from bank account heuristic (#693)
+- deps(deps): patch RUSTSEC-2026-0204 + refresh lockfile (#686)
+- fix(runtime): route spawn_blocking shortcut through Layer 3 Executor (#681)
+- fix(observe): sanitize template variables in FilenamePattern::expand() (#678)
+- fix(claude): correct stale paths in three audit agents (#671)
+- fix(anonymize): escape dict path encoding via RFC 6901 JSON Pointer (#665)
+- fix(anonymize): hold vault originals/tokens in zeroize-on-drop secure memory (#664)
+
+### Changed
+
+- refactor(architecture): sever Layer 1→2 coupling in ProblemExt re-export (#682)
+- fix(claude): correct stale paths in three audit agents (#671)
+- refactor(architecture): import Problem/Result from canonical crate::observe in Layer 3 (#674)
+- refactor(identifiers): keyword registry keyed by (IdentifierType, language) (#666)
+- chore(tooling): migrate Rust toolchain 1.95.0 -> 1.97.0 (#703)
+- chore(containers): bump submodule v4.19.12 → v4.19.14
+- chore(deps): upgrade x25519-dalek 2.x → 3.0.0 (#688)
+- chore(memory): add session learnings (blocked-by, L3 merge, dep/test notes)
+- chore(containers): bump submodule to v4.19.12; update crypto secrets memory
+- chore(devcontainer): CodeGraph indexing, worktree-friendly compose, submodule v4.19.10 (#663)
+
+### Documentation
+
+- docs(claude): make audit-agent grep paths layout-agnostic (#670) (#702)
+- docs(claude-md): sync skills and CLAUDE.md with current code state (#691)
+- docs(docs): fix code examples referencing non-existent APIs (#692)
+- docs(docs): fix stale references to removed/renamed paths (#675)
+- docs: add CI, crates.io, docs.rs, license, and MSRV badges to README
+
+### Testing
+
+- test(primitives): fix flaky cache cleanup test under parallel load (#705)
+- test(primitives): cover x509, crypto detection, paths, random, and compliance (#662)
+- test(runtime): cover stateful I/O paths for HTTP, DB, tracing, and CLI (#661)
+- test(identifiers): cover Layer 3 government builders (#660)
+
+### CI
+
+- ci: fail CI on Codecov upload error now that token is set
+- ci(release): make publish jobs idempotent via crates.io API check
+
+### Build
+
+- fix(runtime): route spawn_blocking shortcut through Layer 3 Executor (#681)
+
 ## [0.3.0-beta.5] - 2026-07-02
 
 <!-- TODO: review and curate before push -->

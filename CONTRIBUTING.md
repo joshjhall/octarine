@@ -184,7 +184,7 @@ public API, so we track SemVer discipline closely.
 
 ### Current status: pre-release (0.x)
 
-The workspace is at `v0.3.0-beta.5` and is not yet published to crates.io.
+The workspace is at `v0.3.0-beta.6` and is not yet published to crates.io.
 While we're on `0.x`:
 
 - Breaking public-API changes are **allowed** within minor version bumps.
