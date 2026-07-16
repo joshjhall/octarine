@@ -71,6 +71,20 @@ impl FinancialIdentifierBuilder {
         detection::is_bank_account(value)
     }
 
+    /// Detect a bank account with context-aware confidence scoring
+    ///
+    /// Returns [`DetectionConfidence::Low`] for a bare 8-17 digit string and
+    /// [`DetectionConfidence::Medium`] when a bank-account keyword appears in
+    /// `context`. Returns `None` when the length rules out an account number.
+    #[must_use]
+    pub fn detect_bank_account_with_context(
+        &self,
+        value: &str,
+        context: Option<&str>,
+    ) -> Option<DetectionResult> {
+        detection::detect_bank_account_with_context(value, context)
+    }
+
     /// Check if value is a valid IBAN (format + MOD-97 checksum)
     #[must_use]
     pub fn is_iban(&self, value: &str) -> bool {
