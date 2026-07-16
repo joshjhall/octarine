@@ -3,7 +3,7 @@
 //! This is the **public API** (Layer 3) that wraps the primitive builder
 //! with observe instrumentation for compliance-grade audit trails.
 
-use super::emit_security_event;
+use crate::observe::EmitProblemEvent;
 use crate::observe::Problem;
 use crate::primitives::identifiers::{MetricViolation, MetricsBuilder as PrimitiveMetricsBuilder};
 
@@ -138,7 +138,7 @@ impl MetricsBuilder {
     pub fn validate_name(&self, name: &str) -> Result<(), Problem> {
         let result = self.inner.validate_name(name);
         if self.emit_events {
-            emit_security_event(&result, "identifiers.metrics.name", name);
+            result.emit_event("identifiers.metrics.name", name);
         }
         result
     }
@@ -147,7 +147,7 @@ impl MetricsBuilder {
     pub fn validate_label_key(&self, key: &str) -> Result<(), Problem> {
         let result = self.inner.validate_label_key(key);
         if self.emit_events {
-            emit_security_event(&result, "identifiers.metrics.label_key", key);
+            result.emit_event("identifiers.metrics.label_key", key);
         }
         result
     }
@@ -160,7 +160,7 @@ impl MetricsBuilder {
     pub fn validate_label_value(&self, value: &str) -> Result<(), Problem> {
         let result = self.inner.validate_label_value(value);
         if self.emit_events {
-            emit_security_event(&result, "identifiers.metrics.label_value", value);
+            result.emit_event("identifiers.metrics.label_value", value);
         }
         result
     }
@@ -174,11 +174,7 @@ impl MetricsBuilder {
     pub fn validate_label_count(&self, count: usize) -> Result<(), Problem> {
         let result = self.inner.validate_label_count(count);
         if self.emit_events {
-            emit_security_event(
-                &result,
-                "identifiers.metrics.label_count",
-                &count.to_string(),
-            );
+            result.emit_event("identifiers.metrics.label_count", &count.to_string());
         }
         result
     }
@@ -217,7 +213,7 @@ impl MetricsBuilder {
     pub fn sanitize_name(&self, name: &str) -> Result<String, Problem> {
         let result = self.inner.sanitize_name(name);
         if self.emit_events {
-            emit_security_event(&result, "identifiers.metrics.sanitize_name", name);
+            result.emit_event("identifiers.metrics.sanitize_name", name);
         }
         result
     }
@@ -226,7 +222,7 @@ impl MetricsBuilder {
     pub fn sanitize_label_key(&self, key: &str) -> Result<String, Problem> {
         let result = self.inner.sanitize_label_key(key);
         if self.emit_events {
-            emit_security_event(&result, "identifiers.metrics.sanitize_label_key", key);
+            result.emit_event("identifiers.metrics.sanitize_label_key", key);
         }
         result
     }
@@ -239,7 +235,7 @@ impl MetricsBuilder {
     pub fn sanitize_label_value(&self, value: &str) -> Result<String, Problem> {
         let result = self.inner.sanitize_label_value(value);
         if self.emit_events {
-            emit_security_event(&result, "identifiers.metrics.sanitize_label_value", value);
+            result.emit_event("identifiers.metrics.sanitize_label_value", value);
         }
         result
     }

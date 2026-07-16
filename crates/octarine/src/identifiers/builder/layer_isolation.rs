@@ -71,6 +71,14 @@ fn count_with_marker(writer: &MemoryWriter, marker: &str) -> usize {
         .count()
 }
 
+fn count_with_marker_of_type(writer: &MemoryWriter, marker: &str, ty: EventType) -> usize {
+    writer
+        .all_events()
+        .iter()
+        .filter(|e| e.event_type == ty && e.message.contains(marker))
+        .count()
+}
+
 /// Named proxy around a shared `MemoryWriter` so multiple concurrent tests can
 /// register distinct capture writers against the global registry (the built-in
 /// `MemoryWriter::name()` is a fixed `"memory"`).
@@ -235,11 +243,14 @@ fn layer3_environment_builder_emits_security_event_on_critical_override() {
     );
 }
 
-/// A benign validation failure (bad characters, not an injection) must NOT be
-/// escalated to a security event — only `Problem::PermissionDenied` failures
-/// are. Guards against over-emitting on the far more common Warning path.
+/// A benign validation failure (bad characters, not an injection) must emit a
+/// WARNING event — restoring the audit trail Layer-1 constructors used to
+/// provide (issue #683) — but must NOT be escalated to a CRITICAL security
+/// event; only `Problem::PermissionDenied` failures are. `silent()` must stay
+/// silent. Guards both the newly-restored Warning path and the security
+/// non-escalation guarantee.
 #[test]
-fn layer3_generic_builder_no_security_event_on_benign_failure() {
+fn layer3_generic_builder_emits_warning_on_benign_failure() {
     use crate::identifiers::GenericBuilder;
 
     ensure_test_dispatcher();
@@ -248,24 +259,36 @@ fn layer3_generic_builder_no_security_event_on_benign_failure() {
     let capture = register_capture(name);
 
     // Leading digit -> "must start with letter or underscore" (Validation),
-    // not a security detection. The token would surface if wrongly escalated.
-    let token = "9invalid_L3BENIGN_409_c5d1";
-    let err = GenericBuilder::new().validate_identifier(token);
+    // not a security detection. The identifier appears in the emitted message.
+    let bad_ident = "9_benign_warn_marker_ident";
+    let err = GenericBuilder::new().validate_identifier(bad_ident);
     assert!(err.is_err(), "bad identifier must fail validation");
 
-    // Dispatch a probe so we do not just time out on legitimate silence.
-    let probe_marker = "L3BENIGN_PROBE_409_c5d1";
-    dispatch(Event::new(EventType::Info, probe_marker));
-    let flushed = poll_until(POLL_DEADLINE, || {
-        count_with_marker(&capture, probe_marker) >= 1
+    // The benign failure must land as a WARNING carrying the input identifier.
+    let warned = poll_until(POLL_DEADLINE, || {
+        count_with_marker_of_type(&capture, bad_ident, EventType::Warning) >= 1
     });
 
-    let escalated = count_with_marker(&capture, "_L3BENIGN_409_c5d1");
+    // A silent builder must not emit anything for the same benign failure.
+    let silent_ident = "9_benign_silent_marker_ident";
+    let _ = GenericBuilder::silent().validate_identifier(silent_ident);
+    let silent_count = count_with_marker(&capture, silent_ident);
+
+    // The benign path must NOT be escalated to a CRITICAL security event, which
+    // dispatches as `EventType::SystemError` (see observe/event/dispatch.rs).
+    let escalated = count_with_marker_of_type(&capture, bad_ident, EventType::SystemError);
     unregister_writer(name);
 
-    assert!(flushed, "probe event should confirm the dispatcher flushed");
+    assert!(
+        warned,
+        "L3 GenericBuilder must emit a WARNING event on a benign validation failure"
+    );
+    assert_eq!(
+        silent_count, 0,
+        "silent() GenericBuilder must not emit events for a benign failure"
+    );
     assert_eq!(
         escalated, 0,
-        "benign (non-security) validation failures must not emit a security event"
+        "benign (non-security) validation failures must not emit a CRITICAL security event"
     );
 }
