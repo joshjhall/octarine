@@ -277,6 +277,14 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_bank_account_with_context_redos_guard() {
+        // Oversized value → None via the MAX_INPUT_LENGTH short-circuit, before
+        // the digit-count heuristic runs.
+        let oversized = "1".repeat(MAX_INPUT_LENGTH + 1);
+        assert!(detect_bank_account_with_context(&oversized, None).is_none());
+    }
+
+    #[test]
     fn test_empty_input() {
         assert!(!is_bank_account(""));
         assert!(detect_bank_account_with_context("", None).is_none());

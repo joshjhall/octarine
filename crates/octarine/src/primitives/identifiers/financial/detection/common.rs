@@ -229,6 +229,14 @@ mod tests {
             find_financial_identifier("121000358"),
             Some(IdentifierType::RoutingNumber)
         );
+
+        // Bank account — an 8-digit string that is neither a credit-card
+        // length/Luhn match nor a routing number falls through to the
+        // confidence-aware bank-account branch.
+        assert_eq!(
+            find_financial_identifier("12345678"),
+            Some(IdentifierType::BankAccount)
+        );
     }
 
     #[test]
