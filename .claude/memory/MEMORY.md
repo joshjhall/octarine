@@ -20,7 +20,7 @@
 - [Worktree submodule blocks commits](project_worktree_submodule_hooks.md) — fresh worktree commits fail lefthook 127 (`containers/bin/fix-*.sh not found`); run `git submodule update --init --force --checkout containers`
 - [Zed replaces ENTRYPOINT](project_zed_entrypoint_recover.md) — Zed devcontainers skip first-startup hooks (codegraph index, OP secrets); postStartCommand must lead with `recover-entrypoint &&`, never index codegraph from post-create.sh
 - [crypto::secrets mlock stub + SecureMap leaks keys](project_crypto_secrets_mlock_stub.md) — mlock is a no-op stub (no real syscall, unsafe forbidden); SecureMap logs keys in cleartext & Layer-3 wrappers log on construct. Use Layer-1 `PrimitiveLockedSecret` + `blake3_hex` for keyed PII.
-- [Flaky test_cache_cleanup](project_flaky_cache_cleanup_test.md) — collections/cache/lru.rs timing test flakes under parallel load; passes in isolation, treat as pre-existing not a regression
+- [Fixed flaky test_cache_cleanup](project_flaky_cache_cleanup_test.md) — collections/cache/lru.rs expiry test flaked under parallel load (single-call-vs-accumulate race); fixed 2026-07-16 by accumulating cleanup_expired count
 - [L3 merge authority](feedback_l3_merge_authority.md) — at L3 auto-merge golem PRs once green+clean+mergeable (squash+delete-branch), without asking; reversed the old "humans merge" rule on 2026-07-15
 - [Golem launch level bug](project_golem_launch_level_bug.md) — golem-launch.sh hardcodes --level 4, drops any --level arg; every golem runs L4. File against workflow plugin.
 - [Identifier mixed layout](project_identifier_mixed_layout.md) — identifier tree mixes flat .rs and split dirs; audit-agent grep rules must resolve Glob-first (flat + split pattern pair), not a bare dir path

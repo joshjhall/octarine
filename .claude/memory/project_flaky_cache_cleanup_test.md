@@ -1,6 +1,6 @@
 ---
 name: project_flaky_cache_cleanup_test
-description: test_cache_cleanup in collections/cache/lru.rs is timing-flaky under parallel load
+description: test_cache_cleanup in collections/cache/lru.rs WAS timing-flaky under parallel load; fixed 2026-07-16
 metadata:
   node_type: memory
   type: project
@@ -8,16 +8,24 @@ metadata:
 ---
 
 `primitives::collections::cache::lru::tests::test_cache_cleanup`
-(`crates/octarine/src/primitives/collections/cache/lru.rs:416`) is a
-timing-based expiry test that flakes under `just test` when the runner is
-under load (e.g. after fd exhaustion / heavy parallel linking) — fails with
-"Timed out waiting for 5 entries to expire (got 0, len 0)". It passes reliably
-in isolation (`just test-filter test_cache_cleanup`).
+(`crates/octarine/src/primitives/collections/cache/lru.rs`) used to flake under
+full-parallel load (`just test`, `just release` preflight — no retries there)
+with "Timed out waiting for 5 entries to expire (got 0, len 0)", while passing in
+isolation.
 
-**Why:** hard timing assertion on TTL expiry, the exact anti-pattern
-`octarine-test-resilience` warns about.
+**Root cause (now understood):** the 5 entries are inserted at slightly different
+instants, so under load they expire *piecemeal* across several `cleanup_expired()`
+calls (one removes 3, the next 2). The test demanded a **single** call return
+exactly 5, which never happened — the cache drained to empty without any one call
+seeing 5. Not a timing-threshold problem; a single-call-vs-accumulate race.
 
-**How to apply:** if a `/next-issue` full-suite run fails ONLY on this test,
-confirm it passes in isolation and treat it as pre-existing flake, not a
-regression from your change. Candidate for a poll-with-timeout fix under its
-own issue. Related: [[project_ci_macos_cache_poisoning]].
+**Fix (2026-07-16):** accumulate the removed count across poll iterations
+(`expired += cache.cleanup_expired()` until `>= 5`) instead of requiring one call
+to return 5 — `octarine-test-resilience` Rule 6 (measure the total delta).
+Verified 10× in isolation + full-workspace `cargo nextest` (8477/8477) under the
+same contention that failed the release. Shipped on branch
+`fix/flaky-cache-cleanup-test`.
+
+**How to apply:** this specific flake should no longer recur. If it does, the
+`cleanup_expired` accumulation loop is the place to look. Related:
+[[project_ci_macos_cache_poisoning]].
