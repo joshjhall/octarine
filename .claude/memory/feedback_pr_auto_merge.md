@@ -23,3 +23,13 @@ session via `/next-issue-ship`. Do NOT proactively merge PRs that were
 opened by other workflows (manual `gh pr create`, dependabot, etc.) without
 confirmation. Do NOT merge PRs flagged `severity/critical` without
 confirmation, regardless of green CI.
+
+**Environment override (observed 2026-07-15, PR #691, L4 run):** the Claude
+Code **auto-mode classifier blocks the agent from `gh pr merge`-ing a PR it
+authored and pushed itself** when no human review is visible — it flags the
+self-approval and points at [[feedback_l3_merge_authority]] as the conflicting
+signal. This is a harness-level guardrail, not something to work around. Net
+effect: even on a green+clean L4 run, `gh pr merge` will be denied, so the
+practical outcome collapses to "surface the green+clean PR and let the human
+merge." Don't burn a retry cycle re-attempting the merge; prepare the PR fully
+(green CI, `status/pr-pending`, mergeable CLEAN), then hand off the URL.
