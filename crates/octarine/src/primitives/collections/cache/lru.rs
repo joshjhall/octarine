@@ -405,22 +405,28 @@ mod tests {
 
         assert_eq!(cache.len(), 5);
 
-        // Poll until all entries expire (cleanup_expired sees them as stale).
+        // Poll until all entries expire. The 5 entries are inserted at slightly
+        // different instants, so under load they can expire piecemeal across
+        // several cleanup_expired() calls (one call removes 3, the next 2, etc.).
+        // Accumulate the removed count rather than requiring a single call to
+        // return all 5 — otherwise the cache can drain to empty without any one
+        // call ever seeing exactly 5 (Rule 6: measure the total delta).
         let deadline = Instant::now() + Duration::from_secs(5);
-        let expired = loop {
-            let count = cache.cleanup_expired();
-            if count == 5 {
-                break count;
+        let mut expired = 0;
+        while expired < 5 {
+            expired += cache.cleanup_expired();
+            if expired >= 5 {
+                break;
             }
             if Instant::now() > deadline {
                 panic!(
-                    "Timed out waiting for 5 entries to expire (got {}, len {})",
-                    count,
+                    "Timed out waiting for 5 entries to expire (removed {}, len {})",
+                    expired,
                     cache.len()
                 );
             }
             std::thread::sleep(Duration::from_millis(10));
-        };
+        }
         assert_eq!(expired, 5);
         assert_eq!(cache.len(), 0);
     }
