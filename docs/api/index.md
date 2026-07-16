@@ -34,34 +34,34 @@ Principles and patterns for designing clean, secure, and ergonomic APIs in octar
 ### Builder Pattern
 
 ```rust
-let sanitizer = PathSanitizer::builder()
-    .remove_traversal()
-    .normalize()
-    .strict_mode()
-    .build();
+use octarine::security::paths::SecurityBuilder;
+
+let sanitizer = SecurityBuilder::new();
+let safe = sanitizer.sanitize("../file")?;
 ```
 
 ### Dual Functions
 
 ```rust
-// Strict - returns Result
-let path = sanitize_path_strict("../file")?;
+use octarine::security::paths::{sanitize_path, strip_traversal};
 
-// Lenient - always succeeds
-let path = sanitize_path("../file");
+// Strict - returns Result<String, Problem>
+let path = sanitize_path("../file")?;
+
+// Lenient - always succeeds, strips traversal in place
+let path = strip_traversal("../file");
 ```
 
 ### Shortcuts for Common Cases
 
 ```rust
-// Direct function for simple cases
-let safe = sanitize_path(user_input);
+use octarine::security::paths::{sanitize_path, SecurityBuilder};
 
-// Builder for complex cases
-let safe = PathSanitizer::builder()
-    .custom_config()
-    .build()
-    .sanitize(user_input)?;
+// Direct function for simple cases (returns Result<String, Problem>)
+let safe = sanitize_path(user_input)?;
+
+// Builder when you need to toggle observe events
+let safe = SecurityBuilder::silent().sanitize(user_input)?;
 ```
 
 ## Public API Surface

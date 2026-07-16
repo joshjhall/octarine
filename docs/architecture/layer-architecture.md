@@ -406,10 +406,10 @@ Each concern represents a fundamentally different question:
 identifiers::network::is_ipv4("192.168.1.1")  // true - it's an IP address
 
 // THREATS (security/): Is this data DANGEROUS?
-security::network::is_ssrf_target("192.168.1.1")  // true - internal IP, SSRF risk
+security::network::is_potential_ssrf("192.168.1.1")  // true - internal IP, SSRF risk
 
 // FORMAT (data/): How should this be NORMALIZED?
-data::network::normalize_url("HTTP://Example.COM/path")  // "http://example.com/path"
+data::network::normalize_url_path("/api/v1/../v2/users")  // Cow: "/api/v2/users"
 ```
 
 ### Cross-Domain Application

@@ -128,7 +128,7 @@ use octarine::observe::writers::{AuditQuery, Queryable};
 let query = AuditQuery::builder()
     .since(audit_period_start)
     .until(audit_period_end)
-    .contains_phi_only(true)
+    .phi_only(true)
     .build();
 
 let result = writer.query(&query).await?;
@@ -366,14 +366,14 @@ async fn generate_compliance_report(
     // PII access events
     let pii_query = AuditQuery::builder()
         .since(since)
-        .contains_pii_only(true)
+        .pii_only(true)
         .build();
     let pii_events = writer.query(&pii_query).await?;
 
     // PHI access events (HIPAA)
     let phi_query = AuditQuery::builder()
         .since(since)
-        .contains_phi_only(true)
+        .phi_only(true)
         .build();
     let phi_events = writer.query(&phi_query).await?;
 
