@@ -3,7 +3,7 @@
 //! Provides aggregate detection functions that span multiple financial identifier types.
 
 use super::super::super::common::{luhn, patterns};
-use super::super::super::types::{IdentifierMatch, IdentifierType};
+use super::super::super::types::{DetectionResult, IdentifierMatch, IdentifierType};
 
 use super::bank_account::{detect_bank_account_with_context, detect_bank_accounts_in_text};
 use super::credit_card::{
@@ -15,9 +15,30 @@ use super::routing::{detect_routing_number, detect_routing_numbers_in_text};
 // Aggregate Detection Functions
 // ============================================================================
 
-/// Find financial identifier type
+/// Find financial identifier type (lenient, context-free aggregate).
 ///
-/// Finds credit cards, routing numbers, and bank accounts.
+/// Finds credit cards, routing numbers, and bank accounts. This is a
+/// **detection-layer** entry point and is intentionally lenient: it passes no
+/// surrounding text, so the bank-account branch resolves to a `Low`-confidence
+/// 8–17-digit length match and is accepted **by design**. Any 8–17-digit string
+/// with no credit-card/routing match (invoice numbers, tracking numbers, zip+4,
+/// employee IDs) therefore classifies as [`IdentifierType::BankAccount`]. Per the
+/// project security model, detection favors recall (false positives are
+/// acceptable); precision is the caller's job.
+///
+/// For precision, use [`find_financial_identifier_with_context`] (or
+/// [`super::detect_bank_account_with_context`] directly) with the real
+/// surrounding text — a bank-account keyword nearby lifts the match to `Medium`,
+/// letting callers distinguish a keyword-confirmed account from a bare
+/// coincidental number. The credit-card branch here already gates on
+/// `confidence != Low` because credit-card confidence is reachable without
+/// context (Luhn + BIN); the bank heuristic has no such context-free signal, so
+/// gating it would make bare numbers unclassifiable — hence the deliberate
+/// asymmetry.
+///
+/// `is_financial_identifier` / `detect_financial_identifier` intentionally have
+/// no `_with_context` sibling — [`find_financial_identifier_with_context`] is the
+/// single precision entry point.
 ///
 /// # Examples
 ///
@@ -35,26 +56,48 @@ use super::routing::{detect_routing_number, detect_routing_numbers_in_text};
 /// ```
 #[must_use]
 pub fn find_financial_identifier(value: &str) -> Option<IdentifierType> {
-    use super::super::super::types::DetectionConfidence;
+    find_financial_identifier_with_context(value, None).map(|result| result.identifier_type)
+}
 
-    // Try credit card detection first
-    if let Some(result) = detect_credit_card_with_context(value, None)
+/// Find financial identifier with surrounding-text context (precision path).
+///
+/// Same three-branch aggregate as [`find_financial_identifier`], but threads
+/// `context` into the confidence-aware credit-card and bank-account detectors
+/// and returns the full [`DetectionResult`] — including `confidence` — so
+/// callers can actually act on the precision this path provides. A bank-account
+/// context keyword lifts the bank-account branch from `Low` to `Medium` (see
+/// [`super::detect_bank_account_with_context`]); the returned `confidence`
+/// distinguishes a keyword-confirmed account from a bare coincidental number,
+/// which [`find_financial_identifier`] (returning only the type) cannot.
+///
+/// Use this when the caller has the text surrounding `value` and wants
+/// confidence-scored classification rather than the lenient context-free type.
+#[must_use]
+pub fn find_financial_identifier_with_context(
+    value: &str,
+    context: Option<&str>,
+) -> Option<DetectionResult> {
+    use crate::primitives::identifiers::types::DetectionConfidence;
+
+    // Try credit card detection first. Gated on non-Low because credit-card
+    // confidence is reachable without context (Luhn + BIN).
+    if let Some(result) = detect_credit_card_with_context(value, context)
         && result.confidence != DetectionConfidence::Low
     {
-        return Some(result.identifier_type);
+        return Some(result);
     }
 
-    // Try routing number detection
+    // Try routing number detection (no context signal — ABA checksum only).
     if let Some(result) = detect_routing_number(value) {
-        return Some(result.identifier_type);
+        return Some(result);
     }
 
-    // Bank account detection (heuristic, confidence-aware). No surrounding text
-    // is available here, so this resolves to a Low-confidence length match —
-    // the confidence-aware path lets callers with context distinguish a bare
-    // Luhn-coincidence number from a keyword-confirmed one.
-    if let Some(result) = detect_bank_account_with_context(value, None) {
-        return Some(result.identifier_type);
+    // Bank account detection (heuristic, confidence-aware). Ungated by design:
+    // a Low-confidence length match is accepted so context-free callers still
+    // classify bare account numbers; a bank-account keyword in `context` lifts
+    // the returned `confidence` to Medium for precision callers.
+    if let Some(result) = detect_bank_account_with_context(value, context) {
+        return Some(result);
     }
 
     None
@@ -214,6 +257,8 @@ pub(super) fn deduplicate_matches(mut matches: Vec<IdentifierMatch>) -> Vec<Iden
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
+    use crate::primitives::identifiers::types::DetectionConfidence;
+
     use super::*;
 
     #[test]
@@ -237,6 +282,50 @@ mod tests {
             find_financial_identifier("12345678"),
             Some(IdentifierType::BankAccount)
         );
+    }
+
+    #[test]
+    fn test_find_financial_identifier_lenient_unchanged() {
+        // Regression guard for #694: the context-free aggregate stays lenient by
+        // design — a bare 8-17 digit string still classifies as BankAccount.
+        // Option 3 (documented looseness) explicitly does NOT gate this out.
+        assert_eq!(
+            find_financial_identifier("12345678"),
+            Some(IdentifierType::BankAccount)
+        );
+        // The context variant with no context yields the same type as find().
+        let no_ctx = find_financial_identifier_with_context("12345678", None)
+            .expect("bare 8-digit string is a Low-confidence bank account");
+        assert_eq!(no_ctx.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(no_ctx.confidence, DetectionConfidence::Low);
+    }
+
+    #[test]
+    fn test_find_financial_identifier_with_context_bank_keyword() {
+        // #694 precision path: a bank-account keyword in context keeps the type
+        // AND surfaces Medium confidence directly on the aggregate result — the
+        // whole point of returning DetectionResult rather than just the type.
+        let with_ctx =
+            find_financial_identifier_with_context("12345678", Some("bank account number"))
+                .expect("8-digit string with bank context is a candidate account");
+        assert_eq!(with_ctx.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(with_ctx.confidence, DetectionConfidence::Medium);
+
+        // Same value, no context → Low. The context argument is now observable
+        // through the aggregate's return value (previously it was inert).
+        let no_ctx = find_financial_identifier_with_context("12345678", None)
+            .expect("8-digit string is a candidate account");
+        assert_eq!(no_ctx.confidence, DetectionConfidence::Low);
+        assert_ne!(with_ctx.confidence, no_ctx.confidence);
+    }
+
+    #[test]
+    fn test_find_financial_identifier_with_context_credit_card_still_gated() {
+        // The credit-card branch keeps its `!= Low` gate under the context
+        // variant; a genuine card still classifies as CreditCard.
+        let result = find_financial_identifier_with_context("4242424242424242", None)
+            .expect("valid card should classify");
+        assert_eq!(result.identifier_type, IdentifierType::CreditCard);
     }
 
     #[test]

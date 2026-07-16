@@ -122,6 +122,31 @@ impl FinancialBuilder {
         result
     }
 
+    /// Find financial identifier with surrounding-text context.
+    ///
+    /// Precision counterpart to [`Self::find`]: returns the full
+    /// [`DetectionResult`] (including `confidence`), and a bank-account keyword
+    /// in `context` lifts a bank-account match from `Low` to `Medium`. Records
+    /// the same `detect_ms` / `detected` metrics as [`Self::find`].
+    #[must_use]
+    pub fn find_with_context(&self, value: &str, context: Option<&str>) -> Option<DetectionResult> {
+        let start = Instant::now();
+        let result = self.inner.find_with_context(value, context);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+
+            if result.is_some() {
+                increment_by(metric_names::detected(), 1);
+            }
+        }
+
+        result
+    }
+
     /// Check if value is any financial identifier
     #[must_use]
     pub fn is_financial_identifier(&self, value: &str) -> bool {
@@ -845,6 +870,35 @@ mod tests {
                 .detect_bank_account_with_context("1234567", Some("bank account"))
                 .is_none()
         );
+    }
+
+    #[test]
+    fn test_find_with_context() {
+        use super::super::super::types::DetectionConfidence;
+
+        // #694: the Layer 3 wrapper must forward `context` to the inner builder
+        // (not drop it) and return the confidence-carrying DetectionResult.
+        let builder = FinancialBuilder::silent();
+
+        // No context → Low; bare 8-17 digit string stays a lenient bank account.
+        let low = builder
+            .find_with_context("12345678", None)
+            .expect("bare 8-digit string is a Low-confidence bank account");
+        assert_eq!(low.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(low.confidence, DetectionConfidence::Low);
+
+        // Keyword context → Medium; the context arg is observable through the result.
+        let medium = builder
+            .find_with_context("12345678", Some("bank account number"))
+            .expect("8-digit string with bank context is a candidate account");
+        assert_eq!(medium.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(medium.confidence, DetectionConfidence::Medium);
+
+        // Credit-card branch still classifies a genuine card.
+        let card = builder
+            .find_with_context("4242424242424242", None)
+            .expect("valid card should classify");
+        assert_eq!(card.identifier_type, IdentifierType::CreditCard);
     }
 
     #[test]

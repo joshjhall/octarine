@@ -65,5 +65,6 @@ pub use crypto::{
 // Re-export common/aggregate functions
 pub use common::{
     detect_all_financial_in_text, detect_financial_identifier, find_financial_identifier,
-    is_financial_identifier, is_financial_present, is_payment_data_present,
+    find_financial_identifier_with_context, is_financial_identifier, is_financial_present,
+    is_payment_data_present,
 };
