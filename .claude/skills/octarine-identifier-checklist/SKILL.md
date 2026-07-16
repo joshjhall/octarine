@@ -51,7 +51,8 @@ Every identifier type requires ALL applicable steps.
 9. **Public builder** — `identifiers/builder/{domain}.rs`
    - Wraps primitives builder + adds observe (metrics, events, timing)
 
-10. **Shortcuts** — `identifiers/shortcuts.rs`
+10. **Shortcuts** — `identifiers/shortcuts/{domain}.rs`
+    (`identifiers/shortcuts/` is a per-domain directory, not a flat file)
     - `pub fn is_{type}(v: &str) -> bool { {Domain}Builder::new().is_{type}(v) }`
     - `pub fn validate_{type}(v: &str) -> Result<(), Problem> { ... }`
 

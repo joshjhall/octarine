@@ -180,7 +180,8 @@ impl {Domain}Builder {
 
 ### Step 10: Shortcuts
 
-In `crates/octarine/src/identifiers/shortcuts.rs`:
+In `crates/octarine/src/identifiers/shortcuts/{domain}.rs`
+(`identifiers/shortcuts/` is a per-domain directory):
 
 ```rust
 pub fn is_{type}(value: &str) -> bool {
@@ -198,7 +199,9 @@ pub fn redact_{type}(value: &str) -> String {
 
 ### Step 11: PII Registration (if PII)
 
-In `crates/octarine/src/identifiers/types/core.rs`, add variant:
+In `crates/octarine/src/primitives/identifiers/types/core.rs`, add variant
+(the primitives enum is the source of truth; the Layer 3
+`identifiers/types/core.rs` merely re-exports it — do not edit that one):
 
 ```rust
 pub enum IdentifierType {
@@ -262,31 +265,43 @@ Then wire up in parent `mod.rs` files:
 
 ## Verification Commands
 
-After implementation, verify completeness:
+After implementation, verify completeness. The identifier tree is mixed-layout:
+`{domain}/detection` (and `validation`, `builder`) is a flat `.rs` for 13
+domains but a directory for 5 (`government`, `location`, `network`, `personal`,
+`token`). Each `grep -r` below names BOTH forms so it works regardless of the
+domain's layout (a nonexistent path is silently skipped by `grep -r`):
 
 ```bash
 # Check all detection functions have corresponding validation
-grep -r "pub fn is_" crates/octarine/src/primitives/identifiers/{domain}/detection/
-grep -r "pub fn validate_" crates/octarine/src/primitives/identifiers/{domain}/validation/
+grep -rs "pub fn is_" \
+  crates/octarine/src/primitives/identifiers/{domain}/detection.rs \
+  crates/octarine/src/primitives/identifiers/{domain}/detection/
+grep -rs "pub fn validate_" \
+  crates/octarine/src/primitives/identifiers/{domain}/validation.rs \
+  crates/octarine/src/primitives/identifiers/{domain}/validation/
 
 # Check primitives builder coverage
-grep -r "pub fn is_\|pub fn validate_\|pub fn redact_" \
+grep -rs "pub fn is_\|pub fn validate_\|pub fn redact_" \
+  crates/octarine/src/primitives/identifiers/{domain}/builder.rs \
   crates/octarine/src/primitives/identifiers/{domain}/builder/
 
-# Check public builder coverage
-grep -r "pub fn is_\|pub fn validate_\|pub fn redact_" \
-  crates/octarine/src/identifiers/builder/{domain}.rs
+# Check public builder coverage (flat {domain}.rs OR {domain}/ directory)
+grep -rs "pub fn is_\|pub fn validate_\|pub fn redact_" \
+  crates/octarine/src/identifiers/builder/{domain}.rs \
+  crates/octarine/src/identifiers/builder/{domain}/
 
-# Check shortcuts coverage
-grep -r "pub fn is_\|pub fn validate_\|pub fn redact_" \
-  crates/octarine/src/identifiers/shortcuts.rs | grep {type}
+# Check shortcuts coverage (shortcuts/ is a per-domain directory)
+grep -rs "pub fn is_\|pub fn validate_\|pub fn redact_" \
+  crates/octarine/src/identifiers/shortcuts/{domain}.rs | grep {type}
 
 # Check for naming violations
 grep -rn "pub fn \(has_\|contains_\|check_\|verify_\|ensure_\|remove_\)" \
   crates/octarine/src/
 
 # Check for inheritance arrow violations (detection importing validation)
-grep -r "use.*validation\|use.*sanitization" \
+# Covers both {domain}/detection.rs and {domain}/detection/*.rs
+grep -rs "use.*validation\|use.*sanitization" \
+  crates/octarine/src/primitives/identifiers/*/detection.rs \
   crates/octarine/src/primitives/identifiers/*/detection/
 
 # Run tests

@@ -98,8 +98,13 @@ Identify non-mod.rs, non-core.rs files in `builder/` directories. Check for:
 
 ### shortcut-bypasses-builder (severity: high)
 
+Shortcuts are mixed-layout: most modules keep a flat `shortcuts.rs`, but
+`identifiers/shortcuts/` is a per-domain directory. A `glob="shortcuts.rs"`
+misses the directory form, so use a brace glob that catches both:
+
 ```text
-Grep pattern="crate::primitives::" path="crates/octarine/src/" glob="shortcuts.rs"
+Grep pattern="crate::primitives::" path="crates/octarine/src/" \
+  glob="{**/shortcuts.rs,**/shortcuts/*.rs}"
 ```
 
 Shortcuts must use the builder, not import from primitives directly.

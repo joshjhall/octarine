@@ -43,13 +43,21 @@ partial error.
 ## The Complete Identifier Chain
 
 ```text
-1. Detection fn     primitives/identifiers/{domain}/detection/    is_{type}()
-2. Validation fn    primitives/identifiers/{domain}/validation/   validate_{type}()
-3. Sanitization fn  primitives/identifiers/{domain}/sanitization/ sanitize_{type}() or redact_{type}()
-4. Prim builder     primitives/identifiers/{domain}/builder/      delegation methods
-5. Public builder   identifiers/builder/{domain}.rs               wrapped methods + observe
-6. Shortcuts        identifiers/shortcuts/                        convenience functions
+1. Detection fn     primitives/identifiers/{domain}/detection[.rs|/]    is_{type}()
+2. Validation fn    primitives/identifiers/{domain}/validation[.rs|/]   validate_{type}()
+3. Sanitization fn  primitives/identifiers/{domain}/sanitization[.rs|/] sanitize_{type}() or redact_{type}()
+4. Prim builder     primitives/identifiers/{domain}/builder[.rs|/]      delegation methods
+5. Public builder   identifiers/builder/{domain}[.rs|/]                 wrapped methods + observe
+6. Shortcuts        identifiers/shortcuts/{domain}.rs                   convenience functions
 ```
+
+**Mixed layout (`[.rs|/]`):** the identifier tree uses BOTH flat files and
+split directories at each node. Of the 18 builder-bearing domains, 13 are flat
+(`detection.rs`, `builder.rs`) and 5 split into directories (`detection/`,
+`builder/`): `government`, `location`, `network`, `personal`, `token`.
+`identifiers/shortcuts/` is always a per-domain directory. See "Layout-Agnostic
+File Resolution" below — a rule that names only one form silently returns zero
+matches for the other.
 
 ## Workflow
 
@@ -63,15 +71,40 @@ partial error.
 5. Track findings with sequential IDs (`octarine-identifiers-001`, ...)
 6. Return a single JSON result
 
+## Layout-Agnostic File Resolution (CRITICAL)
+
+The Grep tool passes its `path` argument to ripgrep verbatim — an embedded `*`
+is NOT glob-expanded and a missing directory errors out. Because domains mix
+flat files and split directories (see above), **never Grep a bare
+`{domain}/detection/` path** — it returns zero matches for the 13 flat domains,
+a false negative that reads as "no violations."
+
+Instead, **resolve files with the Glob tool first, then Grep the resolved
+list.** Each node needs TWO Glob patterns to cover both forms:
+
+```text
+Glob "crates/octarine/src/primitives/identifiers/{domain}/detection.rs"     # flat
+Glob "crates/octarine/src/primitives/identifiers/{domain}/detection/*.rs"   # split
+```
+
+The single `*` before `detection/` matches exactly one path segment, so the
+split pattern does NOT leak the nested `builder/detection.rs`. Apply the same
+flat-`.rs` + split-`/*.rs` pair to every `detection`, `validation`,
+`sanitization`, and `builder` node named in the rules below.
+
 ## Scanning Rules
 
 ### octarine-identifiers/missing-validation (severity: high)
 
-For each `is_{type}` detection function, check for corresponding `validate_{type}`:
+For each `is_{type}` detection function, check for corresponding
+`validate_{type}`. Resolve both nodes with the flat + split Glob pair
+(see "Layout-Agnostic File Resolution"), then Grep the resolved files:
 
 ```text
-Grep pattern="pub fn is_" path="crates/octarine/src/primitives/identifiers/{domain}/detection/"
-Grep pattern="pub fn validate_" path="crates/octarine/src/primitives/identifiers/{domain}/validation/"
+# detection: Glob {domain}/detection.rs AND {domain}/detection/*.rs
+Grep pattern="pub fn is_" path="<each resolved detection file>"
+# validation: Glob {domain}/validation.rs AND {domain}/validation/*.rs
+Grep pattern="pub fn validate_" path="<each resolved validation file>"
 ```
 
 Exception: Simple boolean helpers like `is_test_email()` or `is_reserved_ip()`.
@@ -83,19 +116,25 @@ Flag only types that are PII or sensitive data.
 
 ### octarine-identifiers/missing-builder-method (severity: high)
 
-For each `is_{type}` detection function, check the primitives builder:
+For each `is_{type}` detection function, check the primitives builder. Resolve
+the builder node with the flat + split Glob pair, then Grep the resolved files:
 
 ```text
-Grep pattern="fn is_{type}" path="crates/octarine/src/primitives/identifiers/{domain}/builder/"
+# builder: Glob {domain}/builder.rs AND {domain}/builder/*.rs
+Grep pattern="fn is_{type}" path="<each resolved builder file>"
 ```
 
 ### octarine-identifiers/missing-public-builder-method (severity: high)
 
-For each primitives builder method, check the public builder:
+For each primitives builder method, check the public builder. The public
+builder is ALSO mixed-layout: most domains are a flat `{domain}.rs`, but
+`government/` and `token/` are directories. Resolve both forms with the Glob
+pair, then Grep the resolved files:
 
 ```text
+# Glob identifiers/builder/{domain}.rs AND identifiers/builder/{domain}/*.rs
 Grep pattern="fn is_{type}\|fn validate_{type}\|fn redact_{type}" \
-  path="crates/octarine/src/identifiers/builder/{domain}.rs"
+  path="<each resolved public builder file>"
 ```
 
 ### octarine-identifiers/missing-shortcut (severity: medium)
@@ -127,11 +166,15 @@ Grep pattern="pub(\(crate\) )?fn (has_|contains_|check_|verify_|ensure_|remove_)
 
 ### octarine-identifiers/inheritance-arrow-violation (severity: high)
 
-Detection must NOT import from validation or sanitization:
+Detection must NOT import from validation or sanitization. Resolve every
+domain's detection node with the flat + split Glob pair across all domains,
+then Grep the resolved files:
 
 ```text
+# Glob identifiers/*/detection.rs AND identifiers/*/detection/*.rs
+#   (the single * before detection/ excludes the nested builder/detection.rs)
 Grep pattern="use (super::validation|super::sanitization)" \
-  path="crates/octarine/src/primitives/identifiers/*/detection/"
+  path="<each resolved detection file>"
 ```
 
 ### octarine-identifiers/missing-type-variant (severity: medium)
