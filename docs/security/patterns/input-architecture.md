@@ -73,34 +73,33 @@ Based on OWASP input categories, all input falls into one of nine contexts:
 ### Simple Functions (80% of cases)
 
 ```rust
-use octarine::security::data::paths::sanitize_path;
+use octarine::security::paths::sanitize_path;
 
-// Quick sanitization with defaults
-let safe_path = sanitize_path(user_input);
+// Quick sanitization with defaults (returns Result<String, Problem>)
+let safe_path = sanitize_path(user_input)?;
 ```
 
 ### Builder Pattern (Complex cases)
 
 ```rust
-use octarine::security::data::paths::PathSanitizer;
+use octarine::security::paths::SecurityBuilder;
 
-let sanitizer = PathSanitizer::builder()
-    .remove_traversal()
-    .normalize()
-    .strict_mode()
-    .build();
+let sanitizer = SecurityBuilder::new();
 
+// Full sanitization (removes all detected threats)
 let safe_path = sanitizer.sanitize(user_input)?;
 ```
 
 ### Dual Function Pattern
 
 ```rust
-// Strict version - returns Result
-let path = sanitize_path_strict(user_input)?;
+use octarine::security::paths::{sanitize_path, strip_traversal};
 
-// Lenient version - always succeeds with safe default
-let path = sanitize_path(user_input);
+// Strict version - returns Result (Err on unrecoverable threats)
+let path = sanitize_path(user_input)?;
+
+// Lenient version - always succeeds, strips traversal in place
+let path = strip_traversal(user_input);
 ```
 
 ## Security Boundaries

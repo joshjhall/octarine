@@ -410,7 +410,7 @@ Check mod.rs for module documentation:
 //!
 //! // Detect UUID
 //! let result = network::detect_network_identifier("550e8400-...");
-//! assert_eq!(result, Some(IdentifierType::UUID));
+//! assert_eq!(result, Some(IdentifierType::Uuid));
 //! ```
 //!
 //! # Security Considerations
@@ -460,10 +460,10 @@ Sample 10-15 public functions across the module. Each function MUST have:
 ///
 /// # Returns
 ///
-/// * `Some(IdentifierType::UUID)` - If the value matches UUID format
-/// * `Some(IdentifierType::IPAddress)` - If the value is IPv4 or IPv6
-/// * `Some(IdentifierType::MACAddress)` - If the value is a MAC address
-/// * `Some(IdentifierType::URL)` - If the value has a protocol scheme
+/// * `Some(IdentifierType::Uuid)` - If the value matches UUID format
+/// * `Some(IdentifierType::IpAddress)` - If the value is IPv4 or IPv6
+/// * `Some(IdentifierType::MacAddress)` - If the value is a MAC address
+/// * `Some(IdentifierType::Url)` - If the value has a protocol scheme
 /// * `None` - If no network identifier pattern is detected
 ///
 /// # Examples
@@ -471,11 +471,11 @@ Sample 10-15 public functions across the module. Each function MUST have:
 /// ```ignore
 /// // UUID detection
 /// let result = detect_network_identifier("550e8400-...");
-/// assert_eq!(result, Some(IdentifierType::UUID));
+/// assert_eq!(result, Some(IdentifierType::Uuid));
 ///
 /// // IPv4 detection
 /// let result = detect_network_identifier("192.168.1.1");
-/// assert_eq!(result, Some(IdentifierType::IPAddress));
+/// assert_eq!(result, Some(IdentifierType::IpAddress));
 ///
 /// // Non-network identifier
 /// let result = detect_network_identifier("not-an-id");
@@ -519,8 +519,8 @@ ones.
 //!
 //! ```ignore
 //! // Example showing correct usage for developers
-//! use super::detect_ipv4;
-//! assert!(detect_ipv4("192.168.1.1"));
+//! use super::is_ipv4;
+//! assert!(is_ipv4("192.168.1.1"));
 //! ```
 
 // ❌ WRONG - No examples because it's internal
