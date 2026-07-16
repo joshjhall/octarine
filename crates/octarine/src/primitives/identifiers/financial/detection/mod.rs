@@ -43,7 +43,9 @@ pub use credit_card::{
 pub use routing::{detect_routing_number, detect_routing_numbers_in_text, is_routing_number};
 
 // Re-export bank account functions
-pub use bank_account::{detect_bank_accounts_in_text, is_bank_account};
+pub use bank_account::{
+    detect_bank_account_with_context, detect_bank_accounts_in_text, is_bank_account,
+};
 
 // Re-export payment token functions (in bank_account module for now)
 pub use bank_account::detect_payment_tokens_in_text;

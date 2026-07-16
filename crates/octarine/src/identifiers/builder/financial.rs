@@ -157,6 +157,37 @@ impl FinancialBuilder {
         self.inner.is_bank_account(value)
     }
 
+    /// Detect a bank account with context-aware confidence scoring
+    ///
+    /// Returns [`DetectionConfidence::Low`] for a bare 8-17 digit string and
+    /// [`DetectionConfidence::Medium`] when a bank-account keyword appears in
+    /// `context`. Returns `None` when the length rules out an account number.
+    ///
+    /// [`DetectionConfidence::Low`]: crate::identifiers::DetectionConfidence::Low
+    /// [`DetectionConfidence::Medium`]: crate::identifiers::DetectionConfidence::Medium
+    #[must_use]
+    pub fn detect_bank_account_with_context(
+        &self,
+        value: &str,
+        context: Option<&str>,
+    ) -> Option<DetectionResult> {
+        let start = Instant::now();
+        let result = self.inner.detect_bank_account_with_context(value, context);
+
+        if self.emit_events {
+            record(
+                metric_names::detect_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+
+            if result.is_some() {
+                increment_by(metric_names::detected(), 1);
+            }
+        }
+
+        result
+    }
+
     /// Check if value is a valid IBAN (format + MOD-97 checksum)
     #[must_use]
     pub fn is_iban(&self, value: &str) -> bool {
@@ -785,6 +816,34 @@ mod tests {
         assert_eq!(
             builder.find("4242424242424242"),
             Some(IdentifierType::CreditCard)
+        );
+    }
+
+    #[test]
+    fn test_detect_bank_account_with_context() {
+        use super::super::super::types::DetectionConfidence;
+
+        let builder = FinancialBuilder::silent();
+
+        // No context → Low confidence (verifies the wrapper forwards args and
+        // returns the primitive's DetectionResult).
+        let low = builder
+            .detect_bank_account_with_context("4532015112830366", None)
+            .expect("Luhn-valid 16-digit string should be a candidate account");
+        assert_eq!(low.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(low.confidence, DetectionConfidence::Low);
+
+        // Keyword context → Medium confidence (context arg is forwarded, not dropped).
+        let medium = builder
+            .detect_bank_account_with_context("12345678", Some("bank account number"))
+            .expect("8-digit string with context should be a candidate account");
+        assert_eq!(medium.confidence, DetectionConfidence::Medium);
+
+        // Bad length → None.
+        assert!(
+            builder
+                .detect_bank_account_with_context("1234567", Some("bank account"))
+                .is_none()
         );
     }
 
