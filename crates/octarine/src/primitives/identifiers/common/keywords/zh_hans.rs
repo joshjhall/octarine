@@ -7,5 +7,18 @@
 use crate::primitives::identifiers::IdentifierType;
 
 /// Chinese Simplified context keyword table, keyed by identifier type.
-pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] =
-    &[(IdentifierType::ApiKey, &["api密钥", "认证", "令牌", "密钥"])];
+pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] = &[
+    (IdentifierType::ApiKey, &["api密钥", "认证", "令牌", "密钥"]),
+    (
+        IdentifierType::BankAccount,
+        &[
+            "银行账户",
+            "账号",
+            "账户号码",
+            "银行卡号",
+            "iban",
+            "swift",
+            "bic",
+        ],
+    ),
+];

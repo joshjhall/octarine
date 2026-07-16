@@ -6,5 +6,17 @@
 use crate::primitives::identifiers::IdentifierType;
 
 /// Arabic context keyword table, keyed by identifier type.
-pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] =
-    &[(IdentifierType::ApiKey, &["مفتاح api", "رمز", "مصادقة"])];
+pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] = &[
+    (IdentifierType::ApiKey, &["مفتاح api", "رمز", "مصادقة"]),
+    (
+        IdentifierType::BankAccount,
+        &[
+            "حساب بنكي",
+            "رقم الحساب",
+            "حساب مصرفي",
+            "iban",
+            "swift",
+            "bic",
+        ],
+    ),
+];

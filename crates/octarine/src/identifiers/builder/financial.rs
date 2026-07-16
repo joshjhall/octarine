@@ -188,6 +188,11 @@ impl FinancialBuilder {
     /// [`DetectionConfidence::Medium`] when a bank-account keyword appears in
     /// `context`. Returns `None` when the length rules out an account number.
     ///
+    /// Emits `pci_data_found` on a match because a bank account is regulated
+    /// financial PII (`DetectionResult::is_sensitive` is always `true` here),
+    /// matching the text-scan detection wrappers ([`Self::detect_ibans_in_text`],
+    /// [`Self::detect_routing_numbers_in_text`]).
+    ///
     /// [`DetectionConfidence::Low`]: crate::identifiers::DetectionConfidence::Low
     /// [`DetectionConfidence::Medium`]: crate::identifiers::DetectionConfidence::Medium
     #[must_use]
@@ -207,6 +212,7 @@ impl FinancialBuilder {
 
             if result.is_some() {
                 increment_by(metric_names::detected(), 1);
+                increment_by(metric_names::pci_data_found(), 1);
             }
         }
 
