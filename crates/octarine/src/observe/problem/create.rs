@@ -139,7 +139,7 @@ pub(super) fn create_security(
     writers::dispatch(event);
 
     // Also log as critical for immediate visibility
-    crate::observe::event::critical(format!("SECURITY: {}", &message));
+    crate::observe::event::critical(format!("SECURITY: {}", message));
 
     Problem::PermissionDenied(message)
 }

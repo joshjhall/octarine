@@ -262,7 +262,7 @@ impl std::fmt::Display for RememberToken {
         if self.selector.len() > 8 {
             write!(f, "{}...", &self.selector[..8])
         } else {
-            write!(f, "{}", &self.selector)
+            write!(f, "{}", self.selector)
         }
     }
 }

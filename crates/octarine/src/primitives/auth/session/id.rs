@@ -80,7 +80,7 @@ impl fmt::Debug for SessionId {
         if self.0.len() > 8 {
             write!(f, "SessionId({}...)", &self.0[..8])
         } else {
-            write!(f, "SessionId({})", &self.0)
+            write!(f, "SessionId({})", self.0)
         }
     }
 }
@@ -91,7 +91,7 @@ impl fmt::Display for SessionId {
         if self.0.len() > 8 {
             write!(f, "{}...", &self.0[..8])
         } else {
-            write!(f, "{}", &self.0)
+            write!(f, "{}", self.0)
         }
     }
 }
