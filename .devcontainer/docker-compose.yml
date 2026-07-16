@@ -16,6 +16,12 @@ services:
         INCLUDE_DOCKER: "true"
         # Main languages for development
         INCLUDE_RUST_DEV: "true"
+        # Pin the build-time toolchain to match rust-toolchain.toml, so the image
+        # default toolchain stays aligned with our pin. Without this, the base
+        # image's default RUST_VERSION drives the build; when that drifts (e.g.
+        # a future 1.98 image default) the pinned toolchain would be auto-installed
+        # bare (missing cargo/clippy), breaking `just` + git hooks (see #701).
+        RUST_VERSION: "1.97.0"
         # Supporting languages for linting and other tools
         INCLUDE_PYTHON: "true"
         INCLUDE_NODE: "true"
