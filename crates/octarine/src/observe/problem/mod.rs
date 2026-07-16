@@ -6,6 +6,9 @@
 // Core implementation (internal only)
 mod create;
 
+// Inspection-time event dispatch for `Result<T, Problem>` (internal only)
+mod emit;
+
 // Type definitions
 mod types;
 
@@ -23,6 +26,9 @@ pub(in crate::observe) use builder::shortcuts;
 
 // Public exports - carefully selected for external use
 pub use types::{Problem, Result};
+
+// Inspection-time event dispatch — internal to the crate (Layer-3 builders).
+pub(crate) use emit::EmitProblemEvent;
 
 /// Observability-enabled constructors for [`Problem`].
 ///

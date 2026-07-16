@@ -5,6 +5,7 @@
 //! This is the **public API** (Layer 3) that wraps the primitive builder
 //! with observe instrumentation for compliance-grade audit trails.
 
+use crate::observe::EmitProblemEvent;
 use crate::observe::Problem;
 use crate::primitives::identifiers::DatabaseBuilder as PrimitiveDatabaseBuilder;
 
@@ -118,8 +119,18 @@ impl DatabaseBuilder {
     // ========================================================================
 
     /// Validate a database identifier (returns Result)
+    ///
+    /// When observe events are enabled, an injection-pattern detection
+    /// (surfaced by the primitive as [`Problem::PermissionDenied`]) is emitted
+    /// as a CRITICAL security event, and a benign validation failure (bad
+    /// characters, reserved keyword, too long) as a WARNING event, preserving
+    /// the audit trail these paths require.
     pub fn validate_identifier(&self, name: &str) -> Result<(), Problem> {
-        self.inner.validate_identifier(name)
+        let result = self.inner.validate_identifier(name);
+        if self.emit_events {
+            result.emit_event("identifiers.database", name);
+        }
+        result
     }
 }
 

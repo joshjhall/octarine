@@ -7,6 +7,7 @@
 
 use std::borrow::Cow;
 
+use crate::observe::EmitProblemEvent;
 use crate::observe::Problem;
 use crate::primitives::identifiers::OrganizationalIdentifierBuilder;
 
@@ -137,29 +138,53 @@ impl OrganizationalBuilder {
 
     /// Validate employee ID format
     ///
+    /// When observe events are enabled, a validation failure is emitted as a
+    /// WARNING event (or CRITICAL if the primitive surfaces a security
+    /// detection), preserving the audit trail.
+    ///
     /// # Errors
     ///
     /// Returns `Problem` if the employee ID format is invalid
     pub fn validate_employee_id(&self, employee_id: &str) -> Result<(), Problem> {
-        self.inner.validate_employee_id(employee_id)
+        let result = self.inner.validate_employee_id(employee_id);
+        if self.emit_events {
+            result.emit_event("identifiers.organizational.employee_id", employee_id);
+        }
+        result
     }
 
     /// Validate student ID format
+    ///
+    /// When observe events are enabled, a validation failure is emitted as a
+    /// WARNING event (or CRITICAL if the primitive surfaces a security
+    /// detection), preserving the audit trail.
     ///
     /// # Errors
     ///
     /// Returns `Problem` if the student ID format is invalid
     pub fn validate_student_id(&self, student_id: &str) -> Result<(), Problem> {
-        self.inner.validate_student_id(student_id)
+        let result = self.inner.validate_student_id(student_id);
+        if self.emit_events {
+            result.emit_event("identifiers.organizational.student_id", student_id);
+        }
+        result
     }
 
     /// Validate badge number format
+    ///
+    /// When observe events are enabled, a validation failure is emitted as a
+    /// WARNING event (or CRITICAL if the primitive surfaces a security
+    /// detection), preserving the audit trail.
     ///
     /// # Errors
     ///
     /// Returns `Problem` if the badge number format is invalid
     pub fn validate_badge_number(&self, badge_number: &str) -> Result<(), Problem> {
-        self.inner.validate_badge_number(badge_number)
+        let result = self.inner.validate_badge_number(badge_number);
+        if self.emit_events {
+            result.emit_event("identifiers.organizational.badge_number", badge_number);
+        }
+        result
     }
 
     // =========================================================================

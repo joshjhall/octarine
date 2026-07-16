@@ -316,6 +316,10 @@ pub use types::{Event, EventContext, EventType, Severity, TenantId, UserId};
 // Problem types with consistent API
 pub use problem::{Problem, ProblemExt, Result};
 
+// Inspection-time event dispatch for `Result<T, Problem>` — internal to the
+// crate, consumed by Layer-3 builders to re-emit audit events (issue #409/#683).
+pub(crate) use problem::EmitProblemEvent;
+
 // Context management (for advanced use)
 pub use context::{
     TenantContext, clear_tenant, get_tenant, is_development, is_production, set_tenant, tenant_id,

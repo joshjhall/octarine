@@ -116,24 +116,6 @@ use crate::primitives::identifiers::confidence::ConfidenceBuilder as PrimitiveCo
 
 use super::types::{IdentifierMatch, IdentifierType};
 
-use crate::observe::Problem;
-
-/// Emit a CRITICAL security event when a validation/sanitization failure is a
-/// security detection (an injection or override attempt), which the primitive
-/// signals via [`Problem::PermissionDenied`]. Benign failures (empty, too long,
-/// bad chars) surface as [`Problem::Validation`] and are intentionally not
-/// escalated here.
-///
-/// This restores the audit trail that Layer-1 constructors previously emitted
-/// as a side effect, now that Layer 1 uses the event-free constructor trait
-/// (issue #409). Audit coverage belongs in these Layer-3 wrappers, gated on the
-/// builder's `emit_events` flag by the caller.
-pub(super) fn emit_security_event<T>(result: &Result<T, Problem>, operation: &str, input: &str) {
-    if let Err(Problem::PermissionDenied(reason)) = result {
-        observe::critical(operation, format!("{reason} (input: {input})"));
-    }
-}
-
 crate::define_metrics! {
     detect_ms => "data.identifiers.unified.detect_ms",
     scan_ms => "data.identifiers.unified.scan_ms",
