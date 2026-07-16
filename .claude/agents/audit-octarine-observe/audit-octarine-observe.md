@@ -47,6 +47,19 @@ Every builder in these directories wraps primitives with observe:
 - `crates/octarine/src/security/*/builder*`
 - `crates/octarine/src/crypto/*/builder*`
 
+**Builders are mixed-layout — resolve via the Glob tool, never a literal Grep
+`path`.** Some are a flat `builder.rs`, others a `builder/` directory (e.g.
+`data/paths/builder/` splits across many files). A Grep `path` with an embedded
+`*` is not glob-expanded, so passing `data/*/builder*` verbatim errors or
+returns nothing. Discover builder files with the Glob tool using BOTH forms:
+
+```text
+Glob "crates/octarine/src/{data,security,crypto}/*/builder.rs"    # flat
+Glob "crates/octarine/src/{data,security,crypto}/*/builder/*.rs"  # split
+Glob "crates/octarine/src/identifiers/builder/*.rs"               # flat domains
+Glob "crates/octarine/src/identifiers/builder/*/*.rs"             # dir domains (government, token)
+```
+
 Each must include:
 
 1. Metric name definitions (`define_metrics!` or `MetricName::new`)
@@ -58,7 +71,9 @@ Each must include:
 ## Workflow
 
 1. Parse the manifest
-2. Identify all Layer 3 builder files by path pattern
+2. Identify all Layer 3 builder files via the Glob tool using both the flat
+   `builder.rs` and split `builder/*.rs` patterns above — not a literal Grep
+   `path` (which would miss directory-form builders like `data/paths/builder/`)
 3. For each builder, check the categories below
 4. Extract all metric name string literals using
    `Grep pattern='"[a-z]+\.[a-z]+\.'` and verify they follow the
