@@ -6,5 +6,10 @@
 use crate::primitives::identifiers::IdentifierType;
 
 /// Hindi context keyword table, keyed by identifier type.
-pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] =
-    &[(IdentifierType::ApiKey, &["एपीआई कुंजी", "टोकन", "प्रमाणीकरण"])];
+pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] = &[
+    (IdentifierType::ApiKey, &["एपीआई कुंजी", "टोकन", "प्रमाणीकरण"]),
+    (
+        IdentifierType::BankAccount,
+        &["बैंक खाता", "खाता संख्या", "खाता नंबर", "iban", "swift", "bic"],
+    ),
+];

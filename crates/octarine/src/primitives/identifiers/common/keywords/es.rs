@@ -7,12 +7,26 @@
 use crate::primitives::identifiers::IdentifierType;
 
 /// Spanish (`es`) context keyword table, keyed by identifier type.
-pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] = &[(
-    IdentifierType::SpainPassport,
-    &[
-        "pasaporte",
-        "número de pasaporte",
-        "numero de pasaporte",
-        "pasaporte español",
-    ],
-)];
+pub(super) static KEYWORDS: &[(IdentifierType, &[&str])] = &[
+    (
+        IdentifierType::SpainPassport,
+        &[
+            "pasaporte",
+            "número de pasaporte",
+            "numero de pasaporte",
+            "pasaporte español",
+        ],
+    ),
+    (
+        IdentifierType::BankAccount,
+        &[
+            "cuenta bancaria",
+            "número de cuenta",
+            "numero de cuenta",
+            "cuenta corriente",
+            "iban",
+            "swift",
+            "bic",
+        ],
+    ),
+];

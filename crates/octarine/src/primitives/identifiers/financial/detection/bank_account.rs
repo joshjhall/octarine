@@ -59,9 +59,9 @@ pub fn detect_bank_account_with_context(
     value: &str,
     context: Option<&str>,
 ) -> Option<DetectionResult> {
-    // Length guard mirrors the ReDoS protection on the text-scan functions in
-    // this module — keep unbounded attacker input from allocating/scanning.
-    if value.len() > MAX_INPUT_LENGTH || !is_bank_account_likely(value) {
+    // `is_bank_account_likely` enforces the MAX_INPUT_LENGTH ReDoS guard, so no
+    // separate length check is needed here.
+    if !is_bank_account_likely(value) {
         return None;
     }
 
@@ -167,7 +167,16 @@ pub fn detect_bank_accounts_in_text(text: &str) -> Vec<IdentifierMatch> {
 /// Luhn-valid strings: real account numbers frequently pass the Luhn checksum by
 /// chance, so excluding them produced false rejects. Credit-card disambiguation
 /// is the caller's responsibility (try credit-card detection first).
+///
+/// Guards against unbounded input (`> MAX_INPUT_LENGTH`) before scanning, so
+/// every entry point sharing this helper — the public `is_bank_account` and
+/// `detect_bank_account_with_context` — enforces the same ReDoS/allocation
+/// ceiling, not just the ones that guard separately.
 fn is_bank_account_likely(value: &str) -> bool {
+    if value.len() > MAX_INPUT_LENGTH {
+        return false;
+    }
+
     let digit_count = value.chars().filter(|c| c.is_ascii_digit()).count();
 
     (8..=17).contains(&digit_count)
@@ -282,6 +291,28 @@ mod tests {
         // the digit-count heuristic runs.
         let oversized = "1".repeat(MAX_INPUT_LENGTH + 1);
         assert!(detect_bank_account_with_context(&oversized, None).is_none());
+    }
+
+    #[test]
+    fn test_is_bank_account_redos_guard() {
+        // #695: the public is_bank_account entry point shares the same
+        // MAX_INPUT_LENGTH guard as detect_bank_account_with_context, so an
+        // oversized value is rejected before the digit scan runs.
+        let oversized = "1".repeat(MAX_INPUT_LENGTH + 1);
+        assert!(!is_bank_account(&oversized));
+    }
+
+    #[test]
+    fn test_has_bank_account_context_non_english() {
+        // #695: non-English BankAccount keyword tables are backfilled, so a
+        // keyword in any supported language is now matched (case-insensitively).
+        assert!(has_bank_account_context("Bitte die Kontonummer angeben")); // de
+        assert!(has_bank_account_context("numéro de compte bancaire")); // fr
+        assert!(has_bank_account_context("cuenta bancaria")); // es
+        assert!(has_bank_account_context("銀行口座")); // ja
+        assert!(has_bank_account_context("은행 계좌")); // ko
+        // A string with no bank-account keyword in any language stays unmatched.
+        assert!(!has_bank_account_context("just some unrelated text"));
     }
 
     #[test]
