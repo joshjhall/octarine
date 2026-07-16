@@ -24,19 +24,11 @@ fi
 echo "==> Warming cargo cache..."
 cargo fetch --manifest-path /workspace/octarine/Cargo.toml
 
-# Build the CodeGraph code-intelligence index so the MCP server has a graph to
-# query on first use. .codegraph/ is gitignored, so a freshly created container
-# has no index until this runs.
-if command -v codegraph >/dev/null; then
-  if [ -f /workspace/octarine/.codegraph/codegraph.db ]; then
-    echo "==> CodeGraph index already present; syncing..."
-    codegraph sync /workspace/octarine || echo "WARN: codegraph sync failed (non-fatal)"
-  else
-    echo "==> Initializing CodeGraph index..."
-    codegraph init /workspace/octarine || echo "WARN: codegraph init failed (non-fatal)"
-  fi
-else
-  echo "WARN: codegraph not on PATH; skipping index build."
-fi
+# NOTE: CodeGraph indexing is intentionally NOT done here. The containers
+# submodule ships codegraph-index-first-startup.sh, which symlinks
+# .codegraph -> /cache/codegraph (a named volume) and builds the index. That
+# hook is the single source of truth. Building here would instead create a real
+# .codegraph/ directory in the git tree, which the submodule hook then refuses
+# to clobber — permanently defeating the /cache volume. See issue #689.
 
 echo "==> Post-create setup complete."

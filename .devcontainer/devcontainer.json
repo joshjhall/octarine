@@ -19,8 +19,14 @@
   // Install development dependencies once when container is created
   "postCreateCommand": "bash /workspace/octarine/.devcontainer/post-create.sh",
 
-  // Configure git, CLI auth, and install git hooks on every start
-  "postStartCommand": "bash /workspace/octarine/.devcontainer/post-start.sh",
+  // Configure git, CLI auth, and install git hooks on every start.
+  // `recover-entrypoint &&` MUST lead the chain: Zed's native devcontainer impl
+  // replaces the image ENTRYPOINT with a sleep stub (zed#56357), so the
+  // entrypoint's one-time first-startup setup — /cache ownership, OP secret
+  // resolution, Zed LSP/agent config, and the CodeGraph index build — never
+  // runs. recover-entrypoint replays it (fast-path no-op under VS Code, guarded
+  // by ~/.container-initialized). See issue #689.
+  "postStartCommand": "recover-entrypoint && bash /workspace/octarine/.devcontainer/post-start.sh",
 
   "customizations": {
     "vscode": {
