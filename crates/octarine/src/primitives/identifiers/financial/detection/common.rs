@@ -5,7 +5,7 @@
 use super::super::super::common::{luhn, patterns};
 use super::super::super::types::{IdentifierMatch, IdentifierType};
 
-use super::bank_account::{detect_bank_accounts_in_text, is_bank_account};
+use super::bank_account::{detect_bank_account_with_context, detect_bank_accounts_in_text};
 use super::credit_card::{
     detect_credit_card_with_context, detect_credit_cards_in_text, is_suspicious_pattern_present,
 };
@@ -49,9 +49,12 @@ pub fn find_financial_identifier(value: &str) -> Option<IdentifierType> {
         return Some(result.identifier_type);
     }
 
-    // Basic bank account detection (heuristic)
-    if is_bank_account(value) {
-        return Some(IdentifierType::BankAccount);
+    // Bank account detection (heuristic, confidence-aware). No surrounding text
+    // is available here, so this resolves to a Low-confidence length match —
+    // the confidence-aware path lets callers with context distinguish a bare
+    // Luhn-coincidence number from a keyword-confirmed one.
+    if let Some(result) = detect_bank_account_with_context(value, None) {
+        return Some(result.identifier_type);
     }
 
     None

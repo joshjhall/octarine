@@ -820,6 +820,34 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_bank_account_with_context() {
+        use super::super::super::types::DetectionConfidence;
+
+        let builder = FinancialBuilder::silent();
+
+        // No context → Low confidence (verifies the wrapper forwards args and
+        // returns the primitive's DetectionResult).
+        let low = builder
+            .detect_bank_account_with_context("4532015112830366", None)
+            .expect("Luhn-valid 16-digit string should be a candidate account");
+        assert_eq!(low.identifier_type, IdentifierType::BankAccount);
+        assert_eq!(low.confidence, DetectionConfidence::Low);
+
+        // Keyword context → Medium confidence (context arg is forwarded, not dropped).
+        let medium = builder
+            .detect_bank_account_with_context("12345678", Some("bank account number"))
+            .expect("8-digit string with context should be a candidate account");
+        assert_eq!(medium.confidence, DetectionConfidence::Medium);
+
+        // Bad length → None.
+        assert!(
+            builder
+                .detect_bank_account_with_context("1234567", Some("bank account"))
+                .is_none()
+        );
+    }
+
+    #[test]
     fn test_redact_credit_card_with_strategy() {
         let builder = FinancialBuilder::silent();
 

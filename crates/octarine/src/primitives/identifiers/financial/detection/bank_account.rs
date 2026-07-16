@@ -59,7 +59,9 @@ pub fn detect_bank_account_with_context(
     value: &str,
     context: Option<&str>,
 ) -> Option<DetectionResult> {
-    if !is_bank_account_likely(value) {
+    // Length guard mirrors the ReDoS protection on the text-scan functions in
+    // this module — keep unbounded attacker input from allocating/scanning.
+    if value.len() > MAX_INPUT_LENGTH || !is_bank_account_likely(value) {
         return None;
     }
 
@@ -174,9 +176,19 @@ fn is_bank_account_likely(value: &str) -> bool {
 /// Check whether any bank-account context keyword appears in `context`.
 ///
 /// Scans every language's keyword table (case-insensitive) so a caller need not
-/// specify the language of the surrounding text.
+/// specify the language of the surrounding text. Only English currently defines
+/// `BankAccount` keywords; the other language tables resolve to empty slices
+/// until they are backfilled, so non-English context is effectively unmatched
+/// today. The scan is bounded to `MAX_INPUT_LENGTH` bytes to cap the cost of a
+/// large `context` blob.
 fn has_bank_account_context(context: &str) -> bool {
-    let context_lower = context.to_lowercase();
+    // Bound the scan to MAX_INPUT_LENGTH chars (char-based, so always on a UTF-8
+    // boundary) before lowercasing, capping the cost of a large context blob.
+    let context_lower: String = context
+        .chars()
+        .take(MAX_INPUT_LENGTH)
+        .flat_map(char::to_lowercase)
+        .collect();
     KeywordLanguage::all().any(|language| {
         context_keywords(&IdentifierType::BankAccount, language)
             .iter()
@@ -244,6 +256,15 @@ mod tests {
         let result = detect_bank_account_with_context("12345678", Some("bank account number"))
             .expect("8-digit string with context should be a candidate account");
         assert_eq!(result.confidence, DetectionConfidence::Medium);
+    }
+
+    #[test]
+    fn test_detect_bank_account_with_context_low_with_irrelevant_context() {
+        // Some(context) but no bank-account keyword → still Low (distinct code
+        // path from the None case via `is_some_and`).
+        let result = detect_bank_account_with_context("12345678", Some("just some unrelated text"))
+            .expect("8-digit string should be a candidate account");
+        assert_eq!(result.confidence, DetectionConfidence::Low);
     }
 
     #[test]
