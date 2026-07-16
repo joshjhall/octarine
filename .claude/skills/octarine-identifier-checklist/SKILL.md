@@ -42,8 +42,9 @@ Every identifier type requires ALL applicable steps.
 7. **Validation methods** — same file (or `builder/` subdirectory for large domains)
 8. **Sanitization methods** — same file
    - All builder methods DELEGATE to implementation — no business logic
-   - 15/18 domains use single `builder.rs`. Only personal, network, location
-     use `builder/` subdirectory with split files.
+   - 13/18 domains use single `builder.rs`. Five use a `builder/`
+     subdirectory with split files: government, location, network, personal,
+     token.
 
 ### Layer 3: Public API (pub)
 
@@ -55,8 +56,8 @@ Every identifier type requires ALL applicable steps.
     - `pub fn validate_{type}(v: &str) -> Result<(), Problem> { ... }`
 
 11. **Type registration** — two separate files:
-    - Add `IdentifierType::{Type}` variant in `primitives/identifiers/types.rs`
-    - Add `PiiType::{Type}` variant in `observe/pii/types.rs` (if PII)
+    - Add `IdentifierType::{Type}` variant in `primitives/identifiers/types/core.rs`
+    - Add `PiiType::{Type}` variant in `observe/pii/types/mod.rs` (if PII)
     - Register in PII scanner (`observe/pii/scanner/`) if the type is PII
 
 ### Verification
