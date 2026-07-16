@@ -77,11 +77,9 @@ pub fn validate(&self, input: &str) -> Result<(), Problem> {
 **Never use** `event::warn()` in new Layer 3 builders — use `observe::warn()`
 for consistent operation context capture in audit trails.
 
-**Migration note**: Several existing builders still use `event::warn()`:
-`crypto/validation/builder.rs`, `data/text/builder.rs`,
-`identifiers/builder/{government,biometric}.rs`,
-`security/{queries,network}/builder.rs`. When modifying one of these builders,
-migrate existing `event::` calls to `observe::` at the same time.
+**Migration note**: One existing builder still uses `event::warn()`:
+`crypto/validation/builder.rs`. When modifying it, migrate the existing
+`event::` calls to `observe::` at the same time.
 
 ## When to Use
 

@@ -16,7 +16,7 @@ code goes, diagnosing a visibility issue, or reviewing naming.
 | **L1** | `primitives/` | `pub(crate)` | External crates, `Problem` type only | `observe::*`, any L3 module |
 | **L1** | `testing/` | `pub` + `#[cfg(feature)]` | Everything | — |
 | **L2** | `observe/` | `pub` | `primitives/` | Any L3 module, `testing/` |
-| **L3** | `identifiers/`, `data/`, `runtime/`, `crypto/`, `security/` | `pub` | `primitives/` + `observe/` | `testing/` (except `#[cfg(test)]`) |
+| **L3** | `data/`, `security/`, `identifiers/`, `runtime/`, `crypto/`, `io/`, `auth/`, `http/` | `pub` | `primitives/` + `observe/` | `testing/` (except `#[cfg(test)]`) |
 
 Primitives must NEVER call `observe::info/warn/debug/fail`, `increment_by()`, or `record()`.
 

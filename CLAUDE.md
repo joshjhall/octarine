@@ -95,6 +95,7 @@ crates/octarine/src/
 │   │   ├── personal/# SSN, email, phone, names
 │   │   ├── financial/# Credit cards, bank accounts
 │   │   └── ...     # credentials, medical, government, etc.
+│   ├── http/       # HTTP primitives (headers, request IDs, routing, security)
 │   ├── io/         # File operations
 │   ├── runtime/    # Async utilities
 │   ├── types/      # Common types (Problem, Result)
@@ -169,7 +170,7 @@ This separation ensures:
 detection::is_traversal_present(path)  // "file..txt" -> true (sensitive)
 
 // VALIDATION - Strict (precise, no false positives)
-validation::validate_no_traversal(path)?;  // Uses Path::components()
+validation::validate_no_traversal_strict(path)?;  // Uses Path::components()
 
 // SANITIZATION - Transform dangerous input
 sanitization::sanitize_path(path)?;  // Removes threats
@@ -360,7 +361,7 @@ so transient runner contention does not block PRs. See
 1. Add detection function in `primitives/{concern}/{domain}/detection.rs`
 1. Add validation function in `primitives/{concern}/{domain}/validation.rs` (calls detection)
 1. Add sanitization if needed in `primitives/{concern}/{domain}/sanitization.rs`
-1. Wrap in Layer 3 (`data/`) with observe instrumentation
+1. Wrap in the corresponding Layer 3 module (`data/`, `security/`, or `identifiers/`) with observe instrumentation
 1. Add to builder API
 1. Add shortcut function
 

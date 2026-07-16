@@ -16,8 +16,8 @@ implementation process; this skill covers only the cross-registry sync steps.
 
 | Registry | File | Purpose |
 |----------|------|---------|
-| `IdentifierType` | `primitives/identifiers/types.rs` | Primitives-level enum (source of truth) |
-| `PiiType` | `observe/pii/types.rs` | PII classification enum |
+| `IdentifierType` | `primitives/identifiers/types/core.rs` | Primitives-level enum (source of truth) |
+| `PiiType` | `observe/pii/types/mod.rs` | PII classification enum |
 | Scanner domains | `observe/pii/scanner/domains.rs` | Detection dispatch per domain |
 
 **All three MUST be updated together.**
@@ -28,14 +28,14 @@ When adding a new identifier type `{Type}` to domain `{domain}`:
 
 ### 1. IdentifierType (primitives — source of truth)
 
-File: `crates/octarine/src/primitives/identifiers/types.rs`
+File: `crates/octarine/src/primitives/identifiers/types/core.rs`
 
 Add variant to the `IdentifierType` enum in the appropriate domain section.
 The Layer 3 file `identifiers/types/core.rs` is a re-export — do not edit it.
 
 ### 2. PiiType (observe layer)
 
-File: `crates/octarine/src/observe/pii/types.rs`
+File: `crates/octarine/src/observe/pii/types/mod.rs`
 
 ```rust
 pub enum PiiType {
@@ -53,8 +53,9 @@ Update classification methods:
 - `is_hipaa_protected()` — if HIPAA-relevant (medical/health data)
 - `is_secret()` — if it's a secret/credential
 
-Read the actual `is_*_protected()` methods in `observe/pii/types.rs` for
-current classifications before deciding which to update.
+Read the actual `is_*_protected()` methods in `observe/pii/types/` (see
+`classification.rs` and `mod.rs`) for current classifications before deciding
+which to update.
 
 ### 3. Scanner Domain Function
 
@@ -77,9 +78,10 @@ pub(super) fn scan_{domain}(text: &str, pii_types: &mut Vec<PiiType>) {
 After updating all three registries:
 
 ```bash
-# Verify the new variant appears in all three files
-grep "{Type}" crates/octarine/src/primitives/identifiers/types.rs
-grep "{Type}" crates/octarine/src/observe/pii/types.rs
+# Verify the new variant appears in all three registries
+# (types.rs was split into a types/ directory; scan the whole directory)
+grep -r "{Type}" crates/octarine/src/primitives/identifiers/types/
+grep -r "{Type}" crates/octarine/src/observe/pii/types/
 grep "{type}\|{Type}" crates/octarine/src/observe/pii/scanner/domains.rs
 
 # Run PII and identifier tests
