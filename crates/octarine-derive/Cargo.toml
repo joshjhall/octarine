@@ -16,7 +16,7 @@ proc-macro = true
 
 [dependencies]
 # Proc-macro essentials
-syn = { version = "2.0", features = ["full", "extra-traits", "parsing"] }
+syn = { version = "3.0", features = ["full", "extra-traits", "parsing"] }
 quote = "1.0"
 proc-macro2 = "1.0"
 
