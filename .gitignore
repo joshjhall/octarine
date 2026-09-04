@@ -55,6 +55,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+# pyproject.toml is a pytest shim only; CI installs pytest via pip, so a
+# locally-generated poetry.lock is an unused artifact.
+poetry.lock
 
 # ============================================================================
 # CODEGRAPH (CODE KNOWLEDGE GRAPH)
