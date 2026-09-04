@@ -23,4 +23,5 @@
 - [Fixed flaky test_cache_cleanup](project_flaky_cache_cleanup_test.md) — collections/cache/lru.rs expiry test flaked under parallel load (single-call-vs-accumulate race); fixed 2026-07-16 by accumulating cleanup_expired count
 - [L3 merge authority](feedback_l3_merge_authority.md) — at L3 auto-merge golem PRs once green+clean+mergeable (squash+delete-branch), without asking; reversed the old "humans merge" rule on 2026-07-15
 - [Golem launch level bug](project_golem_launch_level_bug.md) — golem-launch.sh hardcodes --level 4, drops any --level arg; every golem runs L4. File against workflow plugin.
+- [Devcontainer clang + disk](project_devcontainer_clang_disk.md) — local build failures from missing `clang` linker or a bloated `target/`; `apt install clang` / `cargo clean`, not a repo bug
 - [Identifier mixed layout](project_identifier_mixed_layout.md) — identifier tree mixes flat .rs and split dirs; audit-agent grep rules must resolve Glob-first (flat + split pattern pair), not a bare dir path
