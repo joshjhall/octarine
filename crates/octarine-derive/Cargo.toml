@@ -16,12 +16,14 @@ proc-macro = true
 
 [dependencies]
 # Proc-macro essentials
-syn = { version = "2.0", features = ["full", "extra-traits", "parsing"] }
+syn = { version = "3.0", features = ["full", "extra-traits", "parsing"] }
 quote = "1.0"
 proc-macro2 = "1.0"
 
-# Attribute parsing
-darling = "0.23"
+# Attribute parsing. Must move in lockstep with syn: darling 0.24 is the
+# first release on syn 3, and darling re-exports syn types in its public API,
+# so a mismatched pair fails to compile.
+darling = "0.24"
 
 [dev-dependencies]
 trybuild = "1.0"
