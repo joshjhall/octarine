@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-# post-create.sh — Runs once when the devcontainer is first created.
-# Install development tools and warm caches so subsequent starts are fast.
+# post-create.sh — One-time devcontainer setup: install development tools and
+# warm caches so subsequent starts are fast.
+#
+# Normally invoked by `postCreateCommand`. Zed's native devcontainer
+# implementation does not run that hook (it does run `postStartCommand`), so
+# post-start.sh replays this script when the completion marker is absent. Every
+# step below is therefore written to be idempotent and safe to re-run. See
+# `containers/docs/troubleshooting/zed-devcontainer.md`.
 
 set -euo pipefail
+
+# Written on success; post-start.sh uses its absence to detect that
+# postCreateCommand never ran. Keep in sync with the check there.
+MARKER="$HOME/.post-create-complete"
 
 echo "==> Verifying lefthook..."
 # lefthook is preinstalled in the devcontainer via the containers submodule.
@@ -30,5 +40,7 @@ cargo fetch --manifest-path /workspace/octarine/Cargo.toml
 # hook is the single source of truth. Building here would instead create a real
 # .codegraph/ directory in the git tree, which the submodule hook then refuses
 # to clobber — permanently defeating the /cache volume. See issue #689.
+
+touch "$MARKER"
 
 echo "==> Post-create setup complete."

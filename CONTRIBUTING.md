@@ -88,8 +88,13 @@ directly, as recipes encode the correct feature flags and arguments.
 
 `.cargo/config.toml` configures the [mold linker](https://github.com/rui314/mold)
 on `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`, which links
-5-10x faster than the default. mold and clang are installed by the
-devcontainer's `INCLUDE_RUST_DEV` feature (containers v4.19.0+).
+5-10x faster than the default. mold is installed by the devcontainer's
+`INCLUDE_RUST_DEV` feature (containers v4.19.0+); clang is not (the feature
+ships only `libclang-dev`, for bindgen), so `.devcontainer/post-create.sh`
+installs it.
+
+If you see `error: linker 'clang' not found` inside the devcontainer, that
+script did not run — see [Devcontainer lifecycle hooks](#devcontainer-lifecycle-hooks).
 
 Non-devcontainer Linux contributors need both tools:
 
@@ -115,6 +120,40 @@ rustflags = []
 macOS and Windows contributors are unaffected — the project config has no
 `[target.*-apple-darwin]` or `*-windows-*` overrides, so the platform
 default linker is used.
+
+### Devcontainer lifecycle hooks
+
+Two scripts set the container up, and which of them your editor runs differs:
+
+| Script | Hook | Runs |
+| --- | --- | --- |
+| `.devcontainer/post-create.sh` | `postCreateCommand` | Once, at container creation — installs clang, warms the cargo cache |
+| `.devcontainer/post-start.sh` | `postStartCommand` | Every start — git identity, `glab` auth, lefthook hooks |
+
+**Zed does not run `postCreateCommand`.** Its native devcontainer
+implementation runs `postStartCommand` but skips `postCreateCommand`
+entirely, so clang is never installed and every `cargo` link step fails with
+`error: linker 'clang' not found`.
+
+`post-start.sh` therefore replays `post-create.sh` when the
+`~/.post-create-complete` marker is absent. `post-create.sh` is idempotent, so
+this is a no-op under VS Code (which writes the marker before `post-start.sh`
+runs) and self-healing under Zed.
+
+This is distinct from the `recover-entrypoint` fix in `postStartCommand`,
+which replays the image `ENTRYPOINT` that Zed also replaces (secrets, codegraph
+index, `/cache` ownership — see
+`containers/docs/troubleshooting/zed-devcontainer.md`). The two gaps are
+independent: `recover-entrypoint` does not run lifecycle hooks.
+
+To verify by hand:
+
+```bash
+ls ~/.post-create-complete   # marker: post-create ran
+command -v clang             # the tool it installs
+```
+
+If either is missing, run `bash .devcontainer/post-create.sh` directly.
 
 ### Continuous Checks (bacon)
 
