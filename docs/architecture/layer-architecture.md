@@ -476,8 +476,13 @@ octarine = { version = "0.2", features = ["full"] }
 octarine = { version = "0.2", features = ["testing"] }
 ```
 
+Feature flags decide what is *enabled* within the main crate. For whether a new
+integration belongs in this crate at all or in a sibling crate, see
+[Crate Layout](./crate-layout.md).
+
 ## Related Documents
 
+- [Crate Layout](./crate-layout.md) - Feature flag vs sibling crate decision rule
 - [Module Patterns](./module-patterns.md) - Three-layer pattern within each module
 - [System Design](./system-design.md) - Overall system architecture
 - [CLAUDE.md](../../CLAUDE.md) - Development guidelines

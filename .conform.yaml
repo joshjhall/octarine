@@ -63,6 +63,12 @@ policies:
           - ^runtime$
           - ^security$
           - ^testing$
+          # --- sibling crates + feature-gated integrations ---
+          # See docs/architecture/crate-layout.md for which is which.
+          # `llm` = crates/octarine-llm (sibling); `otel` = otel/otel-http
+          # features over crates/octarine/src/observe/tracing/otel.rs.
+          - ^llm$
+          - ^otel$
           # --- cross-cutting subsystems / process ---
           - ^ai$
           - ^api$
