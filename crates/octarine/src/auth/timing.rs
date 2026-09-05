@@ -143,7 +143,15 @@ pub async fn constant_time_response<F, T>(config: &ConstantTimeConfig, operation
 where
     F: Future<Output = T>,
 {
-    let start = Instant::now();
+    // Measure on the same clock we pad with. The padding below is
+    // `tokio::time::sleep`, which runs on Tokio's clock, so timing the
+    // operation with `std::time::Instant` would mix clock domains: under
+    // `tokio::time::pause()` the real clock still advances while the virtual
+    // one does not, so `elapsed` would be a small nonzero real duration
+    // subtracted from a virtual sleep, under-padding the response. On a normal
+    // runtime `tokio::time::Instant` is the real clock, so this is unchanged in
+    // production and correct under a paused or mocked clock.
+    let start = tokio::time::Instant::now();
     let result = operation.await;
     let elapsed = start.elapsed();
 
@@ -281,6 +289,44 @@ mod tests {
         // Paused time advances exactly when tokio::time::sleep fires,
         // so elapsed is precisely the configured floor.
         assert_eq!(elapsed, config.min_duration);
+    }
+
+    /// Regression: the padding must be computed on Tokio's clock, not the
+    /// real one.
+    ///
+    /// `constant_time_response` times the operation and then pads with
+    /// `tokio::time::sleep`. If it timed with `std::time::Instant`, then under
+    /// a paused runtime the real clock would still advance while the virtual
+    /// clock stood still, so a real `elapsed` of a few ms would be subtracted
+    /// from a virtual sleep and the response would be under-padded by exactly
+    /// that much — the floor this function exists to guarantee, quietly
+    /// breached. That mismatch made this module's async test fail ~60% of the
+    /// time, with the shortfall tracking how fast the machine happened to be.
+    ///
+    /// A slow operation makes the bug unmissable rather than sub-millisecond:
+    /// advancing the virtual clock well past `min_duration` means a real-clock
+    /// measurement would read ~0 and pad the *full* `min_duration` on top of an
+    /// operation that already exceeded it.
+    #[tokio::test(start_paused = true)]
+    async fn test_constant_time_response_async_uses_tokio_clock() {
+        let config = ConstantTimeConfig::builder()
+            .min_duration(Duration::from_millis(50))
+            .build();
+
+        let start = tokio::time::Instant::now();
+        let result = constant_time_response(&config, async {
+            // Virtual time only; costs no wall-clock in the test.
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            42
+        })
+        .await;
+        let elapsed = start.elapsed();
+
+        assert_eq!(result, 42);
+        // The operation already exceeded min_duration, so NO padding is added
+        // and elapsed is exactly the operation's own duration. Timing on the
+        // real clock instead would add a spurious ~50ms here.
+        assert_eq!(elapsed, Duration::from_millis(200));
     }
 
     #[test]
