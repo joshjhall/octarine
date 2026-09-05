@@ -6,6 +6,7 @@ This section covers the system design, patterns, and architectural decisions for
 
 - **Layer Architecture**: [`layer-architecture.md`](./layer-architecture.md) - **START HERE** - Three-layer dependency
   rules
+- **Crate Layout**: [`crate-layout.md`](./crate-layout.md) - Feature flag vs sibling crate decision rule
 - **Module Patterns**: [`module-patterns.md`](./module-patterns.md) - Three-layer pattern and builder pattern
 - **System Design**: [`system-design.md`](./system-design.md) - Overall library architecture
 - **Testing Patterns**: [`testing-patterns.md`](./testing-patterns.md) - Shared test infrastructure
@@ -15,6 +16,15 @@ This section covers the system design, patterns, and architectural decisions for
 - **Refactor Status**: [`refactor-plan.md`](./refactor-plan.md) - Completed refactor summary (v0.3.0-beta.1)
 
 ## In This Section
+
+### [Crate Layout](./crate-layout.md)
+
+Where a new integration lives:
+
+- The first-match decision rule (dependency direction, extends vs consumes,
+  runtime surface, dep-family risk, size floor)
+- Why sibling crates cannot be re-exported by the main crate
+- Registration checklist and inheritance caveats for a new workspace crate
 
 ### [Module Patterns](./module-patterns.md)
 

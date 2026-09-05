@@ -388,6 +388,7 @@ pub fn validate_path(&self, path: &str) -> Result<(), Problem> {
 
 - `docs/api/naming-conventions.md` - **API naming standards (CRITICAL)**
 - `docs/architecture/layer-architecture.md` - Full layer specification
+- `docs/architecture/crate-layout.md` - Feature flag vs sibling crate decision rule
 - `docs/security/patterns/` - Security patterns
 - `docs/observe/` - Observability guides
 - `docs/patterns/` - Code patterns
