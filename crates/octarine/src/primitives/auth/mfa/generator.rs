@@ -131,21 +131,19 @@ impl std::fmt::Display for TotpCode {
 /// Generate a new TOTP secret
 ///
 /// Creates a cryptographically random secret suitable for TOTP authentication.
-/// The secret is 32 bytes (256 bits) for strong security.
+/// The secret is 20 bytes (160 bits), the size RFC 4226 recommends and the
+/// minimum this module accepts.
 ///
 /// # Errors
 ///
-/// Returns an error if random number generation fails.
+/// Returns an error if the generated secret is shorter than 20 bytes.
 #[cfg(feature = "auth-totp")]
 pub fn generate_totp_secret() -> Result<TotpSecret, Problem> {
     use totp_rs::Secret;
 
-    let secret = Secret::generate_secret();
-    let secret_bytes = secret
-        .to_bytes()
-        .map_err(|e| Problem::OperationFailed(format!("Failed to generate TOTP secret: {e}")))?;
+    let secret = Secret::generate();
 
-    TotpSecret::new(secret_bytes)
+    TotpSecret::new(secret.as_bytes().to_vec())
 }
 
 /// Stub when feature is not enabled
@@ -170,7 +168,10 @@ pub fn generate_totp_code(secret: &TotpSecret, config: &TotpConfig) -> Result<To
         .map_err(|e| Problem::OperationFailed(format!("System time error: {e}")))?
         .as_secs();
 
-    let code = totp.generate(time);
+    // `Totp::generate` returns a `Token`, which exposes its digits only through
+    // `Display` (no `AsRef<str>`/`Deref`), so format it into the `String` that
+    // `TotpCode` owns.
+    let code = totp.generate(time).to_string();
     let time_step = time / config.step;
 
     Ok(TotpCode::new(code, time_step, config.step))
@@ -206,7 +207,10 @@ pub fn validate_totp_code(
         .map_err(|e| Problem::OperationFailed(format!("System time error: {e}")))?
         .as_secs();
 
-    Ok(totp.check(code, time))
+    // `Totp::check` returns `Some(matched_step)` rather than a bool. Collapse it
+    // to preserve this function's boolean contract; callers that need per-step
+    // replay protection track consumed steps themselves.
+    Ok(totp.check(code, time).is_some())
 }
 
 /// Stub when feature is not enabled
@@ -232,6 +236,11 @@ pub fn validate_totp_code(
 /// # Returns
 ///
 /// An otpauth:// URI that can be encoded as a QR code.
+///
+/// # Errors
+///
+/// Returns an error if the TOTP instance cannot be built, or if the issuer or
+/// account name contains a `:` (which cannot be encoded in an otpauth URI).
 #[cfg(feature = "auth-totp")]
 pub fn get_otpauth_uri(
     secret: &TotpSecret,
@@ -239,7 +248,8 @@ pub fn get_otpauth_uri(
     account_name: &str,
 ) -> Result<String, Problem> {
     let totp = create_totp_with_account(secret, config, account_name)?;
-    Ok(totp.get_url())
+    totp.to_url()
+        .map_err(|e| Problem::OperationFailed(format!("Failed to build otpauth URI: {e}")))
 }
 
 /// Stub when feature is not enabled
@@ -260,7 +270,7 @@ pub fn get_otpauth_uri(
 
 /// Create a TOTP instance from secret and config
 #[cfg(feature = "auth-totp")]
-fn create_totp(secret: &TotpSecret, config: &TotpConfig) -> Result<totp_rs::TOTP, Problem> {
+fn create_totp(secret: &TotpSecret, config: &TotpConfig) -> Result<totp_rs::Totp, Problem> {
     create_totp_with_account(secret, config, "user")
 }
 
@@ -270,23 +280,19 @@ fn create_totp_with_account(
     secret: &TotpSecret,
     config: &TotpConfig,
     account_name: &str,
-) -> Result<totp_rs::TOTP, Problem> {
-    use totp_rs::{Secret, TOTP};
+) -> Result<totp_rs::Totp, Problem> {
+    use totp_rs::Builder;
 
-    let secret_obj = Secret::Raw(secret.as_bytes().to_vec());
-
-    TOTP::new(
-        config.algorithm.to_totp_rs(),
-        config.digits.into(),
-        config.skew,
-        config.step,
-        secret_obj
-            .to_bytes()
-            .map_err(|e| Problem::OperationFailed(format!("Invalid TOTP secret: {e}")))?,
-        Some(config.issuer.clone()),
-        account_name.to_string(),
-    )
-    .map_err(|e| Problem::OperationFailed(format!("Failed to create TOTP: {e}")))
+    Builder::new()
+        .with_algorithm(config.algorithm.to_totp_rs())
+        .with_digits(config.digits)
+        .with_skew(config.skew.into())
+        .with_step_duration(config.step)
+        .with_secret(secret.as_bytes().to_vec())
+        .with_issuer(Some(config.issuer.clone()))
+        .with_account_name(account_name.to_string())
+        .build()
+        .map_err(|e| Problem::OperationFailed(format!("Failed to create TOTP: {e}")))
 }
 
 /// Base32 encode bytes
