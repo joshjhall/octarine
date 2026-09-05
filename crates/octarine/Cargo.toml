@@ -170,6 +170,8 @@ totp-rs = { version = "6", optional = true, default-features = false, features =
   "std",
   "gen_secret",
   "otpauth",
+  # Scrubs the shared secret and generated tokens from memory on drop.
+  "zeroize",
 ] }
 sha1 = { version = "0.11", optional = true }
 

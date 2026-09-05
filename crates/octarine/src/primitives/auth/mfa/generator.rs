@@ -421,7 +421,9 @@ mod tests {
     #[test]
     fn test_generate_totp_secret() {
         let secret = generate_totp_secret().expect("should generate secret");
-        assert!(secret.as_bytes().len() >= 20);
+        // Exactly the RFC 4226 recommended 160 bits, pinned rather than bounded
+        // so a change in the upstream secret size is caught here.
+        assert_eq!(secret.as_bytes().len(), 20);
     }
 
     #[cfg(feature = "auth-totp")]
@@ -457,5 +459,29 @@ mod tests {
         assert!(uri.starts_with("otpauth://totp/"));
         assert!(uri.contains("testuser"));
         assert!(uri.contains("TestApp"));
+    }
+
+    #[cfg(feature = "auth-totp")]
+    #[test]
+    fn test_otpauth_uri_rejects_colon_in_issuer() {
+        let secret = generate_totp_secret().expect("should generate secret");
+        let config = TotpConfig::builder().issuer("Test:App").build();
+
+        // A `:` separates issuer from account in an otpauth URI, so it cannot
+        // appear inside either field.
+        let result = get_otpauth_uri(&secret, &config, "testuser");
+
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "auth-totp")]
+    #[test]
+    fn test_otpauth_uri_rejects_colon_in_account_name() {
+        let secret = generate_totp_secret().expect("should generate secret");
+        let config = TotpConfig::default();
+
+        let result = get_otpauth_uri(&secret, &config, "test:user");
+
+        assert!(result.is_err());
     }
 }
