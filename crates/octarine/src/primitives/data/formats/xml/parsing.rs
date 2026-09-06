@@ -118,20 +118,20 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Decl(decl)) => {
                 if let Ok(version) = decl.version() {
-                    doc.version = Some(String::from_utf8_lossy(&version).to_string());
+                    doc.version = Some(version.into_owned());
                 }
                 if let Some(Ok(encoding)) = decl.encoding() {
-                    doc.encoding = Some(String::from_utf8_lossy(&encoding).to_string());
+                    doc.encoding = Some(encoding.into_owned());
                 }
             }
             Ok(Event::Start(ref e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let name = e.name().into_inner().to_string();
                 let mut node = XmlNode::new(name);
 
                 // Parse attributes
                 for attr in e.attributes().flatten() {
-                    let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                    let value = String::from_utf8_lossy(&attr.value).to_string();
+                    let key = attr.key.into_inner().to_string();
+                    let value = attr.value.into_owned();
                     node.attributes.insert(key, value);
                 }
 
@@ -147,13 +147,13 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
                 }
             }
             Ok(Event::Empty(ref e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let name = e.name().into_inner().to_string();
                 let mut node = XmlNode::new(name);
 
                 // Parse attributes
                 for attr in e.attributes().flatten() {
-                    let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                    let value = String::from_utf8_lossy(&attr.value).to_string();
+                    let key = attr.key.into_inner().to_string();
+                    let value = attr.value.into_owned();
                     node.attributes.insert(key, value);
                 }
 
@@ -164,9 +164,9 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
                 }
             }
             Ok(Event::Text(ref e)) => {
-                // quick-xml 0.38+: unescape() replaced with decode()
-                let text = e.decode().map_err(|e| Problem::Parse(e.to_string()))?;
-                let trimmed = text.trim();
+                // quick-xml 0.42+: events store `Cow<str>`, so content is
+                // already `&str` via `Deref` — `decode()` was removed.
+                let trimmed = e.trim();
                 if !trimmed.is_empty()
                     && let Some(current) = stack.last_mut()
                 {
@@ -174,7 +174,7 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
                 }
             }
             Ok(Event::CData(ref e)) => {
-                let text = String::from_utf8_lossy(e.as_ref()).to_string();
+                let text = e.as_ref().to_string();
                 if let Some(current) = stack.last_mut() {
                     current.text = Some(text);
                 }
@@ -270,5 +270,41 @@ mod tests {
         let root = doc.root.as_ref().expect("has root");
         let items = root.find_children("item");
         assert_eq!(items.len(), 2);
+    }
+
+    /// Locks in the `decode()` -> `Deref` migration (quick-xml 0.41 -> 0.42).
+    ///
+    /// Entity references arrive as their own `Event::GeneralRef`, not as part
+    /// of `Event::Text`, and `parse_xml`'s catch-all drops them. That is
+    /// **pre-existing** behavior, not a regression from the bump: 0.41 driven
+    /// through the old `BytesText::decode()` path produces this same value.
+    /// The assertion documents the status quo so the entity fix (tracked
+    /// separately) has a visible starting point rather than a silent one.
+    #[test]
+    fn test_parse_entity_reference_is_dropped_preexisting() {
+        let xml = "<root>a &amp; b</root>";
+        let doc = parse_xml(xml).expect("valid xml");
+        let root = doc.root.as_ref().expect("has root");
+
+        // NOT "a & b" — the entity and the text before it are both lost.
+        assert_eq!(root.text, Some("b".to_string()));
+    }
+
+    #[test]
+    fn test_parse_declaration_encoding() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?><root/>"#;
+        let doc = parse_xml(xml).expect("valid xml");
+
+        assert_eq!(doc.version, Some("1.0".to_string()));
+        assert_eq!(doc.encoding, Some("UTF-8".to_string()));
+    }
+
+    #[test]
+    fn test_parse_cdata_section() {
+        let xml = "<root><![CDATA[raw <text> & stuff]]></root>";
+        let doc = parse_xml(xml).expect("valid xml");
+
+        let root = doc.root.as_ref().expect("has root");
+        assert_eq!(root.text, Some("raw <text> & stuff".to_string()));
     }
 }
