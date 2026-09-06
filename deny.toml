@@ -40,33 +40,43 @@ ignore = [
 # Verified via `cargo tree -i <crate>@<old>` + crates.io latest-stable check.
 multiple-versions = "warn"
 skip = [
+  # ── quick-xml 0.41 ── this crate depends on quick-xml 0.42 directly (#727);
+  # phonenumber 0.3.10 (latest) still pins 0.41. Clears when phonenumber bumps.
+  { crate = "quick-xml:0.41.0", reason = "phonenumber 0.3.10 (latest) still on quick-xml 0.41; we are on 0.42 — re-evaluate 2026-12-01" },
+
+  # ── syn 2/3 split ── proc-macro ecosystem mid-migration. syn 3 arrives via
+  # async-trait 0.1.92 / tonic 0.14 / opentelemetry 0.32; syn 2 via the
+  # x509-parser (asn1-rs) and darling stacks. All leaves latest.
+  { crate = "syn:2.0.119", reason = "asn1-rs/x509-parser + darling stacks still on syn 2 while async-trait/tonic moved to syn 3 — re-evaluate 2026-12-01" },
+
   # ── thiserror 1.x ── blockers: forwarded-header-value 0.1.1 (via
   # tower_governor 0.8.0), graphql-parser 0.4.1. Both latest; no thiserror-2.x.
   { crate = "thiserror:1.0.69", reason = "forwarded-header-value + graphql-parser (both latest) still on thiserror 1.x — re-evaluate 2026-12-01" },
   { crate = "thiserror-impl:1.0.69", reason = "travels with thiserror 1.x — re-evaluate 2026-12-01" },
 
   # ── RustCrypto 0.10/0.4-era cluster ── blockers (all latest stable):
-  # jsonwebtoken 10.4.0, totp-rs 5.7.2, ssh-key 0.6.7, argon2 0.5.3, sqlx 0.9.0,
-  # bs58 0.5.1, curve25519-dalek 4.1.3, rsa 0.9.x. None yet on digest 0.11 /
-  # cipher 0.5 / rand 0.9. ssh-key 0.7 (cipher/inout/crypto-common) is -rc only.
-  { crate = "block-buffer:0.10.4", reason = "RustCrypto digest-0.10 cluster (jsonwebtoken/ssh-key/totp-rs/argon2, all latest) — re-evaluate 2026-12-01" },
+  # jsonwebtoken 11.0.0, ssh-key 0.6.7, sqlx 0.9.0, bs58 0.5.1,
+  # curve25519-dalek 4.1.3, rsa 0.9.x. None yet on digest 0.11 / cipher 0.5 /
+  # rand 0.9. ssh-key 0.7 (cipher/inout/crypto-common) is -rc only.
+  # argon2 0.6 and totp-rs 6.0 have LEFT this cluster (digest 0.11 /
+  # block-buffer 0.12 / crypto-common 0.2), which retired the
+  # constant_time_eq:0.3.1 and sha1:0.10.7 skips.
+  { crate = "block-buffer:0.10.4", reason = "RustCrypto digest-0.10 cluster (jsonwebtoken/ssh-key, all latest) — re-evaluate 2026-12-01" },
   { crate = "cipher:0.4.4", reason = "ssh-cipher 0.2 ← ssh-key 0.6.7 (0.7 is -rc only) — re-evaluate 2026-12-01" },
   { crate = "const-oid:0.9.6", reason = "der 0.7 / digest 0.10 via jsonwebtoken (p256/p384/rsa/ed25519) — re-evaluate 2026-12-01" },
-  { crate = "constant_time_eq:0.3.1", reason = "totp-rs 5.7.2 (latest) — re-evaluate 2026-12-01" },
-  { crate = "cpufeatures:0.2.17", reason = "argon2/curve25519-dalek/sha1-0.10/sha2-0.10, all latest — re-evaluate 2026-12-01" },
+  { crate = "cpufeatures:0.2.17", reason = "curve25519-dalek/sha2-0.10 via jsonwebtoken/sqlx/bs58, all latest — re-evaluate 2026-12-01" },
   { crate = "crypto-common:0.1.6", reason = "cipher 0.4 + digest 0.10 (RustCrypto cluster) — re-evaluate 2026-12-01" },
   { crate = "digest:0.10.7", reason = "broad RustCrypto digest-0.10 fan-in (all leaves latest) — re-evaluate 2026-12-01" },
   { crate = "hkdf:0.12.4", reason = "elliptic-curve 0.13 via jsonwebtoken p256/p384 — re-evaluate 2026-12-01" },
-  { crate = "hmac:0.12.1", reason = "hkdf 0.12 / jsonwebtoken / rfc6979 / totp-rs, all latest — re-evaluate 2026-12-01" },
+  { crate = "hmac:0.12.1", reason = "hkdf 0.12 / jsonwebtoken / rfc6979, all latest — re-evaluate 2026-12-01" },
   { crate = "inout:0.1.4", reason = "cipher 0.4 ← ssh-key 0.6.7 — re-evaluate 2026-12-01" },
-  { crate = "sha1:0.10.7", reason = "totp-rs 5.7.2 (latest) still on sha1 0.10 — re-evaluate 2026-12-01" },
   { crate = "sha2:0.10.9", reason = "wide RustCrypto-0.10 fan-in incl. sqlx 0.9.0 / ssh-key / jsonwebtoken, all latest — re-evaluate 2026-12-01" },
 
-  # ── RustCrypto rand/getrandom split ── blockers: jsonwebtoken 10.4.0,
+  # ── RustCrypto rand/getrandom split ── blockers: jsonwebtoken 11.0.0,
   # rsa 0.9.x (num-bigint-dig), governor 0.10.4, opentelemetry_sdk 0.32.1.
-  { crate = "getrandom:0.2.17", reason = "jsonwebtoken 10.4.0 + rand_core 0.6 (RustCrypto) — re-evaluate 2026-12-01" },
+  { crate = "getrandom:0.2.17", reason = "jsonwebtoken 11.0.0 + rand_core 0.6 (RustCrypto) — re-evaluate 2026-12-01" },
   { crate = "getrandom:0.3.4", reason = "governor 0.10.4 / rand 0.9.5 / opentelemetry_sdk 0.32.1, all latest — re-evaluate 2026-12-01" },
-  { crate = "rand:0.8.7", reason = "jsonwebtoken 10.4.0 + rsa 0.9 (num-bigint-dig), all latest — re-evaluate 2026-12-01" },
+  { crate = "rand:0.8.7", reason = "jsonwebtoken 11.0.0 + rsa 0.9 (num-bigint-dig), all latest — re-evaluate 2026-12-01" },
   { crate = "rand:0.9.5", reason = "atomic-write-file/governor/opentelemetry_sdk, all latest — re-evaluate 2026-12-01" },
   { crate = "rand_chacha:0.3.1", reason = "follows rand 0.8 — re-evaluate 2026-12-01" },
   { crate = "rand_core:0.6.4", reason = "RustCrypto rand_core-0.6 ecosystem (elliptic-curve/rsa/signature) — re-evaluate 2026-12-01" },
@@ -74,10 +84,10 @@ skip = [
 
   # ── curve25519-dalek 4/5 split ── introduced by x25519-dalek 3.0 (#687),
   # which pulls curve25519-dalek 5.0.0. ed25519-dalek 2.2.0 ← jsonwebtoken
-  # 10.4.0 (latest) still pins curve25519-dalek 4.x; fiat-crypto is the
+  # 11.0.0 (latest) still pins curve25519-dalek 4.x; fiat-crypto is the
   # curve25519-dalek field backend and duplicates alongside it. Clears when
   # jsonwebtoken's ed25519-dalek moves to curve25519-dalek 5.
-  { crate = "curve25519-dalek:4.1.3", reason = "ed25519-dalek 2.2.0 ← jsonwebtoken 10.4.0 (latest) still on curve25519-dalek 4.x; x25519-dalek 3.0 pulls 5.x — re-evaluate 2026-12-01" },
+  { crate = "curve25519-dalek:4.1.3", reason = "ed25519-dalek 2.2.0 ← jsonwebtoken 11.0.0 (latest) still on curve25519-dalek 4.x; x25519-dalek 3.0 pulls 5.x — re-evaluate 2026-12-01" },
   { crate = "fiat-crypto:0.2.9", reason = "field backend of curve25519-dalek 4.x (above) — re-evaluate 2026-12-01" },
 
   # ── toml / figment stack ── single blocker: figment 0.10.19 (latest) pins
@@ -117,7 +127,6 @@ allow = [
   "Zlib",
   "CC0-1.0",
   "Unicode-3.0",
-  "OpenSSL",
   "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8

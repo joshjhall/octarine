@@ -67,7 +67,7 @@
 
 use argon2::{
     Algorithm, Argon2, Params, Version,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
 use tokio::task::JoinError;
 use zeroize::Zeroize;
@@ -241,13 +241,15 @@ pub fn hash_password_with_profile_sync(
     password: &str,
     profile: PasswordProfile,
 ) -> Result<String, CryptoError> {
-    let salt = SaltString::generate(&mut OsRng);
     let params = profile.params()?;
 
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
+    // `hash_password` generates its own 16-byte salt from the system CSPRNG
+    // (password-hash's `RECOMMENDED_SALT_LEN`, via getrandom). Prior to
+    // password-hash 0.6 the caller passed an explicit `SaltString`.
     let hash = argon2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .map_err(|e| CryptoError::key_derivation(format!("Password hashing failed: {e}")))?;
 
     Ok(hash.to_string())
@@ -268,9 +270,15 @@ pub fn validate_password_sync(password: &str, hash: &str) -> Result<bool, Crypto
 
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
+    // `PasswordInvalid` is the "computed hash did not match" signal - it is
+    // password-hash 0.6's rename of 0.5's `Error::Password`, returned from the
+    // same fall-through in the blanket `PasswordVerifier` impl. It is the ONLY
+    // variant that means "wrong password"; every other one is a genuine
+    // hashing/parsing failure and must surface as an error rather than a
+    // silent `false`.
     match argon2.verify_password(password.as_bytes(), &parsed_hash) {
         Ok(()) => Ok(true),
-        Err(argon2::password_hash::Error::Password) => Ok(false),
+        Err(argon2::password_hash::Error::PasswordInvalid) => Ok(false),
         Err(e) => Err(CryptoError::key_derivation(format!(
             "Password verification failed: {e}"
         ))),
