@@ -537,6 +537,38 @@ mod tests {
         assert!(matches!(err, Problem::NotFound(_)));
     }
 
+    #[tokio::test]
+    async fn touch_error_message_carries_the_digest_not_the_handle() {
+        // `touch` is the one leak site that reports through a Problem rather
+        // than an observe call, and a Problem message routinely reaches an
+        // audit event via its caller (#629). The message text is therefore part
+        // of the contract, and `touch_on_unknown_session_errors` above only
+        // matches the variant — it would still pass with the handle inlined.
+        //
+        // A PII-shaped handle is the case that matters: nothing between this
+        // assertion and the format string can redact it.
+        let handle = "jane.doe@example.com";
+        let id = SessionId::new(handle);
+        let err = manager()
+            .touch(&id)
+            .await
+            .expect_err("touch must fail for an unknown session");
+
+        let Problem::NotFound(message) = err else {
+            panic!("touch must report NotFound");
+        };
+        assert!(
+            !message.contains(handle),
+            "touch leaked the raw handle into its error message: {message}"
+        );
+        // Presence, not just absence: dropping the digest entirely would
+        // satisfy the check above while destroying the correlation.
+        assert!(
+            message.contains(&id.digest()),
+            "touch must identify the session by digest: {message}"
+        );
+    }
+
     #[tokio::test(start_paused = true)]
     async fn ttl_expiry_flushes_session_end_to_end() {
         // The headline acceptance criterion: a session with a TTL is empty after

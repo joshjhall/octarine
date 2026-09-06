@@ -63,19 +63,35 @@ const POLL_INTERVAL: Duration = Duration::from_millis(10);
 const MARKER_SESSION: &str = "zzsess629c0ffee";
 
 /// Hex length the implementation truncates session digests to. Mirrors
-/// `SESSION_DIGEST_HEX_LEN` in `anonymize/vault/types.rs`.
-const DIGEST_HEX_LEN: usize = 12;
+/// `SESSION_DIGEST_BYTES` in `anonymize/vault/types.rs`. Each byte renders as
+/// two characters, so the digest is twice this long.
+const DIGEST_BYTES: usize = 6;
 
-/// First `DIGEST_HEX_LEN` hex chars of `blake3(handle)` — the digest the
-/// implementation is expected to log in place of the handle.
+/// The digest the implementation is expected to log in place of the handle:
+/// the leading `DIGEST_BYTES` of `blake3(handle)`, each byte rendered as two
+/// letters in `a`..=`p` (high nibble first).
 ///
 /// Computed from `blake3` directly rather than via `SessionId::digest()`: an
 /// assertion against the implementation's own output would still pass if
 /// `digest()` regressed to returning the raw handle.
+///
+/// The all-letter alphabet is deliberate — see rule 3 on `SessionId::digest`:
+/// a hex rendering trips the redactor's phone-number detector for a fraction
+/// of handles.
 fn expected_digest(handle: &str) -> String {
-    let mut hex = blake3::hash(handle.as_bytes()).to_hex().to_string();
-    hex.truncate(DIGEST_HEX_LEN);
-    hex
+    blake3::hash(handle.as_bytes())
+        .as_bytes()
+        .iter()
+        .take(DIGEST_BYTES)
+        .flat_map(|b| {
+            // Both nibbles are < 16, so these land in `a`..=`p`; saturating_add
+            // satisfies the crate's denied `arithmetic_side_effects` lint.
+            [
+                char::from(b'a'.saturating_add(b >> 4)),
+                char::from(b'a'.saturating_add(b & 0x0f)),
+            ]
+        })
+        .collect()
 }
 
 fn poll_until<F: FnMut() -> bool>(mut probe: F) -> bool {
@@ -317,23 +333,84 @@ async fn session_manager_never_logs_raw_session_handle() {
 /// correlation vanishes, in production, while `Testing` shows it working. So
 /// assert on the post-redaction text, not the format string.
 ///
+/// The messages are **captured from real operations**, not hand-copied from
+/// the source. Re-typing the format strings here would decouple the test from
+/// the call sites: a later reformat (a reordered field, an added value,
+/// different punctuation) could re-trip the entropy rule while this test kept
+/// passing against its own stale copy — which is precisely the silent failure
+/// it exists to prevent.
+///
 /// Inversion check: restoring `(session={})` in place of `(session {})` at the
 /// emitting sites makes this fail under both production profiles.
-#[test]
-fn session_digest_survives_every_redaction_profile() {
-    let digest = SessionId::new("chat-42").digest();
+#[tokio::test]
+async fn session_digest_survives_every_redaction_profile() {
+    let _ = configure_dispatcher(DispatcherConfig::testing());
 
-    // One representative of each emitted message shape: the trailing `)` case
-    // and the trailing `,` case, from both the store and the manager.
-    let messages = [
-        format!("stored PERSON mapping (session {digest})"),
-        format!("minted EMAIL mapping (session {digest})"),
-        format!("flushed session (session {digest}, 2 mapping(s) dropped)"),
-        format!("opened session (session {digest})"),
-        format!("closed session (session {digest})"),
-        format!("expired session (session {digest}, TTL elapsed)"),
-        format!("session (session {digest}) is not open"),
-    ];
+    let name = "anonymize_session_logging_629_redaction";
+    let capture = Arc::new(MemoryWriter::with_capacity(256));
+    let _guard = register_capture(name, &capture);
+
+    let handle = format!("{MARKER_SESSION}-redact");
+    let digest = expected_digest(&handle);
+    let session = SessionId::new(handle.clone());
+
+    // Drive every emitting site so the captured text is whatever the code
+    // actually produces today.
+    let store = Arc::new(InMemoryStore::new());
+    store
+        .put(
+            &session,
+            &EntityKey::new("PERSON", "Jane Doe"),
+            "<PERSON_0>".to_string(),
+        )
+        .await
+        .expect("put");
+    store
+        .get_or_put(
+            &session,
+            &EntityKey::new("EMAIL", "jane@example.com"),
+            "<EMAIL_0>".to_string(),
+        )
+        .await
+        .expect("get_or_put");
+    store.flush(&session).await.expect("flush");
+
+    let manager = SessionManager::new(Arc::clone(&store));
+    let id = manager.open(SessionOptions::default().id_hint(handle.clone()));
+    manager.close(&id).await.expect("close");
+
+    let flushed = poll_until(|| {
+        messages(&capture)
+            .iter()
+            .any(|m| m.contains("closed session") && m.contains(&digest))
+    });
+    assert!(
+        flushed,
+        "events never reached the writer — capture is broken, so the \
+         assertions below would be vacuous"
+    );
+
+    // `touch` reports through a Problem rather than an observe event, so it is
+    // not in the capture; add its real message text explicitly.
+    let touch_err = manager
+        .touch(&SessionId::new(format!("{handle}-unknown")))
+        .await
+        .expect_err("touch must fail for an unknown session");
+    let touch_message = touch_err.to_string();
+
+    let mut captured: Vec<String> = messages(&capture)
+        .into_iter()
+        .filter(|m| m.contains(&digest))
+        .collect();
+    captured.push(touch_message);
+
+    // Guard against the capture silently narrowing: five observe sites plus
+    // touch. Without this a filter that matched nothing would make the loop
+    // below iterate zero times and pass.
+    assert!(
+        captured.len() >= 6,
+        "expected every emitting site to be represented; got {captured:?}"
+    );
 
     for profile in [
         RedactionProfile::ProductionStrict,
@@ -341,13 +418,47 @@ fn session_digest_survives_every_redaction_profile() {
         RedactionProfile::Development,
         RedactionProfile::Testing,
     ] {
-        for message in &messages {
+        for message in &captured {
+            // The touch message carries its own session's digest, not this
+            // one's; assert each message keeps whatever digest it contains.
+            let expected = if message.contains(&digest) {
+                digest.clone()
+            } else {
+                expected_digest(&format!("{handle}-unknown"))
+            };
             let redacted = redact_pii_with_profile(message, profile);
             assert!(
-                redacted.contains(&digest),
+                redacted.contains(&expected),
                 "{profile:?} destroyed the session digest — correlation is lost \
                  in this profile.\n  before: {message}\n  after:  {redacted}"
             );
+        }
+    }
+
+    // The captured messages above all carry ONE session's digest, so they can
+    // only catch a failure that is independent of the digest's value. The
+    // redactor's digit-run detectors are not: a hex digest tripped `[PHONE]`
+    // for ~0.5% of handles. Sweep many digests through the same message shapes
+    // so a low-rate, value-dependent regression is caught rather than sampled.
+    for i in 0..500 {
+        let swept = SessionId::new(format!("sweep-{i}")).digest();
+        for shape in [
+            format!("stored PERSON mapping (session {swept})"),
+            format!("flushed session (session {swept}, 2 mapping(s) dropped)"),
+            format!("session (session {swept}) is not open"),
+        ] {
+            for profile in [
+                RedactionProfile::ProductionStrict,
+                RedactionProfile::ProductionLenient,
+            ] {
+                let redacted = redact_pii_with_profile(&shape, profile);
+                assert!(
+                    redacted.contains(&swept),
+                    "{profile:?} destroyed the digest for handle sweep-{i} — a \
+                     value-dependent redaction failure.\n  before: {shape}\n  \
+                     after:  {redacted}"
+                );
+            }
         }
     }
 }
