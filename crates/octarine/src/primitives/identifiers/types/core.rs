@@ -265,6 +265,47 @@ impl IdentifierMatch {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Returns `true` if this span overlaps `other` by at least one position.
+    ///
+    /// Spans are half-open (`start` inclusive, `end` exclusive), so spans that
+    /// merely touch — `[0, 5)` and `[5, 10)` — do **not** intersect.
+    ///
+    /// Mirrors [`PiiSpan::intersects`](crate::anonymize::PiiSpan::intersects).
+    /// The definitions are intentionally duplicated rather than shared:
+    /// `IdentifierMatch` is a Layer 1 primitive and `PiiSpan` is a Layer 3
+    /// trait, so implementing it here would invert the layer architecture.
+    #[must_use]
+    pub fn intersects(&self, other: &Self) -> bool {
+        self.start < other.end && other.start < self.end
+    }
+
+    /// Returns `true` if this span fully encloses `other`.
+    ///
+    /// Containment is inclusive: a span contains itself, and contains any
+    /// span with identical indices.
+    #[must_use]
+    pub fn contains(&self, other: &Self) -> bool {
+        self.start <= other.start && other.end <= self.end
+    }
+
+    /// Returns `true` if this span is fully enclosed by `other`.
+    ///
+    /// The mirror of [`contains`](Self::contains): `a.contained_in(b)` is
+    /// exactly `b.contains(a)`.
+    #[must_use]
+    pub fn contained_in(&self, other: &Self) -> bool {
+        other.start <= self.start && self.end <= other.end
+    }
+
+    /// Returns `true` if both spans cover exactly the same range.
+    ///
+    /// Compares indices only — two matches with equal indices but different
+    /// [`IdentifierType`] or [`DetectionConfidence`] still compare equal here.
+    #[must_use]
+    pub fn equal_indices(&self, other: &Self) -> bool {
+        self.start == other.start && self.end == other.end
+    }
 }
 
 // ============================================================================
@@ -308,5 +349,88 @@ mod tests {
             DetectionConfidence::High.with_context_boost(false),
             DetectionConfidence::High
         );
+    }
+
+    // ------------------------------------------------------------------
+    // Span helpers
+    // ------------------------------------------------------------------
+
+    /// Builds a match over `[start, end)` with a fixed type and confidence.
+    fn span(start: usize, end: usize) -> IdentifierMatch {
+        IdentifierMatch::new(
+            start,
+            end,
+            "x".to_string(),
+            IdentifierType::Email,
+            DetectionConfidence::High,
+        )
+    }
+
+    #[test]
+    fn test_intersects_partial_overlap() {
+        assert!(span(0, 10).intersects(&span(5, 15)));
+        assert!(span(5, 15).intersects(&span(0, 10)));
+    }
+
+    #[test]
+    fn test_intersects_touching_spans_do_not_overlap() {
+        // Half-open: [0, 5) and [5, 10) share no position.
+        assert!(!span(0, 5).intersects(&span(5, 10)));
+        assert!(!span(5, 10).intersects(&span(0, 5)));
+    }
+
+    #[test]
+    fn test_intersects_disjoint() {
+        assert!(!span(0, 5).intersects(&span(10, 15)));
+    }
+
+    #[test]
+    fn test_contains_strict_and_equal() {
+        assert!(span(0, 20).contains(&span(5, 10)));
+        // Containment is inclusive, so a span contains itself.
+        assert!(span(0, 20).contains(&span(0, 20)));
+        assert!(!span(5, 10).contains(&span(0, 20)));
+    }
+
+    #[test]
+    fn test_contained_in_mirrors_contains() {
+        let inner = span(5, 10);
+        let outer = span(0, 20);
+        assert!(inner.contained_in(&outer));
+        assert_eq!(inner.contained_in(&outer), outer.contains(&inner));
+        assert!(!outer.contained_in(&inner));
+    }
+
+    #[test]
+    fn test_equal_indices_ignores_type_and_confidence() {
+        let a = IdentifierMatch::new(
+            3,
+            9,
+            "a".to_string(),
+            IdentifierType::Email,
+            DetectionConfidence::Low,
+        );
+        let b = IdentifierMatch::new(
+            3,
+            9,
+            "b".to_string(),
+            IdentifierType::PhoneNumber,
+            DetectionConfidence::High,
+        );
+        assert!(a.equal_indices(&b));
+        assert!(!a.equal_indices(&span(3, 10)));
+    }
+
+    #[test]
+    fn test_empty_span_helpers() {
+        let empty = span(5, 5);
+        assert!(empty.is_empty());
+        // A zero-width span strictly inside another still satisfies the
+        // half-open overlap test (5 < 10 && 0 < 5), matching `PiiSpan`.
+        // Zero-width matches are excluded by `ConflictResolution` instead.
+        assert!(empty.intersects(&span(0, 10)));
+        assert!(empty.contained_in(&span(0, 10)));
+        // At the outer edge there is no overlap: [10,10) vs [0,10).
+        assert!(!span(10, 10).intersects(&span(0, 10)));
     }
 }
