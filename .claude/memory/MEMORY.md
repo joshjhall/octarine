@@ -34,3 +34,6 @@
 - [Umbrella blocked-by cycles](project_umbrella_blocked_by_cycles.md) — presidio children declare "Blocked by" their own parent umbrella; verify scaffold + siblings, use `--force-target`, and never close the umbrella from a child's PR
 - [Tests must fail when inverted](feedback_tests_must_fail_when_inverted.md) — three tests passed vacuously in one PR; pick inputs hostile to the implementation, assert which element survives
 - [Adversarial review earns its keep](project_adversarial_review_earns_its_keep.md) — the ship-issue harness found a correctness bug all deterministic gates passed; re-run it after each fix cycle, `blocking: []` is the only clean signal
+- [Wall-clock TTL test races](project_wallclock_ttl_test_races.md) — asserting presence right after a cache insert races the scheduler; split presence (long TTL) from expiry (short TTL), never widen the timeout
+- [hibp tests are feature-gated](project_hibp_feature_gated_tests.md) — `cargo test -- hibp` silently matches 0 tests without `--features auth-hibp`; check the count, not the exit code
+- [worktree-rm Bad file descriptor](project_worktree_rm_submodule_bad_fd.md) — the `--force` retry still deregisters; delete the branch by hand and leave the inert target/ remnant
