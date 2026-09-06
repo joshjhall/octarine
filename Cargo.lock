@@ -2852,7 +2852,7 @@ dependencies = [
 
 [[package]]
 name = "octarine-core"
-version = "0.3.0-beta.6"
+version = "0.3.0-beta.7"
 dependencies = [
  "addr",
  "aes-gcm",
@@ -2963,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "octarine-problem"
-version = "0.3.0-beta.6"
+version = "0.3.0-beta.7"
 dependencies = [
  "serde_json",
  "thiserror 2.0.20",

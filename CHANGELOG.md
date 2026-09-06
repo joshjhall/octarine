@@ -2,6 +2,48 @@
 
 All notable changes to octarine will be documented in this file.
 
+## [0.3.0-beta.7] - 2026-09-06
+
+> **Security fixes.** Three logging paths leaked sensitive material into
+> observability output: `SecureMap` keys (#737), anonymize `SessionId` handles
+> (#742), and unbounded snapshot TTLs (#739). Upgrading is recommended for any
+> deployment that ships observe output off-host.
+
+### Added
+
+- feat(analyze): add conflict resolution with cross-type dedup strategy (#731)
+- feat(anonymize): add Keep and DeanonymizeKeep no-op operators (#729)
+
+### Fixed
+
+- fix(crypto): stop logging SecureMap keys in cleartext (#737)
+- fix(anonymize): log a SessionId digest instead of the raw handle (#742)
+- fix(observe): saturate overflowing snapshot TTL to never-expires (#739)
+- fix(auth): time constant_time_response on Tokio's clock, not the real one (#726)
+- fix(deps): update all deps, resolving RUSTSEC-2026-0258 (h2) (#714)
+- fix(devcontainer): run post-create setup under Zed (#715)
+
+### Changed
+
+- refactor(crypto): migrate to argon2 0.6 password-hash API (#730)
+- chore(tooling): ignore _notes.md and local codebase-audit output
+
+### Documentation
+
+- docs(architecture): decide crate layout for LLM and OTel integrations (#725)
+
+### Testing
+
+- test(primitives): stop racing wall-clock TTL in cache expiration tests (#736)
+
+### Build
+
+- build(deps): bump base64 0.23, pem 4.0, rstest 0.27 (#743)
+- build(deps): bump quick-xml 0.41 -> 0.42 (#727)
+- build(deps): bump totp-rs 5 -> 6 (Secret::Raw removed) (#721)
+- build(deps): bump jsonwebtoken 10 -> 11 and serial_test 3 -> 4 (#717)
+- build(deps): bump syn 2 -> 3 and darling 0.23 -> 0.24 (#716)
+
 ## [0.3.0-beta.6] - 2026-07-16
 
 > **MSRV bump — action required.** The minimum supported Rust version is now
