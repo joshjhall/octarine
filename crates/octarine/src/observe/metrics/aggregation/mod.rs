@@ -26,7 +26,11 @@ const DEFAULT_SNAPSHOT_TTL: Duration = Duration::from_secs(1);
 /// A cached snapshot with its expiry.
 struct CachedSnapshot {
     snapshot: MetricSnapshot,
-    expires_at: Instant,
+    /// Expiry instant, or `None` when `now + ttl` overflows `Instant` — a TTL
+    /// that long means "never expires". Saturating the other way would mark
+    /// the snapshot stale on every read, turning the cache into a permanent
+    /// miss.
+    expires_at: Option<Instant>,
 }
 
 /// Central registry for all metrics
@@ -100,7 +104,9 @@ impl Registry {
         {
             let cache = self.snapshot_cache.read();
             if let Some(cached) = cache.as_ref()
-                && Instant::now() < cached.expires_at
+                && cached
+                    .expires_at
+                    .is_none_or(|expires_at| Instant::now() < expires_at)
             {
                 return cached.snapshot.clone();
             }
@@ -110,14 +116,15 @@ impl Registry {
         // may have populated the cache while we were waiting.
         let mut cache = self.snapshot_cache.write();
         if let Some(cached) = cache.as_ref()
-            && Instant::now() < cached.expires_at
+            && cached
+                .expires_at
+                .is_none_or(|expires_at| Instant::now() < expires_at)
         {
             return cached.snapshot.clone();
         }
 
         let fresh = self.build_snapshot_uncached();
-        let now = Instant::now();
-        let expires_at = now.checked_add(self.snapshot_ttl).unwrap_or(now);
+        let expires_at = Instant::now().checked_add(self.snapshot_ttl);
         *cache = Some(CachedSnapshot {
             snapshot: fresh.clone(),
             expires_at,
@@ -280,6 +287,45 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(5));
         }
+    }
+
+    #[test]
+    fn overflowing_ttl_never_expires_snapshot() {
+        // `now + Duration::MAX` overflows `Instant` on every platform, so this
+        // exercises the absent-expiry branch.
+        let registry = Registry::with_ttl(Duration::MAX);
+        let counter = registry.counter("overflow.counter");
+        counter.increment();
+
+        let first = registry.snapshot();
+        assert_eq!(
+            first
+                .counters
+                .get("overflow.counter")
+                .expect("present")
+                .value,
+            1
+        );
+
+        // Mutate underneath the warm cache: an overflowing TTL must keep
+        // serving the cached snapshot rather than treat it as already stale.
+        counter.increment();
+
+        let second = registry.snapshot();
+        assert_eq!(
+            second
+                .counters
+                .get("overflow.counter")
+                .expect("present")
+                .value,
+            1,
+            "overflowing TTL must yield a non-expiring snapshot, not an immediately-stale one"
+        );
+        assert_eq!(
+            registry.build_count(),
+            1,
+            "overflowing TTL must not force a rebuild on every call"
+        );
     }
 
     #[test]
