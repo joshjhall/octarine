@@ -118,20 +118,20 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Decl(decl)) => {
                 if let Ok(version) = decl.version() {
-                    doc.version = Some(String::from_utf8_lossy(&version).to_string());
+                    doc.version = Some(version.into_owned());
                 }
                 if let Some(Ok(encoding)) = decl.encoding() {
-                    doc.encoding = Some(String::from_utf8_lossy(&encoding).to_string());
+                    doc.encoding = Some(encoding.into_owned());
                 }
             }
             Ok(Event::Start(ref e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let name = e.name().into_inner().to_string();
                 let mut node = XmlNode::new(name);
 
                 // Parse attributes
                 for attr in e.attributes().flatten() {
-                    let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                    let value = String::from_utf8_lossy(&attr.value).to_string();
+                    let key = attr.key.into_inner().to_string();
+                    let value = attr.value.into_owned();
                     node.attributes.insert(key, value);
                 }
 
@@ -147,13 +147,13 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
                 }
             }
             Ok(Event::Empty(ref e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let name = e.name().into_inner().to_string();
                 let mut node = XmlNode::new(name);
 
                 // Parse attributes
                 for attr in e.attributes().flatten() {
-                    let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                    let value = String::from_utf8_lossy(&attr.value).to_string();
+                    let key = attr.key.into_inner().to_string();
+                    let value = attr.value.into_owned();
                     node.attributes.insert(key, value);
                 }
 
@@ -164,9 +164,9 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
                 }
             }
             Ok(Event::Text(ref e)) => {
-                // quick-xml 0.38+: unescape() replaced with decode()
-                let text = e.decode().map_err(|e| Problem::Parse(e.to_string()))?;
-                let trimmed = text.trim();
+                // quick-xml 0.42+: events store `Cow<str>`, so content is
+                // already `&str` via `Deref` — `decode()` was removed.
+                let trimmed = e.trim();
                 if !trimmed.is_empty()
                     && let Some(current) = stack.last_mut()
                 {
@@ -174,7 +174,7 @@ pub(crate) fn parse_xml(input: &str) -> Result<XmlDocument> {
                 }
             }
             Ok(Event::CData(ref e)) => {
-                let text = String::from_utf8_lossy(e.as_ref()).to_string();
+                let text = e.as_ref().to_string();
                 if let Some(current) = stack.last_mut() {
                     current.text = Some(text);
                 }
