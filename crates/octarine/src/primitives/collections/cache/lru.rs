@@ -157,12 +157,7 @@ where
             }
         }
 
-        let now = Instant::now();
-        let entry = CacheEntry {
-            value: value.clone(),
-            expires_at: now.checked_add(self.ttl).unwrap_or(now),
-            last_accessed: now,
-        };
+        let entry = CacheEntry::new(value, self.ttl);
 
         inner.map.insert(key, entry).map(|e| e.value)
     }
@@ -286,7 +281,7 @@ where
         let expired_keys: Vec<K> = inner
             .map
             .iter()
-            .filter(|(_, entry)| now > entry.expires_at)
+            .filter(|(_, entry)| entry.is_expired_at(now))
             .map(|(k, _)| k.clone())
             .collect();
 
@@ -376,12 +371,57 @@ mod tests {
     }
 
     #[test]
-    fn test_cache_expiration() {
-        let cache: LruCache<&str, &str> = LruCache::new(10, Duration::from_millis(50));
+    fn test_cache_hit_after_insert() {
+        // Presence-after-insert needs a TTL longer than any plausible
+        // scheduling stall. It used to live in test_cache_expiration against
+        // that test's 50ms TTL, where a >50ms deschedule between insert and
+        // get expired the entry before the first read (issue #724 —
+        // reproduced at a 68ms insert->get gap under CPU oversubscription).
+        // The two assertions have contradictory TTL requirements, so they
+        // cannot share a cache: presence wants a long TTL, expiry wants a
+        // short one.
+        let cache: LruCache<&str, &str> = LruCache::new(10, Duration::from_secs(60));
 
         cache.insert("key", "value");
         assert_eq!(cache.get(&"key"), Some("value"));
 
+        let stats = cache.stats();
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 0);
+    }
+
+    #[test]
+    fn test_overflowing_ttl_entry_is_retrievable() {
+        // Covers the LruCache::new -> self.ttl -> CacheEntry::new plumbing
+        // through the public API. A TTL that overflows Instant must yield a
+        // cache that still stores things (issue #724, AC5) — the previous
+        // `unwrap_or(now)` made every entry born expired, so `get` returned
+        // None immediately and `cleanup_expired` swept the entry at once.
+        let cache: LruCache<&str, &str> = LruCache::new(10, Duration::MAX);
+
+        cache.insert("key", "value");
+
+        assert_eq!(cache.get(&"key"), Some("value"));
+        assert_eq!(
+            cache.cleanup_expired(),
+            0,
+            "a non-expiring entry must not be swept"
+        );
+        assert_eq!(cache.len(), 1);
+    }
+
+    #[test]
+    fn test_cache_expiration() {
+        let cache: LruCache<&str, &str> = LruCache::new(10, Duration::from_millis(50));
+
+        cache.insert("key", "value");
+
+        // NOTE: deliberately no presence assertion here — see
+        // test_cache_hit_after_insert. Only the expiry direction is asserted
+        // below, which is monotone-safe: a slow runner makes the entry
+        // expire sooner relative to this thread's progress, never later, so
+        // extra delay can only help this assertion.
+        //
         // Poll until the entry expires. CI under coverage instrumentation
         // can stretch a 50ms TTL well beyond a fixed 60ms sleep.
         let deadline = Instant::now() + Duration::from_secs(5);
