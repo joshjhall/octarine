@@ -32,6 +32,8 @@
 //! | [`data`] | Path/URL normalization, text formatting |
 //! | [`security`] | SSRF protection, path traversal detection |
 //! | [`identifiers`] | PII detection, redaction, identifier validation |
+//! | [`analyze`] | Detection-result analysis, overlap conflict resolution |
+//! | [`anonymize`] | Per-entity anonymization operators and engine |
 //! | [`runtime`] | Async primitives, channels, circuit breakers, shutdown |
 //! | [`io`] | Secure file operations, magic bytes, temp files |
 //! | [`crypto`] | Secret management (SecureMap, SecureEnvBuilder) |
@@ -163,6 +165,35 @@ pub mod crypto;
 /// validate_email("user@example.com").unwrap();
 /// ```
 pub mod identifiers;
+
+/// PII analysis surface over identifier detection (Layer 3)
+///
+/// This module takes the raw detections produced by the identifier primitives
+/// and applies the engine-side passes that turn them into a coherent result
+/// set — octarine's parity surface for Presidio's `AnalyzerEngine`.
+///
+/// It currently provides
+/// [`ConflictResolution`](analyze::ConflictResolution), which reconciles
+/// overlapping detections: Presidio-compatible same-type containment dedup by
+/// default, plus an opt-in cross-type strategy that closes a documented
+/// Presidio gap. The remaining pipeline passes (score thresholds, ad-hoc
+/// recognizers, allow/deny lists, decision-process trace) land as follow-up
+/// work.
+///
+/// # Quick Start
+///
+/// ```rust
+/// use octarine::analyze::ConflictResolution;
+/// use octarine::identifiers::Identifiers;
+///
+/// let text = "Contact: alice@example.com";
+/// let matches = Identifiers::new().scan_text(text);
+///
+/// // Drop a match nested inside a longer one, regardless of type.
+/// let resolved = ConflictResolution::CrossTypeContainment.resolve(text, matches);
+/// # let _ = resolved;
+/// ```
+pub mod analyze;
 
 /// PII anonymization operator and engine surface (Layer 3)
 ///

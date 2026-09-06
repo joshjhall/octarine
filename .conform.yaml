@@ -51,6 +51,7 @@ policies:
         # scope containing the letter r. Anchor every entry.
         scopes:
           # --- octarine source modules (crates/octarine/src/*) ---
+          - ^analyze$
           - ^anonymize$
           - ^auth$
           - ^crypto$
