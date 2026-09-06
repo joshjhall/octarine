@@ -91,10 +91,19 @@ impl ConflictResolution {
     /// # Invariant
     ///
     /// `text` MUST be the exact string the matches were detected in — their
-    /// offsets are interpreted against it. A match whose span does not resolve
-    /// is dropped and logged (`analyze_span_mismatch`) rather than silently
-    /// vanishing, but passing normalized or otherwise transformed text still
-    /// loses detections and is always a caller bug.
+    /// offsets are interpreted against it. Passing normalized or otherwise
+    /// transformed text is always a caller bug.
+    ///
+    /// **Only [`RemoveIntersections`](Self::RemoveIntersections) enforces
+    /// this.** It is the sole strategy that reads `text` (it must re-slice
+    /// `matched_text` after moving a span), so it is the only one positioned to
+    /// notice a violation; a match whose span does not resolve is dropped and
+    /// logged as `analyze_span_mismatch`. The other three strategies never
+    /// touch `text` and pass an out-of-bounds span through untouched and
+    /// unwarned. Validating there would mean *discarding* detections the caller
+    /// never asked this strategy to inspect — a worse fail-open for a PII
+    /// detector than passing them along — so bounds enforcement for the
+    /// containment strategies belongs to whichever consumer slices with them.
     #[must_use]
     pub fn resolve(self, text: &str, matches: Vec<IdentifierMatch>) -> Vec<IdentifierMatch> {
         match self {
@@ -391,6 +400,47 @@ mod tests {
         let out = ConflictResolution::SameTypeContainment.resolve(text, matches);
         assert_eq!(out.len(), 1);
         assert_eq!(out.first().map(|x| (x.start, x.end)), Some((0, 12)));
+    }
+
+    #[test]
+    fn test_equal_span_duplicate_keeps_highest_confidence() {
+        // Asserting the count alone would pass even if the tie-break inverted;
+        // pin which copy survives.
+        let text = "aaaaaaaaaaaaaaaaaaaa";
+        let weak = m(text, 0, 10, IdentifierType::Email, DetectionConfidence::Low);
+        let strong = m(
+            text,
+            0,
+            10,
+            IdentifierType::Email,
+            DetectionConfidence::High,
+        );
+        let out = ConflictResolution::SameTypeContainment.resolve(text, vec![weak, strong]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out.first().map(|x| x.confidence.clone()),
+            Some(DetectionConfidence::High)
+        );
+    }
+
+    #[test]
+    fn test_cross_type_collapses_equal_span_of_different_types() {
+        // "regardless of type" covers equal spans, not just strict nesting.
+        let text = "aaaaaaaaaaaaaaaaaaaa";
+        let email = m(text, 0, 10, IdentifierType::Email, DetectionConfidence::Low);
+        let phone = m(
+            text,
+            0,
+            10,
+            IdentifierType::PhoneNumber,
+            DetectionConfidence::High,
+        );
+        let out = ConflictResolution::CrossTypeContainment.resolve(text, vec![email, phone]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out.first().map(|x| x.identifier_type.clone()),
+            Some(IdentifierType::PhoneNumber)
+        );
     }
 
     #[test]
