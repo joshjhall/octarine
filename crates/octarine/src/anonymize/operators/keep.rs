@@ -257,6 +257,22 @@ mod tests {
     }
 
     #[test]
+    fn deanonymize_keep_is_not_registered_by_default() {
+        // The mirror of the test above, pinning the documented opt-in claim: a
+        // bare engine must NOT resolve "keep_deanonymize". Without this, a
+        // future change that "completes the pair" by registering it in
+        // AnonymizerEngine::new() would silently contradict the docs.
+        let engine = AnonymizerEngine::new().silent();
+        let mut ops = HashMap::new();
+        ops.insert("EMAIL".to_string(), cfg(KEEP_DEANONYMIZE_NAME));
+        let err = engine.anonymize("mail dev@acme.com", vec![rr("EMAIL", 5, 17)], &ops);
+        assert!(
+            err.is_err(),
+            "keep_deanonymize must be opt-in, not in the default registry"
+        );
+    }
+
+    #[test]
     fn kept_span_surfaces_in_engine_items() {
         // The headline property: text is untouched, yet the span is on the
         // record. This is the whole point of `keep` over omitting the span.

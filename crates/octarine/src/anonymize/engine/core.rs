@@ -140,7 +140,7 @@ impl AnonymizerEngine {
     /// Registers a custom operator, returning `self` for chaining.
     ///
     /// An operator whose name matches a built-in (`replace`, `redact`, `mask`,
-    /// `encrypt`, `decrypt`, `keep`) replaces it.
+    /// `hash`, `encrypt`, `decrypt`, `keep`) replaces it.
     #[must_use]
     pub fn with_operator(mut self, operator: Box<dyn Operator>) -> Self {
         self.register(operator);
