@@ -43,6 +43,13 @@ pub enum ConflictResolution {
     /// loses to the longer one. Matches of *different* types are left alone
     /// even when one contains the other — a `PhoneNumber` inside a `Url` keeps
     /// both, exactly as Presidio does.
+    ///
+    /// Because cross-type overlaps survive, this strategy's output may contain
+    /// overlapping spans. Do not feed it straight into a splice-based redactor
+    /// that assumes disjoint ranges — use
+    /// [`CrossTypeContainment`](Self::CrossTypeContainment) or
+    /// [`RemoveIntersections`](Self::RemoveIntersections) when downstream
+    /// redaction requires them.
     #[default]
     SameTypeContainment,
 
@@ -80,6 +87,14 @@ impl ConflictResolution {
     /// stay consistent with its offsets: downstream sanitizers redact
     /// `matched_text` directly, so a stale value would splice a
     /// wrongly-sized replacement into the trimmed range.
+    ///
+    /// # Invariant
+    ///
+    /// `text` MUST be the exact string the matches were detected in — their
+    /// offsets are interpreted against it. A match whose span does not resolve
+    /// is dropped and logged (`analyze_span_mismatch`) rather than silently
+    /// vanishing, but passing normalized or otherwise transformed text still
+    /// loses detections and is always a caller bug.
     #[must_use]
     pub fn resolve(self, text: &str, matches: Vec<IdentifierMatch>) -> Vec<IdentifierMatch> {
         match self {
@@ -121,20 +136,34 @@ fn priority_cmp(a: &IdentifierMatch, b: &IdentifierMatch) -> Ordering {
         .then_with(|| a.end.cmp(&b.end))
 }
 
-/// Greedily keeps the highest-priority matches, dropping any later match that
-/// is contained in one already kept.
+/// Drops every match that is contained in another surviving match.
 ///
 /// When `same_type_only` is true, containment is only considered between
 /// matches sharing an [`IdentifierType`](crate::primitives::identifiers::types::IdentifierType);
 /// when false, any type may absorb any other. Zero-width matches are dropped in
 /// both modes.
+///
+/// Candidates are ordered longest-span-first so a container is always visited
+/// before anything nested inside it. Ordering by [`priority_cmp`] would rank a
+/// high-confidence *inner* span ahead of the lower-confidence span enclosing
+/// it; because the loop only asks whether a candidate falls inside something
+/// already kept, the container would then never be tested against it and both
+/// spans would survive — the documented "longer wins" contract silently
+/// violated whenever confidence disagreed with size.
+///
+/// Equal spans are broken by descending confidence, so an exact duplicate is
+/// absorbed by its highest-confidence copy.
 fn drop_contained(matches: Vec<IdentifierMatch>, same_type_only: bool) -> Vec<IdentifierMatch> {
-    let mut by_priority: Vec<IdentifierMatch> =
-        matches.into_iter().filter(|m| !m.is_empty()).collect();
-    by_priority.sort_by(priority_cmp);
+    let mut by_span: Vec<IdentifierMatch> = matches.into_iter().filter(|m| !m.is_empty()).collect();
+    by_span.sort_by(|a, b| {
+        b.len()
+            .cmp(&a.len())
+            .then_with(|| b.confidence.cmp(&a.confidence))
+            .then_with(|| a.start.cmp(&b.start))
+    });
 
     let mut kept: Vec<IdentifierMatch> = Vec::new();
-    for candidate in by_priority {
+    for candidate in by_span {
         let absorbed = kept.iter().any(|k| {
             let type_matches = !same_type_only || k.identifier_type == candidate.identifier_type;
             type_matches && candidate.contained_in(k)
@@ -175,10 +204,16 @@ fn remove_intersections(text: &str, matches: Vec<IdentifierMatch>) -> Vec<Identi
         // Snap unconditionally: a caller-supplied span may itself straddle a
         // character, and an unsnapped span cannot be sliced to refresh
         // `matched_text`.
+        //
+        // Both failure arms mean `text` does not correspond to the offsets the
+        // matches were computed against. Dropping the match is fail-open for a
+        // PII detector, so warn rather than vanish silently.
         let Some((start, end)) = snap_to_boundaries(text, start, end) else {
+            warn_span_mismatch(candidate.start, candidate.end);
             continue;
         };
         let Some(slice) = text.get(start..end) else {
+            warn_span_mismatch(candidate.start, candidate.end);
             continue;
         };
 
@@ -194,6 +229,20 @@ fn remove_intersections(text: &str, matches: Vec<IdentifierMatch>) -> Vec<Identi
 
     sort_by_position(&mut kept);
     kept
+}
+
+/// Reports a match dropped because its span could not be resolved against the
+/// supplied text.
+///
+/// Logs offsets only — never the matched text, which is PII by construction.
+fn warn_span_mismatch(start: usize, end: usize) {
+    crate::observe::warn(
+        "analyze_span_mismatch",
+        format!(
+            "dropped a match: span [{start}, {end}) does not resolve against the supplied text; \
+             `resolve` must be given the exact text the matches were detected in"
+        ),
+    );
 }
 
 /// Snaps `[start, end)` inward to the nearest UTF-8 character boundaries.
@@ -342,6 +391,40 @@ mod tests {
         let out = ConflictResolution::SameTypeContainment.resolve(text, matches);
         assert_eq!(out.len(), 1);
         assert_eq!(out.first().map(|x| (x.start, x.end)), Some((0, 12)));
+    }
+
+    #[test]
+    fn test_same_type_drops_contained_even_when_inner_scores_higher() {
+        // Containment must not depend on visit order: the inner span carries
+        // HIGHER confidence than the span enclosing it, so a confidence-first
+        // ordering would visit the inner one first and never test the outer
+        // one as a container.
+        let text = "aaaaaaaaaaaaaaaaaaaa";
+        let inner = m(text, 2, 6, IdentifierType::Email, DetectionConfidence::High);
+        let outer = m(text, 0, 12, IdentifierType::Email, DetectionConfidence::Low);
+        let out = ConflictResolution::SameTypeContainment.resolve(text, vec![inner, outer]);
+        assert_eq!(
+            out.len(),
+            1,
+            "contained span survived a longer same-type span"
+        );
+        assert_eq!(out.first().map(|x| (x.start, x.end)), Some((0, 12)));
+    }
+
+    #[test]
+    fn test_cross_type_drops_contained_even_when_inner_scores_higher() {
+        let text = "https://example.com/555-0123/path";
+        let phone = m(
+            text,
+            20,
+            28,
+            IdentifierType::PhoneNumber,
+            DetectionConfidence::High,
+        );
+        let url = m(text, 0, 33, IdentifierType::Url, DetectionConfidence::Low);
+        let out = ConflictResolution::CrossTypeContainment.resolve(text, vec![phone, url]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out.first().map(|x| (x.start, x.end)), Some((0, 33)));
     }
 
     #[test]
@@ -528,6 +611,22 @@ mod tests {
         // trimmed span picks up from there rather than splitting the 'é'.
         assert_eq!(out.first().map(|x| (x.start, x.end)), Some((0, 1)));
         assert_eq!(out.get(1).map(|x| (x.start, x.end)), Some((1, 11)));
+    }
+
+    #[test]
+    fn test_remove_intersections_drops_span_outside_text() {
+        // Offsets that do not resolve against `text` (a caller passing the
+        // wrong string) drop the match rather than panicking.
+        let text = "short";
+        let bogus = m(
+            "a much longer original string",
+            10,
+            20,
+            IdentifierType::Email,
+            DetectionConfidence::High,
+        );
+        let out = ConflictResolution::RemoveIntersections.resolve(text, vec![bogus]);
+        assert!(out.is_empty());
     }
 
     #[test]
