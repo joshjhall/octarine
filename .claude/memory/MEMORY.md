@@ -28,3 +28,9 @@
 - [Devcontainer clang + disk/RAM](project_devcontainer_clang_disk.md) — local build failures from missing `clang`, a bloated `target/`, or RAM exhaustion masquerading as `mold: Disk full?`/SIGBUS; check `free -h`, push and let CI arbitrate, and don't trust `just preflight`'s exit 0
 - [Identifier mixed layout](project_identifier_mixed_layout.md) — identifier tree mixes flat .rs and split dirs; audit-agent grep rules must resolve Glob-first (flat + split pattern pair), not a bare dir path
 - [Verify before calling it flake](feedback_flaky_timing_verify_first.md) — reproduce standalone + read the assertion; two "flaky" timing tests were real bugs
+- [XML entity refs dropped](project_xml_entity_refs_dropped.md) — parse_xml loses `&amp;` AND preceding text; pre-existing (not the 0.42 bump), tracked in #728
+- [worktree-rm vs submodule](project_worktree_rm_submodule_target.md) — deinit `containers` INSIDE the worktree before teardown, or removal fails and strands a target/ remnant
+- [Worktree teardown: deinit + hook](project_worktree_rm_hook_and_deinit.md) — empty `containers/` still blocks `worktree-rm` after deinit (rmdir it); `git push --delete` needs `--no-verify` or the pre-push hook runs the full suite
+- [Umbrella blocked-by cycles](project_umbrella_blocked_by_cycles.md) — presidio children declare "Blocked by" their own parent umbrella; verify scaffold + siblings, use `--force-target`, and never close the umbrella from a child's PR
+- [Tests must fail when inverted](feedback_tests_must_fail_when_inverted.md) — three tests passed vacuously in one PR; pick inputs hostile to the implementation, assert which element survives
+- [Adversarial review earns its keep](project_adversarial_review_earns_its_keep.md) — the ship-issue harness found a correctness bug all deterministic gates passed; re-run it after each fix cycle, `blocking: []` is the only clean signal
