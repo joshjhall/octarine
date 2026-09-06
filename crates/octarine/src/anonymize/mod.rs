@@ -32,8 +32,12 @@
 //!   pseudonymization. `Encrypt` / `Decrypt` seal and open spans with
 //!   authenticated encryption (ChaCha20-Poly1305 or AES-256-GCM), binding the
 //!   ciphertext to the entity type via AAD and offering an opt-in deterministic
-//!   mode for joinable output. Further operators (keep) land as follow-up work
-//!   under the `anonymize/` umbrella.
+//!   mode for joinable output. `Keep` leaves a span unchanged while still
+//!   reporting it in `EngineResult.items`, so an allow-listed entity stays on
+//!   the audit record instead of being indistinguishable from one the detector
+//!   never found; `DeanonymizeKeep` is its opt-in deanonymize-direction
+//!   counterpart. Further operators land as follow-up work under the
+//!   `anonymize/` umbrella.
 //! - `StateStore` / `SessionId` / `EntityKey` — the token-vault surface: the
 //!   backend-agnostic persistence contract behind reversible pseudonymization,
 //!   recording each `(session, original) → stable token` mapping. The default
@@ -82,8 +86,8 @@ mod vault;
 pub use engine::{AnonymizerEngine, BatchAnonymizerEngine, BatchDeanonymizeEngine};
 pub use operator::{AsyncOperator, Operator};
 pub use operators::{
-    Custom, Decrypt, Encrypt, Hash, InstanceCounterAnonymizer, InstanceCounterDeanonymizer, Mask,
-    Redact, Replace,
+    Custom, DeanonymizeKeep, Decrypt, Encrypt, Hash, InstanceCounterAnonymizer,
+    InstanceCounterDeanonymizer, Keep, Mask, Redact, Replace,
 };
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{

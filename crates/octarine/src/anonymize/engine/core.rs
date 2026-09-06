@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use octarine_problem::{Problem, Result};
 
-use crate::anonymize::operators::{Decrypt, Encrypt, Hash, Mask, Redact, Replace};
+use crate::anonymize::operators::{Decrypt, Encrypt, Hash, Keep, Mask, Redact, Replace};
 use crate::anonymize::{
     AsyncOperator, ConflictResolutionStrategy, EngineResult, Operator, OperatorConfig,
     OperatorResult, PiiSpan, RecognizerResult, SessionId, StateStore,
@@ -109,7 +109,7 @@ impl Default for AnonymizerEngine {
 
 impl AnonymizerEngine {
     /// Creates an engine with the built-in operators (`replace`, `redact`,
-    /// `mask`, `hash`, `encrypt`, `decrypt`) and the default
+    /// `mask`, `hash`, `encrypt`, `decrypt`, `keep`) and the default
     /// [`ConflictResolutionStrategy::MergeSimilarOrContained`].
     #[must_use]
     pub fn new() -> Self {
@@ -126,6 +126,7 @@ impl AnonymizerEngine {
         engine.register(Box::new(Hash));
         engine.register(Box::new(Encrypt));
         engine.register(Box::new(Decrypt));
+        engine.register(Box::new(Keep));
         engine
     }
 
@@ -139,7 +140,7 @@ impl AnonymizerEngine {
     /// Registers a custom operator, returning `self` for chaining.
     ///
     /// An operator whose name matches a built-in (`replace`, `redact`, `mask`,
-    /// `encrypt`, `decrypt`) replaces it.
+    /// `hash`, `encrypt`, `decrypt`, `keep`) replaces it.
     #[must_use]
     pub fn with_operator(mut self, operator: Box<dyn Operator>) -> Self {
         self.register(operator);

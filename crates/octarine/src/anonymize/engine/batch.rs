@@ -125,7 +125,8 @@ impl Default for BatchAnonymizerEngine {
 
 impl BatchAnonymizerEngine {
     /// Creates a batch engine over a default [`AnonymizerEngine`] (the built-in
-    /// `replace`, `redact`, `mask`, `hash`, `encrypt`, `decrypt` operators).
+    /// `replace`, `redact`, `mask`, `hash`, `encrypt`, `decrypt`, `keep`
+    /// operators).
     ///
     /// The inner engine is run in silent mode; the batch engine emits aggregate
     /// metrics instead of per-item ones.
