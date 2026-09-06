@@ -74,6 +74,20 @@ pub enum ConflictResolution {
     /// shrunk to its longest sub-range not already covered by a kept span, and
     /// dropped only if nothing survives. A trimmed match has its
     /// `matched_text` re-sliced to match its new offsets.
+    ///
+    /// # A trimmed match yields at most one fragment
+    ///
+    /// When higher-priority spans block a candidate's *interior*, it is left
+    /// with two or more disjoint free sub-ranges — and only the **longest**
+    /// survives. The others are dropped, not emitted as additional matches, so
+    /// that slice of text reaches no redactor. This mirrors the anonymize
+    /// engine's identically-named helper, keeping the two engines' overlap
+    /// behavior in step rather than silently diverging.
+    ///
+    /// It does mean this strategy can narrow PII coverage. Prefer
+    /// [`CrossTypeContainment`](Self::CrossTypeContainment) when the goal is
+    /// disjoint spans with no detection loss; reach for this one only when
+    /// partial spans are genuinely wanted.
     RemoveIntersections,
 }
 
@@ -677,6 +691,81 @@ mod tests {
         );
         let out = ConflictResolution::RemoveIntersections.resolve(text, vec![bogus]);
         assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_remove_intersections_keeps_only_the_longest_fragment() {
+        // Two blockers split the candidate's interior into two free gaps.
+        // Only the longer survives — the shorter is dropped outright, not
+        // emitted as a second match. Pinned because it narrows PII coverage.
+        let text = "abcdefghijklmnopqrst";
+        let left = m(text, 0, 4, IdentifierType::Url, DetectionConfidence::High);
+        let right = m(text, 8, 10, IdentifierType::Url, DetectionConfidence::High);
+        let candidate = m(
+            text,
+            0,
+            20,
+            IdentifierType::PhoneNumber,
+            DetectionConfidence::Low,
+        );
+        let out =
+            ConflictResolution::RemoveIntersections.resolve(text, vec![left, right, candidate]);
+
+        // Gaps are [4,8) (len 4) and [10,20) (len 10); the latter wins.
+        assert_eq!(out.len(), 3);
+        let trimmed: Vec<(usize, usize)> = out
+            .iter()
+            .filter(|x| x.identifier_type == IdentifierType::PhoneNumber)
+            .map(|x| (x.start, x.end))
+            .collect();
+        assert_eq!(trimmed, vec![(10, 20)], "expected only the longest gap");
+    }
+
+    #[test]
+    fn test_remove_intersections_walks_multiple_blockers() {
+        // Exercises the cursor advance across more than one blocker: the only
+        // free range is the middle gap.
+        let text = "abcdefghijklmnopqrst";
+        let head = m(text, 0, 5, IdentifierType::Url, DetectionConfidence::High);
+        let tail = m(text, 15, 20, IdentifierType::Url, DetectionConfidence::High);
+        let candidate = m(
+            text,
+            0,
+            20,
+            IdentifierType::PhoneNumber,
+            DetectionConfidence::Low,
+        );
+        let out =
+            ConflictResolution::RemoveIntersections.resolve(text, vec![head, tail, candidate]);
+        let trimmed: Vec<(usize, usize)> = out
+            .iter()
+            .filter(|x| x.identifier_type == IdentifierType::PhoneNumber)
+            .map(|x| (x.start, x.end))
+            .collect();
+        assert_eq!(trimmed, vec![(5, 15)]);
+    }
+
+    #[test]
+    fn test_containment_strategies_pass_through_unresolvable_spans() {
+        // The documented contract: only RemoveIntersections validates against
+        // `text`. The other three pass an out-of-bounds span through untouched.
+        let text = "short";
+        let bogus = m(
+            "a much longer original string",
+            10,
+            20,
+            IdentifierType::Email,
+            DetectionConfidence::High,
+        );
+        for strategy in [
+            ConflictResolution::None,
+            ConflictResolution::SameTypeContainment,
+            ConflictResolution::CrossTypeContainment,
+        ] {
+            let out = strategy.resolve(text, vec![bogus.clone()]);
+            assert_eq!(out.len(), 1, "{strategy:?} dropped an out-of-bounds span");
+            assert_eq!(out.first().map(|x| (x.start, x.end)), Some((10, 20)));
+        }
     }
 
     #[test]
