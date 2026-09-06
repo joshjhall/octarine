@@ -271,4 +271,40 @@ mod tests {
         let items = root.find_children("item");
         assert_eq!(items.len(), 2);
     }
+
+    /// Locks in the `decode()` -> `Deref` migration (quick-xml 0.41 -> 0.42).
+    ///
+    /// Entity references arrive as their own `Event::GeneralRef`, not as part
+    /// of `Event::Text`, and `parse_xml`'s catch-all drops them. That is
+    /// **pre-existing** behavior, not a regression from the bump: 0.41 driven
+    /// through the old `BytesText::decode()` path produces this same value.
+    /// The assertion documents the status quo so the entity fix (tracked
+    /// separately) has a visible starting point rather than a silent one.
+    #[test]
+    fn test_parse_entity_reference_is_dropped_preexisting() {
+        let xml = "<root>a &amp; b</root>";
+        let doc = parse_xml(xml).expect("valid xml");
+        let root = doc.root.as_ref().expect("has root");
+
+        // NOT "a & b" — the entity and the text before it are both lost.
+        assert_eq!(root.text, Some("b".to_string()));
+    }
+
+    #[test]
+    fn test_parse_declaration_encoding() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?><root/>"#;
+        let doc = parse_xml(xml).expect("valid xml");
+
+        assert_eq!(doc.version, Some("1.0".to_string()));
+        assert_eq!(doc.encoding, Some("UTF-8".to_string()));
+    }
+
+    #[test]
+    fn test_parse_cdata_section() {
+        let xml = "<root><![CDATA[raw <text> & stuff]]></root>";
+        let doc = parse_xml(xml).expect("valid xml");
+
+        let root = doc.root.as_ref().expect("has root");
+        assert_eq!(root.text, Some("raw <text> & stuff".to_string()));
+    }
 }
