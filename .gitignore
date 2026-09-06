@@ -66,3 +66,6 @@ poetry.lock
 .codegraph/
 
 _notes.md
+
+# Local codebase-audit output (/review-audit:codebase-audit writes here).
+audit/
