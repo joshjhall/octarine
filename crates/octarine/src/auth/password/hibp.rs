@@ -657,6 +657,26 @@ mod tests {
     }
 
     #[test]
+    fn test_cache_hit_after_update() {
+        // Presence-after-insert needs a TTL longer than any plausible
+        // scheduling stall. This assertion previously lived in
+        // test_cache_expiration against that test's 10ms TTL — 5x tighter
+        // than the LruCache variant that motivated issue #724, so it was
+        // strictly more exposed to the same deschedule-between-write-and-read
+        // race.
+        let config = HibpConfig::builder()
+            .cache_ttl(Duration::from_secs(60))
+            .build();
+        let client = HibpClient::with_config(config).expect("client should be created");
+
+        let mut suffixes = HashMap::new();
+        suffixes.insert("ABCDEF".to_string(), 100);
+        client.update_cache("12345".to_string(), suffixes);
+
+        assert_eq!(client.lookup_cache("12345", "ABCDEF"), Some(100));
+    }
+
+    #[test]
     fn test_cache_expiration() {
         let config = HibpConfig::builder()
             .cache_ttl(Duration::from_millis(10))
@@ -668,13 +688,22 @@ mod tests {
         suffixes.insert("ABCDEF".to_string(), 100);
         client.update_cache("12345".to_string(), suffixes);
 
-        // Should be in cache immediately
-        assert_eq!(client.lookup_cache("12345", "ABCDEF"), Some(100));
+        // NOTE: deliberately no presence assertion here — see
+        // test_cache_hit_after_update (issue #724). Only the expiry
+        // direction is asserted, which is monotone-safe: extra delay can
+        // only help it.
+        //
+        // Poll rather than sleeping a fixed 20ms against a 10ms TTL — a 10ms
+        // margin is far too thin under CI coverage instrumentation
+        // (test-resilience Rule 2).
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while client.lookup_cache("12345", "ABCDEF").is_some() {
+            if Instant::now() > deadline {
+                panic!("Timed out waiting for HIBP cache entry to expire");
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
 
-        // Wait for expiration
-        std::thread::sleep(Duration::from_millis(20));
-
-        // Should be expired
         assert!(client.lookup_cache("12345", "ABCDEF").is_none());
     }
 
