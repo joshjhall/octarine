@@ -82,8 +82,8 @@ mod vault;
 pub use engine::{AnonymizerEngine, BatchAnonymizerEngine, BatchDeanonymizeEngine};
 pub use operator::{AsyncOperator, Operator};
 pub use operators::{
-    Custom, Decrypt, Encrypt, Hash, InstanceCounterAnonymizer, InstanceCounterDeanonymizer, Mask,
-    Redact, Replace,
+    Custom, DeanonymizeKeep, Decrypt, Encrypt, Hash, InstanceCounterAnonymizer,
+    InstanceCounterDeanonymizer, Keep, Mask, Redact, Replace,
 };
 pub use shortcuts::{anonymize, redact_all};
 pub use types::{
