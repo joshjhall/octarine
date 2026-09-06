@@ -20,7 +20,8 @@
 //! secrets.insert("API_KEY", "sk-12345");
 //! secrets.insert("DB_PASSWORD", "hunter2");
 //!
-//! // Safe to log - values are masked
+//! // Values are masked, but KEY NAMES print in full — safe here because
+//! // these keys carry no sensitive context. See "# Logging" on `SecureMap`.
 //! println!("{:?}", secrets);  // SecureMap { API_KEY: [REDACTED], DB_PASSWORD: [REDACTED] }
 //!
 //! // Explicit access
@@ -33,7 +34,48 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 use crate::observe;
+use crate::primitives::crypto::hash::blake3_hex;
 use crate::primitives::crypto::secrets::PrimitiveSecureMap;
+
+/// Hex characters of BLAKE3 digest retained when logging a map key.
+///
+/// 12 hex chars = 48 bits — enough to correlate the same key across
+/// insert/remove/drop events without filling logs with 64-char digests.
+///
+/// The length is also bounded from above by the PII redactor: it masks any
+/// whitespace-delimited token of 20+ chars that looks high-entropy (see
+/// `is_likely_session_id`). `(key=<12 hex>)` is 18 chars and survives; at 16
+/// hex the token reaches 22 chars and the whole message is replaced with
+/// `[SESSION]`, destroying the very correlation this digest provides. Keep
+/// the rendered token under 20 characters.
+const KEY_DIGEST_HEX_LEN: usize = 12;
+
+/// Truncated BLAKE3 digest of a map key, for correlatable logging.
+///
+/// Keys are never logged in cleartext (issue #735); this digest lets an
+/// operator match up events for the same key without seeing the key itself.
+/// See the `# Logging` section on [`SecureMap`] for what this does and does
+/// not protect.
+///
+/// # Message wording is load-bearing
+///
+/// Callers phrase these events as `SecureMap insert (key=…)`, deliberately
+/// **not** `Inserting secret: …`. The PII redactor masks everything following
+/// a `secret:` / `password:` style prefix, so the older wording replaced the
+/// digest itself with `[PASSWORD]` under every non-`Testing` profile — the
+/// correlation this helper exists to provide was silently destroyed.
+///
+/// Note the corollary: that keyword masking is also what *incidentally* hid
+/// the raw key before this fix, which is why the leak reproduced only under
+/// `RedactionProfile::Testing`. It is not a guarantee — `Inserting entry: {key}`
+/// leaks in full under `ProductionStrict`. Never rely on the redactor to keep a
+/// key out of a message; keep the key out of the message.
+fn key_digest(key: &str) -> String {
+    let mut digest = blake3_hex(key.as_bytes());
+    // Hex is ASCII, so truncating at a byte index is always a char boundary.
+    digest.truncate(KEY_DIGEST_HEX_LEN);
+    digest
+}
 
 /// A secure map for storing named secrets with observability
 ///
@@ -48,6 +90,25 @@ use crate::primitives::crypto::secrets::PrimitiveSecureMap;
 ///
 /// `SecureMap` is not `Sync` by default. For concurrent access,
 /// wrap in `Arc<Mutex<SecureMap>>` or use `Arc<RwLock<SecureMap>>`.
+///
+/// # Logging
+///
+/// What **is** protected from observe output:
+///
+/// - **Values** are never logged, in any operation.
+/// - **Keys** appear only as a truncated BLAKE3 digest (`key=<12 hex>`), so
+///   events for the same key can be correlated without exposing the key.
+/// - **Drop** emits a single event carrying a count, not one event per key.
+///
+/// What is **not** protected:
+///
+/// - The [`Debug`](fmt::Debug) and [`Display`](fmt::Display) impls print raw
+///   key names by design (values still render as `[REDACTED]`). Do not log the
+///   `Debug` rendering of a map whose *keys* are sensitive.
+/// - Hashing a **low-entropy** key is not secrecy. A guessable key name can be
+///   recovered from its digest by brute force over the candidate list. The
+///   digest defends against incidental disclosure in log aggregation — not
+///   against an attacker who is looking for it.
 ///
 /// # Example
 ///
@@ -129,7 +190,7 @@ impl SecureMap {
         let key = key.into();
         observe::debug(
             "crypto.secrets.map.insert",
-            format!("Inserting secret: {}", key),
+            format!("SecureMap insert (key={})", key_digest(&key)),
         );
         self.inner.insert(key, value)
     }
@@ -149,7 +210,7 @@ impl SecureMap {
     pub fn remove(&mut self, key: &str) -> Option<String> {
         observe::debug(
             "crypto.secrets.map.remove",
-            format!("Removing secret: {}", key),
+            format!("SecureMap remove (key={})", key_digest(key)),
         );
         self.inner.remove(key)
     }
@@ -185,10 +246,14 @@ impl Default for SecureMap {
 
 impl Drop for SecureMap {
     fn drop(&mut self) {
-        for key in self.inner.keys() {
+        // One event with a count, never one per key: the per-key loop this
+        // replaced logged every key in cleartext (issue #735). An empty map
+        // stays silent, matching the old loop's behavior.
+        let count = self.inner.len();
+        if count > 0 {
             observe::debug(
                 "crypto.secrets.map.drop",
-                format!("Dropping secret: {}", key),
+                format!("Dropping SecureMap with {} secrets", count),
             );
         }
     }
