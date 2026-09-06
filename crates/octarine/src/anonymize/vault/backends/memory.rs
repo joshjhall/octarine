@@ -274,7 +274,7 @@ impl StateStore for InMemoryStore {
             observe::debug(
                 OP,
                 format!(
-                    "stored {} mapping (session={})",
+                    "stored {} mapping (session {})",
                     key.entity_type,
                     session.digest()
                 ),
@@ -312,7 +312,7 @@ impl StateStore for InMemoryStore {
             observe::debug(
                 OP,
                 format!(
-                    "flushed session (session={}, {dropped} mapping(s) dropped)",
+                    "flushed session (session {}, {dropped} mapping(s) dropped)",
                     session.digest()
                 ),
             );
@@ -354,7 +354,7 @@ impl StateStore for InMemoryStore {
             observe::debug(
                 OP,
                 format!(
-                    "minted {} mapping (session={})",
+                    "minted {} mapping (session {})",
                     key.entity_type,
                     session.digest()
                 ),

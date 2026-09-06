@@ -48,6 +48,7 @@ use octarine::anonymize::{
     EntityKey, InMemoryStore, SessionId, SessionManager, SessionOptions, StateStore,
 };
 use octarine::observe::Event;
+use octarine::observe::pii::{RedactionProfile, redact_pii_with_profile};
 use octarine::observe::writers::{
     DispatcherConfig, MemoryWriter, SeverityFilter, Writer, WriterError, WriterHealthStatus,
     configure_dispatcher, register_writer, unregister_writer,
@@ -294,6 +295,60 @@ async fn session_manager_never_logs_raw_session_handle() {
                 .any(|m| m.contains(needle) && m.contains(&digest)),
             "{label} must log the session digest {digest:?}; captured: {captured:?}"
         );
+    }
+}
+
+/// The digest must survive the PII redactor under **every** profile.
+///
+/// This is the check that `DispatcherConfig::testing()` cannot make.
+/// `RedactionProfile::Testing` redacts nothing, so the live-pipeline tests
+/// above prove the digest is *emitted* but say nothing about what a production
+/// writer receives. Two redactor rules will silently eat it:
+///
+/// - **Keyword masking** replaces everything after a `secret:`/`password:`
+///   style prefix — it would replace the digest with `[PASSWORD]`.
+/// - **Entropy masking** replaces any whitespace-delimited token of 20+ chars
+///   with >50% unique characters with `[SESSION]`. `(session=<12 hex>)` is one
+///   22-char token and *was* replaced wholesale under both production profiles
+///   during development; the space-separated form splits it into two short
+///   tokens and survives.
+///
+/// Either failure is silent: the handle stays protected and only the
+/// correlation vanishes, in production, while `Testing` shows it working. So
+/// assert on the post-redaction text, not the format string.
+///
+/// Inversion check: restoring `(session={})` in place of `(session {})` at the
+/// emitting sites makes this fail under both production profiles.
+#[test]
+fn session_digest_survives_every_redaction_profile() {
+    let digest = SessionId::new("chat-42").digest();
+
+    // One representative of each emitted message shape: the trailing `)` case
+    // and the trailing `,` case, from both the store and the manager.
+    let messages = [
+        format!("stored PERSON mapping (session {digest})"),
+        format!("minted EMAIL mapping (session {digest})"),
+        format!("flushed session (session {digest}, 2 mapping(s) dropped)"),
+        format!("opened session (session {digest})"),
+        format!("closed session (session {digest})"),
+        format!("expired session (session {digest}, TTL elapsed)"),
+        format!("session (session {digest}) is not open"),
+    ];
+
+    for profile in [
+        RedactionProfile::ProductionStrict,
+        RedactionProfile::ProductionLenient,
+        RedactionProfile::Development,
+        RedactionProfile::Testing,
+    ] {
+        for message in &messages {
+            let redacted = redact_pii_with_profile(message, profile);
+            assert!(
+                redacted.contains(&digest),
+                "{profile:?} destroyed the session digest — correlation is lost \
+                 in this profile.\n  before: {message}\n  after:  {redacted}"
+            );
+        }
     }
 }
 

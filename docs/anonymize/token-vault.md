@@ -158,6 +158,19 @@ most one sweep interval after `T` elapses. Observe events on `open`/`close`/
 would leak whatever a caller happened to put in it (#629); the digest is stable
 per session, so events still correlate.
 
+These messages render the digest as `(session <digest>)` — space-separated, and
+never after a `secret:`-style prefix. Both details are load-bearing against the
+observe PII redactor, which would otherwise silently replace the digest: its
+keyword rule masks everything following such a prefix, and its entropy rule
+replaces any whitespace-delimited token of 20+ chars with `[SESSION]`
+(`(session=<12 hex>)` is 22 chars and *was* eaten under both production
+profiles). Reformatting one of these messages, or lengthening the digest, must
+be re-checked against `redact_pii_with_profile` under all four
+`RedactionProfile` variants — `session_digest_survives_every_redaction_profile`
+in `tests/anonymize_session_logging.rs` is that check. The failure is silent:
+the handle stays protected and only the correlation disappears, in production,
+while `RedactionProfile::Testing` shows it working.
+
 ## Async execution model
 
 Reversible pseudonymization is inherently asynchronous: minting a stable token

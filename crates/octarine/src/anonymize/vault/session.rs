@@ -263,7 +263,7 @@ impl<S: StateStore> SessionManager<S> {
 
         if self.emit_events {
             increment_by(metric_names::open_count(), 1);
-            observe::debug(OP, format!("opened session (session={})", id.digest()));
+            observe::debug(OP, format!("opened session (session {})", id.digest()));
         }
 
         id
@@ -289,7 +289,7 @@ impl<S: StateStore> SessionManager<S> {
 
         if self.emit_events {
             increment_by(metric_names::close_count(), 1);
-            observe::debug(OP, format!("closed session (session={})", id.digest()));
+            observe::debug(OP, format!("closed session (session {})", id.digest()));
         }
 
         Ok(())
@@ -315,7 +315,7 @@ impl<S: StateStore> SessionManager<S> {
             // Digest, not the handle: a Problem message frequently ends up in an
             // audit event via the caller (#629).
             .ok_or_else(|| {
-                Problem::NotFound(format!("session (session={}) is not open", id.digest()))
+                Problem::NotFound(format!("session (session {}) is not open", id.digest()))
             })?;
         lease.deadline = lease.ttl.and_then(|ttl| Instant::now().checked_add(ttl));
         Ok(())
@@ -429,7 +429,7 @@ async fn sweep_expired<S: StateStore>(
             increment_by(metric_names::expire_count(), 1);
             observe::debug(
                 OP,
-                format!("expired session (session={}, TTL elapsed)", id.digest()),
+                format!("expired session (session {}, TTL elapsed)", id.digest()),
             );
         }
     }

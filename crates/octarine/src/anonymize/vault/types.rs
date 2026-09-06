@@ -95,11 +95,31 @@ impl SessionId {
     ///
     /// # Message wording is load-bearing
     ///
-    /// Callers phrase these events as `session=…`, deliberately **not**
-    /// `session secret: …`. The PII redactor masks everything following a
-    /// `secret:` / `password:` style prefix, which would replace the digest and
-    /// destroy the correlation it exists to provide — the trap documented on
-    /// `SecureMap`'s equivalent helper in `crypto/secrets/map.rs`.
+    /// The observe PII redactor rewrites message text, and **two** of its rules
+    /// will silently destroy this digest if a message is phrased carelessly.
+    /// Both were measured against `redact_pii_with_profile` across all four
+    /// `RedactionProfile` variants, not reasoned about:
+    ///
+    /// 1. **Keyword masking.** Everything following a `secret:` / `password:`
+    ///    style prefix is replaced. Callers therefore write `(session <digest>)`
+    ///    and never `session secret: <digest>` — the trap documented on
+    ///    `SecureMap`'s equivalent helper in `crypto/secrets/map.rs`.
+    /// 2. **Entropy masking.** Any whitespace-delimited token of **20+ chars**
+    ///    with >50% unique characters is replaced with `[SESSION]`. This is why
+    ///    the digest is separated by a **space**, not `=`: `(session=<12 hex>)`
+    ///    is one 22-char token and was replaced wholesale under both production
+    ///    profiles, while `(session <12 hex>)` splits into `(session` and
+    ///    `<12 hex>)` — 8 and 13 chars — and survives intact.
+    ///
+    /// Rule 2 also bounds the digest length from above: a 16-hex digest
+    /// would render 17 chars with its trailing `)`, still under the threshold,
+    /// but leaves no headroom for a caller who reformats the message. Keep any
+    /// rendered high-entropy token under 20 characters.
+    ///
+    /// The consequence of getting this wrong is quiet: the code looks correct,
+    /// the handle is still protected, and only the correlation disappears — in
+    /// production, where it is needed, while `RedactionProfile::Testing`
+    /// (which redacts nothing) shows it working.
     ///
     /// # Examples
     ///
