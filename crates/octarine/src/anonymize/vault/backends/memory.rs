@@ -19,10 +19,11 @@
 //! it protects that memory on two axes:
 //!
 //! - **Observability.** It never *emits* a protected value. The observe events
-//!   on `put`/`flush` carry only the entity type and the (non-secret)
-//!   [`SessionId`]; the [`Debug`] impl prints a session count, never the map
-//!   contents. So neither an audit log nor a `{:?}` of the store can leak a
-//!   protected value.
+//!   on `put`/`flush` carry only the entity type and a truncated digest of the
+//!   [`SessionId`] (never the handle itself, which a caller may have
+//!   accidentally built from PII — see [`SessionId::digest`]); the [`Debug`]
+//!   impl prints a session count, never the map contents. So neither an audit
+//!   log nor a `{:?}` of the store can leak a protected value.
 //! - **Memory lifetime.** Both the original PII and its token live in
 //!   [`PrimitiveLockedSecret`] containers, which zeroize their bytes on drop.
 //!   When a mapping is overwritten, a session is [`flush`](StateStore::flush)ed,
@@ -268,10 +269,15 @@ impl StateStore for InMemoryStore {
 
         if self.emit_events {
             increment_by(metric_names::put_count(), 1);
-            // entity_type + session label only — never the original value or token.
+            // entity_type + session digest only — never the original value, the
+            // token, or the raw session handle (#629).
             observe::debug(
                 OP,
-                format!("stored {} mapping in session {}", key.entity_type, session),
+                format!(
+                    "stored {} mapping (session={})",
+                    key.entity_type,
+                    session.digest()
+                ),
             );
         }
 
@@ -305,7 +311,10 @@ impl StateStore for InMemoryStore {
             let dropped = removed.map_or(0, |m| m.len());
             observe::debug(
                 OP,
-                format!("flushed session {session} ({dropped} mapping(s) dropped)"),
+                format!(
+                    "flushed session (session={}, {dropped} mapping(s) dropped)",
+                    session.digest()
+                ),
             );
         }
 
@@ -340,10 +349,15 @@ impl StateStore for InMemoryStore {
 
         if minted && self.emit_events {
             increment_by(metric_names::put_count(), 1);
-            // entity_type + session label only — never the original value or token.
+            // entity_type + session digest only — never the original value, the
+            // token, or the raw session handle (#629).
             observe::debug(
                 OP,
-                format!("minted {} mapping in session {}", key.entity_type, session),
+                format!(
+                    "minted {} mapping (session={})",
+                    key.entity_type,
+                    session.digest()
+                ),
             );
         }
 

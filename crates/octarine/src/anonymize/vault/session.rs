@@ -37,11 +37,16 @@
 //!
 //! # Privacy
 //!
-//! A session holds no PII: it tracks only a [`SessionId`] (a non-secret routing
-//! label) and an expiry deadline. The original values live in the
-//! [`StateStore`], which the manager only ever references by session. Observe
-//! events therefore carry the session id alone — never an original value or
-//! token.
+//! A session tracks only a [`SessionId`] (a routing label) and an expiry
+//! deadline. The original values live in the [`StateStore`], which the manager
+//! only ever references by session, so no original value or token can reach an
+//! observe event from here.
+//!
+//! The handle itself is not assumed harmless. `SessionId::new` applies no
+//! validation, so a caller may accidentally build one from PII; these events
+//! therefore carry [`SessionId::digest`] — a truncated BLAKE3 hash — rather
+//! than the handle (#629). The digest is stable per session, so events still
+//! correlate.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -236,10 +241,15 @@ impl<S: StateStore> SessionManager<S> {
     /// Opens a new session, returning its [`SessionId`].
     ///
     /// With [`SessionOptions::id_hint`] set the id is that hint verbatim;
-    /// otherwise a fresh time-ordered **UUID-v7** is minted (time-ordered so
-    /// that session ids sort by creation time for log correlation). A session
-    /// opened with a TTL becomes eligible for the expiry sweep; one without a
-    /// TTL lives until it is [`close`](Self::close)d.
+    /// otherwise a fresh time-ordered **UUID-v7** is minted, so ids a caller
+    /// holds or stores sort by creation time. (That ordering does not reach the
+    /// logs — observe events carry the unordered [`SessionId::digest`]; use the
+    /// event timestamp there.) A session opened with a TTL becomes eligible for
+    /// the expiry sweep; one without a TTL lives until it is
+    /// [`close`](Self::close)d.
+    ///
+    /// A hint is used verbatim and is never validated — it must not be PII; see
+    /// [`SessionId::new`].
     ///
     /// Infallible and synchronous: opening only records local bookkeeping, never
     /// touches the store.
@@ -253,7 +263,7 @@ impl<S: StateStore> SessionManager<S> {
 
         if self.emit_events {
             increment_by(metric_names::open_count(), 1);
-            observe::debug(OP, format!("opened session {id}"));
+            observe::debug(OP, format!("opened session (session={})", id.digest()));
         }
 
         id
@@ -279,7 +289,7 @@ impl<S: StateStore> SessionManager<S> {
 
         if self.emit_events {
             increment_by(metric_names::close_count(), 1);
-            observe::debug(OP, format!("closed session {id}"));
+            observe::debug(OP, format!("closed session (session={})", id.digest()));
         }
 
         Ok(())
@@ -302,7 +312,11 @@ impl<S: StateStore> SessionManager<S> {
         let mut guard = self.leases.lock();
         let lease = guard
             .get_mut(id)
-            .ok_or_else(|| Problem::NotFound(format!("session {id} is not open")))?;
+            // Digest, not the handle: a Problem message frequently ends up in an
+            // audit event via the caller (#629).
+            .ok_or_else(|| {
+                Problem::NotFound(format!("session (session={}) is not open", id.digest()))
+            })?;
         lease.deadline = lease.ttl.and_then(|ttl| Instant::now().checked_add(ttl));
         Ok(())
     }
@@ -413,7 +427,10 @@ async fn sweep_expired<S: StateStore>(
         store.flush(id).await?;
         if emit_events {
             increment_by(metric_names::expire_count(), 1);
-            observe::debug(OP, format!("expired session {id} (TTL elapsed)"));
+            observe::debug(
+                OP,
+                format!("expired session (session={}, TTL elapsed)", id.digest()),
+            );
         }
     }
 

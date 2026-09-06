@@ -38,6 +38,16 @@ let session = SessionId::new("chat-42");
 assert_eq!(session.as_str(), "chat-42");
 ```
 
+**The handle must not be PII.** Use a synthetic identifier — `"chat-42"`, or
+the UUID-v7 `SessionManager::open` mints when given no `id_hint` — never a
+user's email, account name, or a JWT `sub` claim. `SessionId::new` is
+infallible and cannot reject one (PII detection is heuristic, and a false
+positive would break a legitimate label), so the vault limits the blast radius
+structurally instead: its observe events log `SessionId::digest()`, a truncated
+BLAKE3 hash, rather than the handle (#629). `Display`, `Debug`, and `as_str`
+still yield the raw value by design — if your own code logs a `SessionId`, log
+`digest()`.
+
 ### `EntityKey`
 
 The composite key a single original value is stored under: the detected
@@ -106,7 +116,10 @@ sessions.close(&id).await?;
 `SessionOptions` carries `ttl: Option<Duration>` (`None` = never expires) and
 `id_hint: Option<String>` (a deterministic id for tests or for adopting an
 externally-issued identifier). `open` returns a **UUID-v7** — time-ordered, so
-session ids sort by creation time for log correlation.
+session ids sort by creation time when a caller holds or stores them. Note the
+ordering does *not* survive into logs: observe events carry the digest, which
+is a hash and therefore unordered. Correlate log lines by digest equality, and
+use the event timestamp for ordering.
 
 ### Why TTL is first-class (compliance)
 
@@ -140,8 +153,10 @@ process is running:
 The sweep cadence is configurable via `SessionManager::with_sweep_interval`; the
 default is `DEFAULT_SWEEP_INTERVAL` (60 s). A session with TTL `T` is purged at
 most one sweep interval after `T` elapses. Observe events on `open`/`close`/
-`expire` carry the **session id only** — a session holds no PII (the originals
-live in the store), so nothing sensitive reaches an audit log.
+`expire` carry a **truncated BLAKE3 digest of the session id** and nothing else
+— no original, no token, and not the handle itself. Logging the handle verbatim
+would leak whatever a caller happened to put in it (#629); the digest is stable
+per session, so events still correlate.
 
 ## Async execution model
 
