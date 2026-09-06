@@ -23,6 +23,7 @@
 - [Fixed flaky test_cache_cleanup](project_flaky_cache_cleanup_test.md) — collections/cache/lru.rs expiry test flaked under parallel load (single-call-vs-accumulate race); fixed 2026-07-16 by accumulating cleanup_expired count
 - [L3 merge authority](feedback_l3_merge_authority.md) — at L3 auto-merge golem PRs once green+clean+mergeable (squash+delete-branch), without asking; reversed the old "humans merge" rule on 2026-07-15
 - [Golem launch level bug](project_golem_launch_level_bug.md) — golem-launch.sh hardcodes --level 4, drops any --level arg; every golem runs L4. File against workflow plugin.
-- [Devcontainer clang + disk](project_devcontainer_clang_disk.md) — local build failures from missing `clang` linker or a bloated `target/`; `apt install clang` / `cargo clean`, not a repo bug
+- [Case-insensitive mount phantoms](project_case_insensitive_mount_phantoms.md) — untracked `src/Data/`, `src/Security/` etc. are the SAME inodes as the lowercase modules via a case-insensitive mount; deleting them deletes real source. Check with `stat -c %i`, never `diff`.
+- [Devcontainer clang + disk/RAM](project_devcontainer_clang_disk.md) — local build failures from missing `clang`, a bloated `target/`, or RAM exhaustion masquerading as `mold: Disk full?`/SIGBUS; check `free -h`, push and let CI arbitrate, and don't trust `just preflight`'s exit 0
 - [Identifier mixed layout](project_identifier_mixed_layout.md) — identifier tree mixes flat .rs and split dirs; audit-agent grep rules must resolve Glob-first (flat + split pattern pair), not a bare dir path
 - [Verify before calling it flake](feedback_flaky_timing_verify_first.md) — reproduce standalone + read the assertion; two "flaky" timing tests were real bugs
