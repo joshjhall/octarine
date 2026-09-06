@@ -20,7 +20,8 @@
 //! secrets.insert("API_KEY", "sk-12345");
 //! secrets.insert("DB_PASSWORD", "hunter2");
 //!
-//! // Safe to log - values are masked
+//! // Values are masked, but KEY NAMES print in full — safe here because
+//! // these keys carry no sensitive context. See "# Logging" on `SecureMap`.
 //! println!("{:?}", secrets);  // SecureMap { API_KEY: [REDACTED], DB_PASSWORD: [REDACTED] }
 //!
 //! // Explicit access
