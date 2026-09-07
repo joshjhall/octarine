@@ -37,17 +37,34 @@ use crate::observe::writers::{
 };
 use crate::observe::{Event, EventType};
 
-/// Deadline for positive-signal polls — matches the 5s the observe integration
-/// suite uses to absorb dispatcher scheduling jitter under parallel CI load.
-const POLL_DEADLINE: Duration = Duration::from_secs(5);
+/// Deadline for positive-signal polls.
+///
+/// Sized for the **worst case**, not the configured one: `EVENT_DISPATCHER` is
+/// a process-global `Lazy`, so `configure_dispatcher` only takes effect if it
+/// runs before any other test in the binary dispatches an event (it returns
+/// `false` otherwise — see [`ensure_test_dispatcher`]). When this test loses
+/// that race the dispatcher runs on `DispatcherConfig::default()`, whose
+/// `flush_interval` is 1s rather than the 10ms of `testing()`.
+///
+/// A single probe event never fills the default 100-event batch, so it only
+/// reaches writers on a `flush_timer` tick. The deadline must therefore clear
+/// several 1s ticks plus scheduling jitter under parallel load — at 5s a mere
+/// handful of ticks had to land on time, which is what made this test fail
+/// intermittently in the full 6800-test suite.
+const POLL_DEADLINE: Duration = Duration::from_secs(30);
 
-/// Configure the global dispatcher for fast flushes exactly once per test
-/// binary (mirrors `tests/observe/mod.rs::ensure_test_dispatcher`).
-fn ensure_test_dispatcher() {
-    static INIT: OnceLock<()> = OnceLock::new();
-    INIT.get_or_init(|| {
-        let _ = configure_dispatcher(DispatcherConfig::testing());
-    });
+/// Request fast dispatcher flushes for this test binary.
+///
+/// Returns whether `DispatcherConfig::testing()` was actually installed.
+/// Configuration is only possible before the global dispatcher's first use, so
+/// a `false` return means another test got there first and the dispatcher is
+/// running on [`DispatcherConfig::default`] (1s flush interval). That is not an
+/// error — [`POLL_DEADLINE`] is sized to tolerate it — but it must not be
+/// mistaken for a successful configuration, which is why the result is named
+/// rather than discarded.
+fn ensure_test_dispatcher() -> bool {
+    static INIT: OnceLock<bool> = OnceLock::new();
+    *INIT.get_or_init(|| configure_dispatcher(DispatcherConfig::testing()))
 }
 
 /// Poll `probe` up to `deadline`, checking every 10ms. Avoids fixed sleeps so
@@ -122,7 +139,7 @@ fn register_capture(name: &'static str) -> Arc<MemoryWriter> {
 fn layer1_problem_constructors_dispatch_no_events() {
     use crate::primitives::types::ProblemExt;
 
-    ensure_test_dispatcher();
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l1_silent";
     let marker = "L1_NOEVENT_409_a71c";
@@ -150,7 +167,9 @@ fn layer1_problem_constructors_dispatch_no_events() {
 
     assert!(
         flushed,
-        "probe writer should confirm the dispatcher flushed"
+        "probe writer should confirm the dispatcher flushed within {POLL_DEADLINE:?} \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
     assert_eq!(
         leaked, 0,
@@ -171,7 +190,7 @@ fn layer1_problem_constructors_dispatch_no_events() {
 fn layer3_metrics_builder_emits_security_event_on_cardinality_breach() {
     use crate::identifiers::MetricsBuilder;
 
-    ensure_test_dispatcher();
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l3_metrics";
     let capture = register_capture(name);
@@ -194,7 +213,9 @@ fn layer3_metrics_builder_emits_security_event_on_cardinality_breach() {
 
     assert!(
         emitted,
-        "L3 MetricsBuilder must emit a security event on cardinality breach"
+        "L3 MetricsBuilder must emit a security event on cardinality breach \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
     assert_eq!(
         silent_count, 0,
@@ -211,7 +232,7 @@ fn layer3_metrics_builder_emits_security_event_on_cardinality_breach() {
 fn layer3_environment_builder_emits_security_event_on_critical_override() {
     use crate::identifiers::EnvironmentBuilder;
 
-    ensure_test_dispatcher();
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l3_env";
     let capture = register_capture(name);
@@ -235,7 +256,9 @@ fn layer3_environment_builder_emits_security_event_on_critical_override() {
 
     assert!(
         emitted,
-        "L3 EnvironmentBuilder must emit a security event on critical-var override"
+        "L3 EnvironmentBuilder must emit a security event on critical-var override \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
     assert_eq!(
         silent_count, 0,
@@ -253,7 +276,7 @@ fn layer3_environment_builder_emits_security_event_on_critical_override() {
 fn layer3_generic_builder_emits_warning_on_benign_failure() {
     use crate::identifiers::GenericBuilder;
 
-    ensure_test_dispatcher();
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l3_benign";
     let capture = register_capture(name);
@@ -281,7 +304,9 @@ fn layer3_generic_builder_emits_warning_on_benign_failure() {
 
     assert!(
         warned,
-        "L3 GenericBuilder must emit a WARNING event on a benign validation failure"
+        "L3 GenericBuilder must emit a WARNING event on a benign validation failure \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
     assert_eq!(
         silent_count, 0,
