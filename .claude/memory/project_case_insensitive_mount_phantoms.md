@@ -48,9 +48,35 @@ list). A bare `touch lower.txt && ls LOWER.txt` in `/tmp` proves nothing —
 `/tmp` is case-sensitive here while the workspace mount is not, so always
 test the workspace path.
 
+**`mv` is as destructive as `rm` here — and it can wedge the path
+permanently.** On 2026-09-06 a `git checkout -- observe/problem/` failed
+because the index showed the 7 files as deleted, so the uppercase `Problem/`
+twin was moved aside (`mv .../Problem /tmp/...`) to "let git recreate the
+lowercase path". That left the mount with a **stale dentry**: the path is
+listed by `ls` as `d?????????` but is simultaneously unusable in both
+directions —
+
+```text
+mkdir problem  -> File exists
+ls / stat / rm -> No such file or directory
+git checkout   -> fatal: cannot create directory at '...': File exists
+```
+
+Nothing recreates it, and moving the twin back fails the same way. The crate
+then will not compile (`error[E0583]: file not found for module 'problem'`),
+which also fails every pre-push hook, so `git push --no-verify` is the only
+way to land work until the volume is remounted (devcontainer restart), after
+which `git checkout -- <path>` restores it.
+
+So: when git reports these files as deleted, that is the *index* disagreeing
+with the mount — **not** a signal to rearrange the filesystem. Verify the
+content is safe first (`git show HEAD:<path> | diff - <Uppercase path>`;
+it will be IDENTICAL), then leave the paths alone and treat it as an
+environment problem.
+
 **How to apply:** treat these four paths as invisible. Do not delete them, do
-not add them to `.gitignore` (a case-sensitive `.gitignore` entry cannot
-express "the same file under another case"), and do not file them as tech
-debt. If a task genuinely needs them gone, it is a host/mount change, not a
-repo change. See [[project_devcontainer_clang_disk]] for the other
+not **move or rename** them, do not add them to `.gitignore` (a
+case-sensitive `.gitignore` entry cannot express "the same file under another
+case"), and do not file them as tech debt. If a task genuinely needs them
+gone, it is a host/mount change, not a repo change. See [[project_devcontainer_clang_disk]] for the other
 environment-not-repo trap on this box.

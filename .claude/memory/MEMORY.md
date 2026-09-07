@@ -37,3 +37,4 @@
 - [Wall-clock TTL test races](project_wallclock_ttl_test_races.md) — asserting presence right after a cache insert races the scheduler; split presence (long TTL) from expiry (short TTL), never widen the timeout
 - [hibp tests are feature-gated](project_hibp_feature_gated_tests.md) — `cargo test -- hibp` silently matches 0 tests without `--features auth-hibp`; check the count, not the exit code
 - [worktree-rm Bad file descriptor](project_worktree_rm_submodule_bad_fd.md) — the `--force` retry still deregisters; delete the branch by hand and leave the inert target/ remnant
+- [Release generator + gates](project_release_generator_and_gates.md) — changelog dedup fixed 2026-09-06; re-point the tag after any amend, and let CI be the gate
