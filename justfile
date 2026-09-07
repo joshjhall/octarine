@@ -508,16 +508,23 @@ release ARG:
 
     if [ -n "$PREV_TAG" ]; then
         # Conventional-commit prefix → CHANGELOG section. Multiple prefixes can
-        # share a section (refactor + chore both → "Changed"); we collect
-        # commits per section, then emit each section once with all of them.
-        SECTION_ORDER="Added Fixed Changed Documentation Testing Performance CI Build"
+        # share a section (refactor + chore both → "Changed").
+        #
+        # Each commit is classified EXACTLY ONCE, by the prefix of its *subject*
+        # line. Do not reintroduce `git log --grep="^feat"` here: --grep matches
+        # the whole commit message and `^` anchors to any line, so a commit whose
+        # body happened to contain a line starting with "fix"/"docs"/etc. was
+        # emitted under several sections at once and had to be deduped by hand
+        # before every release.
+        SECTION_ORDER="Added Fixed Changed Documentation Testing Performance CI Build Other"
         declare -A SECTION_COMMITS
-        # Map: prefix → section label
+        # Map: subject prefix → section label
         declare -A PREFIX_SECTION=(
             [feat]=Added
             [fix]=Fixed
             [refactor]=Changed
             [chore]=Changed
+            [deps]=Changed
             [docs]=Documentation
             [test]=Testing
             [perf]=Performance
@@ -525,32 +532,30 @@ release ARG:
             [build]=Build
         )
 
-        for PREFIX in "${!PREFIX_SECTION[@]}"; do
-            LABEL="${PREFIX_SECTION[$PREFIX]}"
-            COMMITS=$(git log "$PREV_TAG"..HEAD --oneline --grep="^$PREFIX" 2>/dev/null | sed 's/^[a-f0-9]* /- /' || true)
-            if [ -n "$COMMITS" ]; then
-                if [ -n "${SECTION_COMMITS[$LABEL]:-}" ]; then
-                    SECTION_COMMITS[$LABEL]+=$'\n'"$COMMITS"
-                else
-                    SECTION_COMMITS[$LABEL]="$COMMITS"
-                fi
+        # Read subjects one per line; classify on the prefix before ':' or '('.
+        while IFS= read -r SUBJECT; do
+            [ -n "$SUBJECT" ] || continue
+            # Strip the leading short hash to get the bare subject.
+            BARE="${SUBJECT#* }"
+            # Conventional prefix = leading [a-z]+ before '(' or ':'.
+            PREFIX="${BARE%%[(:]*}"
+            # `release: vX.Y.Z` commits are release plumbing, not changelog content.
+            if [ "$PREFIX" = "release" ]; then
+                continue
             fi
-        done
+            LABEL="${PREFIX_SECTION[$PREFIX]:-Other}"
+            if [ -n "${SECTION_COMMITS[$LABEL]:-}" ]; then
+                SECTION_COMMITS[$LABEL]+=$'\n'"- $BARE"
+            else
+                SECTION_COMMITS[$LABEL]="- $BARE"
+            fi
+        done < <(git log "$PREV_TAG"..HEAD --no-merges --pretty=format:'%h %s' 2>/dev/null || true)
 
         for LABEL in $SECTION_ORDER; do
             if [ -n "${SECTION_COMMITS[$LABEL]:-}" ]; then
                 ENTRY+=$'\n'"### $LABEL"$'\n'$'\n'"${SECTION_COMMITS[$LABEL]}"$'\n'
             fi
         done
-
-        # Catch any commits that don't match conventional prefixes
-        OTHER=$(git log "$PREV_TAG"..HEAD --oneline --invert-grep \
-            --grep="^feat" --grep="^fix" --grep="^refactor" --grep="^docs" \
-            --grep="^test" --grep="^perf" --grep="^ci" --grep="^build" \
-            --grep="^release" --grep="^chore" 2>/dev/null | sed 's/^[a-f0-9]* /- /' || true)
-        if [ -n "$OTHER" ]; then
-            ENTRY+=$'\n'"### Other"$'\n'$'\n'"$OTHER"$'\n'
-        fi
     else
         ENTRY+=$'\n'"Initial release."$'\n'
     fi
