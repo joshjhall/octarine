@@ -30,7 +30,9 @@ use octarine::observe::writers::{
 };
 use octarine::observe::{Event, EventType, Severity};
 
-const POLL_DEADLINE: Duration = Duration::from_secs(5);
+/// Sized for the 1s default flush interval that `ensure_test_dispatcher`
+/// may leave in place when it loses the config race (issues #732, #747).
+const POLL_DEADLINE: Duration = super::WRITER_POLL_DEADLINE;
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 async fn poll_until<F: FnMut() -> bool>(mut probe: F) -> bool {

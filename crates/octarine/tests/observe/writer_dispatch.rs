@@ -27,17 +27,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::time::{Instant, sleep};
 
-/// Deadline for positive-signal polls (waiting for an event to arrive).
+/// Deadline for polls that wait on events reaching a writer.
 ///
-/// The dispatcher runs on a single-threaded background runtime. Under
-/// nextest each test is its own process, and when CI runs many such
-/// processes in parallel that background thread is CPU-starved, so a
-/// flushed event can take well over a second to surface. A 2s deadline
-/// flaked here (observed failures at ~2.02s through all retries); 5s
-/// matches the deadline every other poll in the observe integration
-/// suite already uses and absorbs the scheduling jitter. This bounds the
-/// happy path only — assertions still fail fast once the signal arrives.
-const POLL_DEADLINE: Duration = Duration::from_secs(5);
+/// Uses the suite-wide [`super::WRITER_POLL_DEADLINE`] (30s) rather than a
+/// local value. Earlier failures here at ~2.02s were read as scheduling
+/// jitter, but that is precisely one default 1s flush tick past the old 5s
+/// budget: when `ensure_test_dispatcher` loses the config race the flush
+/// interval is 1s, not 10ms (issues #732, #747). This bounds the failure
+/// path only — assertions still return as soon as the signal arrives.
+const POLL_DEADLINE: Duration = super::WRITER_POLL_DEADLINE;
 
 /// Interval between poll probes. Small enough that a fast machine returns
 /// almost immediately, large enough not to busy-spin.
