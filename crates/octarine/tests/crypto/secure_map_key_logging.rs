@@ -31,6 +31,7 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -42,8 +43,28 @@ use octarine::observe::writers::{
     configure_dispatcher, register_writer, unregister_writer,
 };
 
-const POLL_DEADLINE: Duration = Duration::from_secs(5);
+/// Deadline for polls waiting on events to reach a writer.
+///
+/// Sized for the 1s default flush interval, not the 10ms of
+/// `DispatcherConfig::testing()` — see [`ensure_test_dispatcher`]. A single
+/// event never fills the 100-event default batch, so it only reaches writers
+/// on a flush tick. Failure deadline, not a latency budget.
+const POLL_DEADLINE: Duration = Duration::from_secs(30);
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
+
+/// Request fast dispatcher flushes for this test binary.
+///
+/// Returns whether `DispatcherConfig::testing()` was actually installed.
+/// `EVENT_DISPATCHER` is a process-global `Lazy`, so configuration is only
+/// possible before its first use: a `false` return means an earlier dispatch
+/// in this binary already pinned `DispatcherConfig::default()`, whose flush
+/// interval is 1s rather than 10ms. That is survivable — `POLL_DEADLINE` is
+/// sized for it — but it must not be silently discarded, because a failure
+/// then looks like unexplained flakiness (issues #732, #747).
+fn ensure_test_dispatcher() -> bool {
+    static INIT: OnceLock<bool> = OnceLock::new();
+    *INIT.get_or_init(|| configure_dispatcher(DispatcherConfig::testing()))
+}
 
 /// Opaque, non-PII key fragment unique to this test. Must not look like an
 /// email/SSN/etc, or the PII redactor would strip it from messages and the
@@ -138,7 +159,7 @@ fn messages(writer: &MemoryWriter) -> Vec<String> {
 /// `format!("...: {}", key)` lines makes the "raw key absent" assertion fail.
 #[test]
 fn secure_map_never_logs_raw_keys() {
-    let _ = configure_dispatcher(DispatcherConfig::testing());
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "secure_map_key_logging_735";
     let capture = Arc::new(MemoryWriter::with_capacity(256));
@@ -161,15 +182,21 @@ fn secure_map_never_logs_raw_keys() {
 
     // Wait for the drop event specifically: it is dispatched last, so seeing it
     // means insert/remove have already been flushed.
+    // Match this test's own drop ("2 secrets"), not any drop: the writer
+    // registry is process-global, so every registered writer receives every
+    // event — including the 1-entry probe map dropped by
+    // `dropping_empty_secure_map_emits_no_event` running concurrently.
     let flushed = poll_until(|| {
         messages(&capture)
             .iter()
-            .any(|m| m.contains("Dropping SecureMap"))
+            .any(|m| m.contains("Dropping SecureMap with 2 secrets"))
     });
     assert!(
         flushed,
         "drop event never reached the writer — capture is broken, so the \
-         assertions below would be vacuous"
+         assertions below would be vacuous \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
 
     let captured = messages(&capture);
@@ -204,9 +231,13 @@ fn secure_map_never_logs_raw_keys() {
     );
 
     // AC2: Drop emits exactly one event carrying a count, not one per key.
+    // Scope to this map's own drop. A bare "Dropping SecureMap" filter also
+    // captures the concurrent 1-entry probe from
+    // `dropping_empty_secure_map_emits_no_event`, which made this assertion
+    // fail depending on thread scheduling.
     let drop_events: Vec<&String> = captured
         .iter()
-        .filter(|m| m.contains("Dropping SecureMap"))
+        .filter(|m| m.contains("Dropping SecureMap with 2 secrets"))
         .collect();
     assert_eq!(
         drop_events.len(),
@@ -304,7 +335,7 @@ fn logged_message_keeps_digest_and_omits_key_under_every_profile() {
 /// loop this replaced (an empty map had nothing to iterate).
 #[test]
 fn dropping_empty_secure_map_emits_no_event() {
-    let _ = configure_dispatcher(DispatcherConfig::testing());
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "secure_map_key_logging_735_empty";
     let capture = Arc::new(MemoryWriter::with_capacity(64));
@@ -322,7 +353,9 @@ fn dropping_empty_secure_map_emits_no_event() {
     let flushed = poll_until(|| messages(&capture).iter().any(|m| m.contains("1 secrets")));
     assert!(
         flushed,
-        "probe drop event never arrived — capture is broken"
+        "probe drop event never arrived — capture is broken \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
 
     let zero_counted = messages(&capture)

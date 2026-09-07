@@ -14,6 +14,7 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use octarine::observe::writers::{DispatcherConfig, configure_dispatcher};
 
@@ -31,20 +32,42 @@ use octarine::observe::writers::{DispatcherConfig, configure_dispatcher};
 /// skips this call can default-configure the singleton and re-introduce
 /// the CI flake described in issue #223.
 ///
+/// Calling it first is necessary but **not sufficient**: this helper cannot
+/// force the configuration, only request it. The return value reports whether
+/// `testing()` was actually installed — see the body and
+/// [`WRITER_POLL_DEADLINE`].
+///
 /// Why an explicit per-test call rather than a binary-load ctor: the crate
 /// sets `unsafe_code = "forbid"` at the Cargo.toml level, which rules out
 /// `.init_array` crates like `ctor`. The `OnceLock` keeps the call cheap
 /// after the first test runs it.
-pub(super) fn ensure_test_dispatcher() {
-    static INIT: OnceLock<()> = OnceLock::new();
-    INIT.get_or_init(|| {
-        // `configure_dispatcher` returns false if the dispatcher has already
-        // been initialised by an earlier dispatch in this process. Either
-        // outcome is fine — the critical invariant is that every test that
-        // touches the dispatcher calls this before doing so.
-        let _ = configure_dispatcher(DispatcherConfig::testing());
-    });
+pub(super) fn ensure_test_dispatcher() -> bool {
+    static INIT: OnceLock<bool> = OnceLock::new();
+    // `configure_dispatcher` returns false if the dispatcher was already
+    // initialised by an earlier dispatch in this process, in which case the
+    // fast-flush config is DISCARDED and the binary runs on
+    // `DispatcherConfig::default()` — a 1s flush interval instead of 10ms.
+    //
+    // That outcome is survivable but NOT equivalent: any deadline that polls
+    // for events to reach a *writer* must be sized for the 1s case (see
+    // `WRITER_POLL_DEADLINE`). Callers get the result so a failure can report
+    // which config was actually installed instead of sending the next reader
+    // hunting for phantom CPU contention (issues #732, #747).
+    *INIT.get_or_init(|| configure_dispatcher(DispatcherConfig::testing()))
 }
+
+/// Deadline for polls that wait on events reaching a registered **writer**.
+///
+/// Sized for the worst case [`ensure_test_dispatcher`] can leave in place: a
+/// single event never fills the 100-event default batch, so it only reaches
+/// writers on a `flush_timer` tick, and that tick is 1s when the fast-flush
+/// config lost the race. This is a failure deadline, not a latency budget —
+/// on the happy path (10ms flush) polls still return in milliseconds, so a
+/// large value costs nothing.
+///
+/// Polls that only read dispatcher *queue* counters (`dispatcher_stats`) or
+/// the metrics registry do not wait on a flush and do not need this.
+pub(super) const WRITER_POLL_DEADLINE: Duration = Duration::from_secs(30);
 
 mod async_dispatch;
 mod audit_builders;

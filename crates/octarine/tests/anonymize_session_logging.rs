@@ -40,6 +40,7 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -54,8 +55,28 @@ use octarine::observe::writers::{
     configure_dispatcher, register_writer, unregister_writer,
 };
 
-const POLL_DEADLINE: Duration = Duration::from_secs(5);
+/// Deadline for polls waiting on events to reach a writer.
+///
+/// Sized for the 1s default flush interval, not the 10ms of
+/// `DispatcherConfig::testing()` — see [`ensure_test_dispatcher`]. A single
+/// event never fills the 100-event default batch, so it only reaches writers
+/// on a flush tick. Failure deadline, not a latency budget.
+const POLL_DEADLINE: Duration = Duration::from_secs(30);
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
+
+/// Request fast dispatcher flushes for this test binary.
+///
+/// Returns whether `DispatcherConfig::testing()` was actually installed.
+/// `EVENT_DISPATCHER` is a process-global `Lazy`, so configuration is only
+/// possible before its first use: a `false` return means an earlier dispatch
+/// in this binary already pinned `DispatcherConfig::default()`, whose flush
+/// interval is 1s rather than 10ms. That is survivable — `POLL_DEADLINE` is
+/// sized for it — but it must not be silently discarded, because a failure
+/// then looks like unexplained flakiness (issues #732, #747).
+fn ensure_test_dispatcher() -> bool {
+    static INIT: OnceLock<bool> = OnceLock::new();
+    *INIT.get_or_init(|| configure_dispatcher(DispatcherConfig::testing()))
+}
 
 /// Opaque, non-PII handle unique to this test. Must not look like an
 /// email/SSN/etc, or the PII redactor would strip it from messages and the
@@ -180,7 +201,7 @@ fn assert_no_leak(captured: &[String], handle: &str) {
 /// session)` lines makes the "raw handle absent" assertion fail.
 #[tokio::test]
 async fn in_memory_store_never_logs_raw_session_handle() {
-    let _ = configure_dispatcher(DispatcherConfig::testing());
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "anonymize_session_logging_629_store";
     let capture = Arc::new(MemoryWriter::with_capacity(256));
@@ -228,7 +249,9 @@ async fn in_memory_store_never_logs_raw_session_handle() {
     assert!(
         flushed,
         "flush event never reached the writer — capture is broken, so the \
-         assertions below would be vacuous"
+         assertions below would be vacuous \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
 
     let captured = messages(&capture);
@@ -256,7 +279,7 @@ async fn in_memory_store_never_logs_raw_session_handle() {
 /// digest, never the raw handle.
 #[tokio::test]
 async fn session_manager_never_logs_raw_session_handle() {
-    let _ = configure_dispatcher(DispatcherConfig::testing());
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "anonymize_session_logging_629_manager";
     let capture = Arc::new(MemoryWriter::with_capacity(256));
@@ -292,7 +315,9 @@ async fn session_manager_never_logs_raw_session_handle() {
     assert!(
         swept,
         "expiry event never reached the writer — capture is broken, so the \
-         assertions below would be vacuous"
+         assertions below would be vacuous \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
 
     let captured = messages(&capture);
@@ -344,7 +369,7 @@ async fn session_manager_never_logs_raw_session_handle() {
 /// emitting sites makes this fail under both production profiles.
 #[tokio::test]
 async fn session_digest_survives_every_redaction_profile() {
-    let _ = configure_dispatcher(DispatcherConfig::testing());
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "anonymize_session_logging_629_redaction";
     let capture = Arc::new(MemoryWriter::with_capacity(256));
@@ -387,7 +412,9 @@ async fn session_digest_survives_every_redaction_profile() {
     assert!(
         flushed,
         "events never reached the writer — capture is broken, so the \
-         assertions below would be vacuous"
+         assertions below would be vacuous \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
 
     // `touch` reports through a Problem rather than an observe event, so it is
@@ -473,7 +500,7 @@ async fn session_digest_survives_every_redaction_profile() {
 /// incidentally, but it cannot manufacture the digest.
 #[tokio::test]
 async fn pii_shaped_session_handle_is_not_logged_verbatim() {
-    let _ = configure_dispatcher(DispatcherConfig::testing());
+    let fast_flush = ensure_test_dispatcher();
 
     let name = "anonymize_session_logging_629_pii";
     let capture = Arc::new(MemoryWriter::with_capacity(256));
@@ -503,7 +530,9 @@ async fn pii_shaped_session_handle_is_not_logged_verbatim() {
     assert!(
         flushed,
         "flush event carrying the digest never reached the writer — capture is \
-         broken, so the assertion below would be vacuous"
+         broken, so the assertion below would be vacuous \
+         (fast-flush config installed: {fast_flush}; when false the dispatcher \
+         runs on the 1s default flush interval)"
     );
 
     let captured = messages(&capture);
