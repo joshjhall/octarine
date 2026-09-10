@@ -61,6 +61,13 @@ const BASE_CONFIDENCE: f64 = 0.5;
 /// Han, kana, hangul, and Thai text runs together, so there is no word boundary
 /// to look for on that side of a match — a keyword abutting such a character is
 /// a legitimate hit, not an accidental infix.
+///
+/// Only scripts octarine ships keywords for are listed. Arabic and Devanagari
+/// are deliberately **absent**: both are space-separated, so they take the
+/// ordinary boundary path. Other scriptio-continua scripts (Khmer, Lao,
+/// Burmese) are likewise absent because there are no [`KeywordLanguage`]
+/// variants for them — add the range together with the language table, never
+/// ahead of it.
 fn is_unspaced_script(c: char) -> bool {
     matches!(c,
         '\u{3040}'..='\u{30FF}'   // hiragana + katakana
@@ -69,7 +76,9 @@ fn is_unspaced_script(c: char) -> bool {
         | '\u{F900}'..='\u{FAFF}' // CJK compatibility ideographs
         | '\u{AC00}'..='\u{D7AF}' // hangul syllables
         | '\u{1100}'..='\u{11FF}' // hangul jamo
+        | '\u{3130}'..='\u{318F}' // hangul compatibility jamo
         | '\u{0E00}'..='\u{0E7F}' // Thai
+        | '\u{FF00}'..='\u{FFEF}' // halfwidth + fullwidth forms
     )
 }
 
@@ -89,6 +98,13 @@ fn is_unspaced_script(c: char) -> bool {
 /// on either side, and would be rejected by a naive alphanumeric-only test.
 /// The decision is made per **adjacent character**, not from the keyword's own
 /// script, because a keyword may mix both.
+///
+/// The accepted trade-off: a short Latin keyword flush against an unrelated
+/// unspaced-script character (`"广告ad投放"`) does match. Separating that from a
+/// genuine hit needs word segmentation, which this layer does not have — and a
+/// false positive costs one over-boosted confidence score, whereas the false
+/// negative it replaces silently disabled every CJK keyword.
+/// `test_short_latin_keyword_abutting_cjk_is_accepted` pins the behavior.
 ///
 /// `text` is expected to be already lowercased (the analyzer lowercases the
 /// window); keywords are lowercase by table invariant.
@@ -511,6 +527,49 @@ mod tests {
             16,
             38,
             &IdentifierType::Iban
+        ));
+    }
+
+    #[test]
+    fn test_korean_keyword_matches_glued_to_hangul() {
+        // The hangul ranges must actually be exercised — a transposed hex bound
+        // would otherwise go unnoticed.
+        let korean = ContextAnalyzer::new().with_language(KeywordLanguage::Ko);
+        assert!(korean.is_context_present(
+            "주민등록번호는900101-1234567입니다",
+            22,
+            36,
+            &IdentifierType::KoreaRrn
+        ));
+    }
+
+    #[test]
+    fn test_fullwidth_alphanumerics_count_as_a_boundary() {
+        // Fullwidth Latin letters are `is_alphanumeric()`, so without the
+        // FF00-FFEF range they would block the match exactly as native CJK did.
+        // (Fullwidth *punctuation* would pass either way — a vacuous test.)
+        let chinese = ContextAnalyzer::new().with_language(KeywordLanguage::ZhHans);
+        assert!(chinese.is_context_present(
+            "ＸＹiban ＤＥ89370400440532013000",
+            13,
+            43,
+            &IdentifierType::Iban
+        ));
+    }
+
+    #[test]
+    fn test_short_latin_keyword_abutting_cjk_is_accepted() {
+        // Documents the accepted precision trade-off: a short Latin keyword
+        // flush against an unrelated CJK character DOES match, because this
+        // layer has no word segmentation to tell it from a genuine hit. If that
+        // ever becomes intolerable the fix is segmentation, not narrowing the
+        // boundary rule — narrowing resurrects the CJK false-negative.
+        let turkish = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(turkish.is_context_present(
+            "广告ad投放 12345678901",
+            17,
+            28,
+            &IdentifierType::PersonalName
         ));
     }
 
