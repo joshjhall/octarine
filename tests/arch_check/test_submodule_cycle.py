@@ -76,6 +76,59 @@ def test_relative_super_import_is_caught(write_rs, tmp_repo: Path):
     assert findings[0].line == 1
 
 
+def test_single_line_brace_group_is_caught(write_rs, tmp_repo: Path):
+    """`use crate::primitives::{…}` is an established idiom in this crate."""
+    write_rs(
+        "primitives/data/crypto/types.rs",
+        "use crate::primitives::{identifiers::crypto::KeyType, types::Problem};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/crypto/types.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_relative_brace_group_is_caught(write_rs, tmp_repo: Path):
+    write_rs(
+        "primitives/data/crypto/ssh.rs",
+        "use super::{identifiers::network::Foo, types::Bar};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/crypto/ssh.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+
+
+def test_multi_line_brace_group_is_caught(write_rs, tmp_repo: Path):
+    """The rustfmt-produced multi-line form must be joined before matching.
+
+    The `use` keyword and the forbidden segment land on different lines, so a
+    per-line matcher sees neither a complete import nor a complete path.
+    """
+    write_rs(
+        "primitives/data/paths/mod.rs",
+        "pub(crate) use crate::primitives::{\n"
+        "    identifiers::network::Foo,\n"
+        "    types::Problem,\n"
+        "};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/paths/mod.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    # Reported against the `use` keyword, not the continuation line.
+    assert findings[0].line == 1
+
+
+def test_multi_line_brace_group_without_identifiers_is_clean(write_rs, tmp_repo: Path):
+    """Joining lines must not create false positives for innocent groups."""
+    write_rs(
+        "primitives/data/paths/mod.rs",
+        "pub(crate) use types::{\n    BoundaryStrategy,\n    FileCategory,\n};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/paths/mod.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert findings == []
+
+
 def test_multiple_imports_yield_one_finding_each(write_rs, tmp_repo: Path):
     content = (
         "use crate::primitives::identifiers::crypto::KeyType;\n"

@@ -10,9 +10,12 @@ Shared types belong in `primitives/types/` (the central definition location), to
 re-exported from whichever domain modules use them. See issue #404.
 
 Matching covers every visibility form an import can take (`use`, `pub use`,
-`pub(crate) use`, `pub(super) use`, …) and both absolute (`crate::primitives::
-identifiers::…`) and relative (`super::super::identifiers::…`) paths — all of which
-close the same cycle.
+`pub(crate) use`, `pub(super) use`, …), both absolute (`crate::primitives::
+identifiers::…`) and relative (`super::super::identifiers::…`) paths, and
+brace-grouped imports in both their single-line and multi-line (rustfmt-produced)
+spellings — all of which close the same cycle. Each `use` statement is joined to
+its terminating `;` before matching, so a forbidden segment on a continuation line
+is still seen.
 
 Known limitation: only *import* lines are inspected. A fully-qualified inline call —
 `crate::primitives::identifiers::network::…::new().is_uuid(x)` — closes the same
@@ -35,10 +38,36 @@ from scripts.arch_check.core import Finding, rel
 IMPORT_LINE = re.compile(r"^(?:pub\s*(?:\([^)]*\)\s*)?)?use\s")
 
 # The identifiers sub-module reached either absolutely (`crate::primitives::
-# identifiers::`) or relatively (`super::super::identifiers::`, `self::…`).
-# A path segment boundary is required on the left so an unrelated module whose
-# name merely ends in `identifiers` is not matched.
-FORBIDDEN_PATH = re.compile(r"(?:^|::|\s)identifiers::")
+# identifiers::`) or relatively (`super::super::identifiers::`, `self::…`), or as a
+# member of a brace group (`primitives::{identifiers::crypto::KeyType, …}`).
+# A path-segment boundary is required on the left so an unrelated module whose
+# name merely ends in `identifiers` (`my_identifiers::`) is not matched.
+FORBIDDEN_PATH = re.compile(r"(?:^|::|[{,\s])identifiers::")
+
+
+def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
+    """Yield (line number of the `use` keyword, whole statement) for each import.
+
+    A `use` statement is joined across lines until its terminating `;`, so a
+    brace-grouped import spanning several lines is matched as one unit rather
+    than as fragments that individually satisfy neither pattern.
+    """
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        stripped = lines[index].lstrip()
+        if not IMPORT_LINE.match(stripped):
+            index += 1
+            continue
+        start = index
+        parts = [stripped]
+        # Join continuation lines until the statement terminates. Bounded by the
+        # end of file, so an unterminated statement cannot loop forever.
+        while ";" not in parts[-1] and index + 1 < len(lines):
+            index += 1
+            parts.append(lines[index].strip())
+        yield start + 1, " ".join(parts)
+        index += 1
 
 
 def run(*, files: Iterable[Path], root: Path) -> Iterator[Finding]:
@@ -48,11 +77,8 @@ def run(*, files: Iterable[Path], root: Path) -> Iterator[Finding]:
         except OSError:
             continue
         rel_path = rel(path, root)
-        for lineno, line in enumerate(text.splitlines(), start=1):
-            stripped = line.lstrip()
-            if not IMPORT_LINE.match(stripped):
-                continue
-            if not FORBIDDEN_PATH.search(stripped):
+        for lineno, statement in _iter_use_statements(text):
+            if not FORBIDDEN_PATH.search(statement):
                 continue
             yield Finding(
                 severity="ERROR",
