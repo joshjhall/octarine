@@ -45,6 +45,19 @@ IMPORT_LINE = re.compile(r"^(?:pub\s*(?:\([^)]*\)\s*)?)?use\s")
 FORBIDDEN_PATH = re.compile(r"(?:^|::|[{,\s])identifiers::")
 
 
+def _strip_line_comment(line: str) -> str:
+    """Drop a trailing `//` comment.
+
+    The terminator search must not see a `;` that belongs to a comment — e.g.
+    `types::Problem, // keep sorted; see mod.rs` — or the join stops early and
+    the rest of the brace group (which may hold the forbidden segment) is never
+    examined. Block comments spanning a `;` remain unhandled; they do not occur
+    inside import statements in this tree.
+    """
+    head, _, _ = line.partition("//")
+    return head
+
+
 def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
     """Yield (line number of the `use` keyword, whole statement) for each import.
 
@@ -60,12 +73,12 @@ def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
             index += 1
             continue
         start = index
-        parts = [stripped]
+        parts = [_strip_line_comment(stripped)]
         # Join continuation lines until the statement terminates. Bounded by the
         # end of file, so an unterminated statement cannot loop forever.
         while ";" not in parts[-1] and index + 1 < len(lines):
             index += 1
-            parts.append(lines[index].strip())
+            parts.append(_strip_line_comment(lines[index].strip()))
         yield start + 1, " ".join(parts)
         index += 1
 

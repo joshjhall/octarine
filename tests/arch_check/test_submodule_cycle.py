@@ -129,6 +129,62 @@ def test_multi_line_brace_group_without_identifiers_is_clean(write_rs, tmp_repo:
     assert findings == []
 
 
+def test_comment_semicolon_does_not_truncate_the_join(write_rs, tmp_repo: Path):
+    """A `;` inside a trailing `//` comment must not end the statement early.
+
+    If it does, the join stops before reaching the forbidden segment and the
+    import is silently missed.
+    """
+    write_rs(
+        "primitives/data/paths/mod.rs",
+        "use crate::primitives::{\n"
+        "    types::Problem, // fixes bug; see issue\n"
+        "    identifiers::network::Foo,\n"
+        "};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/paths/mod.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_comment_semicolon_on_opening_line_does_not_truncate(write_rs, tmp_repo: Path):
+    """The same bug, hit on the `use` line itself before any join is attempted."""
+    write_rs(
+        "primitives/data/paths/mod.rs",
+        "use crate::primitives::{ // order matters; keep this\n"
+        "    identifiers::network::Foo,\n"
+        "};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/paths/mod.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_commented_out_forbidden_import_is_not_flagged(write_rs, tmp_repo: Path):
+    """Stripping comments must also stop a commented-out import false-positiving."""
+    write_rs(
+        "primitives/data/x.rs",
+        "use crate::primitives::types::Problem; // use crate::primitives::identifiers::Foo;\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert findings == []
+
+
+def test_unterminated_statement_terminates_at_eof(write_rs, tmp_repo: Path):
+    """The join is EOF-bounded, so a missing `;` cannot hang the scanner."""
+    write_rs(
+        "primitives/data/truncated.rs",
+        "use crate::primitives::{\n    identifiers::network::Foo,\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/truncated.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
 def test_multiple_imports_yield_one_finding_each(write_rs, tmp_repo: Path):
     content = (
         "use crate::primitives::identifiers::crypto::KeyType;\n"
