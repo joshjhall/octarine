@@ -56,6 +56,42 @@ pub struct ContextAnalyzer {
 /// Base confidence score when no context is present.
 const BASE_CONFIDENCE: f64 = 0.5;
 
+/// Whether `keyword` occurs in `text` as a whole word.
+///
+/// Plain substring matching over-fires on short keywords: French `"nom"` would
+/// match inside `"nomination"`, and Turkish `"ad"` inside `"adres"`, boosting
+/// confidence on text that says nothing about a name. Both keywords are correct
+/// and worth keeping, so the boundary check lives here rather than the shorter
+/// entries being deleted from the tables.
+///
+/// A boundary is any non-alphanumeric character (or the start/end of the text).
+/// Scripts without inter-word spacing — Chinese, Japanese, Thai — have no word
+/// boundaries to test, so a keyword containing no alphanumeric ASCII falls back
+/// to substring matching, which is the only thing that can work there. The
+/// tables compensate by using distinctive multi-character terms in those
+/// languages.
+///
+/// `text` is expected to be already lowercased (the analyzer lowercases the
+/// window); keywords are lowercase by table invariant.
+fn is_keyword_in_text(text: &str, keyword: &str) -> bool {
+    // A keyword with no ASCII alphanumerics is in a script with no word
+    // boundaries (CJK, Thai, Arabic, Devanagari) — substring is the only
+    // available match.
+    if !keyword.chars().any(|c| c.is_ascii_alphanumeric()) {
+        return text.contains(keyword);
+    }
+
+    let is_boundary = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric());
+
+    text.match_indices(keyword).any(|(start, matched)| {
+        let before = text.get(..start).and_then(|s| s.chars().next_back());
+        let after = text
+            .get(start.saturating_add(matched.len())..)
+            .and_then(|s| s.chars().next());
+        is_boundary(before) && is_boundary(after)
+    })
+}
+
 impl Default for ContextAnalyzer {
     fn default() -> Self {
         Self::new()
@@ -181,7 +217,7 @@ impl ContextAnalyzer {
         let is_keyword_present = |language: KeywordLanguage| {
             context_keywords(entity_type, language)
                 .iter()
-                .any(|kw| window_lower.contains(kw))
+                .any(|kw| is_keyword_in_text(&window_lower, kw))
         };
 
         match self.config.language {
@@ -376,6 +412,79 @@ mod tests {
             (score - BASE_CONFIDENCE).abs() < f64::EPSILON,
             "Empty text should return base confidence"
         );
+    }
+
+    #[test]
+    fn test_short_keyword_does_not_match_inside_a_word() {
+        // Turkish "ad" (name) must not boost on "adres" (address), and French
+        // "nom" must not boost on "nomination". Under plain substring matching
+        // both of these fire.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        let text = "adres: 12345678901";
+        assert!(!analyzer.is_context_present(text, 7, 18, &IdentifierType::PersonalName));
+
+        let french = ContextAnalyzer::new().with_language(KeywordLanguage::Fr);
+        let text = "nomination 12345678901";
+        assert!(!french.is_context_present(text, 11, 22, &IdentifierType::PersonalName));
+    }
+
+    #[test]
+    fn test_short_keyword_still_matches_as_a_whole_word() {
+        // The boundary check must not cost recall: the same short keywords must
+        // still match when they stand alone, including next to punctuation.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(analyzer.is_context_present(
+            "ad: Mehmet Yilmaz",
+            4,
+            17,
+            &IdentifierType::PersonalName
+        ));
+
+        let french = ContextAnalyzer::new().with_language(KeywordLanguage::Fr);
+        assert!(french.is_context_present(
+            "nom: Jean Dupont",
+            5,
+            16,
+            &IdentifierType::PersonalName
+        ));
+        // ...and at the very start/end of the window.
+        assert!(french.is_context_present("Jean Dupont nom", 0, 11, &IdentifierType::PersonalName));
+    }
+
+    #[test]
+    fn test_boundary_check_is_accent_aware() {
+        // A boundary is any NON-alphanumeric char, and `char::is_alphanumeric`
+        // is Unicode-aware — so an accented letter abutting the keyword is NOT
+        // a boundary. German "name" must not match inside "nachnamen".
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::De);
+        assert!(!analyzer.is_context_present(
+            "nachnamen 123-45-6789",
+            10,
+            21,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_non_spaced_scripts_still_substring_match() {
+        // Japanese/Chinese/Thai have no word boundaries, so those keywords must
+        // keep matching by substring — the boundary rule must not silently
+        // disable every CJK keyword.
+        let japanese = ContextAnalyzer::new().with_language(KeywordLanguage::Ja);
+        assert!(japanese.is_context_present(
+            "お客様の電話番号は090-1234-5678です",
+            27,
+            40,
+            &IdentifierType::PhoneNumber
+        ));
+
+        let thai = ContextAnalyzer::new().with_language(KeywordLanguage::Th);
+        assert!(thai.is_context_present(
+            "เลขประจำตัวประชาชน 1234567890123",
+            55,
+            68,
+            &IdentifierType::ThailandTnin
+        ));
     }
 
     #[test]

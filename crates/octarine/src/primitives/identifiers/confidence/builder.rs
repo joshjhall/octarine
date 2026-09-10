@@ -290,6 +290,23 @@ mod tests {
     }
 
     #[test]
+    fn test_language_hint_affects_the_score_path_too() {
+        // The hint tests above all go through is_context_present; assert the
+        // score-producing path honors it as well.
+        let text = "codice fiscale: RSSMRA85T10A562S";
+
+        let italian = ConfidenceBuilder::new().with_language(KeywordLanguage::It);
+        assert!(italian.analyze(text, 16, 32, &IdentifierType::ItalyFiscalCode) > 0.5);
+
+        let swedish = ConfidenceBuilder::new().with_language(KeywordLanguage::Sv);
+        let score = swedish.analyze(text, 16, 32, &IdentifierType::ItalyFiscalCode);
+        assert!(
+            (score - 0.5).abs() < f64::EPSILON,
+            "wrong-language hint should leave base confidence, got {score}"
+        );
+    }
+
+    #[test]
     fn test_unknown_hint_does_not_clear_a_prior_hint() {
         // A bad tag after a good one must not silently widen the scan back to
         // all languages — the earlier explicit choice wins.

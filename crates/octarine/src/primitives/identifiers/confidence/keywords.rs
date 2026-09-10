@@ -413,6 +413,29 @@ mod tests {
     }
 
     #[test]
+    fn test_from_tag_resolves_three_segment_chinese_tags() {
+        // script + region, the form the "hant-tw"/"hant-hk"/"hant-mo" arms exist
+        // for.
+        for tag in ["zh-Hant-TW", "zh-Hant-HK", "zh_hant_mo"] {
+            assert_eq!(
+                KeywordLanguage::from_tag(tag),
+                Some(KeywordLanguage::ZhHant),
+                "tag {tag:?} should resolve to Traditional"
+            );
+        }
+        assert_eq!(
+            KeywordLanguage::from_tag("zh-Hans-CN"),
+            Some(KeywordLanguage::ZhHans)
+        );
+        // Reverse order (region before script) is not a real BCP-47 spelling and
+        // is not special-cased — it falls back to Simplified, like bare "zh".
+        assert_eq!(
+            KeywordLanguage::from_tag("zh-TW-Hant"),
+            Some(KeywordLanguage::ZhHans)
+        );
+    }
+
+    #[test]
     fn test_from_tag_rejects_unknown() {
         for tag in ["", "klingon", "xx", "zzz-ZZ", "  "] {
             assert_eq!(
