@@ -7,7 +7,8 @@ name: Release
 #
 # Publish ordering: `octarine-derive` and `octarine-problem` ship first
 # (no inter-dep), then `octarine` (depends on both via optional/required
-# features), then `octarine-llm` (depends on `octarine-core`). Each publish job
+# features), then `octarine-llm` (depends on `octarine-core` and
+# `octarine-problem`). Each publish job
 # is idempotent — re-running on a partial failure skips crates already on
 # crates.io at the target version.
 #

@@ -217,6 +217,20 @@ async fn openai_compatible_without_auth_sends_no_credential() {
         .expect("detection succeeds");
 
     assert_found_the_email(&results, SAMPLE_TEXT);
+
+    // The assertion the test's name promises: inspect what was actually sent.
+    // Succeeding against an unauthenticated mock proves nothing on its own —
+    // the mock accepts any header.
+    let sent = &server.received_requests().await.expect("recorded")[0];
+    let auth = sent
+        .headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default();
+    assert!(
+        auth.is_empty(),
+        "an unauthenticated endpoint must receive no credential, got: {auth:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------

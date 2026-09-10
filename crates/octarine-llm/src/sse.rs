@@ -104,9 +104,18 @@ impl SseDecoder {
         }
         self.buffer.extend_from_slice(chunk);
 
-        // Guard BEFORE parsing: an un-terminated line means `take_line` will
-        // find no newline and the buffer would simply keep growing.
-        if self.buffer.len() > MAX_LINE_BYTES && !self.buffer.contains(&b'\n') {
+        // Guard BEFORE parsing, measured on the FIRST LINE rather than on the
+        // whole buffer. Gating on "no newline anywhere" would miss the case
+        // where a single chunk delivers an oversized line *and* its terminator
+        // together: the buffer would then contain a newline, the guard would
+        // not fire, and `take_line` would hand the whole oversized line
+        // straight to `pending` — the exact exhaustion this cap exists to stop.
+        let first_line_len = self
+            .buffer
+            .iter()
+            .position(|&b| b == b'\n')
+            .unwrap_or(self.buffer.len());
+        if first_line_len > MAX_LINE_BYTES {
             self.overflowed = true;
             self.buffer.clear();
             self.pending.clear();
@@ -380,6 +389,24 @@ mod tests {
             }
         }
         assert!(d.is_overflowed(), "accumulated bytes must trip the cap");
+    }
+
+    #[test]
+    fn an_oversized_line_arriving_with_its_terminator_still_overflows() {
+        // The bypass a whole-buffer `contains(b'\n')` gate would miss: the
+        // oversized line and its newline land in ONE chunk, so the buffer does
+        // contain a newline and the naive guard never fires.
+        let mut d = SseDecoder::new();
+        let mut chunk = "x".repeat(MAX_LINE_BYTES.saturating_add(1));
+        chunk.push('\n');
+        let events = d.push(&Bytes::from(chunk));
+
+        assert!(events.is_empty());
+        assert!(
+            d.is_overflowed(),
+            "an oversized line must trip the cap even when terminated in the same chunk"
+        );
+        assert_eq!(d.buffered_len(), 0);
     }
 
     #[test]

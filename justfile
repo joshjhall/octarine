@@ -614,7 +614,7 @@ release ARG:
     echo "Next steps:"
     echo "  git push && git push --tags"
     echo ""
-    echo "The release workflow takes over from there — it publishes all three"
+    echo "The release workflow takes over from there — it publishes all four"
     echo "crates to crates.io and creates a GitHub Release. Monitor it at:"
     echo "  https://github.com/joshjhall/octarine/actions/workflows/release.yml"
 
