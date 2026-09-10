@@ -262,7 +262,7 @@ deps-check: deps-audit deps-deny deps-osv deps-outdated
 # additions) don't surface false positives. Exit 0 = clean; exit 1 =
 # unused deps found.
 lint-deps:
-    cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-problem
+    cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-llm crates/octarine-problem
 
 # Surface past-due "re-evaluate YYYY-MM-DD" markers on advisory ignores in
 # deny.toml. Exit 0 = nothing due; exit 1 = at least one past-due marker.
@@ -434,6 +434,15 @@ release ARG:
         exit 1
     fi
 
+    LLM_LINE=$(/usr/bin/awk '/^version/{print; exit}' crates/octarine-llm/Cargo.toml)
+    if [[ "$LLM_LINE" != *"workspace = true"* ]] \
+       && [[ "$LLM_LINE" != "version = \"$CURRENT\""* ]]; then
+        echo "ERROR: crates/octarine-llm/Cargo.toml version is out of sync with workspace" >&2
+        echo "       workspace: $CURRENT" >&2
+        echo "       crate:     $LLM_LINE" >&2
+        exit 1
+    fi
+
     DERIVE_CRATE_VERSION=$(/usr/bin/awk '/^version/{gsub(/^version = "|"$/, "", $0); print; exit}' crates/octarine-derive/Cargo.toml)
     DERIVE_WS_VERSION=$(/usr/bin/awk '/^octarine-derive = /{match($0, /version = "[^"]+"/); print substr($0, RSTART+11, RLENGTH-12); exit}' Cargo.toml)
     if [ "$DERIVE_CRATE_VERSION" != "$DERIVE_WS_VERSION" ]; then
@@ -472,12 +481,17 @@ release ARG:
         sed -i "s/^version = \".*\"/version = \"$VERSION\"/" crates/octarine-problem/Cargo.toml
         echo "  crates/octarine-problem/Cargo.toml → $VERSION"
     fi
+    if [[ "$LLM_LINE" != *"workspace = true"* ]]; then
+        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" crates/octarine-llm/Cargo.toml
+        echo "  crates/octarine-llm/Cargo.toml → $VERSION"
+    fi
     # Workspace dep specs in root Cargo.toml carry literal versions alongside
     # `path = ...` so `cargo publish` accepts the workspace. Keep them in
     # lockstep with the crate manifests they point to. octarine-derive is
     # independently versioned and never touched here.
     sed -i "s|^octarine-core = { path = \"crates/octarine\", version = \"[^\"]*\" }|octarine-core = { path = \"crates/octarine\", version = \"$VERSION\" }|" Cargo.toml
     sed -i "s|^octarine-problem = { path = \"crates/octarine-problem\", version = \"[^\"]*\" }|octarine-problem = { path = \"crates/octarine-problem\", version = \"$VERSION\" }|" Cargo.toml
+    sed -i "s|^octarine-llm = { path = \"crates/octarine-llm\", version = \"[^\"]*\" }|octarine-llm = { path = \"crates/octarine-llm\", version = \"$VERSION\" }|" Cargo.toml
     echo "  Cargo.toml → $VERSION"
 
     # Sweep version references in human-readable docs. The list is
@@ -575,13 +589,13 @@ release ARG:
     # Lefthook hooks may fix formatting (e.g., trailing newlines). If the first
     # commit fails because hooks modified files, re-stage and retry once.
     echo "── Committing ──"
-    git add Cargo.toml crates/octarine/Cargo.toml crates/octarine-problem/Cargo.toml Cargo.lock CHANGELOG.md
+    git add Cargo.toml crates/octarine/Cargo.toml crates/octarine-llm/Cargo.toml crates/octarine-problem/Cargo.toml Cargo.lock CHANGELOG.md
     for f in "${DOC_FILES[@]}"; do
         if [ -f "$f" ]; then git add "$f"; fi
     done
     if ! git commit -m "release: v$VERSION"; then
         echo "  Lefthook hooks modified files, retrying..."
-        git add Cargo.toml crates/octarine/Cargo.toml crates/octarine-problem/Cargo.toml Cargo.lock CHANGELOG.md
+        git add Cargo.toml crates/octarine/Cargo.toml crates/octarine-llm/Cargo.toml crates/octarine-problem/Cargo.toml Cargo.lock CHANGELOG.md
         for f in "${DOC_FILES[@]}"; do
             if [ -f "$f" ]; then git add "$f"; fi
         done

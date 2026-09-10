@@ -6,6 +6,11 @@
 //!
 //! # Components
 //!
+//! - [`Recognizer`](crate::analyze::Recognizer) — the pluggable detection
+//!   interface. An async trait returning
+//!   [`RecognizerResult`](crate::anonymize::RecognizerResult)s, implemented by
+//!   detection sources beyond the built-in identifier primitives (a remote PII
+//!   service, an LLM, a customer's own pattern set).
 //! - [`ConflictResolution`](crate::analyze::ConflictResolution) — overlap
 //!   reconciliation across detections, with Presidio-compatible same-type
 //!   containment as the default and an opt-in cross-type strategy that closes
@@ -41,5 +46,7 @@
 //! ```
 
 mod conflict;
+mod recognizer;
 
 pub use conflict::ConflictResolution;
+pub use recognizer::Recognizer;

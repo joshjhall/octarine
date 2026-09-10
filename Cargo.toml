@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["crates/octarine", "crates/octarine-derive", "crates/octarine-problem"]
+members = [
+  "crates/octarine",
+  "crates/octarine-derive",
+  "crates/octarine-llm",
+  "crates/octarine-problem",
+]
 
 [workspace.package]
 version = "0.3.0-beta.7"
@@ -42,11 +47,19 @@ clap = { version = "4.0", features = ["derive", "env"] }
 # HTTP client
 reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
 
+# Async traits (async fn in trait objects — needed for object-safe `Recognizer`)
+async-trait = "0.1"
+
+# Byte buffers and stream combinators, for SSE response decoding
+bytes = "1.10"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+
 # Internal crates
 # `version` alongside `path` is required so `cargo publish` accepts the
 # workspace. Kept in sync with each crate manifest by `just release`.
 octarine-core = { path = "crates/octarine", version = "0.3.0-beta.7" }
 octarine-derive = { path = "crates/octarine-derive", version = "0.1.0" }
+octarine-llm = { path = "crates/octarine-llm", version = "0.3.0-beta.7" }
 octarine-problem = { path = "crates/octarine-problem", version = "0.3.0-beta.7" }
 
 [workspace.lints.rust]

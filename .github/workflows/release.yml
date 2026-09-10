@@ -7,11 +7,12 @@ name: Release
 #
 # Publish ordering: `octarine-derive` and `octarine-problem` ship first
 # (no inter-dep), then `octarine` (depends on both via optional/required
-# features). Each publish job is idempotent — re-running on a partial failure
-# skips crates already on crates.io at the target version.
+# features), then `octarine-llm` (depends on `octarine-core`). Each publish job
+# is idempotent — re-running on a partial failure skips crates already on
+# crates.io at the target version.
 #
 # Required secret: `CARGO_REGISTRY_TOKEN` (crates.io API token with publish
-# scope for all three crates). The `validate` job fails fast if it's missing.
+# scope for all four crates). The `validate` job fails fast if it's missing.
 #
 # Security note: workflow_dispatch.inputs.tag is user-supplied — every use
 # in a `run:` block goes through an env var to prevent script injection.
@@ -253,9 +254,69 @@ jobs:
           fi
           exit "$RC"
 
+  publish-llm:
+    name: Publish octarine-llm
+    # Depends on octarine-core, so it must publish after it.
+    needs: [publish-octarine, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.97.0"
+      - name: Install mold linker
+        # .cargo/config.toml pins clang + -fuse-ld=mold for Linux targets, so
+        # cargo publish's verification build links with mold. Install it (as CI
+        # does) or the link step fails with "invalid linker name '-fuse-ld=mold'".
+        run: sudo apt-get update && sudo apt-get install -y mold clang
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+      - name: Wait for octarine-core to appear on crates.io
+        env:
+          CORE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          # Index propagation can lag a few seconds after a fresh publish. Poll
+          # the crates.io API, which is authoritative for an exact version.
+          for attempt in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -A 'octarine-release-ci' \
+              "https://crates.io/api/v1/crates/octarine-core/$CORE_VERSION")
+            if [ "$CODE" = "200" ]; then
+              echo "octarine-core $CORE_VERSION is indexed"
+              break
+            fi
+            echo "Attempt $attempt: octarine-core $CORE_VERSION not yet indexed (HTTP $CODE), waiting 15s..."
+            sleep 15
+          done
+      - name: Publish (idempotent)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          # Idempotency via the crates.io API (authoritative for an exact version).
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -A 'octarine-release-ci' \
+            "https://crates.io/api/v1/crates/octarine-llm/$VERSION")
+          if [ "$CODE" = "200" ]; then
+            echo "octarine-llm $VERSION already on crates.io — skipping"
+            exit 0
+          fi
+          # Backstop: tolerate a race where the version appears between check and
+          # upload — "already exists/uploaded" is a successful no-op, not a failure.
+          set +e
+          OUT=$(cargo publish -p octarine-llm --token "$CARGO_REGISTRY_TOKEN" 2>&1)
+          RC=$?
+          echo "$OUT"
+          if [ "$RC" -ne 0 ] && echo "$OUT" | grep -qiE 'already (exists|uploaded)'; then
+            echo "octarine-llm $VERSION already published — treating as success"
+            exit 0
+          fi
+          exit "$RC"
+
   github-release:
     name: GitHub Release
-    needs: [publish-octarine, validate]
+    needs: [publish-llm, publish-octarine, validate]
     runs-on: ubuntu-latest
     permissions:
       contents: write
