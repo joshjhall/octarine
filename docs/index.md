@@ -10,6 +10,7 @@ System design, patterns, and refactoring plans
 
 - Module patterns (three-layer, builder)
 - System architecture
+- [NER strategy](./architecture/ner-strategy.md) - model-backed detection lives behind a trait, not in core
 - Active refactor plan
 
 ### 💻 [Development](./development/)

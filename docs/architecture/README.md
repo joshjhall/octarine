@@ -7,6 +7,7 @@ This section covers the system design, patterns, and architectural decisions for
 - **Layer Architecture**: [`layer-architecture.md`](./layer-architecture.md) - **START HERE** - Three-layer dependency
   rules
 - **Crate Layout**: [`crate-layout.md`](./crate-layout.md) - Feature flag vs sibling crate decision rule
+- **NER Strategy**: [`ner-strategy.md`](./ner-strategy.md) - Why model-backed detection lives behind a trait, not in core
 - **Module Patterns**: [`module-patterns.md`](./module-patterns.md) - Three-layer pattern and builder pattern
 - **System Design**: [`system-design.md`](./system-design.md) - Overall library architecture
 - **Testing Patterns**: [`testing-patterns.md`](./testing-patterns.md) - Shared test infrastructure
@@ -25,6 +26,16 @@ Where a new integration lives:
   runtime surface, dep-family risk, size floor)
 - Why sibling crates cannot be re-exported by the main crate
 - Registration checklist and inheritance caveats for a new workspace crate
+
+### [NER Strategy](./ner-strategy.md)
+
+Whether octarine ships named-entity recognition:
+
+- The decision — a `Recognizer` trait as the extension point, no ML runtime in
+  `octarine-core`
+- What free-text detection is and is not covered today (`PERSON` and
+  `ORGANIZATION` are not)
+- The rule for the next detection capability that wants a model behind it
 
 ### [Module Patterns](./module-patterns.md)
 
