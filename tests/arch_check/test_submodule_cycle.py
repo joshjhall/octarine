@@ -185,6 +185,56 @@ def test_unterminated_statement_terminates_at_eof(write_rs, tmp_repo: Path):
     assert findings[0].line == 1
 
 
+def test_bare_module_import_is_caught(write_rs, tmp_repo: Path):
+    """`use …::identifiers;` imports the module whole — same cycle, no `::` tail."""
+    write_rs("primitives/data/x.rs", "use crate::primitives::identifiers;\n")
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_aliased_module_import_is_caught(write_rs, tmp_repo: Path):
+    write_rs("primitives/data/x.rs", "use crate::primitives::identifiers as ids;\n")
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+
+
+def test_bare_module_import_inside_brace_group_is_caught(write_rs, tmp_repo: Path):
+    write_rs("primitives/data/x.rs", "use crate::primitives::{identifiers, types};\n")
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+
+
+def test_block_comment_semicolon_does_not_truncate_the_join(write_rs, tmp_repo: Path):
+    """`/* … */` must not end the statement early, exactly as `//` must not."""
+    write_rs(
+        "primitives/data/paths/mod.rs",
+        "use crate::primitives::{\n"
+        "    types::Problem, /* fixes bug; see issue */\n"
+        "    identifiers::network::Foo,\n"
+        "};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/paths/mod.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_forbidden_import_with_trailing_comment_is_still_caught(write_rs, tmp_repo: Path):
+    """Stripping the comment must not take the real import with it."""
+    write_rs(
+        "primitives/data/x.rs",
+        "use crate::primitives::identifiers::network::Foo; // needed for X\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
 def test_multiple_imports_yield_one_finding_each(write_rs, tmp_repo: Path):
     content = (
         "use crate::primitives::identifiers::crypto::KeyType;\n"

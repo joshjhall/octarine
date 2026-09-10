@@ -13,9 +13,11 @@ Matching covers every visibility form an import can take (`use`, `pub use`,
 `pub(crate) use`, `pub(super) use`, …), both absolute (`crate::primitives::
 identifiers::…`) and relative (`super::super::identifiers::…`) paths, and
 brace-grouped imports in both their single-line and multi-line (rustfmt-produced)
-spellings — all of which close the same cycle. Each `use` statement is joined to
-its terminating `;` before matching, so a forbidden segment on a continuation line
-is still seen.
+spellings, and bare (`use …::identifiers;`) or aliased (`… as ids;`) module
+imports — all of which close the same cycle. Each `use` statement is joined to its
+terminating `;` before matching, with `//` and `/* … */` comments stripped first,
+so neither a forbidden segment on a continuation line nor a `;` inside a comment
+can hide it.
 
 Known limitation: only *import* lines are inspected. A fully-qualified inline call —
 `crate::primitives::identifiers::network::…::new().is_uuid(x)` — closes the same
@@ -42,20 +44,28 @@ IMPORT_LINE = re.compile(r"^(?:pub\s*(?:\([^)]*\)\s*)?)?use\s")
 # member of a brace group (`primitives::{identifiers::crypto::KeyType, …}`).
 # A path-segment boundary is required on the left so an unrelated module whose
 # name merely ends in `identifiers` (`my_identifiers::`) is not matched.
-FORBIDDEN_PATH = re.compile(r"(?:^|::|[{,\s])identifiers::")
+# The trailing context accepts `::` (a path continues), `;` / `}` / `,` (a bare
+# module import, possibly inside a group), or ` as ` (an aliased one) — the last
+# two import the module whole and close the cycle just as surely.
+FORBIDDEN_PATH = re.compile(r"(?:^|::|[{,\s])identifiers\s*(?:::|[;,}]|\s+as\s)")
 
 
-def _strip_line_comment(line: str) -> str:
-    """Drop a trailing `//` comment.
+BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+def _strip_comments(line: str) -> str:
+    """Drop `/* … */` spans and any trailing `//` comment.
 
     The terminator search must not see a `;` that belongs to a comment — e.g.
     `types::Problem, // keep sorted; see mod.rs` — or the join stops early and
     the rest of the brace group (which may hold the forbidden segment) is never
-    examined. Block comments spanning a `;` remain unhandled; they do not occur
-    inside import statements in this tree.
+    examined. Both comment forms are stripped for the same reason.
+
+    A block comment left unclosed on its own line is not tracked across lines;
+    that would require real lexing, and an import statement split by an
+    unterminated block comment does not parse as Rust in the first place.
     """
-    head, _, _ = line.partition("//")
-    return head
+    return BLOCK_COMMENT.sub(" ", line).partition("//")[0]
 
 
 def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
@@ -73,12 +83,12 @@ def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
             index += 1
             continue
         start = index
-        parts = [_strip_line_comment(stripped)]
+        parts = [_strip_comments(stripped)]
         # Join continuation lines until the statement terminates. Bounded by the
         # end of file, so an unterminated statement cannot loop forever.
         while ";" not in parts[-1] and index + 1 < len(lines):
             index += 1
-            parts.append(_strip_line_comment(lines[index].strip()))
+            parts.append(_strip_comments(lines[index].strip()))
         yield start + 1, " ".join(parts)
         index += 1
 
