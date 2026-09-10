@@ -8,6 +8,7 @@
 //! - `Problem`, `Result` - Error type hierarchy (re-exported from
 //!   the `octarine-problem` micro-crate so changes to error variants do not
 //!   recompile the whole octarine crate)
+//! - `crypto` - Crypto types (`KeyType`, `KeyFormat`, `SignatureAlgorithm`)
 //! - `dates` - Date parsing utilities
 //! - `network` - Network types (`PortRange`)
 //!
@@ -46,10 +47,14 @@
 //! use crate::primitives::security::network::PortRange;
 //! ```
 
+#[cfg(feature = "crypto-validation")]
+mod crypto;
 mod dates;
 mod network;
 
 // Re-export commonly used types
+#[cfg(feature = "crypto-validation")]
+pub use crypto::{KeyFormat, KeyType, SignatureAlgorithm};
 #[allow(unused_imports)]
 pub(crate) use dates::{
     get_current_year, is_leap_year, parse_eu_date, parse_iso_date, parse_us_date,

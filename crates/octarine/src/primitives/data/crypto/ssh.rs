@@ -2,9 +2,7 @@
 //!
 //! Pure functions for parsing SSH public key format.
 
-use crate::primitives::identifiers::crypto::KeyType;
-use crate::primitives::types::Problem;
-use crate::primitives::types::ProblemExt;
+use crate::primitives::types::{KeyType, Problem, ProblemExt};
 
 use super::types::ParsedSshPublicKey;
 

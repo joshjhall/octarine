@@ -4,9 +4,7 @@
 
 use chrono::{DateTime, TimeZone, Utc};
 
-use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
-use crate::primitives::types::Problem;
-use crate::primitives::types::ProblemExt;
+use crate::primitives::types::{KeyType, Problem, ProblemExt, SignatureAlgorithm};
 
 use super::types::ParsedCertificate;
 
@@ -385,7 +383,7 @@ gHpkvc/082nbRHV5AjR2
     #[cfg(feature = "crypto-validation")]
     #[test]
     fn test_parse_rsa_certificate_structure() {
-        use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
+        use crate::primitives::types::{KeyType, SignatureAlgorithm};
 
         let cert = super::parse_certificate_pem(RSA_CERT_PEM).expect("valid RSA cert");
 
@@ -438,7 +436,7 @@ gHpkvc/082nbRHV5AjR2
     #[cfg(feature = "crypto-validation")]
     #[test]
     fn test_parse_ec_certificate_curve_detection() {
-        use crate::primitives::identifiers::crypto::{KeyType, SignatureAlgorithm};
+        use crate::primitives::types::{KeyType, SignatureAlgorithm};
 
         let cert = super::parse_certificate_pem(EC_CERT_PEM).expect("valid EC cert");
 
