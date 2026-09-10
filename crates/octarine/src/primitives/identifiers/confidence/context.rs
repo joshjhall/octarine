@@ -56,7 +56,24 @@ pub struct ContextAnalyzer {
 /// Base confidence score when no context is present.
 const BASE_CONFIDENCE: f64 = 0.5;
 
-/// Whether `keyword` occurs in `text` as a whole word.
+/// Whether `c` belongs to a script written without spaces between words.
+///
+/// Han, kana, hangul, and Thai text runs together, so there is no word boundary
+/// to look for on that side of a match — a keyword abutting such a character is
+/// a legitimate hit, not an accidental infix.
+fn is_unspaced_script(c: char) -> bool {
+    matches!(c,
+        '\u{3040}'..='\u{30FF}'   // hiragana + katakana
+        | '\u{3400}'..='\u{4DBF}' // CJK unified ideographs extension A
+        | '\u{4E00}'..='\u{9FFF}' // CJK unified ideographs
+        | '\u{F900}'..='\u{FAFF}' // CJK compatibility ideographs
+        | '\u{AC00}'..='\u{D7AF}' // hangul syllables
+        | '\u{1100}'..='\u{11FF}' // hangul jamo
+        | '\u{0E00}'..='\u{0E7F}' // Thai
+    )
+}
+
+/// Whether `keyword` occurs in `text` at word boundaries.
 ///
 /// Plain substring matching over-fires on short keywords: French `"nom"` would
 /// match inside `"nomination"`, and Turkish `"ad"` inside `"adres"`, boosting
@@ -64,24 +81,20 @@ const BASE_CONFIDENCE: f64 = 0.5;
 /// and worth keeping, so the boundary check lives here rather than the shorter
 /// entries being deleted from the tables.
 ///
-/// A boundary is any non-alphanumeric character (or the start/end of the text).
-/// Scripts without inter-word spacing — Chinese, Japanese, Thai — have no word
-/// boundaries to test, so a keyword containing no alphanumeric ASCII falls back
-/// to substring matching, which is the only thing that can work there. The
-/// tables compensate by using distinctive multi-character terms in those
-/// languages.
+/// A boundary is the start/end of the text, a non-alphanumeric character, or a
+/// character from a script written **without** spaces (Han, kana, hangul,
+/// Thai). That last clause is what makes the rule safe for mixed-script
+/// keywords: Japanese `"apiキー"` inside `"apiキーを教えてください"`, or a bare
+/// `"iban"` inside `"您的iban账号是"`, have native characters — not spaces —
+/// on either side, and would be rejected by a naive alphanumeric-only test.
+/// The decision is made per **adjacent character**, not from the keyword's own
+/// script, because a keyword may mix both.
 ///
 /// `text` is expected to be already lowercased (the analyzer lowercases the
 /// window); keywords are lowercase by table invariant.
 fn is_keyword_in_text(text: &str, keyword: &str) -> bool {
-    // A keyword with no ASCII alphanumerics is in a script with no word
-    // boundaries (CJK, Thai, Arabic, Devanagari) — substring is the only
-    // available match.
-    if !keyword.chars().any(|c| c.is_ascii_alphanumeric()) {
-        return text.contains(keyword);
-    }
-
-    let is_boundary = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric());
+    let is_boundary =
+        |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() || is_unspaced_script(c));
 
     text.match_indices(keyword).any(|(start, matched)| {
         let before = text.get(..start).and_then(|s| s.chars().next_back());
@@ -460,6 +473,69 @@ mod tests {
         assert!(!analyzer.is_context_present(
             "nachnamen 123-45-6789",
             10,
+            21,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_mixed_script_keyword_matches_glued_to_native_text() {
+        // A keyword mixing ASCII with a non-spaced script ("apiキー", "api密钥")
+        // sits flush against native characters in real sentences — there is no
+        // space to find. Deciding the rule from the KEYWORD's script rather
+        // than the ADJACENT character silently killed every one of these.
+        let japanese = ContextAnalyzer::new().with_language(KeywordLanguage::Ja);
+        assert!(japanese.is_context_present(
+            "apiキーを教えてください sk_live_abcdef",
+            34,
+            51,
+            &IdentifierType::ApiKey
+        ));
+
+        let chinese = ContextAnalyzer::new().with_language(KeywordLanguage::ZhHans);
+        assert!(chinese.is_context_present(
+            "api密钥是sk_live_abcdef",
+            13,
+            30,
+            &IdentifierType::ApiKey
+        ));
+    }
+
+    #[test]
+    fn test_ascii_keyword_matches_inside_unspaced_text() {
+        // A pure-ASCII keyword ("iban") in CJK text has native characters on
+        // both sides, never spaces. It must still match.
+        let chinese = ContextAnalyzer::new().with_language(KeywordLanguage::ZhHans);
+        assert!(chinese.is_context_present(
+            "您的iban账号是DE89370400440532013000",
+            16,
+            38,
+            &IdentifierType::Iban
+        ));
+    }
+
+    #[test]
+    fn test_unspaced_boundary_does_not_leak_into_latin() {
+        // The unspaced-script escape must not weaken the Latin rule: Turkish
+        // "ad" is still rejected inside "adres", where the adjacent character
+        // is a Latin letter, not a CJK one.
+        let turkish = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(!turkish.is_context_present(
+            "adres: 12345678901",
+            7,
+            18,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_first_occurrence_invalid_later_one_valid() {
+        // The match walk must not stop at the first boundary-failing hit:
+        // "ad" is embedded in "adres" first, then stands alone.
+        let turkish = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(turkish.is_context_present(
+            "adres yok, ad: Mehmet",
+            15,
             21,
             &IdentifierType::PersonalName
         ));
