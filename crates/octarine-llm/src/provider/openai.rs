@@ -476,6 +476,26 @@ mod tests {
     }
 
     #[test]
+    fn formatting_the_whole_provider_does_not_print_the_api_key() {
+        // Credential's own Debug is unit-tested; this asserts the property
+        // end-to-end, so a future hand-written Debug on the provider that
+        // bypassed the newtype would be caught here.
+        let secret = "sk-super-secret-value-12345";
+        let provider = OpenAiProvider::new(secret, "gpt-4o").expect("valid");
+        let rendered = format!("{provider:?}");
+
+        assert!(
+            !rendered.contains(secret),
+            "the provider must not print its credential, got: {rendered}"
+        );
+        assert!(rendered.contains("<redacted>"));
+        assert!(
+            rendered.contains("gpt-4o"),
+            "non-secret fields should still be visible for debugging"
+        );
+    }
+
+    #[test]
     fn request_uses_the_configured_model_not_the_request_field() {
         // LlmRequest::model is left empty by the recognizer; the provider's
         // configured model is authoritative.

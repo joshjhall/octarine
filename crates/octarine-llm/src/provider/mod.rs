@@ -112,6 +112,17 @@ pub(crate) fn validate_url_segment(field: &str, value: &str) -> Result<String> {
 (permitted: letters, digits, '.', '_', '-')"
         )));
     }
+    // The character allow-list alone is NOT enough. `.` is permitted (real
+    // deployment names contain it), so a bare `..` passes every per-character
+    // check — and `/openai/deployments/../chat/completions` normalizes to
+    // `/openai/chat/completions`, escaping the very path segment this guard
+    // exists to pin. Reject any all-dots value, which covers `.`, `..`, and
+    // longer runs while leaving `my.deployment-2` alone.
+    if value.chars().all(|c| c == '.') {
+        return Err(Problem::Config(format!(
+            "{field} is {value:?}, a dot-segment that would alter the request path"
+        )));
+    }
     Ok(value)
 }
 
@@ -149,6 +160,29 @@ mod tests {
     fn valid_credentials_pass_through_unmodified() {
         let key = require_non_empty("api_key", "sk-abc123").expect("valid");
         assert_eq!(key, "sk-abc123");
+    }
+
+    #[test]
+    fn a_bare_dot_segment_is_rejected_even_though_dots_are_allowed() {
+        // The character allow-list permits '.', so these pass every per-char
+        // check; only the all-dots rule catches them.
+        for hostile in [".", "..", "...", "...."] {
+            assert!(
+                validate_url_segment("deployment", hostile).is_err(),
+                "{hostile:?} is a dot-segment and must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn dots_inside_a_real_name_are_still_allowed() {
+        // The dot-segment rule must not reject legitimate names.
+        for ok in ["my.deployment-2", "v1.0", "a.b.c"] {
+            assert!(
+                validate_url_segment("deployment", ok).is_ok(),
+                "{ok:?} is well-formed and must be accepted"
+            );
+        }
     }
 
     #[test]

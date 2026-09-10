@@ -18,6 +18,7 @@ use octarine_llm::provider::{
     OpenAiProvider,
 };
 use octarine_llm::recognizer::parse;
+use octarine_llm::sse::MAX_LINE_BYTES;
 use octarine_llm::{LLMRecognizer, LlmProvider, LlmRequest};
 use serde_json::{Value, json};
 use wiremock::matchers::{header, method, path, query_param};
@@ -621,6 +622,39 @@ async fn an_undecodable_data_frame_is_skipped_not_fatal() {
     assert_eq!(
         response.content, detection,
         "the surrounding real frames must still reassemble exactly"
+    );
+}
+
+#[tokio::test]
+async fn an_oversized_unterminated_sse_line_aborts_the_request() {
+    // The decoder's cap is unit-tested; this asserts the provider layer
+    // translates it into a hard error rather than a silently short read.
+    let server = MockServer::start().await;
+    // One `data:` line with no terminator, past the 1 MiB cap.
+    let flood = format!("data: {}", "x".repeat(MAX_LINE_BYTES + 1024));
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(flood, "text/event-stream")
+                .append_header("content-type", "text/event-stream"),
+        )
+        .mount(&server)
+        .await;
+
+    let provider =
+        OpenAiProvider::with_base_url("sk-test", "gpt-4o", &server.uri()).expect("builds");
+    let outcome = provider.complete_streaming(&request()).await;
+
+    let problem = outcome.expect_err("an oversized line must abort, not truncate");
+    let rendered = problem.to_string();
+    assert!(
+        rendered.contains("openai"),
+        "the error must name the provider, got: {rendered}"
+    );
+    assert!(
+        rendered.contains("buffer limit"),
+        "the error must explain why, got: {rendered}"
     );
 }
 

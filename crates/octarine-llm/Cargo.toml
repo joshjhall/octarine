@@ -18,9 +18,9 @@ octarine-problem = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }
 futures-util = { workspace = true }
-# `stream` is required for `bytes_stream()` on a streaming SSE response; the
-# rest matches the workspace spec (rustls, no default features).
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "stream"] }
+# Inherited so a workspace-level version bump (e.g. for a security advisory)
+# reaches this crate too; `stream` is layered on for `bytes_stream()`.
+reqwest = { workspace = true, features = ["stream"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
