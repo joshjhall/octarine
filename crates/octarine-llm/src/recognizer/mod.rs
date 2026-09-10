@@ -11,7 +11,7 @@ use octarine::observe;
 use octarine::observe::metrics::{increment, increment_by, record};
 use octarine_problem::Result;
 
-use crate::metrics::metric_names;
+use crate::metrics::{self, Outcome, metric_names};
 use crate::types::{LlmProvider, LlmRequest};
 
 /// Default ceiling on generated tokens.
@@ -59,6 +59,10 @@ pub struct LLMRecognizer<P: LlmProvider> {
     provider: P,
     /// Entity types advertised through
     /// [`supported_entities`](Recognizer::supported_entities).
+    ///
+    /// Empty means "everything", per that method's contract — a general-purpose
+    /// LLM cannot enumerate what it can find. A registry must filter with
+    /// [`Recognizer::supports`], not a bare intersection.
     supported: Vec<IdentifierType>,
     /// Ceiling on generated tokens per call.
     max_tokens: u32,
@@ -121,6 +125,18 @@ impl<P: LlmProvider> LLMRecognizer<P> {
     }
 }
 
+/// Increments the `{provider, outcome}`-dimensioned call counter.
+///
+/// Silently skips when the name does not validate rather than failing the
+/// detection — a metric is never worth losing a result over. The undimensioned
+/// `calls_total` is incremented separately, so the observation is never lost
+/// entirely.
+fn record_outcome(provider: &str, outcome: Outcome) {
+    if let Some(name) = metrics::calls_by_provider(provider, outcome) {
+        increment(name);
+    }
+}
+
 #[async_trait]
 impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
     async fn analyze(
@@ -155,11 +171,15 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
 
         increment(metric_names::calls_total());
         record(metric_names::call_duration_ms(), elapsed_ms);
+        if let Some(name) = metrics::duration_by_provider(self.provider.name()) {
+            record(name, elapsed_ms);
+        }
 
         let response = match outcome {
             Ok(response) => response,
             Err(problem) => {
                 increment(metric_names::errors());
+                record_outcome(self.provider.name(), Outcome::ProviderError);
                 if self.emit_events {
                     observe::warn(
                         "llm.recognizer.analyze",
@@ -192,6 +212,7 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
             Ok(raw) => raw,
             Err(problem) => {
                 increment(metric_names::parse_failures());
+                record_outcome(self.provider.name(), Outcome::ParseError);
                 if self.emit_events {
                     // Truncation is the usual cause, and it is actionable
                     // (raise max_tokens) in a way a generic parse error is not.
@@ -210,6 +231,8 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
                 return Err(problem);
             }
         };
+
+        record_outcome(self.provider.name(), Outcome::Ok);
 
         let (results, unanchored) = parse::anchor(text, raw)?;
         increment_by(metric_names::entities_detected(), results.len() as u64);
@@ -447,6 +470,51 @@ mod tests {
             Some(99),
             "the override must win over DEFAULT_MAX_TOKENS"
         );
+    }
+
+    #[tokio::test]
+    async fn a_default_recognizer_is_not_skipped_by_a_registry_filter() {
+        // `new()` advertises nothing, meaning everything. A registry using
+        // `supports` must still route every entity type to it.
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL)).silent();
+
+        assert!(rec.supported_entities().is_empty());
+        assert!(
+            rec.supports(&[IdentifierType::CreditCard]),
+            "an all-purpose recognizer must not be filtered out"
+        );
+        assert!(rec.supports(&[]));
+    }
+
+    #[tokio::test]
+    async fn a_narrowed_recognizer_is_skipped_for_disjoint_requests() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_supported_entities(vec![IdentifierType::Email])
+            .silent();
+
+        assert!(rec.supports(&[IdentifierType::Email]));
+        assert!(!rec.supports(&[IdentifierType::CreditCard]));
+    }
+
+    #[tokio::test]
+    async fn the_default_event_path_runs_without_panicking() {
+        // Every other test calls `.silent()`, so the three observe:: branches
+        // and their format strings would otherwise never execute.
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL));
+        assert!(rec.emit_events, "events are on by default");
+
+        let results = rec
+            .analyze("Reach alice@example.com", "en", &[])
+            .await
+            .expect("detection succeeds");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn the_default_event_path_runs_on_the_error_branch_too() {
+        let rec = LLMRecognizer::new(StubProvider::new("not json at all"));
+        let outcome = rec.analyze("Reach alice@example.com", "en", &[]).await;
+        assert!(outcome.is_err(), "the parse-error event branch executes");
     }
 
     #[tokio::test]

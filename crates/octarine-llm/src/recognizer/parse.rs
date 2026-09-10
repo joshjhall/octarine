@@ -66,9 +66,15 @@ pub fn extract_json(content: &str) -> Result<&str> {
         return Ok(trimmed);
     }
     find_balanced_object(trimmed).ok_or_else(|| {
+        // Deliberately does NOT echo the response. A model that fails to emit
+        // JSON usually emits prose about the input instead — a refusal quoting
+        // the text, a paraphrase — so the excerpt would carry the very PII
+        // under analysis into a Problem that `analyze` logs via observe::warn,
+        // bypassing the Debug redaction on LlmResponse. The length is enough
+        // to tell an empty response from a chatty one.
         Problem::Parse(format!(
-            "no JSON object found in model response: {}",
-            trimmed.chars().take(120).collect::<String>()
+            "no JSON object found in model response ({} chars)",
+            trimmed.len()
         ))
     })
 }
@@ -120,7 +126,18 @@ fn find_balanced_object(text: &str) -> Option<&str> {
 pub fn parse_entities(content: &str) -> Result<Vec<RawEntity>> {
     let json = extract_json(content)?;
     let envelope: DetectionEnvelope = serde_json::from_str(json)
-        .map_err(|e| Problem::Parse(format!("model response was not valid detection JSON: {e}")))?;
+        // Same redaction rule as `extract_json`: serde's Display quotes the
+        // offending value ("invalid type: string \"...\""), which here would be
+        // model output about the analyzed text. Report the position and
+        // category, never the bytes.
+        .map_err(|e| {
+            Problem::Parse(format!(
+                "model response was not valid detection JSON ({:?} at line {}, column {})",
+                e.classify(),
+                e.line(),
+                e.column()
+            ))
+        })?;
     Ok(envelope.entities)
 }
 

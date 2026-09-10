@@ -125,7 +125,31 @@ pub trait Recognizer: Send + Sync {
     ///
     /// Lets a registry skip a recognizer entirely when none of its types were
     /// requested, avoiding a pointless network call.
+    ///
+    /// **An empty slice means "every type", not "no types"** — matching
+    /// [`analyze`](Recognizer::analyze)'s treatment of its `entities` argument.
+    /// A general-purpose recognizer (an LLM, say) legitimately cannot enumerate
+    /// what it supports.
+    ///
+    /// A registry must therefore not filter with a bare intersection: an empty
+    /// set never intersects anything, so the naive test would skip exactly the
+    /// recognizers that handle everything. Use
+    /// [`supports`](Recognizer::supports), which encodes the rule.
     fn supported_entities(&self) -> &[IdentifierType];
+
+    /// Whether this recognizer is worth calling for `requested`.
+    ///
+    /// The correct filter for a registry, honoring the empty-means-everything
+    /// convention on both sides: an empty `requested` asks for everything, and
+    /// an empty [`supported_entities`](Recognizer::supported_entities)
+    /// advertises everything. Only a non-empty pair is intersected.
+    fn supports(&self, requested: &[IdentifierType]) -> bool {
+        let supported = self.supported_entities();
+        if requested.is_empty() || supported.is_empty() {
+            return true;
+        }
+        requested.iter().any(|e| supported.contains(e))
+    }
 }
 
 #[cfg(test)]
@@ -243,6 +267,67 @@ mod tests {
 
         let results = outcome.expect("an unsupported language must not be an error");
         assert!(results.is_empty(), "unsupported language yields no results");
+    }
+
+    /// Advertises nothing, meaning "everything" — the general-purpose shape.
+    struct CatchAllRecognizer {
+        supported: Vec<IdentifierType>,
+    }
+
+    #[async_trait]
+    impl Recognizer for CatchAllRecognizer {
+        async fn analyze(
+            &self,
+            _text: &str,
+            _language: &str,
+            _entities: &[IdentifierType],
+        ) -> Result<Vec<RecognizerResult>> {
+            Ok(Vec::new())
+        }
+
+        fn name(&self) -> &str {
+            "catch-all"
+        }
+
+        fn supported_entities(&self) -> &[IdentifierType] {
+            &self.supported
+        }
+    }
+
+    #[test]
+    fn supports_treats_an_empty_advertised_set_as_everything() {
+        // The trap this method exists to close: a bare intersection would skip
+        // exactly the recognizers that handle every type.
+        let catch_all = CatchAllRecognizer {
+            supported: Vec::new(),
+        };
+
+        assert!(
+            catch_all.supports(&[IdentifierType::CreditCard]),
+            "a recognizer advertising nothing must not be skipped"
+        );
+        assert!(catch_all.supports(&[]));
+    }
+
+    #[test]
+    fn supports_intersects_when_both_sides_are_specific() {
+        let rec = needle_recognizer(); // advertises [Email]
+
+        assert!(rec.supports(&[IdentifierType::Email]));
+        assert!(rec.supports(&[IdentifierType::CreditCard, IdentifierType::Email]));
+        assert!(
+            !rec.supports(&[IdentifierType::CreditCard]),
+            "a disjoint request must skip the recognizer"
+        );
+    }
+
+    #[test]
+    fn supports_treats_an_empty_request_as_everything() {
+        let rec = needle_recognizer();
+        assert!(
+            rec.supports(&[]),
+            "asking for everything must include a narrow recognizer"
+        );
     }
 
     #[tokio::test]
