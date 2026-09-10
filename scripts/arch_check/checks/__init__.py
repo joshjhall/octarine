@@ -13,6 +13,7 @@ from scripts.arch_check.checks import (
     layer_boundary,
     naming_prefix,
     naming_return_type,
+    submodule_cycle,
     test_lint,
     type_visibility,
     unwrapped_fn,
@@ -24,6 +25,11 @@ CheckRunner = Callable[..., Iterator[Finding]]
 def _run_layer_boundary(*, staged_only: bool, root: Path) -> Iterator[Finding]:
     files = iter_files(subdir="primitives", staged_only=staged_only, root=root)
     yield from layer_boundary.run(files=files, root=root)
+
+
+def _run_submodule_cycle(*, staged_only: bool, root: Path) -> Iterator[Finding]:
+    files = iter_files(subdir="primitives/data", staged_only=staged_only, root=root)
+    yield from submodule_cycle.run(files=files, root=root)
 
 
 def _run_unwrapped_fn(*, staged_only: bool, root: Path) -> Iterator[Finding]:
@@ -70,6 +76,7 @@ def _run_doctest_ignores(*, staged_only: bool, root: Path) -> Iterator[Finding]:
 # gate.
 DEFAULT_CHECKS: list[str] = [
     "layer-boundary",
+    "submodule-cycle",
     "unwrapped-fn",
     "naming-prefix",
     "naming-return-type",
@@ -84,6 +91,7 @@ CHECK_ORDER: list[str] = [*DEFAULT_CHECKS]
 
 CHECKS: dict[str, CheckRunner] = {
     "layer-boundary": _run_layer_boundary,
+    "submodule-cycle": _run_submodule_cycle,
     "unwrapped-fn": _run_unwrapped_fn,
     "naming-prefix": _run_naming_prefix,
     "naming-return-type": _run_naming_return_type,

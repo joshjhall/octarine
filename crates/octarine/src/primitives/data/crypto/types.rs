@@ -6,7 +6,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::primitives::identifiers::crypto::{KeyFormat, KeyType, SignatureAlgorithm};
+use crate::primitives::types::{KeyFormat, KeyType, SignatureAlgorithm};
 
 /// Parsed PEM block
 #[derive(Debug, Clone, PartialEq, Eq)]
