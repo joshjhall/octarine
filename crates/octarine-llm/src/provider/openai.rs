@@ -12,7 +12,7 @@ use octarine::runtime::http::HttpClient;
 use octarine_problem::{Problem, Result};
 use serde::{Deserialize, Serialize};
 
-use super::{build_client, require_non_empty};
+use super::{Credential, build_client, require_non_empty};
 use crate::error::problem_for_status;
 use crate::types::{FinishReason, LlmProvider, LlmRequest, LlmResponse, TokenUsage};
 
@@ -271,6 +271,13 @@ pub(crate) async fn stream_chat_completion(
         .map_err(|e| Problem::Parse(format!("could not build {provider} request: {e}")))?;
     if let Some(map) = body.as_object_mut() {
         map.insert("stream".to_string(), serde_json::Value::Bool(true));
+        // Without `stream_options.include_usage`, OpenAI and Azure omit `usage`
+        // from every streamed chunk — the accumulator below would then report
+        // zero tokens for every streaming call while looking like it worked.
+        map.insert(
+            "stream_options".to_string(),
+            serde_json::json!({"include_usage": true}),
+        );
     }
 
     let (auth_header, auth_value) = auth;
@@ -307,6 +314,12 @@ pub(crate) async fn stream_chat_completion(
                 &mut usage,
                 &mut served_model,
             );
+        }
+        if decoder.is_overflowed() {
+            return Err(Problem::Network(format!(
+                "{provider} sent an SSE line exceeding the buffer limit; \
+stream abandoned"
+            )));
         }
         if decoder.is_done() {
             break;
@@ -383,7 +396,7 @@ fn fold_chunk(
 #[derive(Debug, Clone)]
 pub struct OpenAiProvider {
     client: HttpClient,
-    api_key: String,
+    api_key: Credential,
     model: String,
 }
 
@@ -409,7 +422,7 @@ impl OpenAiProvider {
         let model = require_non_empty("model", model)?;
         Ok(Self {
             client: build_client("openai", base_url)?,
-            api_key,
+            api_key: Credential::new(api_key),
             model,
         })
     }
@@ -422,7 +435,7 @@ impl LlmProvider for OpenAiProvider {
             &self.client,
             "openai",
             CHAT_COMPLETIONS_PATH,
-            ("Authorization", format!("Bearer {}", self.api_key)),
+            ("Authorization", format!("Bearer {}", self.api_key.expose())),
             request,
             &self.model,
         )
@@ -434,7 +447,7 @@ impl LlmProvider for OpenAiProvider {
             &self.client,
             "openai",
             CHAT_COMPLETIONS_PATH,
-            ("Authorization", format!("Bearer {}", self.api_key)),
+            ("Authorization", format!("Bearer {}", self.api_key.expose())),
             request,
             &self.model,
         )

@@ -27,6 +27,15 @@ const DEFAULT_MAX_TOKENS: u32 = 2048;
 /// prompting, parsing, anchoring, and instrumentation — the provider supplies
 /// only transport and wire format.
 ///
+/// # Buffered, not streaming
+///
+/// [`analyze`](Recognizer::analyze) calls [`LlmProvider::complete`], never
+/// [`complete_streaming`](LlmProvider::complete_streaming). Detection output is
+/// one JSON document, so a partial body yields no spans — there is nothing
+/// useful to hand back mid-stream. Callers who want the streaming transport
+/// (bounded memory, no idle timeout on a slow local model) can drive a provider
+/// directly; see the crate-level docs.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -423,6 +432,21 @@ mod tests {
         let rec = LLMRecognizer::new(StubProvider::new(r#"{"entities":[]}"#)).silent();
         let results = rec.analyze("nothing to see", "en", &[]).await.expect("ok");
         assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn with_max_tokens_override_reaches_the_request() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_max_tokens(99)
+            .silent();
+        let _ = rec.analyze("text", "en", &[]).await.expect("ok");
+
+        let calls = rec.provider.calls.lock().expect("lock");
+        assert_eq!(
+            calls.first().map(|r| r.max_tokens),
+            Some(99),
+            "the override must win over DEFAULT_MAX_TOKENS"
+        );
     }
 
     #[tokio::test]

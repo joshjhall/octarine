@@ -35,6 +35,16 @@ pub struct SseEvent {
     pub data: String,
 }
 
+/// Maximum bytes buffered for a single un-terminated line.
+///
+/// A peer that streams forever without emitting a newline would otherwise grow
+/// the buffer without bound for the whole 120s request timeout — a
+/// memory-exhaustion vector, and a reachable one: the Ollama and
+/// OpenAI-compatible base URLs are caller-configurable and may point at a
+/// third-party or local service. 1 MiB is far above any real SSE frame (a
+/// detection response is a few KB) while still bounding the damage.
+pub const MAX_LINE_BYTES: usize = 1024 * 1024;
+
 /// Incremental SSE decoder.
 ///
 /// Feed it bytes with [`push`](SseDecoder::push); it returns the events that
@@ -48,6 +58,10 @@ pub struct SseDecoder {
     pending: Vec<String>,
     /// Set once the `[DONE]` sentinel is seen; further input is ignored.
     done: bool,
+    /// Set when a single line exceeded [`MAX_LINE_BYTES`]. Latching rather than
+    /// merely truncating: a line that long means the peer is not speaking SSE,
+    /// so continuing to parse its output would be guesswork.
+    overflowed: bool,
 }
 
 /// The sentinel OpenAI-family providers send to close a stream.
@@ -60,10 +74,24 @@ impl SseDecoder {
         Self::default()
     }
 
-    /// Whether the `[DONE]` sentinel has been observed.
+    /// Whether the `[DONE]` sentinel has been observed, or the stream was
+    /// abandoned because a line exceeded [`MAX_LINE_BYTES`].
+    ///
+    /// Both mean "stop reading"; [`is_overflowed`](SseDecoder::is_overflowed)
+    /// distinguishes the orderly ending from the abandoned one.
     #[must_use]
     pub fn is_done(&self) -> bool {
-        self.done
+        self.done || self.overflowed
+    }
+
+    /// Whether decoding was abandoned because a single un-terminated line
+    /// exceeded [`MAX_LINE_BYTES`].
+    ///
+    /// A caller must treat this as a failure rather than as end-of-stream: the
+    /// content received so far is arbitrarily truncated.
+    #[must_use]
+    pub fn is_overflowed(&self) -> bool {
+        self.overflowed
     }
 
     /// Feeds a chunk and returns any events completed by it.
@@ -71,10 +99,19 @@ impl SseDecoder {
     /// Chunk boundaries are irrelevant — a chunk may end mid-line or split a
     /// multi-byte character.
     pub fn push(&mut self, chunk: &Bytes) -> Vec<SseEvent> {
-        if self.done {
+        if self.is_done() {
             return Vec::new();
         }
         self.buffer.extend_from_slice(chunk);
+
+        // Guard BEFORE parsing: an un-terminated line means `take_line` will
+        // find no newline and the buffer would simply keep growing.
+        if self.buffer.len() > MAX_LINE_BYTES && !self.buffer.contains(&b'\n') {
+            self.overflowed = true;
+            self.buffer.clear();
+            self.pending.clear();
+            return Vec::new();
+        }
 
         let mut events = Vec::new();
         while let Some(line) = self.take_line() {
@@ -86,6 +123,12 @@ impl SseDecoder {
             }
         }
         events
+    }
+
+    /// Bytes currently buffered for an incomplete line. Test-only accessor.
+    #[cfg(test)]
+    fn buffered_len(&self) -> usize {
+        self.buffer.len()
     }
 
     /// Flushes any event left un-terminated by a missing final blank line.
@@ -303,6 +346,66 @@ mod tests {
         assert!(
             events.is_empty(),
             "separators alone must not fabricate empty events"
+        );
+    }
+
+    #[test]
+    fn an_unterminated_line_past_the_cap_overflows_instead_of_growing() {
+        let mut d = SseDecoder::new();
+        // No newline anywhere: a decoder without the guard buffers all of this
+        // and would keep going for the whole request timeout.
+        let flood = Bytes::from("x".repeat(MAX_LINE_BYTES.saturating_add(1)));
+        let events = d.push(&flood);
+
+        assert!(events.is_empty());
+        assert!(d.is_overflowed(), "the cap must latch, not merely truncate");
+        assert!(d.is_done(), "an overflowed stream must stop being read");
+        assert_eq!(
+            d.buffered_len(),
+            0,
+            "the buffer must be released, not retained"
+        );
+    }
+
+    #[test]
+    fn overflow_is_reached_by_accumulation_across_chunks() {
+        let mut d = SseDecoder::new();
+        // Each chunk is individually small; only the accumulation crosses the
+        // cap, which is the realistic shape of this attack.
+        let chunk = Bytes::from("y".repeat(64 * 1024));
+        for _ in 0..20 {
+            let _ = d.push(&chunk);
+            if d.is_overflowed() {
+                break;
+            }
+        }
+        assert!(d.is_overflowed(), "accumulated bytes must trip the cap");
+    }
+
+    #[test]
+    fn a_large_but_newline_terminated_stream_does_not_overflow() {
+        // The guard must bound un-terminated lines only — a long but
+        // well-formed stream is legitimate and must still parse.
+        let mut d = SseDecoder::new();
+        let payload = "z".repeat(200_000);
+        let events = push(&mut d, &format!("data: {payload}\n\n"));
+
+        assert!(
+            !d.is_overflowed(),
+            "well-formed input must not trip the cap"
+        );
+        assert_eq!(data_of(&events), vec![payload.as_str()]);
+    }
+
+    #[test]
+    fn input_after_overflow_is_ignored() {
+        let mut d = SseDecoder::new();
+        let _ = d.push(&Bytes::from("x".repeat(MAX_LINE_BYTES.saturating_add(1))));
+        let after = push(&mut d, "data: recovered\n\n");
+
+        assert!(
+            after.is_empty(),
+            "a peer that overflowed must not be parsed further"
         );
     }
 

@@ -496,6 +496,43 @@ async fn streamed_content_yields_the_same_anchored_span_as_a_buffered_body() {
 }
 
 #[tokio::test]
+async fn streaming_request_asks_for_usage_in_the_final_chunk() {
+    // Without stream_options.include_usage, real OpenAI and Azure omit `usage`
+    // from every chunk, so the accumulator silently reports zero tokens for
+    // every streaming call. The mock always sends usage, so only inspecting the
+    // outgoing request can catch this.
+    let server = MockServer::start().await;
+    let detection = detection_json();
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(sse_stream(&detection, 10), "text/event-stream")
+                .append_header("content-type", "text/event-stream"),
+        )
+        .mount(&server)
+        .await;
+
+    let provider =
+        OpenAiProvider::with_base_url("sk-test", "gpt-4o", &server.uri()).expect("builds");
+    let _ = provider
+        .complete_streaming(&request())
+        .await
+        .expect("stream succeeds");
+
+    let sent: Value =
+        serde_json::from_slice(&server.received_requests().await.expect("recorded")[0].body)
+            .expect("body is JSON");
+
+    assert_eq!(sent["stream"], json!(true));
+    assert_eq!(
+        sent["stream_options"]["include_usage"],
+        json!(true),
+        "usage is only streamed back when explicitly requested"
+    );
+}
+
+#[tokio::test]
 async fn streaming_error_status_is_surfaced_not_swallowed() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
@@ -511,6 +548,79 @@ async fn streaming_error_status_is_surfaced_not_swallowed() {
     assert!(
         outcome.is_err(),
         "a 401 on the streaming path must error, not yield empty content"
+    );
+}
+
+#[tokio::test]
+async fn a_content_free_stream_errors_rather_than_returning_empty_content() {
+    let server = MockServer::start().await;
+    // A well-formed stream that carries no delta content at all.
+    let body = format!(
+        "data: {}\n\ndata: [DONE]\n\n",
+        json!({"choices": [{"delta": {}, "finish_reason": "stop"}]})
+    );
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(body, "text/event-stream")
+                .append_header("content-type", "text/event-stream"),
+        )
+        .mount(&server)
+        .await;
+
+    let provider =
+        OpenAiProvider::with_base_url("sk-test", "gpt-4o", &server.uri()).expect("builds");
+    let outcome = provider.complete_streaming(&request()).await;
+
+    let problem = outcome.expect_err("empty content must not look like a clean completion");
+    assert!(
+        problem.to_string().contains("openai"),
+        "the error must name the provider, got: {problem}"
+    );
+}
+
+#[tokio::test]
+async fn an_undecodable_data_frame_is_skipped_not_fatal() {
+    // fold_chunk documents that a `data:` line failing to parse as ChatChunk is
+    // tolerated. The existing tests only cover SSE *comment* lines, which the
+    // decoder filters before fold_chunk ever runs.
+    let server = MockServer::start().await;
+    let detection = detection_json();
+    let (head, tail) = detection.split_at(12);
+    let frame = |delta: &str| {
+        format!(
+            "data: {}\n\n",
+            json!({"choices": [{"delta": {"content": delta}}]})
+        )
+    };
+    let body = format!(
+        "{}data: {{\"unexpected\":\"shape\"}}\n\n{}data: {}\n\ndata: [DONE]\n\n",
+        frame(head),
+        frame(tail),
+        json!({"choices": [{"delta": {}, "finish_reason": "stop"}]})
+    );
+
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(body, "text/event-stream")
+                .append_header("content-type", "text/event-stream"),
+        )
+        .mount(&server)
+        .await;
+
+    let provider =
+        OpenAiProvider::with_base_url("sk-test", "gpt-4o", &server.uri()).expect("builds");
+    let response = provider
+        .complete_streaming(&request())
+        .await
+        .expect("a garbage frame must not fail the stream");
+
+    assert_eq!(
+        response.content, detection,
+        "the surrounding real frames must still reassemble exactly"
     );
 }
 

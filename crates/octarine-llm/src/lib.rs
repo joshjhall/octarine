@@ -24,6 +24,25 @@
 //! at resolve time. Import from `octarine_llm` directly. See
 //! `docs/architecture/crate-layout.md`.
 //!
+//! # Streaming: transport only, not incremental detection
+//!
+//! [`LlmProvider::complete_streaming`] consumes an SSE response incrementally
+//! and reassembles it, which bounds memory and avoids idle timeouts on a long
+//! generation. It does **not** deliver partial `RecognizerResult`s as deltas
+//! arrive, and [`LLMRecognizer`]'s `analyze` does not use it — `analyze` calls
+//! [`LlmProvider::complete`].
+//!
+//! That is a property of the task, not an omission: detection output is a
+//! single JSON document, and a fragment of a JSON document yields no spans. A
+//! partial result could only be produced by incrementally parsing truncated
+//! JSON, which would emit detections that a later delta might contradict.
+//!
+//! So streaming is available for **direct provider use** — call
+//! `complete_streaming` yourself against a slow local model — while the
+//! recognizer stays on the buffered path. Issue #520 anticipated partial
+//! `RecognizerResult` delivery; that is not shipped here, and whether it should
+//! be is tracked in issue #755 along with live-backend CI verification.
+//!
 //! # Hallucination safety
 //!
 //! Models are asked for the matched **text**, never for character offsets.

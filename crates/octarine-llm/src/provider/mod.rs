@@ -49,6 +49,72 @@ pub fn build_client(name: &str, base_url: &str) -> Result<HttpClient> {
     HttpClient::with_name(name.to_string(), config)
 }
 
+/// A credential that never appears in `Debug` output.
+///
+/// Every provider holds an API key or bearer token, and every provider derives
+/// `Debug` for ordinary ergonomics. A raw `String` field would then be printed
+/// in full by any `{:?}` — a future log line, a `dbg!`, an error type that
+/// embeds the provider, or a test assertion printing the struct on failure.
+/// That is a credential leak into CI logs, and it is exactly the failure mode
+/// `crypto::secrets` already guards against by hashing keys before logging.
+///
+/// Wrapping the credential makes the redaction structural rather than a rule
+/// each provider has to remember: there is no way to derive `Debug` on a
+/// provider and still print the secret.
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct Credential(String);
+
+impl Credential {
+    /// Wraps a credential value.
+    pub(crate) fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    /// Borrows the raw value, for building an outbound header.
+    pub(crate) fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Credential {
+    /// Prints a fixed placeholder — never the value, and never a length or
+    /// prefix, both of which leak information about the secret.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("<redacted>")
+    }
+}
+
+/// Rejects a value that would alter the URL it is interpolated into.
+///
+/// Azure addresses a model by splicing the deployment name and API version
+/// straight into the request path and query string. A value containing `?`,
+/// `#`, or `&` would rewrite the query; one containing `/` or `..` could
+/// redirect the request to a different path entirely. These values normally
+/// come from operator config rather than user input, so this is defense in
+/// depth — but the project's zero-trust rule is to validate every parameter
+/// regardless of source.
+///
+/// The allow-list is deliberately narrow: real Azure deployment names and API
+/// versions are alphanumerics, hyphens, underscores, and dots.
+///
+/// # Errors
+///
+/// Returns [`Problem::Config`] when `value` is empty or contains a character
+/// outside `[A-Za-z0-9._-]`.
+pub(crate) fn validate_url_segment(field: &str, value: &str) -> Result<String> {
+    let value = require_non_empty(field, value)?;
+    if let Some(bad) = value
+        .chars()
+        .find(|c| !c.is_ascii_alphanumeric() && !matches!(c, '.' | '_' | '-'))
+    {
+        return Err(Problem::Config(format!(
+            "{field} contains {bad:?}, which is not allowed in a URL segment \
+(permitted: letters, digits, '.', '_', '-')"
+        )));
+    }
+    Ok(value)
+}
+
 /// Rejects an empty credential before it reaches the network.
 ///
 /// An empty key produces a 401 several seconds later, with a message about
@@ -83,6 +149,34 @@ mod tests {
     fn valid_credentials_pass_through_unmodified() {
         let key = require_non_empty("api_key", "sk-abc123").expect("valid");
         assert_eq!(key, "sk-abc123");
+    }
+
+    #[test]
+    fn credential_debug_never_reveals_the_secret_or_its_shape() {
+        let secret = "sk-super-secret-value-12345";
+        let rendered = format!("{:?}", Credential::new(secret));
+
+        assert!(!rendered.contains(secret), "the value must not be printed");
+        assert!(!rendered.contains("sk-"), "not even a prefix");
+        assert!(
+            !rendered.contains(&secret.len().to_string()),
+            "not even the length, which narrows a brute force"
+        );
+        assert_eq!(rendered, "<redacted>");
+    }
+
+    #[test]
+    fn credential_debug_is_identical_for_different_secrets() {
+        // A rendering that varied with the value would leak through comparison.
+        assert_eq!(
+            format!("{:?}", Credential::new("short")),
+            format!("{:?}", Credential::new("a-much-longer-secret-value"))
+        );
+    }
+
+    #[test]
+    fn credential_still_exposes_the_value_for_header_construction() {
+        assert_eq!(Credential::new("sk-abc").expose(), "sk-abc");
     }
 
     #[test]

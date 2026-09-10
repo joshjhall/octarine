@@ -256,8 +256,8 @@ jobs:
 
   publish-llm:
     name: Publish octarine-llm
-    # Depends on octarine-core, so it must publish after it.
-    needs: [publish-octarine, validate]
+    # Depends on octarine-core AND octarine-problem, so it publishes last.
+    needs: [publish-octarine, publish-problem, validate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -274,21 +274,28 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: release
-      - name: Wait for octarine-core to appear on crates.io
+      - name: Wait for deps to appear on crates.io
         env:
-          CORE_VERSION: ${{ needs.validate.outputs.version }}
+          DEP_VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          # Index propagation can lag a few seconds after a fresh publish. Poll
-          # the crates.io API, which is authoritative for an exact version.
-          for attempt in 1 2 3 4 5 6; do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' -A 'octarine-release-ci' \
-              "https://crates.io/api/v1/crates/octarine-core/$CORE_VERSION")
-            if [ "$CODE" = "200" ]; then
-              echo "octarine-core $CORE_VERSION is indexed"
-              break
-            fi
-            echo "Attempt $attempt: octarine-core $CORE_VERSION not yet indexed (HTTP $CODE), waiting 15s..."
-            sleep 15
+          # Index propagation can lag a few seconds after a fresh publish, and
+          # `needs:` only guarantees the publish job RAN, not that crates.io has
+          # indexed it. octarine-llm depends on BOTH octarine-core and
+          # octarine-problem, so poll for both rather than relying on
+          # publish-octarine having incidentally waited for octarine-problem
+          # earlier — that guarantee would vanish if the job graph is ever
+          # restructured.
+          for CRATE in octarine-core octarine-problem; do
+            for attempt in 1 2 3 4 5 6; do
+              CODE=$(curl -s -o /dev/null -w '%{http_code}' -A 'octarine-release-ci' \
+                "https://crates.io/api/v1/crates/$CRATE/$DEP_VERSION")
+              if [ "$CODE" = "200" ]; then
+                echo "$CRATE $DEP_VERSION is indexed"
+                break
+              fi
+              echo "Attempt $attempt: $CRATE $DEP_VERSION not yet indexed (HTTP $CODE), waiting 15s..."
+              sleep 15
+            done
           done
       - name: Publish (idempotent)
         env:

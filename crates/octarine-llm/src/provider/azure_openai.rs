@@ -14,7 +14,7 @@ use octarine::runtime::http::HttpClient;
 use octarine_problem::Result;
 
 use super::openai::{post_chat_completion, stream_chat_completion};
-use super::{build_client, require_non_empty};
+use super::{Credential, build_client, require_non_empty, validate_url_segment};
 use crate::types::{LlmProvider, LlmRequest, LlmResponse};
 
 /// API version used when the caller does not specify one.
@@ -28,13 +28,13 @@ const DEFAULT_API_VERSION: &str = "2024-10-21";
 #[derive(Debug, Clone)]
 enum AzureAuth {
     /// A resource key, sent as the `api-key` header.
-    ApiKey(String),
+    ApiKey(Credential),
     /// An Entra ID access token, sent as `Authorization: Bearer`.
     ///
     /// Tokens expire, so this holds a caller-refreshed value: the caller
     /// rebuilds the provider with a fresh token rather than this crate taking a
     /// dependency on an Azure identity SDK to do the refresh itself.
-    BearerToken(String),
+    BearerToken(Credential),
 }
 
 /// A client for an Azure OpenAI deployment.
@@ -60,7 +60,12 @@ impl AzureOpenAiProvider {
     /// argument is empty.
     pub fn with_api_key(endpoint: &str, api_key: &str, deployment: &str) -> Result<Self> {
         let api_key = require_non_empty("api_key", api_key)?;
-        Self::build(endpoint, AzureAuth::ApiKey(api_key), deployment, None)
+        Self::build(
+            endpoint,
+            AzureAuth::ApiKey(Credential::new(api_key)),
+            deployment,
+            None,
+        )
     }
 
     /// Builds a provider using an Entra ID / Managed Identity access token.
@@ -75,14 +80,24 @@ impl AzureOpenAiProvider {
     /// argument is empty.
     pub fn with_bearer_token(endpoint: &str, token: &str, deployment: &str) -> Result<Self> {
         let token = require_non_empty("token", token)?;
-        Self::build(endpoint, AzureAuth::BearerToken(token), deployment, None)
+        Self::build(
+            endpoint,
+            AzureAuth::BearerToken(Credential::new(token)),
+            deployment,
+            None,
+        )
     }
 
     /// Overrides the pinned `api-version`.
-    #[must_use]
-    pub fn with_api_version(mut self, api_version: impl Into<String>) -> Self {
-        self.api_version = api_version.into();
-        self
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Problem::Config`](octarine_problem::Problem::Config) if
+    /// `api_version` is empty or contains a character outside
+    /// `[A-Za-z0-9._-]`, which could otherwise rewrite the request URL.
+    pub fn with_api_version(mut self, api_version: impl Into<String>) -> Result<Self> {
+        self.api_version = validate_url_segment("api_version", &api_version.into())?;
+        Ok(self)
     }
 
     /// Shared construction path.
@@ -93,7 +108,8 @@ impl AzureOpenAiProvider {
         api_version: Option<&str>,
     ) -> Result<Self> {
         let endpoint = require_non_empty("endpoint", endpoint)?;
-        let deployment = require_non_empty("deployment", deployment)?;
+        // Spliced into the request path — must not be able to alter the URL.
+        let deployment = validate_url_segment("deployment", deployment)?;
         // Trailing slashes would otherwise produce a double slash in the path.
         let endpoint = endpoint.trim_end_matches('/').to_string();
 
@@ -116,8 +132,10 @@ impl AzureOpenAiProvider {
     /// The credential header for the configured auth mode.
     fn auth_header(&self) -> (&'static str, String) {
         match &self.auth {
-            AzureAuth::ApiKey(key) => ("api-key", key.clone()),
-            AzureAuth::BearerToken(token) => ("Authorization", format!("Bearer {token}")),
+            AzureAuth::ApiKey(key) => ("api-key", key.expose().to_string()),
+            AzureAuth::BearerToken(token) => {
+                ("Authorization", format!("Bearer {}", token.expose()))
+            }
         }
     }
 }
@@ -180,11 +198,51 @@ mod tests {
     fn api_version_override_reaches_the_path() {
         let path = provider()
             .with_api_version("2025-01-01-preview")
+            .expect("a well-formed api-version is accepted")
             .request_path();
         assert!(
             path.ends_with("api-version=2025-01-01-preview"),
             "the override must win over the pinned default, got: {path}"
         );
+    }
+
+    #[test]
+    fn a_deployment_name_cannot_rewrite_the_query_string() {
+        // Each of these would alter the request target if interpolated raw.
+        for hostile in [
+            "deploy?api-version=evil",
+            "deploy&x=1",
+            "deploy#frag",
+            "../../other/deployment",
+            "deploy/extra",
+            "deploy with space",
+        ] {
+            assert!(
+                AzureOpenAiProvider::with_api_key("https://res.openai.azure.com", "k", hostile)
+                    .is_err(),
+                "deployment {hostile:?} must be rejected, not spliced into the URL"
+            );
+        }
+    }
+
+    #[test]
+    fn a_hostile_api_version_is_rejected() {
+        let outcome = provider().with_api_version("2024-10-21&injected=1");
+        assert!(
+            outcome.is_err(),
+            "an api-version must not be able to append query parameters"
+        );
+    }
+
+    #[test]
+    fn legitimate_deployment_names_are_still_accepted() {
+        // The guard must not be so tight it rejects real Azure names.
+        for ok in ["gpt-4o", "gpt4o_deploy", "my.deployment-2", "GPT4O"] {
+            assert!(
+                AzureOpenAiProvider::with_api_key("https://res.openai.azure.com", "k", ok).is_ok(),
+                "deployment {ok:?} is well-formed and must be accepted"
+            );
+        }
     }
 
     #[test]

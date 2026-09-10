@@ -23,7 +23,7 @@ use octarine::runtime::http::HttpClient;
 use octarine_problem::{Problem, Result};
 use serde::{Deserialize, Serialize};
 
-use super::{build_client, require_non_empty};
+use super::{Credential, build_client, require_non_empty};
 use crate::error::problem_for_status;
 use crate::types::{FinishReason, LlmProvider, LlmRequest, LlmResponse, TokenUsage};
 
@@ -186,7 +186,7 @@ impl MessagesResponse {
 #[derive(Debug, Clone)]
 pub struct AnthropicProvider {
     client: HttpClient,
-    api_key: String,
+    api_key: Credential,
     model: String,
 }
 
@@ -211,7 +211,7 @@ impl AnthropicProvider {
         let model = require_non_empty("model", model)?;
         Ok(Self {
             client: build_client("anthropic", base_url)?,
-            api_key,
+            api_key: Credential::new(api_key),
             model,
         })
     }
@@ -225,7 +225,7 @@ impl LlmProvider for AnthropicProvider {
         let response = self
             .client
             .post(MESSAGES_PATH)
-            .header("x-api-key", self.api_key.clone())
+            .header("x-api-key", self.api_key.expose().to_string())
             .header("anthropic-version", ANTHROPIC_VERSION)
             .header("Content-Type", "application/json")
             .json(&body)

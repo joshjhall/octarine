@@ -17,7 +17,7 @@ use octarine::runtime::http::HttpClient;
 use octarine_problem::Result;
 
 use super::openai::{CHAT_COMPLETIONS_PATH, post_chat_completion, stream_chat_completion};
-use super::{build_client, require_non_empty};
+use super::{Credential, build_client, require_non_empty};
 use crate::types::{LlmProvider, LlmRequest, LlmResponse};
 
 /// A client for any OpenAI-compatible chat-completions endpoint.
@@ -25,7 +25,7 @@ use crate::types::{LlmProvider, LlmRequest, LlmResponse};
 pub struct OpenAiCompatibleProvider {
     client: HttpClient,
     /// `None` for an unauthenticated local endpoint.
-    api_key: Option<String>,
+    api_key: Option<Credential>,
     model: String,
     name: String,
 }
@@ -64,7 +64,7 @@ impl OpenAiCompatibleProvider {
         let model = require_non_empty("model", model)?;
         Ok(Self {
             client: build_client(&name, &base_url)?,
-            api_key,
+            api_key: api_key.map(Credential::new),
             model,
             name,
         })
@@ -77,7 +77,7 @@ impl OpenAiCompatibleProvider {
     fn auth_value(&self) -> String {
         self.api_key
             .as_ref()
-            .map_or_else(String::new, |key| format!("Bearer {key}"))
+            .map_or_else(String::new, |key| format!("Bearer {}", key.expose()))
     }
 }
 
