@@ -63,6 +63,22 @@ worte = "worte"
 # Polish PESEL — "numer PESEL" = "PESEL number"
 numer = "numer"
 
+# Per-language context keyword vocabulary (#667,
+# primitives/identifiers/common/keywords/{de,es,fi,fr,it,pl,sv,tr}.rs). These
+# are correct words in their own language that collide with typos' English
+# corpus. A file-level exclude does not work here: typos honors
+# `files.extend-exclude` when walking a directory, but the lefthook hook passes
+# staged paths explicitly, which bypasses it.
+adres = "adres"                 # pl — address
+adress = "adress"               # sv — e-postadress
+adresse = "adresse"             # de/fr — Adresse / adresse
+complet = "complet"             # fr — nom complet
+direccion = "direccion"         # es — dirección (unaccented variant)
+fixe = "fixe"                   # fr — téléphone fixe (landline)
+internacional = "internacional" # es — cuenta internacional
+nominativo = "nominativo"       # it — full name
+passin = "passin"               # fi — passin numero (genitive of "passi")
+
 # US state abbreviation North Dakota (location/conversion/address)
 ND = "ND"
 

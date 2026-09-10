@@ -6,6 +6,7 @@
 use super::context::ContextAnalyzer;
 use super::types::ContextConfig;
 use crate::primitives::identifiers::IdentifierType;
+use crate::primitives::identifiers::common::KeywordLanguage;
 
 /// Builder for context-aware confidence scoring
 ///
@@ -68,6 +69,32 @@ impl ConfidenceBuilder {
     #[must_use]
     pub fn with_boost_factor(mut self, factor: f64) -> Self {
         self.config.boost_factor = factor;
+        self
+    }
+
+    /// Restrict keyword matching to a single language (default: all languages)
+    ///
+    /// Without a hint every language's keyword table is scanned. A hint narrows
+    /// matching to the named language, raising precision on a corpus whose
+    /// language is known.
+    #[must_use]
+    pub fn with_language(mut self, language: KeywordLanguage) -> Self {
+        self.config.language = Some(language);
+        self
+    }
+
+    /// Restrict keyword matching to the language named by a tag.
+    ///
+    /// Accepts ISO 639-1 codes and BCP-47 tags case-insensitively (`"it"`,
+    /// `"it-IT"`, `"zh-Hans"`). An **unrecognized tag leaves the analyzer
+    /// unhinted** — scanning all languages — rather than matching nothing, so a
+    /// typo'd hint degrades to the default instead of silently suppressing
+    /// every context boost.
+    #[must_use]
+    pub fn with_language_hint(mut self, tag: impl AsRef<str>) -> Self {
+        if let Some(language) = KeywordLanguage::from_tag(tag.as_ref()) {
+            self.config.language = Some(language);
+        }
         self
     }
 
@@ -227,5 +254,49 @@ mod tests {
         // With wide window, same keyword should match
         let wide = ConfidenceBuilder::new().with_window_size(25);
         assert!(wide.is_context_present(text, 20, 31, &IdentifierType::Ssn));
+    }
+
+    #[test]
+    fn test_with_language_filters() {
+        let text = "codice fiscale: RSSMRA85T10A562S";
+
+        let italian = ConfidenceBuilder::new().with_language(KeywordLanguage::It);
+        assert!(italian.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+
+        // A different language must NOT match — proves the hint filters.
+        let swedish = ConfidenceBuilder::new().with_language(KeywordLanguage::Sv);
+        assert!(!swedish.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_with_language_hint_parses_tags() {
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        for tag in ["it", "IT", "it-IT", "it_it", " it "] {
+            let builder = ConfidenceBuilder::new().with_language_hint(tag);
+            assert!(
+                builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode),
+                "tag {tag:?} should resolve to Italian"
+            );
+        }
+    }
+
+    #[test]
+    fn test_unknown_language_hint_falls_back_to_all() {
+        // An unrecognized tag must leave the builder unhinted, not match
+        // nothing. Italian text still matches via the scan-all default.
+        let builder = ConfidenceBuilder::new().with_language_hint("klingon");
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_unknown_hint_does_not_clear_a_prior_hint() {
+        // A bad tag after a good one must not silently widen the scan back to
+        // all languages — the earlier explicit choice wins.
+        let builder = ConfidenceBuilder::new()
+            .with_language(KeywordLanguage::Sv)
+            .with_language_hint("nonsense");
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(!builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
     }
 }

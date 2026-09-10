@@ -77,6 +77,27 @@ impl ContextAnalyzer {
         Self { config }
     }
 
+    /// Restrict keyword matching to a single language.
+    ///
+    /// Without a hint the analyzer scans every language's table, matching any
+    /// known keyword regardless of script. A hint narrows matching to the named
+    /// language, which raises precision when the corpus language is known.
+    ///
+    /// ```ignore
+    /// use octarine::primitives::identifiers::confidence::ContextAnalyzer;
+    /// use octarine::primitives::identifiers::common::KeywordLanguage;
+    /// use octarine::primitives::identifiers::IdentifierType;
+    ///
+    /// let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::It);
+    /// let text = "codice fiscale: RSSMRA85T10A562S";
+    /// assert!(analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    /// ```
+    #[must_use]
+    pub fn with_language(mut self, language: KeywordLanguage) -> Self {
+        self.config.language = Some(language);
+        self
+    }
+
     /// Analyze context around a match and return a confidence score.
     ///
     /// Returns a confidence score between 0.0 and `max_confidence`:
@@ -153,15 +174,20 @@ impl ContextAnalyzer {
         // Case-insensitive: lowercase the window (keywords are already lowercase)
         let window_lower = window.to_lowercase();
 
-        // Scan every language's keyword table. With no language hint the analyzer
-        // matches any known keyword regardless of script — preserving the
-        // pre-refactor behavior where non-Latin keywords lived in the same list.
-        // First match is sufficient (no double-boost).
-        KeywordLanguage::all().any(|language| {
+        // With a language hint, scan only that language's table. With no hint,
+        // scan every language — matching any known keyword regardless of script,
+        // preserving the pre-refactor behavior where non-Latin keywords lived in
+        // the same list. First match is sufficient (no double-boost).
+        let is_keyword_present = |language: KeywordLanguage| {
             context_keywords(entity_type, language)
                 .iter()
                 .any(|kw| window_lower.contains(kw))
-        })
+        };
+
+        match self.config.language {
+            Some(language) => is_keyword_present(language),
+            None => KeywordLanguage::all().any(is_keyword_present),
+        }
     }
 }
 
@@ -319,6 +345,7 @@ mod tests {
             window_size: 200,
             boost_factor: 0.25,
             max_confidence: 0.8,
+            ..ContextConfig::default()
         };
         let analyzer = ContextAnalyzer::with_config(config);
 
@@ -349,6 +376,47 @@ mod tests {
             (score - BASE_CONFIDENCE).abs() < f64::EPSILON,
             "Empty text should return base confidence"
         );
+    }
+
+    #[test]
+    fn test_italian_hint_matches_italian_keyword() {
+        // Acceptance criterion from #667: an Italian hint reports context for
+        // an Italian codice fiscale label.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::It);
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_wrong_language_hint_does_not_match() {
+        // The hint must actually filter. A German hint on Italian text must NOT
+        // report context — if `with_language` were a no-op this would still
+        // match via the Italian table and the test would pass vacuously.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::De);
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(!analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_no_hint_scans_all_languages() {
+        // Default behavior is unchanged: with no hint the same Italian text
+        // matches, because every language table is scanned.
+        let analyzer = ContextAnalyzer::new();
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_hint_still_matches_english_when_english() {
+        // A hint narrows rather than disables: English text under an English
+        // hint behaves exactly as the unhinted analyzer does.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::En);
+        let text = "social security number is 123-45-6789";
+        assert!(analyzer.is_context_present(text, 26, 37, &IdentifierType::Ssn));
+
+        // ...and the same English text under a Thai hint does not.
+        let thai = ContextAnalyzer::new().with_language(KeywordLanguage::Th);
+        assert!(!thai.is_context_present(text, 26, 37, &IdentifierType::Ssn));
     }
 
     #[test]

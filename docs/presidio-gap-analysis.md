@@ -91,13 +91,21 @@ Each gap includes the source domain report reference. Severity rule: blocks a Pr
 - **Recommendation**: Add `is_bitcoin_checksum_valid()` in `financial/detection/crypto.rs` using `bs58 = "0.5"` with `check` feature (`bs58::decode(addr).with_check(None).into_vec()` does Base58 + double-SHA256 in one call) and `bech32 = "0.11"` (`bech32::decode(addr)` validates polymod constant). Mirror `LUHN_CACHE` / `ABA_CACHE` pattern with `BTC_CHECKSUM_CACHE`. Source: `gap_financial.md` C1, `gap_security_extensions.md` L-1.
 - **Effort**: Small (4-6h). Pure-function add, no public API change.
 
-### CRIT-8. Multilingual context keywords — only `ApiKey` has non-English coverage
+### CRIT-8. Multilingual context keywords — only `ApiKey` has non-English coverage — RESOLVED
 
 - **Presidio**: 12 languages (`de, en, es, fi, fr, it, ko, kr, pl, sv, th, tr`). 35 of 83 recognizers (≈42%) have multilingual context. 72 of 83 (≈87%) have any context words.
 - **Octarine** (`primitives/identifiers/confidence/keywords.rs`): Multilingual coverage applies **only** to `IdentifierType::ApiKey` per `context_keyword_notes`. 14 of 95 identifiers (≈15%) have any English keywords; 80 of 95 have empty arrays. Per-arm `context_keywords()` returns `&'static [&'static str]` — no language dimension in the type signature. Korean RRN/FRN/BRN/DriverLicense/Passport, Thai TNIN, Italian FiscalCode, Spanish NIF/NIE, Polish PESEL, Finnish HETU, Aussie TFN/ABN/Medicare/ACN, Indian Aadhaar/PAN/GSTIN, Singaporean NRIC/UEN all return `&[]` despite having native-language keywords in Presidio (`사업자등록번호`, `codice fiscale`, `henkilötunnus`, `เลขประจำตัวประชาชน`, `tarjeta`, `Führerschein`, `patente`).
 - **Impact**: Context keyword boosting is the standard PII pipeline trick to lift weak regex matches above threshold. Without per-language keywords, octarine in French, German, Italian, Korean, Thai, or Hindi log streams operates at materially lower precision. The `context_keyword_languages` catalog field claims 7 languages but only `ApiKey` uses 6 of them — external consumers will overestimate locale fitness by ~17×.
 - **Recommendation**: Refactor `keywords.rs` to `(IdentifierType, KeywordLanguage) -> &[&str]` registry — either `phf` perfect-hash map or `static TABLE: &[(IdentifierType, KeywordLanguage, &[&str])]` linear scan. Per-language files under `primitives/identifiers/common/keywords/{en,de,es,fi,fr,it,ja,ko,pl,sv,th,tr,ar,hi,zh_hans,zh_hant}.rs`. Translate top-20 identifiers into all 12 Presidio languages (data is MIT-licensed in Presidio's `country_specific/{lang}/*.py` files). Update `confidence/context.rs::ContextWindow` to accept `KeywordLanguage` or `LanguageHint`. Source: `gap_context_locales.md` C1, C2, H1, H2, H3; `gap_government_americas.md` L1; `gap_government_apac.md` H1; `gap_financial.md` L3; `gap_personal_contact.md` Gap 8.
 - **Effort**: Medium (1-2 weeks: refactor 1-2d + per-language files 2-3d + translations 1-2w).
+- **Status**: **Resolved** — all four steps landed. Steps 1–2 (the
+  `(IdentifierType, KeywordLanguage)` registry and per-language files) in #666;
+  steps 3–4 (top-20 translations across 15 non-English tables, plus the language
+  hint API) in #667. The hint is `ContextConfig::language` rather than a new
+  `ContextWindow` type — `ContextAnalyzer::with_language`, surfaced at Layer 3 as
+  `ConfidenceBuilder::with_language(KeywordLanguage)` and
+  `with_language_hint(impl AsRef<str>)`. The default is unchanged: with no hint
+  every language table is scanned.
 
 ### CRIT-9. German identifier suite — zero coverage vs 11 Presidio recognizers
 
@@ -384,13 +392,16 @@ Pure extension targets where octarine can widen its lead beyond Presidio.
 - Extension: Add EIP-55 mixed-case Ethereum via `tiny-keccak`.
 - MED-9: Add `validate_crypto_address` + sanitization + redaction strategy.
 
-### Phase 3: Multilingual context keywords (1-2 weeks)
+### Phase 3: Multilingual context keywords (1-2 weeks) — COMPLETE
 
-- CRIT-8 step 1 (1-2d): Refactor `keywords.rs` to `(IdentifierType, KeywordLanguage) -> &[&str]` via `phf` or static table.
-- CRIT-8 step 2 (2-3d): Per-language files under `primitives/identifiers/common/keywords/{en,de,es,fi,fr,it,ja,ko,pl,sv,th,tr,ar,hi,zh_hans,zh_hant}.rs`.
-- CRIT-8 step 3 (1-2w): Translate top-20 identifiers into all 12 Presidio languages (data MIT-licensed in Presidio's `country_specific/{lang}/*.py`).
-- Step 4 (1w): Update `confidence/context.rs::ContextWindow` for language scoping; Layer 3 builders gain `with_language` / `with_language_hint`.
-- LOW-3: Add English context keywords to the 17+ identifiers currently at `&[]`.
+- ~~CRIT-8 step 1 (1-2d): Refactor `keywords.rs` to `(IdentifierType, KeywordLanguage) -> &[&str]` via `phf` or static table.~~ Done in #666 (static table, linear scan).
+- ~~CRIT-8 step 2 (2-3d): Per-language files under `primitives/identifiers/common/keywords/{en,de,es,fi,fr,it,ja,ko,pl,sv,th,tr,ar,hi,zh_hans,zh_hant}.rs`.~~ Done in #666.
+- ~~CRIT-8 step 3 (1-2w): Translate top-20 identifiers into all 12 Presidio languages (data MIT-licensed in Presidio's `country_specific/{lang}/*.py`).~~ Done in #667 — 15 non-English tables now cover the core 13 identifiers, plus native terms for the country-scoped types (`ItalyFiscalCode`, `SpainNif`, `PolandPesel`, `FinlandHetu`, `KoreaRrn`, `IndiaAadhaar`, `IndiaPan`, `ThailandTnin`).
+- ~~Step 4 (1w): Update `confidence/context.rs::ContextWindow` for language scoping; Layer 3 builders gain `with_language` / `with_language_hint`.~~ Done in #667 via `ContextConfig::language` + `ContextAnalyzer::with_language` (no separate `ContextWindow` type); Layer 3 `ConfidenceBuilder` gained both methods.
+- ~~LOW-3: Add English context keywords to the 17+ identifiers currently at `&[]`.~~ Done — covered by `test_low3_backfill_non_empty`.
+
+LOW-4 (lemmatization) remains open: matching is still substring-based, so
+inflected forms in morphologically rich languages are missed.
 
 ### Phase 4: Missing country packs (2-4 weeks)
 

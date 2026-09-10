@@ -3,6 +3,8 @@
 //! Provides configurable parameters for context window analysis
 //! and confidence boosting based on surrounding keyword presence.
 
+use crate::primitives::identifiers::common::KeywordLanguage;
+
 // ============================================================================
 // Configuration
 // ============================================================================
@@ -19,6 +21,7 @@
 /// | `window_size` | 100 | Presidio default; captures nearby labels |
 /// | `boost_factor` | 0.35 | Presidio default; meaningful boost without overconfidence |
 /// | `max_confidence` | 0.95 | Prevents false certainty even with strong context |
+/// | `language` | `None` | No hint: scan every language's keyword table |
 ///
 /// # Examples
 ///
@@ -54,6 +57,15 @@ pub struct ContextConfig {
     /// Caps the result to prevent false certainty. Even with strong
     /// contextual signals, a small uncertainty margin is preserved.
     pub max_confidence: f64,
+
+    /// Restrict keyword matching to one language (default: `None`)
+    ///
+    /// `None` scans every language's keyword table, matching any known keyword
+    /// regardless of script. Supplying a hint restricts matching to that
+    /// language alone, which raises precision on a corpus whose language is
+    /// known — an Italian log stream will not boost on a Swedish keyword that
+    /// happens to appear.
+    pub language: Option<KeywordLanguage>,
 }
 
 impl Default for ContextConfig {
@@ -62,6 +74,7 @@ impl Default for ContextConfig {
             window_size: 100,
             boost_factor: 0.35,
             max_confidence: 0.95,
+            language: None,
         }
     }
 }
@@ -104,9 +117,26 @@ mod tests {
             window_size: 50,
             boost_factor: 0.5,
             max_confidence: 0.9,
+            ..ContextConfig::default()
         };
         assert_eq!(config.window_size, 50);
         assert!((config.boost_factor - 0.5).abs() < f64::EPSILON);
         assert!((config.max_confidence - 0.9).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_default_has_no_language_hint() {
+        // The default must stay hint-free: an accidental default hint would
+        // silently narrow matching to one language for every existing caller.
+        assert_eq!(ContextConfig::default().language, None);
+    }
+
+    #[test]
+    fn test_language_hint_is_settable() {
+        let config = ContextConfig {
+            language: Some(KeywordLanguage::It),
+            ..ContextConfig::default()
+        };
+        assert_eq!(config.language, Some(KeywordLanguage::It));
     }
 }

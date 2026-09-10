@@ -8,7 +8,9 @@ use std::time::Instant;
 use crate::observe;
 use crate::observe::metrics::{MetricName, increment_by, record};
 use crate::primitives::identifiers::IdentifierType;
-use crate::primitives::identifiers::confidence::ConfidenceBuilder as PrimitiveConfidenceBuilder;
+use crate::primitives::identifiers::confidence::{
+    ConfidenceBuilder as PrimitiveConfidenceBuilder, KeywordLanguage,
+};
 
 #[allow(clippy::expect_used)]
 mod metric_names {
@@ -99,6 +101,46 @@ impl ConfidenceBuilder {
     #[must_use]
     pub fn with_max_confidence(mut self, max: f64) -> Self {
         self.inner = self.inner.with_max_confidence(max);
+        self
+    }
+
+    /// Restrict keyword matching to a single language (default: all languages)
+    ///
+    /// Without a hint every language's keyword table is scanned, matching any
+    /// known keyword regardless of script. A hint narrows matching to the named
+    /// language, which raises precision when the corpus language is known.
+    ///
+    /// ```
+    /// use octarine::identifiers::{ConfidenceBuilder, IdentifierType, KeywordLanguage};
+    ///
+    /// let builder = ConfidenceBuilder::silent().with_language(KeywordLanguage::It);
+    /// let text = "codice fiscale: RSSMRA85T10A562S";
+    /// assert!(builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    /// ```
+    #[must_use]
+    pub fn with_language(mut self, language: KeywordLanguage) -> Self {
+        self.inner = self.inner.with_language(language);
+        self
+    }
+
+    /// Restrict keyword matching to the language named by a tag
+    ///
+    /// Accepts ISO 639-1 codes and BCP-47 tags case-insensitively (`"it"`,
+    /// `"it-IT"`, `"zh-Hans"`). An **unrecognized tag leaves the builder
+    /// unhinted** — scanning all languages — rather than matching nothing, so a
+    /// typo'd hint degrades to the default instead of silently suppressing
+    /// every context boost.
+    ///
+    /// ```
+    /// use octarine::identifiers::{ConfidenceBuilder, IdentifierType};
+    ///
+    /// let builder = ConfidenceBuilder::silent().with_language_hint("it-IT");
+    /// let text = "codice fiscale: RSSMRA85T10A562S";
+    /// assert!(builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    /// ```
+    #[must_use]
+    pub fn with_language_hint(mut self, tag: impl AsRef<str>) -> Self {
+        self.inner = self.inner.with_language_hint(tag);
         self
     }
 
@@ -219,6 +261,44 @@ mod tests {
         let text = "SSN: 123-45-6789";
         let score = builder.analyze(text, 5, 16, &IdentifierType::Ssn);
         assert!(score > 0.5, "Silent mode should still score, got {score}");
+    }
+
+    #[test]
+    fn test_with_language_filters() {
+        let text = "codice fiscale: RSSMRA85T10A562S";
+
+        let italian = ConfidenceBuilder::silent().with_language(KeywordLanguage::It);
+        assert!(italian.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+
+        // A wrong-language hint must NOT match — proves the hint reaches the
+        // primitive rather than being dropped by the Layer 3 wrapper.
+        let german = ConfidenceBuilder::silent().with_language(KeywordLanguage::De);
+        assert!(!german.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_with_language_hint_accepts_bcp47() {
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        for tag in ["it", "IT", "it-IT"] {
+            let builder = ConfidenceBuilder::silent().with_language_hint(tag);
+            assert!(
+                builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode),
+                "tag {tag:?} should resolve to Italian"
+            );
+        }
+
+        // A resolvable but wrong tag still filters.
+        let swedish = ConfidenceBuilder::silent().with_language_hint("sv-SE");
+        assert!(!swedish.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_unknown_language_hint_degrades_to_scan_all() {
+        // Unknown tag → unhinted, so the Italian keyword still matches. A hint
+        // that "matched nothing" would break detection on a typo.
+        let builder = ConfidenceBuilder::silent().with_language_hint("not-a-language");
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(builder.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
     }
 
     #[test]

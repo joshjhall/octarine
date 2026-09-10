@@ -20,7 +20,9 @@ pub use biometric::{
     VoiceIdRedactionStrategy,
 };
 pub use cache::CacheStats;
-pub use core::{DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType};
+pub use core::{
+    DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType, KeywordLanguage,
+};
 pub use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
 pub use financial::{CreditCardType, CryptoAddressType, FinancialTextPolicy};
 pub use location::{
