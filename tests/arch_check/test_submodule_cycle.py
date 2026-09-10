@@ -235,6 +235,53 @@ def test_forbidden_import_with_trailing_comment_is_still_caught(write_rs, tmp_re
     assert findings[0].line == 1
 
 
+def test_block_comment_spanning_lines_does_not_truncate_the_join(write_rs, tmp_repo: Path):
+    """A block comment may legitimately close on a later line — valid Rust.
+
+    Stripping per physical line cannot see such a span, so the `;` inside it
+    ended the join early and the forbidden segment below was dropped.
+    """
+    write_rs(
+        "primitives/data/paths/mod.rs",
+        "use crate::primitives::{\n"
+        "    types::Problem, /* fixes bug;\n"
+        "    see issue */\n"
+        "    identifiers::network::Foo,\n"
+        "};\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/paths/mod.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 1
+
+
+def test_alias_to_the_name_identifiers_is_not_flagged(write_rs, tmp_repo: Path):
+    """Aliasing an unrelated import TO this name introduces no dependency.
+
+    `helper as identifiers` renames something in data; it does not import the
+    identifiers module, so flagging it would block legitimate code.
+    """
+    write_rs(
+        "primitives/data/x.rs",
+        "use crate::primitives::data::helper as identifiers;\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert findings == []
+
+
+def test_line_numbers_survive_block_comment_stripping(write_rs, tmp_repo: Path):
+    """Stripping must preserve newlines, or later findings report a wrong line."""
+    write_rs(
+        "primitives/data/x.rs",
+        "/* a\n   multi-line\n   banner */\nuse crate::primitives::identifiers::crypto::KeyType;\n",
+    )
+    files = [tmp_repo / "crates/octarine/src/primitives/data/x.rs"]
+    findings = list(submodule_cycle.run(files=files, root=tmp_repo))
+    assert len(findings) == 1
+    assert findings[0].line == 4
+
+
 def test_multiple_imports_yield_one_finding_each(write_rs, tmp_repo: Path):
     content = (
         "use crate::primitives::identifiers::crypto::KeyType;\n"

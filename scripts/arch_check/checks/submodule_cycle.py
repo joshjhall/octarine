@@ -47,25 +47,34 @@ IMPORT_LINE = re.compile(r"^(?:pub\s*(?:\([^)]*\)\s*)?)?use\s")
 # The trailing context accepts `::` (a path continues), `;` / `}` / `,` (a bare
 # module import, possibly inside a group), or ` as ` (an aliased one) — the last
 # two import the module whole and close the cycle just as surely.
-FORBIDDEN_PATH = re.compile(r"(?:^|::|[{,\s])identifiers\s*(?:::|[;,}]|\s+as\s)")
+# The left boundary requires `::` for the bare/aliased forms, so aliasing an
+# unrelated import TO this name (`use …::helper as identifiers;`) is not matched:
+# that introduces no dependency on the identifiers module.
+FORBIDDEN_PATH = re.compile(
+    r"(?:^|::|[{,\s])identifiers::"  # a path continues past the segment
+    r"|(?:::|[{,])\s*identifiers\s*(?:[;,}]|\s+as\s)"  # bare or aliased module
+)
 
 
 BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 
 
-def _strip_comments(line: str) -> str:
-    """Drop `/* … */` spans and any trailing `//` comment.
+def _strip_comments(text: str) -> str:
+    """Drop `/* … */` spans and `//` line comments.
 
     The terminator search must not see a `;` that belongs to a comment — e.g.
     `types::Problem, // keep sorted; see mod.rs` — or the join stops early and
     the rest of the brace group (which may hold the forbidden segment) is never
     examined. Both comment forms are stripped for the same reason.
 
-    A block comment left unclosed on its own line is not tracked across lines;
-    that would require real lexing, and an import statement split by an
-    unterminated block comment does not parse as Rust in the first place.
+    Applied to the WHOLE file rather than per line, so a block comment that opens
+    on one line and closes on a later one is stripped too. Newlines are preserved
+    so line numbers stay accurate.
     """
-    return BLOCK_COMMENT.sub(" ", line).partition("//")[0]
+    without_blocks = BLOCK_COMMENT.sub(
+        lambda m: "\n" * m.group().count("\n"), text
+    )
+    return "\n".join(line.partition("//")[0] for line in without_blocks.splitlines())
 
 
 def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
@@ -75,7 +84,7 @@ def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
     brace-grouped import spanning several lines is matched as one unit rather
     than as fragments that individually satisfy neither pattern.
     """
-    lines = text.splitlines()
+    lines = _strip_comments(text).splitlines()
     index = 0
     while index < len(lines):
         stripped = lines[index].lstrip()
@@ -83,12 +92,12 @@ def _iter_use_statements(text: str) -> Iterator[tuple[int, str]]:
             index += 1
             continue
         start = index
-        parts = [_strip_comments(stripped)]
+        parts = [stripped]
         # Join continuation lines until the statement terminates. Bounded by the
         # end of file, so an unterminated statement cannot loop forever.
         while ";" not in parts[-1] and index + 1 < len(lines):
             index += 1
-            parts.append(_strip_comments(lines[index].strip()))
+            parts.append(lines[index].strip())
         yield start + 1, " ".join(parts)
         index += 1
 
