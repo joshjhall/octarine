@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 /// `chat/completions` body, Anthropic's `messages` body, Ollama's `/api/chat`,
 /// and so on.
 // No `Eq`: `temperature` is an `f32`, which has no total equality.
-#[derive(Debug, Clone, PartialEq)]
+// No derived `Debug` either — see the hand-written impl below.
+#[derive(Clone, PartialEq)]
 pub struct LlmRequest {
     /// The system prompt. Held separately from `user_prompt` because several
     /// providers place it in a distinct field, and because it is the portion
@@ -64,6 +65,28 @@ impl LlmRequest {
             json_mode: true,
             cacheable: true,
         }
+    }
+}
+
+impl std::fmt::Debug for LlmRequest {
+    /// Elides both prompts, printing only their lengths.
+    ///
+    /// `user_prompt` is the text under analysis — by construction the PII this
+    /// crate exists to find — and `system_prompt` can carry caller-supplied
+    /// context. A derived `Debug` would print both in full from any `{:?}`,
+    /// which is the same leak [`Credential`](crate::provider) prevents for API
+    /// keys. Lengths are kept because they are useful for debugging a
+    /// truncation and reveal nothing about the content.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LlmRequest")
+            .field("model", &self.model)
+            .field("system_prompt_len", &self.system_prompt.len())
+            .field("user_prompt_len", &self.user_prompt.len())
+            .field("max_tokens", &self.max_tokens)
+            .field("temperature", &self.temperature)
+            .field("json_mode", &self.json_mode)
+            .field("cacheable", &self.cacheable)
+            .finish()
     }
 }
 
@@ -142,7 +165,8 @@ impl TokenUsage {
 }
 
 /// A completion response, in vendor-neutral form.
-#[derive(Debug, Clone, PartialEq, Eq)]
+// No derived `Debug` — see the hand-written impl below.
+#[derive(Clone, PartialEq, Eq)]
 pub struct LlmResponse {
     /// The generated text — for detection, expected to hold a JSON document.
     pub content: String,
@@ -153,6 +177,21 @@ pub struct LlmResponse {
     /// The model that actually served the request, which may differ from the
     /// one requested (alias resolution, provider-side routing).
     pub model: String,
+}
+
+impl std::fmt::Debug for LlmResponse {
+    /// Elides the generated content, printing only its length.
+    ///
+    /// The content is the model's detection output, which quotes the matched
+    /// PII verbatim — printing it would leak exactly what was found.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LlmResponse")
+            .field("model", &self.model)
+            .field("content_len", &self.content.len())
+            .field("finish_reason", &self.finish_reason)
+            .field("usage", &self.usage)
+            .finish()
+    }
 }
 
 /// A vendor-specific completion backend.
@@ -215,6 +254,48 @@ mod tests {
         );
         assert!(req.json_mode);
         assert!(req.cacheable);
+    }
+
+    #[test]
+    fn request_debug_elides_the_analyzed_text() {
+        // The user prompt IS the PII under analysis.
+        let pii = "Reach alice@example.com, SSN 123-45-6789";
+        let req = LlmRequest::for_detection("system rules here", pii, "gpt-4o", 512);
+        let rendered = format!("{req:?}");
+
+        assert!(
+            !rendered.contains("alice@example.com"),
+            "the analyzed text must not be printed, got: {rendered}"
+        );
+        assert!(!rendered.contains("123-45-6789"));
+        assert!(!rendered.contains("system rules here"));
+        assert!(
+            rendered.contains("gpt-4o"),
+            "non-sensitive fields stay visible for debugging"
+        );
+        assert!(
+            rendered.contains(&pii.len().to_string()),
+            "the length is kept — useful for debugging, reveals no content"
+        );
+    }
+
+    #[test]
+    fn response_debug_elides_the_detection_output() {
+        // The content quotes the matched PII verbatim.
+        let response = LlmResponse {
+            content: r#"{"entities":[{"text":"alice@example.com"}]}"#.to_string(),
+            finish_reason: FinishReason::Stop,
+            usage: TokenUsage::default(),
+            model: "gpt-4o".to_string(),
+        };
+        let rendered = format!("{response:?}");
+
+        assert!(
+            !rendered.contains("alice@example.com"),
+            "detection output quotes the PII and must not be printed, got: {rendered}"
+        );
+        assert!(rendered.contains("gpt-4o"));
+        assert!(rendered.contains("Stop"));
     }
 
     #[test]

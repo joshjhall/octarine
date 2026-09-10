@@ -595,8 +595,13 @@ async fn an_undecodable_data_frame_is_skipped_not_fatal() {
             json!({"choices": [{"delta": {"content": delta}}]})
         )
     };
+    // The bad frames must genuinely FAIL to decode as ChatChunk. An object of
+    // unknown keys would not: every ChatChunk field is `#[serde(default)]` and
+    // serde ignores unrecognized keys, so it decodes to an empty chunk and
+    // takes the Ok path — passing this test for the wrong reason. A syntax
+    // error and a non-map both really hit the `else { return }` branch.
     let body = format!(
-        "{}data: {{\"unexpected\":\"shape\"}}\n\n{}data: {}\n\ndata: [DONE]\n\n",
+        "{}data: {{not valid json\n\ndata: [1,2,3]\n\n{}data: {}\n\ndata: [DONE]\n\n",
         frame(head),
         frame(tail),
         json!({"choices": [{"delta": {}, "finish_reason": "stop"}]})

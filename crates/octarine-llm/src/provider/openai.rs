@@ -6,6 +6,19 @@
 //! [`azure_openai`](super::azure_openai), which differ only in URL construction
 //! and authentication. Keeping one set of structs means a fix to response
 //! handling lands for all three.
+//!
+//! # Chat Completions only
+//!
+//! This targets `/chat/completions`, not OpenAI's newer Responses API
+//! (`/v1/responses`). Issue #520 named both; only chat-completions is
+//! implemented, deliberately.
+//!
+//! Chat Completions is the format the other four providers already speak, so
+//! one set of wire structs serves three of the five clients. The Responses API
+//! is OpenAI-only — adding it would buy a second code path used by exactly one
+//! provider, with no benefit for detection, which needs a single JSON document
+//! back and nothing the newer API uniquely offers. Revisit if a needed feature
+//! becomes Responses-only.
 
 use async_trait::async_trait;
 use octarine::runtime::http::HttpClient;
@@ -27,14 +40,20 @@ pub(crate) const CHAT_COMPLETIONS_PATH: &str = "/chat/completions";
 // ---------------------------------------------------------------------------
 
 /// One message in an OpenAI-format conversation.
-#[derive(Debug, Clone, Serialize)]
+///
+/// No `Debug`: `content` is the text under analysis, which is by construction
+/// the PII this crate exists to find. A derived `Debug` would print it in full
+/// from any `{:?}` — the same leak `Credential` prevents for API keys.
+#[derive(Clone, Serialize)]
 pub(crate) struct ChatMessage<'a> {
     pub(crate) role: &'a str,
     pub(crate) content: &'a str,
 }
 
 /// An OpenAI-format chat-completions request body.
-#[derive(Debug, Clone, Serialize)]
+///
+/// No `Debug` — it transitively carries the analyzed text via `messages`.
+#[derive(Clone, Serialize)]
 pub(crate) struct ChatRequest<'a> {
     pub(crate) model: &'a str,
     pub(crate) messages: Vec<ChatMessage<'a>>,

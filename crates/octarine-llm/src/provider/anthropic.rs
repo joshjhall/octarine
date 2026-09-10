@@ -60,7 +60,7 @@ impl CacheControl {
 }
 
 /// A system-prompt content block, optionally cache-marked.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Clone, Serialize)]
 struct SystemBlock<'a> {
     #[serde(rename = "type")]
     block_type: &'static str,
@@ -70,14 +70,19 @@ struct SystemBlock<'a> {
 }
 
 /// A user/assistant message.
-#[derive(Debug, Clone, Serialize)]
+///
+/// No `Debug`: `content` is the text under analysis — the PII this crate
+/// exists to find — and a derived impl would print it in full.
+#[derive(Clone, Serialize)]
 struct Message<'a> {
     role: &'a str,
     content: &'a str,
 }
 
 /// An Anthropic messages request body.
-#[derive(Debug, Clone, Serialize)]
+///
+/// No `Debug` — it transitively carries the analyzed text.
+#[derive(Clone, Serialize)]
 struct MessagesRequest<'a> {
     model: &'a str,
     max_tokens: u32,

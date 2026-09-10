@@ -27,7 +27,10 @@ const CHAT_PATH: &str = "/api/chat";
 // ---------------------------------------------------------------------------
 
 /// A message in an Ollama conversation.
-#[derive(Debug, Clone, Serialize)]
+///
+/// No `Debug`: `content` is the text under analysis — the PII this crate
+/// exists to find — and a derived impl would print it in full.
+#[derive(Clone, Serialize)]
 struct Message<'a> {
     role: &'a str,
     content: &'a str,
@@ -42,7 +45,9 @@ struct Options {
 }
 
 /// An Ollama chat request body.
-#[derive(Debug, Clone, Serialize)]
+///
+/// No `Debug` — it transitively carries the analyzed text.
+#[derive(Clone, Serialize)]
 struct ChatRequest<'a> {
     model: &'a str,
     messages: Vec<Message<'a>>,
