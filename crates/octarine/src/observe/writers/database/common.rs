@@ -844,6 +844,33 @@ mod tests {
     }
 
     #[test]
+    fn test_assemble_event_drops_invalid_tenant_and_user_ids() {
+        // A stored value that no longer satisfies TenantId/UserId validation
+        // (legacy data, or a row written before a constraint tightened) is
+        // dropped to None rather than failing the whole read. A space is
+        // rejected by the alphanumeric + dash/underscore rule.
+        let row = EventRow {
+            tenant_id: Some("has a space".to_string()),
+            user_id: Some("also invalid".to_string()),
+            ..populated_row()
+        };
+        let event = assemble_event(row);
+
+        assert!(
+            event.context.tenant_id.is_none(),
+            "an unvalidatable stored tenant_id must degrade to None"
+        );
+        assert!(
+            event.context.user_id.is_none(),
+            "an unvalidatable stored user_id must degrade to None"
+        );
+        // The rest of the event must still be intact — one bad column does
+        // not discard the row.
+        assert_eq!(event.message, "row-message");
+        assert_eq!(event.context.operation, "row-operation");
+    }
+
+    #[test]
     fn test_assemble_event_drops_non_object_metadata() {
         // The metadata column is documented as a JSON object. A scalar cannot
         // be flattened into the event's key/value map, so it must yield an
