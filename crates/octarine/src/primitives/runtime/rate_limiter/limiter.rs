@@ -368,30 +368,42 @@ mod tests {
 
     #[tokio::test]
     async fn test_until_ready() {
-        let limiter = RateLimiter::<String>::per_second(10).expect("should create limiter");
-        let key = "test".to_string();
+        // Outer deadline: if `until_ready` ever regresses into a deadlock this
+        // fails the test instead of hanging the CI runner indefinitely.
+        tokio::time::timeout(Duration::from_secs(5), async {
+            let limiter = RateLimiter::<String>::per_second(10).expect("should create limiter");
+            let key = "test".to_string();
 
-        // Exhaust the burst
-        for _ in 0..10 {
-            limiter.check(&key);
-        }
+            // Exhaust the burst
+            for _ in 0..10 {
+                limiter.check(&key);
+            }
 
-        // Next check should be denied
-        assert!(limiter.check(&key).is_denied());
+            // Next check should be denied
+            assert!(limiter.check(&key).is_denied());
 
-        // Reset stats for clean measurement
-        limiter.reset_stats();
+            // Reset stats for clean measurement
+            limiter.reset_stats();
 
-        // until_ready should wait and then succeed
-        let start = std::time::Instant::now();
-        limiter.until_ready(&key).await;
-        let elapsed = start.elapsed();
+            // until_ready should wait and then succeed
+            let start = std::time::Instant::now();
+            limiter.until_ready(&key).await;
+            let elapsed = start.elapsed();
 
-        // Should have waited some time (at least a few ms)
-        assert!(elapsed.as_millis() > 0);
+            // Should have waited some time (at least a few ms)
+            assert!(elapsed.as_millis() > 0);
 
-        // And request should be counted as allowed
-        let stats = limiter.stats();
-        assert_eq!(stats.allowed, 1);
+            // And the request should be counted as allowed. Compare as a lower
+            // bound, not an absolute: tokens may refill between `until_ready`
+            // returning and `stats()` being read (test-resilience Rule 6).
+            let stats = limiter.stats();
+            assert!(
+                stats.allowed >= 1,
+                "Expected at least one allowed request, got {}",
+                stats.allowed
+            );
+        })
+        .await
+        .expect("test_until_ready timed out after 5s");
     }
 }

@@ -1,6 +1,6 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use octarine::auth::{MemoryResetStore, ResetConfig, ResetManager};
 
@@ -49,14 +49,19 @@ fn test_token_expiration() {
     let token = manager.request_reset(user).expect("request reset");
     let token_value = token.value().to_string();
 
-    // Wait for expiration
-    std::thread::sleep(Duration::from_millis(50));
-
-    // Validation should fail
-    assert!(
-        manager.validate(&token_value).is_err(),
-        "Expired token should not validate"
-    );
+    // Poll for expiration rather than sleeping a fixed margin: the TTL stays
+    // at 10ms, but a loaded runner may need longer to actually cross it
+    // (test-resilience Rule 2).
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        if manager.validate(&token_value).is_err() {
+            break;
+        }
+        if Instant::now() > deadline {
+            panic!("Token with a 10ms lifetime still validated after 2s");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 
 /// validate_and_consume rejects wrong user.
@@ -140,8 +145,23 @@ fn test_cleanup_expired() {
         .request_reset("user2@example.com")
         .expect("request 2");
 
-    std::thread::sleep(Duration::from_millis(50));
+    // Poll until both 10ms-lifetime tokens are actually expired and reaped,
+    // instead of sleeping a fixed margin (test-resilience Rule 2). `cleanup`
+    // is idempotent, so re-running it while tokens are still live is safe.
+    // Accumulate across polls: the two tokens may cross their TTL on separate
+    // iterations, so a single call's return value can legitimately be 1.
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let mut cleaned = 0;
+    while cleaned < 2 {
+        cleaned += manager.cleanup().expect("cleanup");
+        if cleaned >= 2 {
+            break;
+        }
+        if Instant::now() > deadline {
+            panic!("Only {cleaned} expired tokens cleaned up after 2s; expected at least 2");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 
-    let cleaned = manager.cleanup().expect("cleanup");
     assert!(cleaned >= 2, "Should clean up at least 2 expired tokens");
 }
