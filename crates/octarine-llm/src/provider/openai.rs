@@ -503,9 +503,14 @@ mod tests {
         let provider = OpenAiProvider::new(secret, "gpt-4o").expect("valid");
         let rendered = format!("{provider:?}");
 
+        // Assertion messages deliberately omit `rendered`. If the property
+        // under test were violated, printing it on failure would put the very
+        // credential into CI output — and a message that interpolates a
+        // secret-derived string is a cleartext-logging sink to a static
+        // analyzer regardless of whether the test passes.
         assert!(
             !rendered.contains(secret),
-            "the provider must not print its credential, got: {rendered}"
+            "the provider must not print its credential"
         );
         assert!(rendered.contains("<redacted>"));
         assert!(

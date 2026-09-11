@@ -72,8 +72,14 @@ spell-fix:
 
 # Check for breaking public-API changes vs. the main branch baseline.
 # Requires origin/main to be fetched (CI uses fetch-depth: 0).
+#
+# octarine-llm is excluded until it exists on main: a crate absent from the
+# baseline revision has no prior API to compare against, and the tool exits
+# 101 ("could not complete") rather than reporting no-change. Drop the
+# --exclude once the crate has landed — it is a bootstrap workaround for the
+# first release of a new workspace member, not a permanent opt-out.
 semver-check:
-    cargo semver-checks check-release --workspace --baseline-rev origin/main
+    cargo semver-checks check-release --workspace --exclude octarine-llm --baseline-rev origin/main
 
 # ─── Test ────────────────────────────────────────────────────────────────────
 

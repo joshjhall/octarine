@@ -229,7 +229,7 @@ async fn openai_compatible_without_auth_sends_no_credential() {
         .unwrap_or_default();
     assert!(
         auth.is_empty(),
-        "an unauthenticated endpoint must receive no credential, got: {auth:?}"
+        "an unauthenticated endpoint must receive no credential"
     );
 }
 

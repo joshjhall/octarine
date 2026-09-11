@@ -265,7 +265,7 @@ mod tests {
 
         assert!(
             !rendered.contains("alice@example.com"),
-            "the analyzed text must not be printed, got: {rendered}"
+            "the analyzed text must not be printed"
         );
         assert!(!rendered.contains("123-45-6789"));
         assert!(!rendered.contains("system rules here"));
@@ -292,7 +292,7 @@ mod tests {
 
         assert!(
             !rendered.contains("alice@example.com"),
-            "detection output quotes the PII and must not be printed, got: {rendered}"
+            "detection output quotes the PII and must not be printed"
         );
         assert!(rendered.contains("gpt-4o"));
         assert!(rendered.contains("Stop"));

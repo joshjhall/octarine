@@ -166,10 +166,7 @@ mod tests {
 
         assert!(rendered.contains("anthropic"), "must name the provider");
         assert!(rendered.contains("401"), "must carry the status");
-        assert!(
-            !rendered.contains("alice"),
-            "the body must NOT be echoed, got: {rendered}"
-        );
+        assert!(!rendered.contains("alice"), "the body must NOT be echoed");
     }
 
     #[test]
@@ -179,11 +176,17 @@ mod tests {
         let body = r#"{"error":{"code":"content_filter","message":"flagged: SSN 123-45-6789 for alice@example.com"}}"#;
         let rendered = problem_for_status("openai", 400, body).to_string();
 
-        assert!(!rendered.contains("123-45-6789"), "got: {rendered}");
-        assert!(!rendered.contains("alice@example.com"), "got: {rendered}");
+        assert!(
+            !rendered.contains("123-45-6789"),
+            "an SSN reached the message"
+        );
+        assert!(
+            !rendered.contains("alice@example.com"),
+            "an email reached the message"
+        );
         assert!(
             rendered.contains("content_filter"),
-            "the machine-readable code IS kept, got: {rendered}"
+            "the machine-readable code IS kept"
         );
     }
 
@@ -200,7 +203,10 @@ mod tests {
     fn a_non_json_body_yields_only_its_length() {
         let rendered = problem_for_status("ollama", 500, "model llama3 not found").to_string();
 
-        assert!(!rendered.contains("llama3"), "got: {rendered}");
+        assert!(
+            !rendered.contains("llama3"),
+            "body text reached the message"
+        );
         assert!(rendered.contains("bytes"), "the length survives");
     }
 
@@ -210,7 +216,10 @@ mod tests {
         let body = r#"{"error":{"code":"flagged text: alice@example.com was found"}}"#;
         let rendered = problem_for_status("openai", 400, body).to_string();
 
-        assert!(!rendered.contains("alice@example.com"), "got: {rendered}");
+        assert!(
+            !rendered.contains("alice@example.com"),
+            "an email reached the message"
+        );
         assert!(rendered.contains("no error code"));
     }
 

@@ -202,7 +202,7 @@ mod tests {
             .request_path();
         assert!(
             path.ends_with("api-version=2025-01-01-preview"),
-            "the override must win over the pinned default, got: {path}"
+            "the override must win over the pinned default"
         );
     }
 
