@@ -418,13 +418,21 @@ mod tests {
         );
 
         // A successful creation still counts, so the assertion above is not
-        // passing merely because counting is broken everywhere.
+        // passing merely because counting is broken everywhere. All five
+        // constructors share the count-before-validate pattern that was just
+        // fixed, so each is exercised rather than only the two above.
         let _ok = builder.circuit_breaker("good").expect("valid breaker");
+        let _ha = builder.ha_circuit_breaker("ha").expect("ha breaker");
+        let _db = builder.db_circuit_breaker("db").expect("db breaker");
+        let _api = builder.api_circuit_breaker("api").expect("api breaker");
+        let _cfg = builder
+            .circuit_breaker_with_config("cfg", CircuitBreakerConfig::default())
+            .expect("cfg breaker");
         flush_for_testing();
         assert_eq!(
             counter_value("runtime.async.circuit_breakers_created"),
-            before.saturating_add(1),
-            "a successful creation must still count",
+            before.saturating_add(5),
+            "every successful constructor must count exactly once",
         );
     }
 

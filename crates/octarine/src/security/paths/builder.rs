@@ -357,16 +357,18 @@ impl SecurityBuilder {
 
         let result = PrimitiveSecurityBuilder::new().sanitize(path);
 
-        if self.emit_events
-            && let Ok(ref sanitized) = result
-        {
-            let modified = sanitized != path;
+        if self.emit_events {
+            // Timed on both Ok and Err: sanitize_with() and validate_path()
+            // time every attempt, and all three feed shared histograms, so
+            // skipping failures here would give one metric two meanings.
             record(
                 metric_names::sanitize_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
 
-            if modified {
+            if let Ok(ref sanitized) = result
+                && sanitized != path
+            {
                 observe::info(
                     "path_sanitized",
                     format!(
@@ -573,6 +575,34 @@ mod tests {
                 .map_or(0, |h| h.count)
                 > before,
             "sanitize_with should record sanitize_ms",
+        );
+    }
+
+    #[test]
+    fn test_sanitize_and_sanitize_with_time_symmetrically() {
+        // Both feed security.paths.sanitize_ms, so both must time every
+        // attempt; if either skipped a branch the histogram would mean two
+        // different things depending on the entry point.
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = SecurityBuilder::new();
+
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.paths.sanitize_ms")
+            .map_or(0, |h| h.count);
+
+        let _ = builder.sanitize("../etc/passwd");
+        let _ = builder.sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean);
+        flush_for_testing();
+
+        assert_eq!(
+            snapshot()
+                .histograms
+                .get("security.paths.sanitize_ms")
+                .map_or(0, |h| h.count),
+            before.saturating_add(2),
+            "both sanitize entry points must record exactly one sample each",
         );
     }
 
