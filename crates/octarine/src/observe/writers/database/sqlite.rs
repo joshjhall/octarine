@@ -285,24 +285,10 @@ impl DatabaseBackend for SqliteBackend {
     }
 
     async fn query_events(&self, query: &AuditQuery) -> Result<QueryResult, WriterError> {
-        let (where_clause, params) = Self::build_where_clause(query);
+        let plan = common::build_query_plan(query, SqlDialect::Sqlite);
 
-        let order = if query.ascending { "ASC" } else { "DESC" };
-        let limit_clause = query
-            .limit
-            .map(|l| format!("LIMIT {l}"))
-            .unwrap_or_default();
-        let offset_clause = query
-            .offset
-            .map(|o| format!("OFFSET {o}"))
-            .unwrap_or_default();
-
-        let sql = format!(
-            "SELECT * FROM audit_events {where_clause} ORDER BY timestamp {order} {limit_clause} {offset_clause}"
-        );
-
-        let mut stmt = sqlx::query(sqlx::AssertSqlSafe(sql));
-        for p in &params {
+        let mut stmt = sqlx::query(sqlx::AssertSqlSafe(plan.select_sql));
+        for p in &plan.params {
             stmt = stmt.bind(p);
         }
         let rows: Vec<SqliteRow> = stmt
@@ -313,21 +299,13 @@ impl DatabaseBackend for SqliteBackend {
         let events: Result<Vec<Event>, WriterError> = rows.iter().map(Self::row_to_event).collect();
         let events = events?;
 
-        let count_sql = format!("SELECT COUNT(*) as count FROM audit_events {where_clause}");
-        let mut count_stmt = sqlx::query_scalar(sqlx::AssertSqlSafe(count_sql));
-        for p in &params {
+        let mut count_stmt = sqlx::query_scalar(sqlx::AssertSqlSafe(plan.count_sql));
+        for p in &plan.params {
             count_stmt = count_stmt.bind(p);
         }
         let total_count: i64 = count_stmt.fetch_one(&self.pool).await.unwrap_or(0);
 
-        let has_more = query.limit.is_some_and(|l| events.len() >= l);
-
-        Ok(QueryResult {
-            events,
-            total_count: Some(total_count as usize),
-            has_more,
-            parse_errors: Vec::new(),
-        })
+        Ok(common::assemble_query_result(events, total_count, query))
     }
 
     async fn delete_before(&self, retention_days: u32) -> Result<usize, WriterError> {

@@ -12,6 +12,7 @@
 use crate::observe::types::{Event, EventContext, EventType, Severity, TenantId, UserId};
 
 use super::query::AuditQuery;
+use super::traits::QueryResult;
 
 /// SQL dialect differences that affect WHERE-clause construction
 ///
@@ -166,6 +167,65 @@ pub(super) fn build_where_clause(query: &AuditQuery, dialect: SqlDialect) -> (St
     };
 
     (where_clause, params)
+}
+
+/// The two SQL statements and bind values needed to serve one [`AuditQuery`]
+///
+/// Both statements share the same WHERE clause and the same ordered bind
+/// values, so they are built together and bound identically by the caller.
+pub(super) struct QueryPlan {
+    /// `SELECT` returning the page of matching events
+    pub select_sql: String,
+    /// `SELECT COUNT(*)` returning the unpaginated total
+    pub count_sql: String,
+    /// Bind values, in the order the placeholders appear in both statements
+    pub params: Vec<String>,
+}
+
+/// Build the SELECT and COUNT statements for a query
+///
+/// `ORDER BY`, `LIMIT`, and `OFFSET` are interpolated rather than bound:
+/// the direction comes from a bool and the two bounds are `usize`, so none of
+/// them can carry caller-supplied text. Every actual value is a placeholder.
+pub(super) fn build_query_plan(query: &AuditQuery, dialect: SqlDialect) -> QueryPlan {
+    let (where_clause, params) = build_where_clause(query, dialect);
+
+    let order = if query.ascending { "ASC" } else { "DESC" };
+    let limit_clause = query
+        .limit
+        .map(|l| format!("LIMIT {l}"))
+        .unwrap_or_default();
+    let offset_clause = query
+        .offset
+        .map(|o| format!("OFFSET {o}"))
+        .unwrap_or_default();
+
+    QueryPlan {
+        select_sql: format!(
+            "SELECT * FROM audit_events {where_clause} ORDER BY timestamp {order} {limit_clause} {offset_clause}"
+        ),
+        count_sql: format!("SELECT COUNT(*) as count FROM audit_events {where_clause}"),
+        params,
+    }
+}
+
+/// Assemble the final [`QueryResult`] from a fetched page and total count
+///
+/// `has_more` is inferred from the page being full: if the caller asked for a
+/// limit and got at least that many rows, another page may exist.
+pub(super) fn assemble_query_result(
+    events: Vec<Event>,
+    total_count: i64,
+    query: &AuditQuery,
+) -> QueryResult {
+    let has_more = query.limit.is_some_and(|l| events.len() >= l);
+
+    QueryResult {
+        events,
+        total_count: Some(total_count as usize),
+        has_more,
+        parse_errors: Vec::new(),
+    }
 }
 
 /// Parse a stored `event_type` column value back into an [`EventType`]
@@ -555,6 +615,122 @@ mod tests {
         assert!(pg_clause.contains(">= 2"), "clause: {pg_clause}");
         assert!(pg_params.is_empty());
         assert!(sqlite_params.is_empty());
+    }
+
+    #[test]
+    fn test_where_clause_covers_every_scalar_filter() {
+        // Each of these four fields was previously untested in isolation. All
+        // nine scalar conditions set at once must produce nine sequential
+        // placeholders and nine binds in declaration order — which is what
+        // proves the running index does not skip or reuse a slot.
+        let corr = uuid::Uuid::from_u128(7);
+        let query = AuditQuery {
+            since: Some(chrono::Utc::now()),
+            until: Some(chrono::Utc::now()),
+            event_types: Some(vec![EventType::Info]),
+            tenant_id: Some("tenant".to_string()),
+            user_id: Some("user".to_string()),
+            correlation_id: Some(corr),
+            resource_type: Some("rtype".to_string()),
+            resource_id: Some("rid".to_string()),
+            ..Default::default()
+        };
+        let (clause, params) = build_where_clause(&query, SqlDialect::Postgres);
+
+        assert!(clause.contains("timestamp >= $1"), "clause: {clause}");
+        assert!(clause.contains("timestamp < $2"), "clause: {clause}");
+        assert!(clause.contains("event_type IN ($3)"), "clause: {clause}");
+        assert!(clause.contains("tenant_id = $4"), "clause: {clause}");
+        assert!(clause.contains("user_id = $5"), "clause: {clause}");
+        assert!(clause.contains("correlation_id = $6"), "clause: {clause}");
+        assert!(clause.contains("resource_type = $7"), "clause: {clause}");
+        assert!(clause.contains("resource_id = $8"), "clause: {clause}");
+
+        // Bind order must match placeholder order: the correlation UUID is
+        // sixth, and the two resource values follow it.
+        assert_eq!(params.len(), 8);
+        assert_eq!(params.get(5), Some(&corr.to_string()));
+        assert_eq!(params.get(6), Some(&"rtype".to_string()));
+        assert_eq!(params.get(7), Some(&"rid".to_string()));
+    }
+
+    #[test]
+    fn test_where_clause_resource_id_alone_takes_first_placeholder() {
+        // resource_id is the last condition appended, so a bug that failed to
+        // advance the index for it would be invisible in the all-fields test
+        // above. Alone, it must still be $1.
+        let query = AuditQuery {
+            resource_id: Some("rid".to_string()),
+            ..Default::default()
+        };
+        let (clause, params) = build_where_clause(&query, SqlDialect::Postgres);
+        assert_eq!(clause, "WHERE resource_id = $1");
+        assert_eq!(params, vec!["rid".to_string()]);
+    }
+
+    // =========================================================================
+    // Query plan construction
+    // =========================================================================
+
+    #[test]
+    fn test_query_plan_orders_and_paginates() {
+        let query = AuditQuery {
+            tenant_id: Some("acme".to_string()),
+            limit: Some(10),
+            offset: Some(20),
+            ascending: true,
+            ..Default::default()
+        };
+        let plan = build_query_plan(&query, SqlDialect::Postgres);
+
+        assert!(plan.select_sql.contains("WHERE tenant_id = $1"));
+        assert!(plan.select_sql.contains("ORDER BY timestamp ASC"));
+        assert!(plan.select_sql.contains("LIMIT 10"));
+        assert!(plan.select_sql.contains("OFFSET 20"));
+        // The COUNT must share the WHERE clause but carry no pagination —
+        // otherwise total_count would report the page size, not the total.
+        assert!(plan.count_sql.contains("WHERE tenant_id = $1"));
+        assert!(!plan.count_sql.contains("LIMIT"), "{}", plan.count_sql);
+        assert!(!plan.count_sql.contains("OFFSET"), "{}", plan.count_sql);
+        // Both statements bind the same values in the same order.
+        assert_eq!(plan.params, vec!["acme".to_string()]);
+    }
+
+    #[test]
+    fn test_query_plan_defaults_to_descending_and_unpaginated() {
+        let plan = build_query_plan(&AuditQuery::default(), SqlDialect::Sqlite);
+        assert!(plan.select_sql.contains("ORDER BY timestamp DESC"));
+        assert!(!plan.select_sql.contains("LIMIT"), "{}", plan.select_sql);
+        assert!(!plan.select_sql.contains("OFFSET"), "{}", plan.select_sql);
+        assert!(plan.params.is_empty());
+    }
+
+    #[test]
+    fn test_assemble_query_result_has_more_only_when_page_is_full() {
+        let full = vec![
+            Event::new(EventType::Info, "a"),
+            Event::new(EventType::Info, "b"),
+        ];
+        let query = AuditQuery {
+            limit: Some(2),
+            ..Default::default()
+        };
+        let result = assemble_query_result(full, 5, &query);
+        assert!(
+            result.has_more,
+            "a full page implies another page may exist"
+        );
+        assert_eq!(result.total_count, Some(5));
+
+        // A short page means the result set is exhausted.
+        let partial = vec![Event::new(EventType::Info, "a")];
+        let result = assemble_query_result(partial, 1, &query);
+        assert!(!result.has_more);
+
+        // With no limit there is no paging at all, however many rows came back.
+        let unlimited = AuditQuery::default();
+        let result = assemble_query_result(vec![Event::new(EventType::Info, "a")], 1, &unlimited);
+        assert!(!result.has_more);
     }
 
     // =========================================================================
