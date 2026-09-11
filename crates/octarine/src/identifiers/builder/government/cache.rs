@@ -53,8 +53,15 @@ mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
+    /// The government validation caches are process-global, so these two
+    /// tests race: one clears the cache the other is reading. Under nextest
+    /// each test gets its own process and this is uncontended; under
+    /// `cargo test` (and so `cargo llvm-cov`) they share one.
+    static CACHE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn test_cache_stats_and_subcaches() {
+        let _guard = CACHE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let b = GovernmentBuilder::silent();
         // Caches populate lazily on validation with checksum work.
         b.clear_caches();
@@ -75,6 +82,7 @@ mod tests {
 
     #[test]
     fn test_clear_caches_resets_size() {
+        let _guard = CACHE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let b = GovernmentBuilder::silent();
         let _ = b.validate_vin_with_checksum("1HGBH41JXMN109186");
         b.clear_caches();

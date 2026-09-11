@@ -568,31 +568,40 @@ mod tests {
     #[test]
     fn test_sanitize_and_sanitize_with_time_symmetrically() {
         // Both feed security.paths.sanitize_ms, so both must time every
-        // attempt; if either skipped a branch the histogram would mean two
-        // different things depending on the entry point.
+        // attempt -- if either skipped a branch the histogram would mean two
+        // different things depending on the entry point. Each call is
+        // measured against its OWN immediately-preceding reading rather than
+        // asserting a +2 delta across both: the registry is process-global,
+        // so concurrent sibling tests can land samples in between.
         let _guard = crate::observe::metrics::metrics_test_lock();
         let builder = SecurityBuilder::new();
 
-        flush_for_testing();
-        let before = snapshot()
-            .histograms
-            .get("security.paths.sanitize_ms")
-            .map_or(0, |h| h.count);
-
-        let _ = builder.sanitize("../etc/passwd");
-        let _ = builder.sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean);
-        flush_for_testing();
-
-        assert_eq!(
+        fn sanitize_samples() -> u64 {
             snapshot()
                 .histograms
                 .get("security.paths.sanitize_ms")
-                .map_or(0, |h| h.count),
-            before.saturating_add(2),
-            "both sanitize entry points must record exactly one sample each",
+                .map_or(0, |h| h.count)
+        }
+
+        flush_for_testing();
+        let before_sanitize = sanitize_samples();
+        let _ = builder.sanitize("../etc/passwd");
+        flush_for_testing();
+        let after_sanitize = sanitize_samples();
+
+        let _ = builder.sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean);
+        flush_for_testing();
+        let after_sanitize_with = sanitize_samples();
+
+        assert!(
+            after_sanitize > before_sanitize,
+            "sanitize() must record a sanitize_ms sample",
+        );
+        assert!(
+            after_sanitize_with > after_sanitize,
+            "sanitize_with() must record a sanitize_ms sample too",
         );
     }
-
     #[test]
     fn test_silent_sanitize_with_records_nothing() {
         // Gate-level, as above.
