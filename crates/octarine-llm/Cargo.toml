@@ -1,0 +1,84 @@
+[package]
+name = "octarine-llm"
+description = "LLM-backed PII recognizers for octarine - native HTTP clients for OpenAI, Anthropic, Azure OpenAI, Ollama, and OpenAI-compatible endpoints"
+version = "0.3.0-beta.7"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["llm", "pii", "openai", "anthropic", "octarine"]
+categories = ["text-processing", "api-bindings"]
+
+[dependencies]
+octarine-core = { workspace = true }
+octarine-problem = { workspace = true }
+
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures-util = { workspace = true }
+# Inherited so a workspace-level version bump (e.g. for a security advisory)
+# reaches this crate too; `stream` is layered on for `bytes_stream()`.
+reqwest = { workspace = true, features = ["stream"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+
+# Both entries below are real dependencies that cargo-machete's source scan
+# cannot see:
+#
+# - `octarine-core` publishes under that package name but its lib is `octarine`,
+#   so the scan looks for `octarine_core::` and never finds it. See the
+#   `use octarine::...` imports throughout.
+# - `reqwest` is never named in this crate's source — transport goes through
+#   `octarine::runtime::http::HttpClient`. It is declared solely to enable the
+#   `stream` feature via Cargo's feature unification, without which
+#   `bytes_stream()` does not exist on the response returned by `into_inner()`
+#   and `provider::openai::stream_chat_completion` fails to compile.
+[package.metadata.cargo-machete]
+ignored = ["octarine-core", "reqwest"]
+
+[dev-dependencies]
+tokio = { workspace = true }
+wiremock = "0.6"
+
+# Lints are copied verbatim from `crates/octarine-problem/Cargo.toml` rather than
+# inherited via `lints.workspace = true`. The workspace `[workspace.lints]` table
+# is weaker than this block (it sets only `all`/`pedantic`/`nursery` to "warn"),
+# so inheriting would silently drop the `unwrap_used` / `panic` /
+# `indexing_slicing` denies the project relies on. See
+# `docs/architecture/crate-layout.md` — "Sibling-crate registration checklist".
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+rust_2018_idioms = { level = "deny", priority = -1 }
+non_ascii_idents = "deny"
+
+[lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+todo = "warn"
+unimplemented = "warn"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+complexity = { level = "warn", priority = -1 }
+cognitive_complexity = "deny"
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+clone_on_ref_ptr = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+too_many_lines = "allow"
+needless_pass_by_value = "allow"
+uninlined_format_args = "allow"
+cargo = { level = "warn", priority = -1 }
+multiple_crate_versions = "allow"

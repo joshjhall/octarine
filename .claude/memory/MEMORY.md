@@ -40,3 +40,5 @@
 - [Release generator + gates](project_release_generator_and_gates.md) — changelog dedup fixed 2026-09-06; re-point the tag after any amend, and let CI be the gate
 - [rumdl version skew](project_rumdl_version_skew.md) — CI pins rumdl 0.1.91 vs local 0.2.68; a markdown line starting `#667` passes `just lint-md` locally and fails MD032 on CI
 - [Unicode range tests go vacuous](feedback_unicode_range_tests_vacuous.md) — a "representative" char for a new codepoint range usually sits in an already-covered block; test the guard directly and assert both bounds
+- [New crate CI gates](project_new_crate_ci_gates.md) — a new workspace member fails SemVer (no baseline in origin/main; use `--exclude`) and needs lefthook.yml + four justfile release sites the crate-layout checklist omits
+- [No secrets in assert messages](feedback_secrets_in_assertion_messages.md) — `got: {rendered}` in an assert! is a CodeQL cleartext-logging sink even in a test asserting the secret stays hidden; state the property, omit the value

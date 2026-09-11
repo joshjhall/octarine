@@ -108,7 +108,7 @@ pre-commit:
       # command scopes to all our crates rather than just {staged_files}.
       skip:
         - run: "! command -v cargo-machete >/dev/null 2>&1"
-      run: cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-problem
+      run: cargo machete --skip-target-dir crates/octarine crates/octarine-derive crates/octarine-llm crates/octarine-problem
 
     # --- JSON/YAML formatting (dprint) ---
 

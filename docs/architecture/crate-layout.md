@@ -229,19 +229,26 @@ The decision above was applied to the already-filed tracking issues by comment
 
 | Issue | Applied |
 |---|---|
-| #468 — LLM suite | Sibling crate confirmed; vault + #525 placement corrected |
+| #468 — LLM suite | Sibling crate confirmed; vault + #525 placement corrected. **`crates/octarine-llm` created by #520** — registration checklist worked, `analyze::Recognizer` implemented from the sibling side |
 | #469 — OTel deployment | Sibling-crate scaffolding superseded; stays feature flags |
 | #465 — `octarine-server` | Sibling confirmed + registration checklist |
 | #471 — `octarine-dicom` | Sibling confirmed + registration checklist |
 | #472 — `octarine-image` | Sibling confirmed + registration checklist |
 | #563 — `octarine-eval` | Sibling confirmed + registration checklist |
 
-**No workspace `members` or `[workspace.dependencies]` entries are added by this
+**No workspace `members` or `[workspace.dependencies]` entries were added by this
 decision.** #467's acceptance criteria anticipated that a sibling-crate outcome
-would add them, but there is nothing to register until a crate actually exists:
-each sibling is created by its own child issue, which works the
+would add them, but there was nothing to register until a crate actually
+existed: each sibling is created by its own child issue, which works the
 [registration checklist](#sibling-crate-registration-checklist) at that point.
-Adding empty members now would break `cargo metadata`.
+Adding empty members up front would have broken `cargo metadata`.
+
+`crates/octarine-llm` is the first sibling created under this rule (#520). It is
+registered in workspace `members` and `[workspace.dependencies]`, added to the
+`cargo machete` list in **both** `justfile` and `lefthook.yml` (the list is
+duplicated across the two), given release version-sync guards and a
+`publish-llm` job ordered after `publish-octarine`, and it copies the lint
+blocks rather than inheriting them. `.conform.yaml` already carried `^llm$`.
 
 ## Related documents
 
