@@ -337,15 +337,18 @@ pub(crate) mod singapore_uen {
 pub(crate) mod finland_hetu {
     use super::*;
 
-    /// HETU format: DDMMYY[+-A]NNNC (6 digits + century + 3 digits + check)
+    /// HETU format: DDMMYY\[century\]NNNC (6 digits + century + 3 digits + check)
+    ///
+    /// Century markers cover the legacy set (`+` 1800s, `-` 1900s, `A` 2000s)
+    /// and the DVV post-2023 additions (`B`-`F` 2000s, `U`-`Y` 1900s).
     pub static STANDARD: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"\b\d{6}[-+A]\d{3}[0-9A-Y]\b").expect("BUG: Invalid regex pattern")
+        Regex::new(r"\b\d{6}[-+ABCDEFUVWXY]\d{3}[0-9A-Y]\b").expect("BUG: Invalid regex pattern")
     });
 
     /// HETU with explicit label
     pub static LABELED: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r"(?i)\b(?:HETU|henkilotunnus|personal[\s-]?identity[\s-]?code)[\s:#-]*(\d{6}[-+A]\d{3}[0-9A-Y])\b",
+            r"(?i)\b(?:HETU|henkilotunnus|personal[\s-]?identity[\s-]?code)[\s:#-]*(\d{6}[-+ABCDEFUVWXY]\d{3}[0-9A-Y])\b",
         )
         .expect("BUG: Invalid regex pattern")
     });

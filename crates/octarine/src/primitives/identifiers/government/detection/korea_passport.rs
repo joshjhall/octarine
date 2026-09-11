@@ -1,7 +1,8 @@
 //! South Korea Passport detection
 //!
-//! Format: `[MRS][A-Z]?[0-9]{7,8}` — M=multiple, R=resident, S=single, with an
-//! optional second uppercase letter for the newer (post-2008) format.
+//! Format: `[MRSOD][A-Z]?[0-9]{7,8}` — M=multiple, R=resident, S=single,
+//! O=official, D=diplomatic, with an optional second uppercase letter for the
+//! newer (post-2008) format.
 
 use super::super::super::common::patterns;
 use super::super::super::types::{IdentifierMatch, IdentifierType};
@@ -41,4 +42,42 @@ pub fn find_korea_passports_in_text(text: &str) -> Vec<IdentifierMatch> {
     }
 
     deduplicate_matches(matches)
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn test_is_korea_passport_mofa_prefixes_detected() {
+        // O (official) and D (diplomatic) validate as of #427, so detection
+        // must find them too — otherwise scans stay blind to valid passports.
+        assert!(is_korea_passport("O12345678"));
+        assert!(is_korea_passport("D12345678"));
+    }
+
+    #[test]
+    fn test_is_korea_passport_legacy_prefixes_still_detected() {
+        // Control: widening the class must not drop the original prefixes.
+        assert!(is_korea_passport("M12345678"));
+        assert!(is_korea_passport("R12345678"));
+        assert!(is_korea_passport("S12345678"));
+        // A prefix outside the valid set is still not a passport.
+        assert!(!is_korea_passport("X12345678"));
+    }
+
+    #[test]
+    fn test_find_korea_passports_in_text_mofa_prefix() {
+        let matches = find_korea_passports_in_text("Korean passport: D12345678");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::KoreaPassport
+        );
+    }
 }

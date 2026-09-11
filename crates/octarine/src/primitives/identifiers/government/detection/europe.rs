@@ -499,6 +499,42 @@ mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
+    // ----- Finland HETU -----
+
+    #[test]
+    fn test_is_finland_hetu_post_2023_century_markers() {
+        // Detection must see the markers DVV added on 2023-01-01, or a HETU
+        // that now validates would never be found in scanned text (#427).
+        for marker in ['B', 'C', 'D', 'E', 'F', 'Y', 'X', 'W', 'V', 'U'] {
+            let hetu = format!("010100{marker}901H");
+            assert!(
+                is_finland_hetu(&hetu),
+                "post-2023 marker '{marker}' should be detected"
+            );
+        }
+    }
+
+    #[test]
+    fn test_is_finland_hetu_legacy_markers_still_detected() {
+        // Control: widening the class must not drop the legacy markers.
+        for marker in ['-', '+', 'A'] {
+            let hetu = format!("010100{marker}901H");
+            assert!(is_finland_hetu(&hetu), "legacy '{marker}' should detect");
+        }
+        // A marker outside both groups is still not a HETU.
+        assert!(!is_finland_hetu("010100Z901H"));
+    }
+
+    #[test]
+    fn test_find_finland_hetus_in_text_post_2023() {
+        let matches = find_finland_hetus_in_text("HETU: 010100B901H on file");
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches.first().expect("one match").identifier_type,
+            IdentifierType::FinlandHetu
+        );
+    }
+
     // ----- UK NHS Number -----
 
     #[test]

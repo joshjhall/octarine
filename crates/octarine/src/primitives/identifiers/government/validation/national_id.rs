@@ -34,7 +34,7 @@ use crate::primitives::Problem;
 /// use crate::primitives::identifiers::government::validation;
 ///
 /// assert!(validation::validate_national_id("AB123456C").is_ok());   // UK NI
-/// assert!(validation::validate_national_id("046-454-286").is_ok()); // Canada SIN
+/// assert!(validation::validate_national_id("136-454-287").is_ok()); // Canada SIN
 /// ```
 pub fn validate_national_id(national_id: &str) -> Result<(), Problem> {
     let trimmed = national_id.trim();
@@ -211,7 +211,7 @@ pub fn validate_uk_ni(ni: &str) -> Result<(), Problem> {
 /// ```ignore
 /// use crate::primitives::identifiers::government::validation;
 ///
-/// assert!(validation::validate_canada_sin("046-454-286").is_ok());
+/// assert!(validation::validate_canada_sin("136-454-287").is_ok());
 /// assert!(validation::validate_canada_sin("123-456-789").is_err()); // Bad checksum
 /// ```
 pub fn validate_canada_sin(sin: &str) -> Result<(), Problem> {
@@ -235,6 +235,16 @@ pub fn validate_canada_sin(sin: &str) -> Result<(), Problem> {
         return Err(Problem::Validation(
             "Canadian SIN must contain only digits and optional separators (- or space)".into(),
         ));
+    }
+
+    // ESDC reserves the leading digits 0 and 8 — no SIN is issued in those
+    // ranges, so reject before Luhn to give the more specific error.
+    let first = digits.chars().next().unwrap_or('0');
+    if first == '0' || first == '8' {
+        return Err(Problem::Validation(format!(
+            "Canadian SIN cannot start with {} (0 and 8 are reserved)",
+            first
+        )));
     }
 
     // Luhn checksum validation
@@ -477,10 +487,25 @@ mod tests {
 
     #[test]
     fn test_valid_canada_sin() {
-        // 046-454-286 has valid Luhn checksum
-        assert!(validate_canada_sin("046454286").is_ok());
-        assert!(validate_canada_sin("046-454-286").is_ok());
-        assert!(validate_canada_sin("046 454 286").is_ok());
+        // 136-454-287 has valid Luhn checksum
+        assert!(validate_canada_sin("136454287").is_ok());
+        assert!(validate_canada_sin("136-454-287").is_ok());
+        assert!(validate_canada_sin("136 454 287").is_ok());
+    }
+
+    #[test]
+    fn test_canada_sin_rejects_reserved_first_digit() {
+        // ESDC never issues SINs starting 0 or 8. Both fixtures are Luhn-valid,
+        // so only the new first-digit rule can reject them — if that rule is
+        // removed these assertions fail rather than passing vacuously.
+        assert!(luhn_check("012345674"), "fixture must be Luhn-valid");
+        assert!(luhn_check("846454288"), "fixture must be Luhn-valid");
+
+        assert!(validate_canada_sin("012345674").is_err());
+        assert!(validate_canada_sin("846454288").is_err());
+
+        // Control: same digits with an allowed leading digit still validate.
+        assert!(validate_canada_sin("136454287").is_ok());
     }
 
     #[test]
@@ -529,7 +554,16 @@ mod tests {
 
     #[test]
     fn test_auto_detect_canada_sin() {
-        assert!(validate_national_id("046-454-286").is_ok());
+        assert!(validate_national_id("136-454-287").is_ok());
+        // The reserved-first-digit rule must also be reachable through the
+        // auto-detect dispatcher, not just via validate_canada_sin directly:
+        // is_canada_sin_shape gates on digit grouping only, so a 0-leading
+        // value still routes here and must be rejected.
+        assert!(validate_national_id("012345674").is_err());
+        // Both reserved digits, not just '0' — a refactor that special-cased
+        // one would otherwise slip through. Luhn-valid, so only the
+        // reserved-digit rule can reject it.
+        assert!(validate_national_id("846454288").is_err());
     }
 
     #[test]
@@ -560,7 +594,7 @@ mod tests {
 
     #[test]
     fn test_luhn_valid() {
-        assert!(luhn_check("046454286"));
+        assert!(luhn_check("136454287"));
         assert!(luhn_check("79927398713")); // Well-known Luhn test number
     }
 
@@ -600,7 +634,7 @@ mod tests {
     #[test]
     fn test_real_ids_not_flagged() {
         assert!(!is_test_national_id("AB123456C"));
-        assert!(!is_test_national_id("046454286"));
+        assert!(!is_test_national_id("136454287"));
     }
 
     // ========================================================================

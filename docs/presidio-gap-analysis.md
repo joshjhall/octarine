@@ -390,11 +390,11 @@ Pure extension targets where octarine can widen its lead beyond Presidio.
 - HIGH-1: Fix `validate_bank_account` inverted Luhn logic (`financial/detection/bank_account.rs:120`).
 - CRIT-5 partial: Fix `validate_ssn` to reject 9xx-area numbers (route to future `validate_itin`).
 - HIGH-2: Set `AustraliaMedicare` `is_high_risk=true` + revisit `is_hipaa_protected` / add `is_app_protected`.
-- HIGH-7: Add palindrome reject to India Aadhaar (`india.rs:98-108`).
-- HIGH-8: Extend Finland HETU `VALID_CENTURY_MARKERS` to post-2023 B-F / U-Y.
-- HIGH-13: Extend Korea Passport `VALID_TYPE_PREFIXES` to include `O`, `D`.
-- HIGH-12 partial: Add Canada SIN first-digit `[1-79]` check (`national_id.rs:217-241`).
-- HIGH-14: Add SSN `98765432`-prefix + mixed-delimiter checks.
+- ~~HIGH-7: Add palindrome reject to India Aadhaar (`india.rs:98-108`).~~ Done in #427 — rejected in both `validate_india_aadhaar_with_checksum` and `is_test_india_aadhaar`; the validation-tier false-positive tradeoff is documented in the rustdoc.
+- ~~HIGH-8: Extend Finland HETU `VALID_CENTURY_MARKERS` to post-2023 B-F / U-Y.~~ Done in #427 — detection regexes widened in lockstep.
+- ~~HIGH-13: Extend Korea Passport `VALID_TYPE_PREFIXES` to include `O`, `D`.~~ Done in #427 — detection regexes widened in lockstep.
+- ~~HIGH-12 partial: Add Canada SIN first-digit `[1-79]` check (`national_id.rs:217-241`).~~ Done in #427 — the canonical fixture `046-454-286` starts with `0` and was replaced repo-wide with `136-454-287`.
+- ~~HIGH-14: Add SSN `98765432`-prefix + mixed-delimiter checks.~~ Done in #427 — both were already satisfied by existing code (the `98765432` prefix is subsumed by the 9XX/ITIN rejection; `"123-45 6789"` never matched the `EXACT` pattern) and are now pinned by regression tests. The real residual gap, inconsistent hyphenation (`"123-456789"`), was fixed.
 - HIGH-9: Rename `IdentifierType::MedicalLicense` → `IdentifierType::DeaNumber` (pre-1.0 direct rename per `feedback_pre_1_0_breaking_changes`).
 - MED-5: Mirror Presidio MAC broadcast / all-zero invalidation in `is_mac_address`.
 

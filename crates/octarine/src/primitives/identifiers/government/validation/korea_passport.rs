@@ -1,8 +1,9 @@
 //! South Korea Passport validation
 //!
-//! Format: `[MRS][A-Z]?[0-9]{7,8}`
+//! Format: `[MRSOD][A-Z]?[0-9]{7,8}`
 //!
-//! - First character is one of `M` (multiple), `R` (resident), or `S` (single).
+//! - First character is one of `M` (multiple), `R` (resident), `S` (single),
+//!   `O` (official), or `D` (diplomatic). `O` and `D` are MOFA-issued types.
 //! - Optional second uppercase letter (newer post-2008 format).
 //! - 7 or 8 trailing digits.
 //!
@@ -12,7 +13,7 @@
 use crate::primitives::types::Problem;
 
 /// Valid first-character type indicators
-const VALID_TYPE_PREFIXES: &[char] = &['M', 'R', 'S'];
+const VALID_TYPE_PREFIXES: &[char] = &['M', 'R', 'S', 'O', 'D'];
 
 /// Minimum passport length (1 letter + 7 digits)
 const MIN_LENGTH: usize = 8;
@@ -45,8 +46,8 @@ pub fn validate_korea_passport(value: &str) -> Result<(), Problem> {
     let first = chars.next().unwrap_or(' ');
     if !VALID_TYPE_PREFIXES.contains(&first) {
         return Err(Problem::Validation(format!(
-            "Korea Passport must start with M, R, or S, got '{}'",
-            first
+            "Korea Passport must start with one of {:?}; got '{}'",
+            VALID_TYPE_PREFIXES, first
         )));
     }
 
@@ -158,6 +159,14 @@ mod tests {
     fn test_validate_korea_passport_two_letter_format() {
         assert!(validate_korea_passport("MA12345678").is_ok());
         assert!(validate_korea_passport("SB1234567").is_ok());
+    }
+
+    #[test]
+    fn test_validate_korea_passport_mofa_prefixes() {
+        // O = official, D = diplomatic (MOFA-issued); rejected before #427.
+        assert!(validate_korea_passport("O12345678").is_ok());
+        assert!(validate_korea_passport("D12345678").is_ok());
+        assert!(validate_korea_passport("OA1234567").is_ok());
     }
 
     #[test]
