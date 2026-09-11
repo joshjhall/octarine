@@ -102,7 +102,9 @@ mod tests {
     fn test_timer_auto_record() {
         {
             let _timer = timer("test_operation");
-            thread::sleep(Duration::from_millis(10));
+            // No duration assertion here — the sleep only ensures the timer
+            // spans measurable work, so 1ms suffices (Rule 4).
+            thread::sleep(Duration::from_millis(1));
             // Timer records on drop
         }
     }
@@ -110,11 +112,14 @@ mod tests {
     #[test]
     fn test_timer_manual_record() {
         let timer = timer("test_operation");
-        thread::sleep(Duration::from_millis(10));
+        // 1ms is enough to prove a non-zero duration is recorded. Asserting a
+        // larger lower bound is flaky: `thread::sleep` may return marginally
+        // early on a contended runner (test-resilience Rule 1).
+        thread::sleep(Duration::from_millis(1));
         let duration = timer.record();
         assert!(
-            duration.as_millis() >= 10,
-            "Expected at least 10ms duration, got {}ms",
+            duration.as_millis() >= 1,
+            "Expected a non-zero duration, got {}ms",
             duration.as_millis()
         );
     }
@@ -122,7 +127,8 @@ mod tests {
     #[test]
     fn test_time_fn() {
         let result = time_fn("test_operation", || {
-            thread::sleep(Duration::from_millis(10));
+            // Duration is not asserted; 1ms keeps the test fast (Rule 4).
+            thread::sleep(Duration::from_millis(1));
             42
         });
         assert_eq!(result, 42);

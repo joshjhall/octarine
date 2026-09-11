@@ -368,30 +368,41 @@ mod tests {
 
     #[tokio::test]
     async fn test_until_ready() {
-        let limiter = RateLimiter::<String>::per_second(10).expect("should create limiter");
-        let key = "test".to_string();
+        // Outer deadline: if `until_ready` ever regresses into a deadlock this
+        // fails the test instead of hanging the CI runner indefinitely.
+        tokio::time::timeout(Duration::from_secs(5), async {
+            let limiter = RateLimiter::<String>::per_second(10).expect("should create limiter");
+            let key = "test".to_string();
 
-        // Exhaust the burst
-        for _ in 0..10 {
-            limiter.check(&key);
-        }
+            // Exhaust the burst
+            for _ in 0..10 {
+                limiter.check(&key);
+            }
 
-        // Next check should be denied
-        assert!(limiter.check(&key).is_denied());
+            // Next check should be denied
+            assert!(limiter.check(&key).is_denied());
 
-        // Reset stats for clean measurement
-        limiter.reset_stats();
+            // Reset stats for clean measurement
+            limiter.reset_stats();
 
-        // until_ready should wait and then succeed
-        let start = std::time::Instant::now();
-        limiter.until_ready(&key).await;
-        let elapsed = start.elapsed();
+            // until_ready should wait and then succeed
+            let start = std::time::Instant::now();
+            limiter.until_ready(&key).await;
+            let elapsed = start.elapsed();
 
-        // Should have waited some time (at least a few ms)
-        assert!(elapsed.as_millis() > 0);
+            // Should have waited some time (at least a few ms)
+            assert!(elapsed.as_millis() > 0);
 
-        // And request should be counted as allowed
-        let stats = limiter.stats();
-        assert_eq!(stats.allowed, 1);
+            // Exactly one: `allowed` is incremented only in `until_ready`'s
+            // success arm, and stats were reset immediately before the single
+            // call. An exact assertion catches a retry loop that double-counts.
+            let stats = limiter.stats();
+            assert_eq!(
+                stats.allowed, 1,
+                "until_ready should record exactly one allowed request"
+            );
+        })
+        .await
+        .expect("test_until_ready timed out after 5s");
     }
 }

@@ -48,6 +48,14 @@ that failed, in isolation (`cargo build --example <name> --all-features
 same tree dies. `cargo check -p octarine-core --no-default-features` is a
 cheap local signal that fits in memory when the full build does not.
 
+**But try exactly one retry first.** Seen 2026-09-11 (issue #418 worktree):
+the same `mold: Disk full?` + `clang: Bus error` pair fired on a cold
+`just test-filter`, with **16Gi available RAM and the disk at 32%** — and a
+plain re-run of the identical command compiled and linked fine. So the
+signature is not always resource exhaustion; a single transient failure is
+worth one retry before investigating. Check `free -h` / `df -h` first: if
+they are healthy, retry; if they are not, follow the rest of this note.
+
 Do not burn a session retrying the full build — a wide `--all-features`
 build may be unrunnable on this box regardless of `--jobs`. **Push instead
 and let CI arbitrate**; the lefthook pre-push hook (`cargo clippy
