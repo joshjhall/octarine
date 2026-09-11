@@ -680,3 +680,36 @@ fn openai_compatible_without_an_explicit_credential_var_is_rejected() {
         "the rejection must name the field to set: {err}"
     );
 }
+
+#[test]
+fn a_disabled_config_that_is_broken_still_fails_the_load() {
+    // `load_dir` validates every file before excluding disabled ones — a parked
+    // config that does not load is still a broken config. Without this, a
+    // regression that skipped validation for `enabled = false` (an early
+    // `continue` before `load_file`) would pass every other test.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_config(&dir.path().join("good.toml"), "good", "ALPHA");
+    std::fs::write(
+        dir.path().join("parked.toml"),
+        r#"
+[recognizer]
+class_name = "parked"
+provider = "ollama"
+model = "llama3"
+enabled = false
+
+[recognizer.prompt]
+system = "Find PII."
+
+[recognizer.entity_mapping]
+PERSON = "PERSEN"
+"#,
+    )
+    .expect("write");
+
+    let err = loader::load_dir(dir.path())
+        .expect_err("a disabled config with a bad entity_type is still broken");
+    let msg = err.to_string();
+    assert!(msg.contains("parked.toml"), "must name the file: {msg}");
+    assert!(msg.contains("PERSEN"), "must quote the bad value: {msg}");
+}

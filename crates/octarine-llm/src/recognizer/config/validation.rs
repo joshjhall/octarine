@@ -26,6 +26,17 @@ fn invalid(path: &str, detail: impl std::fmt::Display) -> Problem {
     Problem::Config(format!("{path}: {detail}"))
 }
 
+/// Whether an optional field is absent or holds only whitespace.
+///
+/// `""` and `"   "` are as absent as `None` — TOML has no way to express "unset"
+/// other than omission, so an operator who blanks a value means to remove it.
+/// Treating them alike keeps a provider-required field's rejection at load time,
+/// with its TOML path, instead of surfacing later as a constructor error or an
+/// `environment variable  is unset` message with a blank name.
+fn is_blank(value: Option<&str>) -> bool {
+    value.is_none_or(|v| v.trim().is_empty())
+}
+
 /// Resolves an entity label, attributing any failure to `path`.
 fn resolve_entity(path: &str, raw: &str) -> Result<IdentifierType> {
     IdentifierType::from_str(raw).map_err(|e| invalid(path, e))
@@ -106,18 +117,18 @@ impl RecognizerConfig {
     /// field, not an internal argument.
     fn validate_provider_fields(&self) -> Result<()> {
         match self.provider.as_str() {
-            "azure_openai" if self.endpoint.is_none() => Err(invalid(
+            "azure_openai" if is_blank(self.endpoint.as_deref()) => Err(invalid(
                 "recognizer.endpoint",
                 "is required when provider = \"azure_openai\"",
             )),
-            "openai_compatible" if self.base_url.is_none() => Err(invalid(
+            "openai_compatible" if is_blank(self.base_url.as_deref()) => Err(invalid(
                 "recognizer.base_url",
                 "is required when provider = \"openai_compatible\"",
             )),
             // No credential default for this provider — see `credential_env`.
             // Without an explicit variable an operator's real OPENAI_API_KEY
             // would be sent to whatever third-party host `base_url` names.
-            "openai_compatible" if self.api_key_env.is_none() => Err(invalid(
+            "openai_compatible" if is_blank(self.api_key_env.as_deref()) => Err(invalid(
                 "recognizer.api_key_env",
                 "is required when provider = \"openai_compatible\", whose base_url is an \
 operator-chosen host; there is no safe default credential to send to it",
@@ -141,7 +152,10 @@ operator-chosen host; there is no safe default credential to send to it",
         if self.provider == "ollama" {
             return None;
         }
-        if let Some(explicit) = self.api_key_env.as_deref() {
+        // A blank value is not an override — see `is_blank`. Returning it would
+        // send an empty variable name to `read_credential`, whose error then
+        // names nothing.
+        if let Some(explicit) = self.api_key_env.as_deref().filter(|v| !v.trim().is_empty()) {
             return Some(explicit);
         }
         match self.provider.as_str() {
@@ -618,6 +632,76 @@ mod tests {
             config.credential_env(),
             None,
             "there must be no default credential for an operator-chosen host"
+        );
+    }
+
+    #[test]
+    fn a_blank_required_provider_field_is_rejected_like_an_absent_one() {
+        // "" and "   " are as absent as None; TOML cannot express "unset" other
+        // than by omission. Accepting them defers the failure to construction
+        // time, losing the TOML path this module exists to report.
+        for blank in ["", "   "] {
+            let mut compat = base();
+            compat.provider = "openai_compatible".to_string();
+            compat.base_url = Some("https://api.groq.com/openai/v1".to_string());
+            compat.api_key_env = Some(blank.to_string());
+            let err = compat
+                .validate()
+                .expect_err("a blank api_key_env names no variable");
+            assert!(
+                err.to_string().contains("recognizer.api_key_env"),
+                "must name the field, not fail later at construction: {err}"
+            );
+
+            let mut url = base();
+            url.provider = "openai_compatible".to_string();
+            url.api_key_env = Some("GROQ_API_KEY".to_string());
+            url.base_url = Some(blank.to_string());
+            assert!(
+                url.validate()
+                    .expect_err("a blank base_url names no host")
+                    .to_string()
+                    .contains("recognizer.base_url")
+            );
+
+            let mut azure = base();
+            azure.provider = "azure_openai".to_string();
+            azure.endpoint = Some(blank.to_string());
+            assert!(
+                azure
+                    .validate()
+                    .expect_err("a blank endpoint names no resource")
+                    .to_string()
+                    .contains("recognizer.endpoint")
+            );
+        }
+    }
+
+    #[test]
+    fn a_blank_api_key_env_is_not_treated_as_an_override() {
+        // Otherwise `read_credential` is handed an empty variable name and
+        // reports "environment variable  is unset" — naming nothing.
+        let mut config = base();
+        config.provider = "openai".to_string();
+        config.api_key_env = Some("   ".to_string());
+        assert_eq!(
+            config.credential_env(),
+            Some("OPENAI_API_KEY"),
+            "a blank override must fall back to the provider default, not be used"
+        );
+    }
+
+    #[test]
+    fn an_unrecognized_provider_never_invents_a_credential() {
+        // `validate` rejects unknown providers before this matters, but the
+        // fallthrough is the safety net for a provider added to the known list
+        // without a credential mapping — it must not reach for an OpenAI key.
+        let mut config = base();
+        config.provider = "some_future_provider".to_string();
+        assert_eq!(
+            config.credential_env(),
+            None,
+            "an unknown provider has no credential to default to"
         );
     }
 
