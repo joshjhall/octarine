@@ -117,6 +117,30 @@ impl GovernmentBuilder {
         }
         result
     }
+
+    /// Validate Singapore UEN with its layout-specific weighted mod-11 checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the UEN layout, registration year, entity type, or
+    /// check letter is invalid.
+    pub fn validate_singapore_uen_with_checksum(&self, uen: &str) -> Result<(), Problem> {
+        let start = Instant::now();
+        let result = self.inner.validate_singapore_uen_with_checksum(uen);
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if result.is_err() {
+                observe::warn(
+                    "singapore_uen_checksum_validation_failed",
+                    "Invalid Singapore UEN checksum",
+                );
+            }
+        }
+        result
+    }
 }
 
 #[cfg(test)]
@@ -191,5 +215,24 @@ mod tests {
         let b = GovernmentBuilder::silent();
         assert!(b.validate_singapore_uen(VALID_UEN).is_ok());
         assert!(b.validate_singapore_uen("12345678K201912345K").is_err());
+    }
+
+    #[test]
+    fn test_validate_singapore_uen_with_checksum() {
+        let b = GovernmentBuilder::silent();
+        // Checksum-correct business layout (VALID_UEN is layout-valid only).
+        assert!(b.validate_singapore_uen_with_checksum("12345678M").is_ok());
+        assert!(b.validate_singapore_uen_with_checksum(VALID_UEN).is_err());
+        // Checksum-correct local company and other-entity layouts.
+        assert!(b.validate_singapore_uen_with_checksum("201912345R").is_ok());
+        assert!(b.validate_singapore_uen_with_checksum("T12LL1234C").is_ok());
+    }
+
+    #[test]
+    fn test_validate_singapore_uen_with_checksum_events_enabled() {
+        // Exercise the observe-instrumented path (warn + metric on failure).
+        let b = GovernmentBuilder::new();
+        assert!(b.validate_singapore_uen_with_checksum("12345678M").is_ok());
+        assert!(b.validate_singapore_uen_with_checksum("12345678K").is_err());
     }
 }
