@@ -1,0 +1,240 @@
+//! Government ID scanning across 18 jurisdictions
+//!
+//! Part of the PII scanner domain split (issue #411).
+
+use super::super::super::types::PiiType;
+use crate::primitives::identifiers::{GovernmentIdentifierBuilder, IdentifierMatch};
+
+/// Scan for government IDs (SSN, driver license, passport, tax ID, plus
+/// country-specific national IDs across 18 jurisdictions).
+pub(super) fn scan_government(text: &str, pii_types: &mut Vec<PiiType>) {
+    type Finder = fn(&GovernmentIdentifierBuilder, &str) -> Vec<IdentifierMatch>;
+    const SCANNERS: &[(Finder, PiiType)] = &[
+        (GovernmentIdentifierBuilder::find_ssns_in_text, PiiType::Ssn),
+        (
+            GovernmentIdentifierBuilder::find_driver_licenses_in_text,
+            PiiType::DriverLicense,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_passports_in_text,
+            PiiType::Passport,
+        ),
+        (GovernmentIdentifierBuilder::find_eins_in_text, PiiType::Ein),
+        (
+            GovernmentIdentifierBuilder::find_itins_in_text,
+            PiiType::Itin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_us_mbis_in_text,
+            PiiType::Mbi,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_tax_ids_in_text,
+            PiiType::TaxId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_national_ids_in_text,
+            PiiType::NationalId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_vehicle_ids_in_text,
+            PiiType::Vin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_rrns_in_text,
+            PiiType::KoreaRrn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_frns_in_text,
+            PiiType::KoreaFrn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_driver_licenses_in_text,
+            PiiType::KoreaDriverLicense,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_passports_in_text,
+            PiiType::KoreaPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_korea_brns_in_text,
+            PiiType::KoreaBrn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_tfns_in_text,
+            PiiType::AustraliaTfn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_abns_in_text,
+            PiiType::AustraliaAbn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_medicares_in_text,
+            PiiType::AustraliaMedicare,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_australia_acns_in_text,
+            PiiType::AustraliaAcn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_aadhaars_in_text,
+            PiiType::IndiaAadhaar,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_pans_in_text,
+            PiiType::IndiaPan,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_gstins_in_text,
+            PiiType::IndiaGstin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_vehicle_registrations_in_text,
+            PiiType::IndiaVehicleReg,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_voter_ids_in_text,
+            PiiType::IndiaVoterId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_india_passports_in_text,
+            PiiType::IndiaPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_brazil_cpfs_in_text,
+            PiiType::BrazilCpf,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_brazil_cnpjs_in_text,
+            PiiType::BrazilCnpj,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_mexico_curps_in_text,
+            PiiType::MexicoCurp,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_nigeria_nins_in_text,
+            PiiType::NigeriaNin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_nigeria_bvns_in_text,
+            PiiType::NigeriaBvn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_nigeria_vehicle_registrations_in_text,
+            PiiType::NigeriaVehicleReg,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_thailand_tnins_in_text,
+            PiiType::ThailandTnin,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_turkey_tckns_in_text,
+            PiiType::TurkeyTckn,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_turkey_license_plates_in_text,
+            PiiType::TurkeyLicensePlate,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_singapore_nrics_in_text,
+            PiiType::SingaporeNric,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_singapore_uens_in_text,
+            PiiType::SingaporeUen,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_finland_hetus_in_text,
+            PiiType::FinlandHetu,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_poland_pesels_in_text,
+            PiiType::PolandPesel,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_fiscal_codes_in_text,
+            PiiType::ItalyFiscalCode,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_vats_in_text,
+            PiiType::ItalyVat,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_passports_in_text,
+            PiiType::ItalyPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_identity_cards_in_text,
+            PiiType::ItalyIdentityCard,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_italy_driver_licenses_in_text,
+            PiiType::ItalyDriverLicense,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_spain_nifs_in_text,
+            PiiType::SpainNif,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_spain_nies_in_text,
+            PiiType::SpainNie,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_spain_passports_in_text,
+            PiiType::SpainPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_nis_in_text,
+            PiiType::UkNi,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_nhs_in_text,
+            PiiType::UkNhs,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_passports_in_text,
+            PiiType::UkPassport,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_uk_driving_licences_in_text,
+            PiiType::UkDrivingLicence,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_sweden_personnummers_in_text,
+            PiiType::SwedenPersonnummer,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_sweden_orgnummers_in_text,
+            PiiType::SwedenOrgnummer,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_germany_tax_ids_in_text,
+            PiiType::GermanyTaxId,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_germany_id_cards_in_text,
+            PiiType::GermanyIdCard,
+        ),
+        (
+            GovernmentIdentifierBuilder::find_germany_passports_in_text,
+            PiiType::GermanyPassport,
+        ),
+    ];
+
+    let government = GovernmentIdentifierBuilder::new();
+    for &(finder, pii_type) in SCANNERS {
+        if !finder(&government, text).is_empty() {
+            pii_types.push(pii_type);
+        }
+    }
+}
+
+/// Coarse pre-filter for the government domain.
+///
+/// `is_government_present` aggregates all government finders (including
+/// country-specific variants) via `find_all_government_ids_in_text`, so future
+/// additions are covered automatically.
+pub(super) fn is_government_present(text: &str) -> bool {
+    GovernmentIdentifierBuilder::new().is_government_present(text)
+}

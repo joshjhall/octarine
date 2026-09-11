@@ -4,7 +4,7 @@
 //! has no wildcard arm; because `IdentifierType` is not `#[non_exhaustive]`,
 //! adding a new variant will fail compilation here until it is explicitly
 //! mapped. This is the compile-time bridge that keeps the two registries in
-//! sync — the scanner (`observe/pii/scanner/domains.rs`) remains the
+//! sync — the scanner (`observe/pii/scanner/domains/`) remains the
 //! authoritative source for the mapping semantics.
 
 use crate::primitives::identifiers::IdentifierType;
