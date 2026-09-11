@@ -40,15 +40,15 @@ impl GovernmentIdentifierBuilder {
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
-    use serial_test::serial;
+    use crate::primitives::identifiers::government::validation::gov_cache_test_lock;
 
     fn builder() -> GovernmentIdentifierBuilder {
         GovernmentIdentifierBuilder::new()
     }
 
     #[test]
-    #[serial]
     fn test_cache_stats() {
+        let _guard = gov_cache_test_lock();
         let gov = builder();
 
         // Perform some validations to populate cache
@@ -61,8 +61,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_clear_caches() {
+        let _guard = gov_cache_test_lock();
         let gov = builder();
 
         // Populate cache

@@ -176,7 +176,7 @@ fn validate_ssn_uncached(ssn: &str) -> Result<(), Problem> {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
-    use super::super::cache::ssn_cache_stats;
+    use super::super::cache::{gov_cache_test_lock, ssn_cache_stats};
     use super::*;
 
     #[test]
@@ -297,6 +297,7 @@ mod tests {
 
     #[test]
     fn test_ssn_cache_hit() {
+        let _guard = gov_cache_test_lock();
         // Use a unique SSN for this test to avoid interference
         let ssn = "345-67-8901";
 
@@ -327,6 +328,7 @@ mod tests {
 
     #[test]
     fn test_ssn_cache_error_cached() {
+        let _guard = gov_cache_test_lock();
         // Use a unique invalid SSN for this test
         let invalid_ssn = "000-12-3456";
 

@@ -152,6 +152,13 @@ pub use biometric::builder::{
 };
 pub use credentials::redaction::TextRedactionPolicy as CredentialTextPolicy;
 pub use government::TextRedactionPolicy as GovernmentTextPolicy;
+
+/// Test-only: the crate-wide lock serializing government-cache tests.
+///
+/// The `government` module is private, but the Layer 3 cache tests race the
+/// same global statics as the primitive ones and must take the same lock.
+#[cfg(any(test, feature = "testing"))]
+pub(crate) use government::gov_cache_test_lock;
 pub use location::redaction::TextRedactionPolicy as LocationTextPolicy;
 pub use medical::redaction::TextRedactionPolicy as MedicalTextPolicy;
 pub use personal::TextRedactionPolicy as PersonalTextPolicy;

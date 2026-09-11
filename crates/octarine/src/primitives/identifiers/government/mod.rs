@@ -105,6 +105,11 @@ mod detection;
 mod sanitization;
 mod validation;
 
+/// Test-only: re-exported so Layer 3 cache tests can take the same
+/// crate-wide lock as the primitive ones (the caches are global statics).
+#[cfg(any(test, feature = "testing"))]
+pub(crate) use validation::gov_cache_test_lock;
+
 // Export builder as primary API
 pub use builder::GovernmentIdentifierBuilder;
 
