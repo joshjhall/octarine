@@ -28,5 +28,21 @@ is never printed. The same anti-pattern was present across the PII-redaction
 and error-body tests — `got: {rendered}` is the tell. When a failure genuinely
 needs context, print a length, a category, or a boolean, never the bytes.
 
+Hit again on #427 (PR #759), which extends the rule in three ways:
+
+- It fires on **synthetic government-ID fixtures**, not just real secrets:
+  `for ssn in [...] { assert!(.., "{ssn} should be rejected") }` was flagged
+  even though every value was a made-up test constant in `#[cfg(test)]`.
+- For a loop over fixtures, interpolate the **index**:
+  `for (i, ssn) in [...].iter().enumerate()` + `"fixture #{i} should be
+  rejected"` keeps the failure diagnosable without the bytes.
+- **Single-character** interpolation is not flagged (a Finland HETU century
+  marker `'{marker}'` passed clean) — the rule keys on identifier-shaped
+  values.
+
+CodeQL reported only ONE of the two sites present in that PR, so sweep sibling
+tests for the same pattern in the same commit rather than fixing just the
+reported line.
+
 Related: [[project_codeql_hardcoded_crypto_fp]],
 [[feedback_tests_must_fail_when_inverted]]

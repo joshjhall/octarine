@@ -42,3 +42,4 @@
 - [Unicode range tests go vacuous](feedback_unicode_range_tests_vacuous.md) — a "representative" char for a new codepoint range usually sits in an already-covered block; test the guard directly and assert both bounds
 - [New crate CI gates](project_new_crate_ci_gates.md) — a new workspace member fails SemVer (no baseline in origin/main; use `--exclude`) and needs lefthook.yml + four justfile release sites the crate-layout checklist omits
 - [No secrets in assert messages](feedback_secrets_in_assertion_messages.md) — `got: {rendered}` in an assert! is a CodeQL cleartext-logging sink even in a test asserting the secret stays hidden; state the property, omit the value
+- [No presidio conform scope](project_conform_no_presidio_scope.md) — `docs(presidio):` is rejected; use `identifiers` or `docs`
