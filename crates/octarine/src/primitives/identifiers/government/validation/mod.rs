@@ -155,6 +155,7 @@ pub use india::{
 pub use singapore::{
     is_test_singapore_nric, is_test_singapore_uen, validate_singapore_nric,
     validate_singapore_nric_with_checksum, validate_singapore_uen,
+    validate_singapore_uen_with_checksum,
 };
 
 // Re-export Korea RRN functions

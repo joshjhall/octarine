@@ -146,6 +146,16 @@ pub fn validate_singapore_uen(uen: &str) -> Result<(), Problem> {
     GovernmentBuilder::new().validate_singapore_uen(uen)
 }
 
+/// Validate a Singapore UEN with its layout-specific weighted mod-11 checksum
+///
+/// # Errors
+///
+/// Returns `Problem` if the UEN layout, registration year, entity type, or
+/// check letter is invalid.
+pub fn validate_singapore_uen_with_checksum(uen: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_singapore_uen_with_checksum(uen)
+}
+
 // =============================================================================
 // Australia Medicare
 // =============================================================================
@@ -756,6 +766,10 @@ mod tests {
         assert!(validate_singapore_uen("201912345K").is_ok());
         assert!(validate_singapore_uen("").is_err());
         assert!(!find_singapore_uens("UEN: 201912345K registered").is_empty());
+        // Checksum variant is stricter: 201912345K is layout-valid but its
+        // check letter should be 'R'.
+        assert!(validate_singapore_uen_with_checksum("201912345R").is_ok());
+        assert!(validate_singapore_uen_with_checksum("201912345K").is_err());
     }
 
     #[test]

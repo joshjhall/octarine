@@ -60,9 +60,44 @@ impl GovernmentIdentifierBuilder {
         validation::validate_singapore_uen(uen)
     }
 
+    /// Validate Singapore UEN with its layout-specific weighted mod-11 checksum
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the UEN layout, registration year, entity type, or
+    /// check letter is invalid.
+    pub fn validate_singapore_uen_with_checksum(&self, uen: &str) -> Result<(), Problem> {
+        validation::validate_singapore_uen_with_checksum(uen)
+    }
+
     /// Check if a Singapore UEN is a test/dummy pattern
     #[must_use]
     pub fn is_test_singapore_uen(&self, uen: &str) -> bool {
         validation::is_test_singapore_uen(uen)
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::panic, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_singapore_uen_with_checksum_delegates() {
+        let b = GovernmentIdentifierBuilder::new();
+        // Checksum-correct values for each of the three layouts.
+        assert!(b.validate_singapore_uen_with_checksum("12345678M").is_ok());
+        assert!(b.validate_singapore_uen_with_checksum("201912345R").is_ok());
+        assert!(b.validate_singapore_uen_with_checksum("T12LL1234C").is_ok());
+        // Layout-valid but the check letter does not verify.
+        assert!(b.validate_singapore_uen_with_checksum("12345678K").is_err());
+    }
+
+    #[test]
+    fn test_validate_singapore_uen_format_only_is_lenient() {
+        let b = GovernmentIdentifierBuilder::new();
+        // The format-only variant still accepts a bad check letter.
+        assert!(b.validate_singapore_uen("12345678K").is_ok());
+        assert!(b.validate_singapore_uen("not a uen").is_err());
     }
 }
