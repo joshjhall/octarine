@@ -80,8 +80,8 @@ for consistent operation context capture in audit trails.
 **Migration note**: `crypto/validation/builder.rs` was the last Layer 3
 *builder* using the 1-arg `event::*` API; it was converted in issue #417. The
 migration is not repo-wide: `runtime/process/command.rs` still has two 1-arg
-`observe::event::critical` call sites. New `event::` call sites in Layer 3 are
-a regression.
+`observe::event::critical` call sites, tracked in issue #760. New `event::`
+call sites in Layer 3 are a regression.
 
 ## When to Use
 

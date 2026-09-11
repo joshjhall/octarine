@@ -448,15 +448,24 @@ mod tests {
 
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {
-            let pool = RuntimeBuilder::new().single_worker_pool("counted");
-            pool.shutdown().await;
+            // All five constructors share the count_created call site, and
+            // each is exercised so a mistake confined to one is caught.
+            let builder = RuntimeBuilder::new();
+            builder.worker_pool("counted", 1).shutdown().await;
+            builder
+                .worker_pool_with_config(WorkerConfig::single_threaded("cfg"))
+                .shutdown()
+                .await;
+            builder.cpu_worker_pool("cpu").shutdown().await;
+            builder.io_worker_pool("io").shutdown().await;
+            builder.single_worker_pool("single").shutdown().await;
         });
         flush_for_testing();
 
         assert_eq!(
             counter_value("runtime.async.worker_pools_created"),
-            before.saturating_add(1),
-            "worker pool creation must count",
+            before.saturating_add(5),
+            "every worker pool constructor must count exactly once",
         );
 
         // silent() must not count, or the assertion above proves nothing

@@ -816,6 +816,31 @@ mod tests {
     }
 
     #[test]
+    fn test_failed_build_struct_does_not_count() {
+        #[derive(Debug, serde::Deserialize)]
+        struct StrictConfig {
+            #[allow(dead_code)]
+            port: u16,
+        }
+
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        flush_for_testing();
+        let built_before = counter_value("runtime.config.configs_built");
+
+        // No defaults and no source for `port`, so extraction fails.
+        let result: Result<StrictConfig, _> = ConfigBuilder::new().build_struct();
+        assert!(result.is_err(), "a missing required field must fail");
+        flush_for_testing();
+
+        assert_eq!(
+            counter_value("runtime.config.configs_built"),
+            built_before,
+            "a failed build_struct must not increment configs_built",
+        );
+    }
+
+    #[test]
     fn test_silent_build_struct_records_no_metrics() {
         #[derive(Debug, serde::Deserialize, serde::Serialize, Default, PartialEq)]
         struct TestConfig {

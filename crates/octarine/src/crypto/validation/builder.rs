@@ -604,6 +604,8 @@ LMkl8mNtd2MbHD07VEPVzgaZQaEg
     #[test]
     #[cfg(feature = "crypto-validation")]
     fn test_certificate_paths_are_exercised() {
+        use crate::primitives::security::crypto::CryptoThreat;
+
         // Locks in the event:: -> observe:: migration on the certificate
         // PEM/DER paths: previously nothing called them, so a reverted or
         // malformed observe:: call there would not have been caught.
@@ -616,17 +618,39 @@ LMkl8mNtd2MbHD07VEPVzgaZQaEg
         // Every threat the audit reports must be populated: an empty
         // description would mean the audit produced placeholder entries
         // rather than real findings.
-        assert!(
-            audit.threats.iter().all(|t| !t.description().is_empty()),
-            "audited threats must carry descriptions",
-        );
-        // The threat list must agree with the pass/warning verdict, so a
-        // corrupted threats vec cannot slip through unnoticed.
+        // Assert the CONCRETE findings this fixture produces. The
+        // certificate is self-signed with a 3650-day validity (over the
+        // 825-day maximum), so the audit must name exactly those two
+        // non-blocking threats. An audit that silently returned nothing --
+        // or that stopped detecting either threat -- fails here.
         assert_eq!(
-            audit.threats.is_empty(),
-            audit.passed() && audit.warnings().is_empty(),
-            "the threat list must agree with passed()/warnings()",
+            audit.threats.len(),
+            2,
+            "expected exactly the two known threats for this fixture, got {:?}",
+            audit.threats,
         );
+        assert!(
+            audit.threats.iter().any(|t| matches!(
+                t,
+                CryptoThreat::ExcessiveValidityPeriod {
+                    days: 3650,
+                    maximum: 825
+                }
+            )),
+            "the 3650-day validity period must be detected, got {:?}",
+            audit.threats,
+        );
+        assert!(
+            audit
+                .threats
+                .iter()
+                .any(|t| matches!(t, CryptoThreat::SelfSignedCertificate)),
+            "the self-signed certificate must be detected, got {:?}",
+            audit.threats,
+        );
+        // Neither threat blocks, so the audit passes with two warnings.
+        assert!(audit.passed(), "neither known threat is blocking");
+        assert_eq!(audit.warnings().len(), 2);
 
         // validate_certificate_pem walks the same code, and either validates
         // or fails on a blocking threat -- never panics.

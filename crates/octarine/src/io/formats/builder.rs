@@ -361,6 +361,33 @@ mod tests {
     }
 
     #[test]
+    fn test_failed_write_does_not_count_as_success() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = FormatIoBuilder::new();
+
+        flush_for_testing();
+        let written_before = counter_value("io.formats.files_written");
+        let write_ms_before = histogram_count("io.formats.write_ms");
+
+        assert!(
+            builder
+                .write_json_file(Path::new("/nonexistent/dir/out.json"), r#"{"k":1}"#)
+                .is_err()
+        );
+        flush_for_testing();
+
+        assert_eq!(
+            counter_value("io.formats.files_written"),
+            written_before,
+            "a failed write must not increment the success counter",
+        );
+        assert!(
+            histogram_count("io.formats.write_ms") > write_ms_before,
+            "a failed write is still timed",
+        );
+    }
+
+    #[test]
     fn test_silent_builder_still_reads_and_writes() {
         // Disabling events must not disable the underlying operation.
         let builder = FormatIoBuilder::silent();
