@@ -58,6 +58,27 @@ fn has_type(matches: &[IdentifierMatch], want: IdentifierType) -> bool {
     matches.iter().any(|m| m.identifier_type == want)
 }
 
+/// Describe a match set by **type and span only**, never echoing the matched
+/// text.
+///
+/// Assertion messages are panic output, and interpolating a detected
+/// identifier there is cleartext logging of sensitive information — CodeQL
+/// flags it, and rightly so: this pattern copied into a non-test context would
+/// leak real PII into a log. The vectors in this file are synthetic, but the
+/// habit is worth keeping, so failure messages describe *what was found* rather
+/// than reproducing it.
+fn summarize(matches: &[IdentifierMatch]) -> Vec<String> {
+    matches
+        .iter()
+        .map(|m| {
+            format!(
+                "{:?}@{}..{} ({:?})",
+                m.identifier_type, m.start, m.end, m.confidence
+            )
+        })
+        .collect()
+}
+
 // ============================================================================
 // Scanning shortcuts
 // ============================================================================
@@ -70,11 +91,13 @@ fn test_scan_pii_finds_personal_and_government_identifiers() {
 
     assert!(
         has_type(&matches, IdentifierType::Email),
-        "expected an Email match in {matches:?}"
+        "expected an Email match, found {:?}",
+        summarize(&matches)
     );
     assert!(
         has_type(&matches, IdentifierType::Ssn),
-        "expected an Ssn match in {matches:?}"
+        "expected an Ssn match, found {:?}",
+        summarize(&matches)
     );
 
     // The email match is the address itself, not the whole input.
@@ -85,20 +108,26 @@ fn test_scan_pii_finds_personal_and_government_identifiers() {
     assert_eq!(email_match.matched_text, TEST_EMAIL);
     assert!(
         email_match.end > email_match.start,
-        "match span must be non-empty: {email_match:?}"
+        "match span must be non-empty, got {}..{}",
+        email_match.start,
+        email_match.end
     );
 
     // The SSN match must cover the digits (the labelled-pattern match also
     // spans the "SSN:" label, which is how labelled matches earn High
     // confidence — so assert containment, not equality).
-    let ssn_match = matches
+    //
+    // The predicate is reduced to a bool before the assertion: taint analysis
+    // follows anything derived from the match (even a length), so the failure
+    // message describes the whole set via `summarize` instead.
+    let ssn_covers_digits = matches
         .iter()
-        .find(|m| m.identifier_type == IdentifierType::Ssn)
-        .expect("ssn match present");
+        .filter(|m| m.identifier_type == IdentifierType::Ssn)
+        .any(|m| m.matched_text.contains(TEST_SSN));
     assert!(
-        ssn_match.matched_text.contains(TEST_SSN),
-        "ssn match should cover the digits, got {:?}",
-        ssn_match.matched_text
+        ssn_covers_digits,
+        "an Ssn match should cover the digits, found {:?}",
+        summarize(&matches)
     );
 }
 
@@ -108,7 +137,8 @@ fn test_scan_pii_empty_for_clean_text() {
     let matches = scan_pii("The quarterly report is ready for review.");
     assert!(
         matches.is_empty(),
-        "clean prose should yield no PII matches, got {matches:?}"
+        "clean prose should yield no PII matches, got {:?}",
+        summarize(&matches)
     );
 }
 
@@ -120,11 +150,13 @@ fn test_scan_payment_data_isolates_card() {
 
     assert!(
         has_type(&matches, IdentifierType::CreditCard),
-        "expected a CreditCard match in {matches:?}"
+        "expected a CreditCard match, found {:?}",
+        summarize(&matches)
     );
     assert!(
         !has_type(&matches, IdentifierType::Email),
-        "payment scan must not report the email: {matches:?}"
+        "payment scan must not report the email, found {:?}",
+        summarize(&matches)
     );
 }
 
@@ -141,8 +173,9 @@ fn test_scan_credentials_extracts_value_not_label() {
     let first = matches.first().expect("credential match present");
     assert!(
         first.value.contains("hunter2"),
-        "credential value should be the secret, got {:?}",
-        first.value
+        "credential value should be the secret; matched {} chars labelled {:?}",
+        first.value.len(),
+        first.label
     );
     assert_ne!(
         first.value, "password",
@@ -161,15 +194,18 @@ fn test_scan_compliance_covers_more_domains_than_scan_pii() {
 
     assert!(
         !has_type(&pii, IdentifierType::CreditCard),
-        "scan_pii is not expected to cover cards: {pii:?}"
+        "scan_pii is not expected to cover cards, found {:?}",
+        summarize(&pii)
     );
     assert!(
         has_type(&compliance, IdentifierType::CreditCard),
-        "scan_compliance must cover PCI-DSS card data: {compliance:?}"
+        "scan_compliance must cover PCI-DSS card data, found {:?}",
+        summarize(&compliance)
     );
     assert!(
         has_type(&compliance, IdentifierType::Email),
-        "scan_compliance must still cover GDPR personal data: {compliance:?}"
+        "scan_compliance must still cover GDPR personal data, found {:?}",
+        summarize(&compliance)
     );
 }
 
@@ -179,7 +215,8 @@ fn test_scan_sensitive_finds_identifiers() {
     let matches = scan_sensitive(&format!("reach me at {TEST_EMAIL}"));
     assert!(
         has_type(&matches, IdentifierType::Email),
-        "expected an Email match in {matches:?}"
+        "expected an Email match, found {:?}",
+        summarize(&matches)
     );
 }
 
@@ -198,13 +235,15 @@ fn test_scan_batch_aligns_results_with_inputs() {
         email_slot
             .iter()
             .any(|m| m.identifier_type == IdentifierType::Email),
-        "slot 0 should carry the email match, got {email_slot:?}"
+        "slot 0 should carry the email match, got {:?}",
+        summarize(email_slot)
     );
     assert!(
         card_slot
             .iter()
             .any(|m| m.identifier_type == IdentifierType::CreditCard),
-        "slot 2 should carry the card match, got {card_slot:?}"
+        "slot 2 should carry the card match, got {:?}",
+        summarize(card_slot)
     );
 }
 
@@ -486,7 +525,8 @@ fn test_redact_all_covers_more_than_redact_pii() {
 
     assert!(
         pii_only.contains(fake_password),
-        "redact_pii is not expected to touch credentials, got {pii_only:?}"
+        "redact_pii is not expected to touch credentials \
+         (output withheld: it still contains the credential by design)"
     );
     assert!(
         !everything.contains(fake_password),
