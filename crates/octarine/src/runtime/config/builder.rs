@@ -972,6 +972,31 @@ mod tests {
     }
 
     #[test]
+    fn test_secret_is_both_secret_and_required() {
+        // secret() is the only accumulator setting is_secret AND is_required
+        // together; optional_secret() and require() each set only one.
+        let missing = ConfigBuilder::new()
+            .with_prefix("OCTARINE_TEST_REQ_SECRET_XYZ")
+            .secret("API_KEY")
+            .load();
+
+        // Required half: an unset secret must fail the load.
+        assert!(
+            matches!(missing, Err(ConfigError::Missing { .. })),
+            "an unset secret() value must fail load() as missing, got {missing:?}",
+        );
+
+        // Secret half: optional_secret is the same minus required, so it
+        // loads — and must still be marked secret.
+        let present = ConfigBuilder::new()
+            .with_prefix("OCTARINE_TEST_REQ_SECRET_XYZ")
+            .optional_secret("API_KEY")
+            .load()
+            .expect("optional_secret loads when unset");
+        assert!(present.get("API_KEY").is_secret());
+    }
+
+    #[test]
     fn test_non_secret_value_not_marked() {
         let config = ConfigBuilder::new()
             .with_prefix("OCTARINE_TEST_XYZ")

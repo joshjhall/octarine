@@ -330,7 +330,10 @@ impl SecurityBuilder {
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
             if let Err(ref e) = result {
-                observe::debug(
+                // warn, not debug: these guard the same threat classes as
+                // validate_path, which also warns. A quieter level would drop
+                // traversal/injection rejections out of the audit trail.
+                observe::warn(
                     "path_validation_failed",
                     format!("Validation failed ({check}): {e}"),
                 );

@@ -97,6 +97,17 @@ impl RuntimeBuilder {
         }
     }
 
+    /// Count a circuit-breaker construction only if it actually succeeded.
+    ///
+    /// `CircuitBreaker::new` validates its config and can return `Err`, so
+    /// counting before the call would report attempts rather than creations.
+    fn count_breaker_created(&self, result: Result<CircuitBreaker>) -> Result<CircuitBreaker> {
+        if result.is_ok() {
+            self.count_created(metric_names::circuit_breakers_created());
+        }
+        result
+    }
+
     /// Set a default name prefix for all components
     ///
     /// Components will be named "{prefix}.{component_name}"
@@ -163,8 +174,10 @@ impl RuntimeBuilder {
     ///
     /// Returns error if configuration is invalid (shouldn't happen with defaults).
     pub fn circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
-        self.count_created(metric_names::circuit_breakers_created());
-        CircuitBreaker::new(&self.full_name(name), CircuitBreakerConfig::default())
+        self.count_breaker_created(CircuitBreaker::new(
+            &self.full_name(name),
+            CircuitBreakerConfig::default(),
+        ))
     }
 
     /// Create a circuit breaker with custom configuration
@@ -176,29 +189,31 @@ impl RuntimeBuilder {
         name: &str,
         config: CircuitBreakerConfig,
     ) -> Result<CircuitBreaker> {
-        self.count_created(metric_names::circuit_breakers_created());
-        CircuitBreaker::new(&self.full_name(name), config)
+        self.count_breaker_created(CircuitBreaker::new(&self.full_name(name), config))
     }
 
     /// Create a high-availability circuit breaker (strict thresholds)
     pub fn ha_circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
-        self.count_created(metric_names::circuit_breakers_created());
-        CircuitBreaker::new(
+        self.count_breaker_created(CircuitBreaker::new(
             &self.full_name(name),
             CircuitBreakerConfig::high_availability(),
-        )
+        ))
     }
 
     /// Create a database circuit breaker (more tolerant)
     pub fn db_circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
-        self.count_created(metric_names::circuit_breakers_created());
-        CircuitBreaker::new(&self.full_name(name), CircuitBreakerConfig::database())
+        self.count_breaker_created(CircuitBreaker::new(
+            &self.full_name(name),
+            CircuitBreakerConfig::database(),
+        ))
     }
 
     /// Create an API circuit breaker (same as high-availability)
     pub fn api_circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
-        self.count_created(metric_names::circuit_breakers_created());
-        CircuitBreaker::new(&self.full_name(name), CircuitBreakerConfig::external_api())
+        self.count_breaker_created(CircuitBreaker::new(
+            &self.full_name(name),
+            CircuitBreakerConfig::external_api(),
+        ))
     }
 
     // ========================================================================
@@ -372,6 +387,44 @@ mod tests {
         assert_eq!(
             counter_value("runtime.async.executors_created"),
             executors_before.saturating_add(1),
+        );
+    }
+
+    #[test]
+    fn test_failed_circuit_breaker_is_not_counted() {
+        // CircuitBreaker::new validates its config and can fail; counting
+        // before the call would report attempts rather than creations.
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = RuntimeBuilder::new();
+
+        // failure_threshold = 0 is rejected by CircuitBreakerConfig::validate
+        // ("circuit would always be open").
+        let bad =
+            CircuitBreakerConfig::new(0, 0.8, Duration::from_secs(60), Duration::from_secs(30));
+
+        flush_for_testing();
+        let before = counter_value("runtime.async.circuit_breakers_created");
+
+        assert!(
+            builder.circuit_breaker_with_config("bad", bad).is_err(),
+            "a zero failure_threshold must fail validation",
+        );
+        flush_for_testing();
+
+        assert_eq!(
+            counter_value("runtime.async.circuit_breakers_created"),
+            before,
+            "a failed creation must not increment the created counter",
+        );
+
+        // A successful creation still counts, so the assertion above is not
+        // passing merely because counting is broken everywhere.
+        let _ok = builder.circuit_breaker("good").expect("valid breaker");
+        flush_for_testing();
+        assert_eq!(
+            counter_value("runtime.async.circuit_breakers_created"),
+            before.saturating_add(1),
+            "a successful creation must still count",
         );
     }
 
