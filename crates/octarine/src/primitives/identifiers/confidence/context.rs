@@ -531,9 +531,61 @@ mod tests {
     }
 
     #[test]
+    fn test_every_unspaced_script_range_is_pinned() {
+        // One representative code point per range in `is_unspaced_script`, so a
+        // dropped or transposed bound fails here rather than silently
+        // resurrecting the false-negative. Reaching these through
+        // `is_context_present` alone is not possible for every range — the
+        // keyword tables contain no standalone jamo or ext-A ideographs — which
+        // is exactly how the first Korean test came to re-verify an
+        // already-covered range instead of the new one.
+        for (c, range) in [
+            ('\u{3042}', "hiragana"),
+            ('\u{30AD}', "katakana"),
+            ('\u{3400}', "CJK ext-A"),
+            ('\u{4E00}', "CJK unified"),
+            ('\u{F900}', "CJK compatibility"),
+            ('\u{AC00}', "hangul syllables"),
+            ('\u{1100}', "hangul jamo"),
+            ('\u{3131}', "hangul compatibility jamo"),
+            ('\u{0E01}', "Thai"),
+            ('\u{FF21}', "fullwidth forms"),
+        ] {
+            assert!(
+                is_unspaced_script(c),
+                "{range} code point U+{:04X} should count as unspaced",
+                c as u32
+            );
+        }
+
+        // Space-separated scripts must NOT be in the list — they take the
+        // ordinary boundary path.
+        for (c, script) in [
+            ('\u{0627}', "Arabic"),
+            ('\u{0905}', "Devanagari"),
+            ('a', "Latin"),
+            ('\u{0410}', "Cyrillic"),
+        ] {
+            assert!(
+                !is_unspaced_script(c),
+                "{script} code point U+{:04X} must not count as unspaced",
+                c as u32
+            );
+        }
+    }
+
+    #[test]
+    fn test_compatibility_jamo_is_a_boundary_in_matching() {
+        // The range check above is direct; this drives the same range through
+        // the real matching path with a standalone jamo abutting the keyword.
+        assert!(is_keyword_in_text("ㄱiban ㅣ", "iban"));
+    }
+
+    #[test]
     fn test_korean_keyword_matches_glued_to_hangul() {
-        // The hangul ranges must actually be exercised — a transposed hex bound
-        // would otherwise go unnoticed.
+        // Precomposed hangul syllables (U+AC00-D7AF) abutting the keyword.
+        // NOTE: this covers the SYLLABLES range only — the jamo ranges are
+        // pinned by `test_every_unspaced_script_range_is_pinned` above.
         let korean = ContextAnalyzer::new().with_language(KeywordLanguage::Ko);
         assert!(korean.is_context_present(
             "주민등록번호는900101-1234567입니다",
