@@ -501,8 +501,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_worker_pool() {
-        let builder = RuntimeBuilder::new();
-        let pool = builder.worker_pool("test", 2);
+        // Takes the metrics lock even though it asserts nothing: creating a
+        // pool increments runtime.async.worker_pools_created, and
+        // test_worker_pool_creation_counted asserts an exact delta on that
+        // counter. Without this the surviving behavioral assertion is racy.
+        //
+        // The guard is scoped to the creation only and dropped before the
+        // await -- holding a std MutexGuard across an await point is a
+        // clippy::await_holding_lock error, and the counter has already moved
+        // by the time the pool exists.
+        let pool = {
+            let _guard = crate::observe::metrics::metrics_test_lock();
+            RuntimeBuilder::new().worker_pool("test", 2)
+        };
         pool.shutdown().await;
     }
 

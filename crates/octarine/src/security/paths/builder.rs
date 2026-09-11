@@ -456,7 +456,6 @@ mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
     use crate::observe::metrics::{flush_for_testing, snapshot};
-    use std::sync::Mutex;
 
     #[test]
     fn test_builder_creation() {
@@ -471,6 +470,49 @@ mod tests {
     fn test_with_events() {
         let builder = SecurityBuilder::new().with_events(false);
         assert!(!builder.emit_events);
+    }
+
+    #[test]
+    fn test_silent_security_records_no_metrics_behaviorally() {
+        // BEHAVIORAL: fails if the `if self.emit_events` wrapper is deleted
+        // from instrument_validation(). Both measurements sit inside ONE lock
+        // hold.
+        let _guard = crate::observe::metrics::metrics_test_lock();
+
+        fn validate_samples() -> u64 {
+            snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count)
+        }
+
+        flush_for_testing();
+        let start = validate_samples();
+
+        assert!(
+            SecurityBuilder::silent()
+                .validate_no_traversal("../x")
+                .is_err()
+        );
+        flush_for_testing();
+        let after_silent = validate_samples();
+
+        assert!(
+            SecurityBuilder::new()
+                .validate_no_traversal("../x")
+                .is_err()
+        );
+        flush_for_testing();
+        let after_loud = validate_samples();
+
+        let silent_delta = after_silent.saturating_sub(start);
+        let loud_delta = after_loud.saturating_sub(after_silent);
+        assert_eq!(silent_delta, 0, "silent() must not record validate_ms");
+        assert!(
+            loud_delta > silent_delta,
+            "the loud validation must record more than the silent one \
+             (silent {silent_delta}, loud {loud_delta})",
+        );
     }
 
     #[test]

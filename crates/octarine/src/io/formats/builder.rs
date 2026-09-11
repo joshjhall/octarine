@@ -319,6 +319,40 @@ mod tests {
         );
     }
     #[test]
+    fn test_silent_builder_records_no_metrics_behaviorally() {
+        // BEHAVIORAL, not gate-only: this fails if the `if self.emit_events`
+        // wrapper in instrument_read/instrument_write is deleted. Both
+        // measurements are taken inside ONE lock hold, so the comparison is
+        // immune to concurrent siblings even though the registry is global.
+        let _guard = crate::observe::metrics::metrics_test_lock();
+        let dir = tempdir().expect("temp dir");
+
+        flush_for_testing();
+        let start = histogram_count("io.formats.write_ms");
+
+        FormatIoBuilder::silent()
+            .write_json_file(&dir.path().join("silent.json"), r#"{"a":1}"#)
+            .expect("write");
+        flush_for_testing();
+        let after_silent = histogram_count("io.formats.write_ms");
+
+        FormatIoBuilder::new()
+            .write_json_file(&dir.path().join("loud.json"), r#"{"a":1}"#)
+            .expect("write");
+        flush_for_testing();
+        let after_loud = histogram_count("io.formats.write_ms");
+
+        let silent_delta = after_silent.saturating_sub(start);
+        let loud_delta = after_loud.saturating_sub(after_silent);
+        assert_eq!(silent_delta, 0, "silent() must record no write_ms sample");
+        assert!(
+            loud_delta > silent_delta,
+            "the loud write must record more than the silent one \
+             (silent {silent_delta}, loud {loud_delta})",
+        );
+    }
+
+    #[test]
     fn test_failed_read_does_not_count_as_success() {
         // Asserted on the histogram (which a failure DOES record) rather than
         // on files_read: the metrics registry is process-global and sibling
