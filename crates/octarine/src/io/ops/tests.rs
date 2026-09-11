@@ -172,6 +172,7 @@ fn test_metrics_recorded_on_write_and_read() {
     let writes_before = metric_counter("io.file.write_count");
     let reads_before = metric_counter("io.file.read_count");
     let read_bytes_before = metric_counter("io.file.read_bytes");
+    let write_bytes_before = metric_counter("io.file.write_bytes");
 
     let payload = b"0123456789";
     let payload_len = payload.len() as u64;
@@ -194,6 +195,55 @@ fn test_metrics_recorded_on_write_and_read() {
         metric_counter("io.file.read_bytes"),
         read_bytes_before.saturating_add(payload_len),
         "read_bytes must grow by the payload size, not by 1",
+    );
+    assert_eq!(
+        metric_counter("io.file.write_bytes"),
+        write_bytes_before.saturating_add(payload_len),
+        "write_bytes must grow by the payload size, not by 1",
+    );
+}
+
+#[test]
+fn test_lock_metrics_recorded() {
+    use crate::observe::metrics::flush_for_testing;
+
+    let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = tempdir().expect("temp dir");
+    let path = dir.path().join("locked.bin");
+    let ops = SecureFileOps::new();
+
+    flush_for_testing();
+    let locks_before = metric_counter("io.file.lock_count");
+
+    ops.write_locked(&path, b"locked").expect("write locked");
+    flush_for_testing();
+
+    assert!(
+        metric_counter("io.file.lock_count") > locks_before,
+        "the lock path must record lock_count",
+    );
+}
+
+#[test]
+fn test_silent_ops_record_no_lock_metrics() {
+    use crate::observe::metrics::flush_for_testing;
+
+    let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = tempdir().expect("temp dir");
+    let path = dir.path().join("locked-silent.bin");
+    let ops = SecureFileOpsBuilder::silent().build();
+
+    flush_for_testing();
+    let locks_before = metric_counter("io.file.lock_count");
+
+    ops.write_locked(&path, b"locked")
+        .expect("write locked still succeeds when silent");
+    flush_for_testing();
+
+    assert_eq!(
+        metric_counter("io.file.lock_count"),
+        locks_before,
+        "silent() must not record lock_count",
     );
 }
 

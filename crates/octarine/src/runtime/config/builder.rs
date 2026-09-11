@@ -695,6 +695,10 @@ mod tests {
         snapshot().histograms.get(name).map_or(0, |h| h.count)
     }
 
+    fn counter_value(name: &str) -> u64 {
+        snapshot().counters.get(name).map_or(0, |c| c.value)
+    }
+
     // ========================================================================
     // Observability
     // ========================================================================
@@ -731,6 +735,7 @@ mod tests {
 
         flush_for_testing();
         let before = histogram_count("runtime.config.load_ms");
+        let loaded_before = counter_value("runtime.config.configs_loaded");
 
         ConfigBuilder::new()
             .with_prefix("OCTARINE_TEST_METRICS_XYZ")
@@ -743,6 +748,11 @@ mod tests {
             histogram_count("runtime.config.load_ms") > before,
             "load() must record load_ms",
         );
+        assert_eq!(
+            counter_value("runtime.config.configs_loaded"),
+            loaded_before.saturating_add(1),
+            "load() must also increment configs_loaded, not just time it",
+        );
     }
 
     #[test]
@@ -751,6 +761,7 @@ mod tests {
 
         flush_for_testing();
         let before = histogram_count("runtime.config.load_ms");
+        let loaded_before = counter_value("runtime.config.configs_loaded");
 
         let loaded = ConfigBuilder::silent()
             .with_prefix("OCTARINE_TEST_METRICS_XYZ")
@@ -764,6 +775,11 @@ mod tests {
             histogram_count("runtime.config.load_ms"),
             before,
             "silent() must not record load_ms",
+        );
+        assert_eq!(
+            counter_value("runtime.config.configs_loaded"),
+            loaded_before,
+            "silent() must not increment configs_loaded",
         );
     }
 
