@@ -437,6 +437,45 @@ mod tests {
     }
 
     #[test]
+    fn test_worker_pool_creation_counted() {
+        // WorkerPool::new spawns tokio tasks so it needs a runtime, but
+        // flush_for_testing() blocks on a oneshot and panics inside one --
+        // so the pool is built in a scoped runtime and flushed outside it.
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        flush_for_testing();
+        let before = counter_value("runtime.async.worker_pools_created");
+
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let pool = RuntimeBuilder::new().single_worker_pool("counted");
+            pool.shutdown().await;
+        });
+        flush_for_testing();
+
+        assert_eq!(
+            counter_value("runtime.async.worker_pools_created"),
+            before.saturating_add(1),
+            "worker pool creation must count",
+        );
+
+        // silent() must not count, or the assertion above proves nothing
+        // about the gate.
+        let quiet_before = counter_value("runtime.async.worker_pools_created");
+        rt.block_on(async {
+            let pool = RuntimeBuilder::silent().single_worker_pool("quiet");
+            pool.shutdown().await;
+        });
+        flush_for_testing();
+
+        assert_eq!(
+            counter_value("runtime.async.worker_pools_created"),
+            quiet_before,
+            "silent() must not count worker pool creation",
+        );
+    }
+
+    #[test]
     fn test_silent_builder_counts_nothing() {
         let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let builder = RuntimeBuilder::silent().with_name_prefix("quiet");

@@ -794,6 +794,7 @@ mod tests {
 
         flush_for_testing();
         let before = histogram_count("runtime.config.build_ms");
+        let built_before = counter_value("runtime.config.configs_built");
 
         let config: TestConfig = ConfigBuilder::new()
             .with_defaults(TestConfig { port: 8080 })
@@ -806,6 +807,11 @@ mod tests {
         assert!(
             histogram_count("runtime.config.build_ms") > before,
             "build_struct() must record build_ms",
+        );
+        assert_eq!(
+            counter_value("runtime.config.configs_built"),
+            built_before.saturating_add(1),
+            "build_struct() must also increment configs_built",
         );
     }
 
@@ -820,6 +826,7 @@ mod tests {
 
         flush_for_testing();
         let before = histogram_count("runtime.config.build_ms");
+        let built_before = counter_value("runtime.config.configs_built");
 
         let config: TestConfig = ConfigBuilder::silent()
             .with_defaults(TestConfig { port: 9090 })
@@ -832,6 +839,11 @@ mod tests {
             histogram_count("runtime.config.build_ms"),
             before,
             "silent() must not record build_ms",
+        );
+        assert_eq!(
+            counter_value("runtime.config.configs_built"),
+            built_before,
+            "silent() must not increment configs_built",
         );
     }
 

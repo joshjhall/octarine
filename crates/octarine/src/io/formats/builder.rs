@@ -279,6 +279,7 @@ mod tests {
         flush_for_testing();
         let reads_before = histogram_count("io.formats.read_ms");
         let writes_before = histogram_count("io.formats.write_ms");
+        let written_before = counter_value("io.formats.files_written");
 
         builder.write_json_file(&path, r#"{"a":1}"#).expect("write");
         builder.read_json_file(&path).expect("read");
@@ -291,6 +292,11 @@ mod tests {
         assert!(
             histogram_count("io.formats.read_ms") > reads_before,
             "read_ms should record on an instrumented read",
+        );
+        assert_eq!(
+            counter_value("io.formats.files_written"),
+            written_before.saturating_add(1),
+            "a successful write must increment files_written exactly once",
         );
     }
 

@@ -613,8 +613,20 @@ LMkl8mNtd2MbHD07VEPVzgaZQaEg
         let audit = builder
             .audit_certificate_pem(PARSEABLE_RSA_CERT_PEM)
             .expect("a real certificate must parse and audit");
-        // The audit either passes or names its threats; both are real results.
-        assert_eq!(audit.threats.len(), audit.threats.len());
+        // Every threat the audit reports must be populated: an empty
+        // description would mean the audit produced placeholder entries
+        // rather than real findings.
+        assert!(
+            audit.threats.iter().all(|t| !t.description().is_empty()),
+            "audited threats must carry descriptions",
+        );
+        // The threat list must agree with the pass/warning verdict, so a
+        // corrupted threats vec cannot slip through unnoticed.
+        assert_eq!(
+            audit.threats.is_empty(),
+            audit.passed() && audit.warnings().is_empty(),
+            "the threat list must agree with passed()/warnings()",
+        );
 
         // validate_certificate_pem walks the same code, and either validates
         // or fails on a blocking threat -- never panics.
