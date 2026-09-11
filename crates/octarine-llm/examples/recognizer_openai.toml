@@ -12,9 +12,13 @@ provider = "openai"
 model = "gpt-4o-mini"
 max_tokens = 512
 temperature = 0.0
+# top_p is validated but not yet forwarded to the provider — see
+# docs/llm/recognizer-config.md "Not yet wired".
 top_p = 1.0
 enabled = true
+# Enforced: text in any other language returns no results without a call.
 supported_languages = ["en", "es"]
+# Advisory metadata only — nothing filters on it yet (#464).
 country_code = "US"
 
 # The NAME of the environment variable holding the API key — never the key
@@ -22,7 +26,8 @@ country_code = "US"
 # OPENAI_API_KEY when omitted.
 api_key_env = "OPENAI_API_KEY"
 
-# Provider-specific knobs, passed through untouched.
+# Provider-specific knobs. Validated and round-tripped, but not yet forwarded
+# to the provider request — see docs/llm/recognizer-config.md "Not yet wired".
 [recognizer.language_model_params]
 seed = 42
 

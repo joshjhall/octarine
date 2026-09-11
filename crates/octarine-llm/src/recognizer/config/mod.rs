@@ -90,6 +90,12 @@ pub struct RecognizerConfig {
     pub temperature: f32,
 
     /// Nucleus sampling parameter.
+    ///
+    /// **Not yet forwarded to any provider.** [`LlmRequest`](crate::LlmRequest)
+    /// has no `top_p` field, so wiring this means threading it through all five
+    /// provider wire formats — tracked separately. It is validated and rejected
+    /// out of range so a config written today stays correct once it is honored,
+    /// but setting it currently has no effect on the request.
     #[serde(default = "default_top_p")]
     pub top_p: f32,
 
@@ -102,10 +108,19 @@ pub struct RecognizerConfig {
     pub enabled: bool,
 
     /// BCP 47 tags this recognizer handles. Empty means every language.
+    ///
+    /// Enforced: the built recognizer returns an empty result for a language
+    /// outside this set rather than calling the provider.
     #[serde(default)]
     pub supported_languages: Vec<String>,
 
     /// Optional ISO 3166-1 alpha-2 country this recognizer is scoped to.
+    ///
+    /// **Advisory metadata only.** Unlike
+    /// [`supported_languages`](RecognizerConfig::supported_languages), which the
+    /// built recognizer enforces, nothing filters on this today — country-aware
+    /// dispatch belongs to the analyzer registry (#464), which does not exist
+    /// yet. It is carried so a config can record intent.
     #[serde(default)]
     pub country_code: Option<String>,
 
@@ -135,11 +150,16 @@ pub struct RecognizerConfig {
     #[serde(default)]
     pub api_version: Option<String>,
 
-    /// Provider-specific knobs passed through untouched (`seed`, `stop`, …).
+    /// Provider-specific knobs (`seed`, `stop`, …).
     ///
     /// Deliberately untyped: every provider has parameters the others do not,
     /// and enumerating them here would mean a schema change each time a vendor
     /// adds one.
+    ///
+    /// **Not yet forwarded to any provider.** Passing these through requires an
+    /// extension field on [`LlmRequest`](crate::LlmRequest) plus per-provider
+    /// serialization, tracked separately. The values round-trip through the
+    /// schema but currently reach no request.
     #[serde(default)]
     pub language_model_params: HashMap<String, toml::Value>,
 
@@ -167,9 +187,13 @@ pub struct PromptConfig {
     /// one document shape.
     pub system: String,
 
-    /// Optional JSON schema advertised to providers with a structured-output
-    /// mode. Passed through as-is; providers without one ignore it, which is
-    /// why response parsing always keeps its text fallback.
+    /// Optional JSON schema for providers with a structured-output mode.
+    ///
+    /// **Not yet forwarded to any provider.** Detection currently requests
+    /// generic JSON mode (`response_format: json_object` on OpenAI), not a
+    /// caller-supplied schema; honoring this means a new
+    /// [`LlmRequest`](crate::LlmRequest) field and per-provider handling,
+    /// tracked separately.
     #[serde(default)]
     pub json_schema: Option<toml::Value>,
 }

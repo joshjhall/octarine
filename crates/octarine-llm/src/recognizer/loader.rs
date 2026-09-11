@@ -424,6 +424,8 @@ fn configure<P: crate::LlmProvider + 'static>(
         ))
         .with_entity_mapping(resolved.entity_mapping.clone())
         .with_confidence(resolved.confidence)
+        .with_languages(config.supported_languages.clone())
+        .with_temperature(config.temperature)
         .with_max_tokens(config.max_tokens);
     Box::new(recognizer)
 }
@@ -434,8 +436,21 @@ fn configure<P: crate::LlmProvider + 'static>(
 /// the empty string are the same mistake, and both produce a 401 several
 /// seconds later if allowed through.
 fn read_credential(var: &str) -> Result<String> {
-    match std::env::var(var) {
-        Ok(value) if !value.trim().is_empty() => Ok(value),
+    credential_from(var, std::env::var(var).ok())
+}
+
+/// The value half of [`read_credential`], separated from the environment read.
+///
+/// Keeping the decision pure makes it testable without mutating process-wide
+/// env state — which this crate cannot do anyway, since it forbids `unsafe` and
+/// `set_var` is unsafe as of the 2024 edition.
+fn credential_from(var: &str, value: Option<String>) -> Result<String> {
+    match value {
+        // Trimmed, not raw: a key piped from a file (`$(cat key.txt)`) or read
+        // by a .env loader routinely carries a trailing newline, which would
+        // otherwise reach the Authorization header verbatim and come back as an
+        // opaque 401 instead of working.
+        Some(value) if !value.trim().is_empty() => Ok(value.trim().to_string()),
         _ => Err(Problem::Config(format!(
             "environment variable {var} is unset or empty; it holds the provider credential for this recognizer"
         ))),
@@ -457,4 +472,47 @@ pub fn build_all(configs: &ConfigSet) -> Result<Vec<Box<dyn Recognizer>>> {
                 .map_err(|e| Problem::Config(format!("{}: {e}", loaded.path.display())))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    #[test]
+    fn a_credential_is_trimmed_before_use() {
+        // A key piped from a file (`$(cat key.txt)`) or read by a .env loader
+        // routinely carries a trailing newline. Passed through verbatim it
+        // reaches the Authorization header and returns an opaque 401.
+        let key = credential_from("TEST_KEY", Some("sk-test-value\n".to_string()))
+            .expect("a credential with incidental whitespace is still a credential");
+        assert_eq!(
+            key, "sk-test-value",
+            "surrounding whitespace must be stripped, not forwarded"
+        );
+
+        let padded =
+            credential_from("TEST_KEY", Some("  sk-test-value  ".to_string())).expect("valid");
+        assert_eq!(padded, "sk-test-value");
+    }
+
+    #[test]
+    fn an_unset_or_blank_credential_is_rejected_naming_the_variable() {
+        // Whitespace-only and unset are the same mistake, and both must fail at
+        // construction rather than as a 401 several seconds later.
+        for absent in [None, Some(String::new()), Some("   \n".to_string())] {
+            let err = credential_from("MY_API_KEY", absent)
+                .expect_err("a blank credential is not a credential");
+            assert!(
+                err.to_string().contains("MY_API_KEY"),
+                "the error must name the variable to set: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_real_credential_passes_through_unchanged() {
+        let key = credential_from("TEST_KEY", Some("sk-abc123".to_string())).expect("valid");
+        assert_eq!(key, "sk-abc123");
+    }
 }

@@ -45,10 +45,10 @@ The whole document is one `[recognizer]` table.
 | `model` | string | yes | — | Model id in the provider's own namespace. |
 | `max_tokens` | integer | no | `2048` | Generated-token ceiling. Must be > 0. |
 | `temperature` | float | no | `0.0` | Sampling temperature, `[0.0, 2.0]`. Detection wants determinism. |
-| `top_p` | float | no | `1.0` | Nucleus sampling, `[0.0, 1.0]`. |
+| `top_p` | float | no | `1.0` | Nucleus sampling, `[0.0, 1.0]`. **Validated but not yet forwarded** — see [Not yet wired](#not-yet-wired). |
 | `enabled` | bool | no | `true` | `false` parks a config without deleting it. It is still validated. |
-| `supported_languages` | array | no | `[]` | BCP 47 tags. **Empty means every language**, not none. |
-| `country_code` | string | no | — | ISO 3166-1 alpha-2 scope. |
+| `supported_languages` | array | no | `[]` | BCP 47 tags. **Empty means every language**, not none. Enforced: a language outside the set returns no results without calling the provider. |
+| `country_code` | string | no | — | ISO 3166-1 alpha-2 scope. **Advisory metadata only** — see [Not yet wired](#not-yet-wired). |
 | `api_key_env` | string | no | per provider | **Name** of the env var holding the credential. See [Credentials](#credentials). |
 | `base_url` | string | no | — | Required for `openai_compatible`; optional for a remote `ollama`. |
 | `endpoint` | string | conditional | — | Required when `provider = "azure_openai"`. |
@@ -59,7 +59,7 @@ The whole document is one `[recognizer]` table.
 | Field | Type | Required | Meaning |
 |---|---|---|---|
 | `system` | string | yes | The system prompt. **Replaces** the built-in detection prompt entirely. |
-| `json_schema` | table | no | Advertised to providers with a structured-output mode; others ignore it. |
+| `json_schema` | table | no | **Validated but not yet forwarded** — see [Not yet wired](#not-yet-wired). |
 
 A custom `system` prompt must still ask for the JSON envelope the parser
 expects — one `entities` key holding objects with `type`, `text`, and `score`.
@@ -120,7 +120,26 @@ ignoring it would leave you believing the score was pinned when it is not.
 
 ### `[recognizer.language_model_params]`
 
-Free-form provider-specific knobs (`seed`, `stop`, …), passed through untouched.
+Free-form provider-specific knobs (`seed`, `stop`, …).
+
+**Validated but not yet forwarded** — see [Not yet wired](#not-yet-wired).
+
+## Not yet wired
+
+Three fields are accepted and validated by the schema but do **not** reach the
+provider request yet: `top_p`, `prompt.json_schema`, and
+`language_model_params`. Each needs a new field on `LlmRequest` plus
+serialization in all five provider wire formats, which is its own change.
+
+`country_code` is advisory metadata: nothing filters on it, because
+country-aware dispatch belongs to the analyzer registry
+([#464](https://github.com/joshjhall/octarine/issues/464)).
+
+They are documented, validated, and range-checked so a config written today
+stays correct once they are honored — but **setting one today has no effect on
+the request**. `temperature` and `supported_languages`, by contrast, are fully
+wired: temperature reaches the provider, and a language outside
+`supported_languages` short-circuits before any call.
 
 ## Entity type names
 

@@ -90,6 +90,12 @@ pub struct LLMRecognizer<P: LlmProvider> {
     /// Recognizer name, when a config named it. `None` falls back to the
     /// provider name, preserving the pre-config behaviour.
     name: Option<String>,
+    /// BCP 47 tags this recognizer handles. Empty means every language, per the
+    /// same empty-means-everything convention as `supported`.
+    languages: Vec<String>,
+    /// Sampling temperature. `None` keeps
+    /// [`LlmRequest::for_detection`]'s deterministic default.
+    temperature: Option<f32>,
 }
 
 impl<P: LlmProvider> LLMRecognizer<P> {
@@ -105,6 +111,8 @@ impl<P: LlmProvider> LLMRecognizer<P> {
             entity_mapping: HashMap::new(),
             confidence: ConfidencePolicy::FromModel,
             name: None,
+            languages: Vec::new(),
+            temperature: None,
         }
     }
 
@@ -159,6 +167,39 @@ impl<P: LlmProvider> LLMRecognizer<P> {
     #[must_use]
     pub fn with_name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
+        self
+    }
+
+    /// Restricts this recognizer to a set of BCP 47 language tags.
+    ///
+    /// An empty slice means every language. Matching is case-insensitive, and a
+    /// language outside the set yields an empty result rather than an error —
+    /// per the [`Recognizer::analyze`] contract, an unsupported language is an
+    /// absence of results, not a failure, and erroring would fail a whole
+    /// analysis run over one recognizer's narrowness.
+    #[must_use]
+    pub fn with_languages(mut self, languages: Vec<String>) -> Self {
+        self.languages = languages;
+        self
+    }
+
+    /// Whether this recognizer handles `language`.
+    fn speaks(&self, language: &str) -> bool {
+        self.languages.is_empty()
+            || self
+                .languages
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case(language))
+    }
+
+    /// Overrides the sampling temperature.
+    ///
+    /// Detection defaults to `0.0` for determinism; raising it is a deliberate
+    /// choice a config can make, so it must actually reach the provider rather
+    /// than being accepted and ignored.
+    #[must_use]
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.temperature = Some(temperature);
         self
     }
 
@@ -241,9 +282,16 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
     async fn analyze(
         &self,
         text: &str,
-        _language: &str,
+        language: &str,
         entities: &[IdentifierType],
     ) -> Result<Vec<RecognizerResult>> {
+        // A recognizer scoped to other languages has nothing to say about this
+        // text, and calling the provider would bill for a guaranteed-empty
+        // answer. Empty, not an error: see `with_languages`.
+        if !self.speaks(language) {
+            return Ok(Vec::new());
+        }
+
         // An empty input has no spans to find, and a provider call would bill
         // for a guaranteed-empty answer.
         if text.is_empty() {
@@ -263,12 +311,15 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
             .system_prompt
             .clone()
             .unwrap_or_else(|| prompt::system_prompt(&requested));
-        let request = LlmRequest::for_detection(
+        let mut request = LlmRequest::for_detection(
             system,
             prompt::user_prompt(text),
             String::new(), // provider substitutes its configured model
             self.max_tokens,
         );
+        if let Some(temperature) = self.temperature {
+            request.temperature = temperature;
+        }
 
         let started = std::time::Instant::now();
         let outcome = self.provider.complete(&request).await;
@@ -573,6 +624,98 @@ mod tests {
             unnamed.name(),
             "stub",
             "without a configured name the provider name is still used"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_language_outside_the_configured_set_skips_the_provider_call() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_languages(vec!["en".to_string(), "es".to_string()])
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "de", &[])
+            .await
+            .expect("an unsupported language is an absence of results, not an error");
+
+        assert!(results.is_empty(), "de is not in the configured set");
+        assert_eq!(
+            rec.provider.call_count(),
+            0,
+            "a scoped-out language must not be billed as a provider call"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_configured_language_still_detects() {
+        // Without this, the test above would pass against a recognizer that
+        // detects nothing at all.
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_languages(vec!["en".to_string()])
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "en", &[])
+            .await
+            .expect("detection ok");
+
+        assert_eq!(results.len(), 1, "en IS in the configured set");
+        assert_eq!(rec.provider.call_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn language_matching_is_case_insensitive() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_languages(vec!["en".to_string()])
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "EN", &[])
+            .await
+            .expect("detection ok");
+        assert_eq!(results.len(), 1, "EN and en are the same language");
+    }
+
+    #[tokio::test]
+    async fn an_empty_language_set_accepts_every_language() {
+        // Empty means everything, matching the `supported_entities` convention.
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL)).silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "pt-BR", &[])
+            .await
+            .expect("detection ok");
+        assert_eq!(
+            results.len(),
+            1,
+            "an empty set must not filter anything out"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_configured_temperature_reaches_the_request() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_temperature(0.7)
+            .silent();
+        let _ = rec.analyze("Reach alice@example.com", "en", &[]).await;
+
+        let calls = rec.provider.calls.lock().expect("lock");
+        let sent = calls.first().expect("one call");
+        // `for_detection` pins 0.0, so 0.7 can only come from the override.
+        assert!(
+            (sent.temperature - 0.7).abs() < f32::EPSILON,
+            "the configured temperature must reach the provider, got {}",
+            sent.temperature
+        );
+    }
+
+    #[tokio::test]
+    async fn without_an_override_detection_stays_deterministic() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL)).silent();
+        let _ = rec.analyze("Reach alice@example.com", "en", &[]).await;
+
+        let calls = rec.provider.calls.lock().expect("lock");
+        let sent = calls.first().expect("one call");
+        assert!(
+            sent.temperature.abs() < f32::EPSILON,
+            "detection defaults to 0.0 for determinism, got {}",
+            sent.temperature
         );
     }
 

@@ -554,3 +554,40 @@ output = [{ entity_type = "PERSON", text = "Alice" }]
         "the configured system prompt must still lead"
     );
 }
+
+// ---- config-driven scoping reaches the built recognizer ---------------------
+
+#[tokio::test]
+async fn supported_languages_from_config_is_enforced_by_the_built_recognizer() {
+    // The config field is documented as scoping the recognizer; this proves it
+    // survives config -> loader -> recognizer rather than being parsed and
+    // dropped. Ollama needs no credential, so no key or network call is needed.
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(
+        dir.path().join("scoped.toml"),
+        r#"
+[recognizer]
+class_name = "scoped"
+provider = "ollama"
+model = "llama3"
+supported_languages = ["en"]
+
+[recognizer.prompt]
+system = "Find PII."
+"#,
+    )
+    .expect("write");
+
+    let configs = loader::load_dir(dir.path()).expect("load");
+    let built = loader::build_all(&configs).expect("build");
+    let recognizer = built.first().expect("one recognizer");
+
+    // "de" is outside the configured set. A recognizer that ignored the config
+    // would attempt a real Ollama call here and fail with a transport error,
+    // so `Ok(empty)` is only reachable via the short-circuit.
+    let out = recognizer
+        .analyze("Reach alice@example.com", "de", &[])
+        .await
+        .expect("an unsupported language returns empty, not an error");
+    assert!(out.is_empty(), "de is outside the configured set");
+}
