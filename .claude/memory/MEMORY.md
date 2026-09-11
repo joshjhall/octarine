@@ -45,3 +45,4 @@
 - [No presidio conform scope](project_conform_no_presidio_scope.md) — `docs(presidio):` is rejected; use `identifiers` or `docs`
 - [IdentifierType string bridge](project_identifier_type_string_bridge.md) — labels.rs holds the 117-arm table (Presidio spellings, strict FromStr); exporting from primitives needs 4-5 re-export edits or `just doc` fails
 - [Config fields must be wired](feedback_config_fields_must_be_wired.md) — a parsed+validated+documented field with no consumer is a silent no-op; grep each field name outside its declaration/validation/tests
+- [Metric tests vs global registry](project_metrics_tests_global_registry.md) — exact counter deltas pass under nextest, fail under `cargo test`/coverage; assert growth or the gate, not absolutes
