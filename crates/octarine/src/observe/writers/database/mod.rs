@@ -46,6 +46,13 @@ pub use traits::{DatabaseBackend, InMemoryBackend, NoOpBackend, QueryResult};
 pub use writer::DatabaseWriter;
 
 // Feature-gated backends
+//
+// `common` holds the logic shared by every SQL backend (WHERE-clause
+// construction, enum column parsing, Event assembly), so it is compiled
+// whenever at least one of them is enabled.
+#[cfg(any(feature = "postgres", feature = "sqlite"))]
+mod common;
+
 #[cfg(feature = "postgres")]
 mod postgres;
 #[cfg(feature = "postgres")]

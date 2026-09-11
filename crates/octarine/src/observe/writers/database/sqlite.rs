@@ -27,9 +27,10 @@ use async_trait::async_trait;
 use sqlx::Row;
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions, SqliteRow};
 
-use crate::observe::types::{Event, EventContext, EventType, Severity, TenantId, UserId};
+use crate::observe::types::Event;
 use crate::observe::writers::types::WriterError;
 
+use super::common::{self, EventRow, SqlDialect};
 use super::query::AuditQuery;
 use super::traits::{DatabaseBackend, QueryResult};
 
@@ -140,100 +141,19 @@ impl SqliteBackend {
 
     /// Build the WHERE clause and bind values from a query
     ///
-    /// Returns a `(sql, params)` tuple. The SQL uses `?` positional
-    /// placeholders for every caller-supplied value; the caller must chain
-    /// `.bind()` over `params` in the same order before executing. Enum- and
-    /// boolean-constrained conditions are interpolated directly because they
-    /// are not attacker-influenced.
+    /// Delegates to [`common::build_where_clause`] with the SQLite dialect:
+    /// anonymous `?` placeholders bound in order, and integer boolean
+    /// literals to match the `INTEGER` columns in this backend's schema.
     fn build_where_clause(query: &AuditQuery) -> (String, Vec<String>) {
-        let mut conditions = Vec::new();
-        let mut params: Vec<String> = Vec::new();
-
-        if let Some(since) = query.since {
-            conditions.push("timestamp >= ?".to_string());
-            params.push(since.to_rfc3339());
-        }
-
-        if let Some(until) = query.until {
-            conditions.push("timestamp < ?".to_string());
-            params.push(until.to_rfc3339());
-        }
-
-        if let Some(ref types) = query.event_types {
-            let placeholders: Vec<&str> = types.iter().map(|_| "?").collect();
-            conditions.push(format!("event_type IN ({})", placeholders.join(", ")));
-            for t in types {
-                params.push(format!("{t:?}"));
-            }
-        }
-
-        if let Some(min_severity) = query.min_severity {
-            // Map severity to numeric for comparison
-            let severity_val = match min_severity {
-                Severity::Debug => 0,
-                Severity::Info => 1,
-                Severity::Warning => 2,
-                Severity::Error => 3,
-                Severity::Critical => 4,
-            };
-            conditions.push(format!(
-                "CASE severity \
-                 WHEN 'Debug' THEN 0 \
-                 WHEN 'Info' THEN 1 \
-                 WHEN 'Warning' THEN 2 \
-                 WHEN 'Error' THEN 3 \
-                 WHEN 'Critical' THEN 4 \
-                 ELSE 0 END >= {severity_val}"
-            ));
-        }
-
-        if let Some(ref tenant) = query.tenant_id {
-            conditions.push("tenant_id = ?".to_string());
-            params.push(tenant.clone());
-        }
-
-        if let Some(ref user) = query.user_id {
-            conditions.push("user_id = ?".to_string());
-            params.push(user.clone());
-        }
-
-        if let Some(corr) = query.correlation_id {
-            conditions.push("correlation_id = ?".to_string());
-            params.push(corr.to_string());
-        }
-
-        if let Some(ref resource_type) = query.resource_type {
-            conditions.push("resource_type = ?".to_string());
-            params.push(resource_type.clone());
-        }
-
-        if let Some(ref resource_id) = query.resource_id {
-            conditions.push("resource_id = ?".to_string());
-            params.push(resource_id.clone());
-        }
-
-        if query.security_relevant_only {
-            conditions.push("security_relevant = 1".to_string());
-        }
-
-        if query.contains_pii_only {
-            conditions.push("contains_pii = 1".to_string());
-        }
-
-        if query.contains_phi_only {
-            conditions.push("contains_phi = 1".to_string());
-        }
-
-        let where_clause = if conditions.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", conditions.join(" AND "))
-        };
-
-        (where_clause, params)
+        common::build_where_clause(query, SqlDialect::Sqlite)
     }
 
     /// Parse a database row into an Event
+    ///
+    /// SQLite has no native UUID, timestamp, or boolean types, so those
+    /// columns are stored as `TEXT`/`INTEGER` and coerced here. The resulting
+    /// native values are assembled into an [`Event`] by
+    /// [`common::assemble_event`].
     fn row_to_event(row: &SqliteRow) -> Result<Event, WriterError> {
         let id_str: String = row
             .try_get("id")
@@ -248,19 +168,15 @@ impl SqliteBackend {
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .map_err(|e| WriterError::Other(format!("Failed to parse timestamp: {e}")))?;
 
-        let event_type_str: String = row
+        let event_type: String = row
             .try_get("event_type")
             .map_err(|e| WriterError::Other(format!("Failed to get event_type: {e}")))?;
-        let severity_str: String = row
+        let severity: String = row
             .try_get("severity")
             .map_err(|e| WriterError::Other(format!("Failed to get severity: {e}")))?;
         let message: String = row
             .try_get("message")
             .map_err(|e| WriterError::Other(format!("Failed to get message: {e}")))?;
-
-        let operation: String = row.try_get("operation").unwrap_or_default();
-        let tenant_id: Option<String> = row.try_get("tenant_id").ok();
-        let user_id: Option<String> = row.try_get("user_id").ok();
 
         let correlation_id_str: String = row
             .try_get("correlation_id")
@@ -268,10 +184,6 @@ impl SqliteBackend {
         let correlation_id = uuid::Uuid::parse_str(&correlation_id_str)
             .map_err(|e| WriterError::Other(format!("Failed to parse correlation_id: {e}")))?;
 
-        let resource_type: Option<String> = row.try_get("resource_type").ok();
-        let resource_id: Option<String> = row.try_get("resource_id").ok();
-        let module_path: String = row.try_get("module_path").unwrap_or_default();
-        let file: String = row.try_get("file").unwrap_or_default();
         let line: i32 = row.try_get("line").unwrap_or(0);
 
         // SQLite stores booleans as integers
@@ -279,83 +191,31 @@ impl SqliteBackend {
         let contains_phi: i32 = row.try_get("contains_phi").unwrap_or(0);
         let security_relevant: i32 = row.try_get("security_relevant").unwrap_or(0);
 
+        // Metadata is stored as a JSON string rather than a JSON column
         let metadata_str: Option<String> = row.try_get("metadata").ok();
         let metadata: Option<serde_json::Value> =
             metadata_str.and_then(|s| serde_json::from_str(&s).ok());
 
-        let event_type = Self::parse_event_type(&event_type_str);
-        let severity = Self::parse_severity(&severity_str);
-
-        let context = EventContext {
-            operation,
-            tenant_id: tenant_id.and_then(|s| TenantId::new(&s).ok()),
-            user_id: user_id.and_then(|s| UserId::new(&s).ok()),
-            session_id: None,
-            correlation_id,
-            parent_span_id: None,
-            resource_type,
-            resource_id,
-            module_path,
-            file,
-            line: line as u32,
-            local_ip: None,
-            source_ip: None,
-            source_ip_chain: Vec::new(),
-            environment: None,
-            contains_pii: contains_pii != 0,
-            contains_phi: contains_phi != 0,
-            security_relevant: security_relevant != 0,
-            pii_types: Vec::new(),
-            compliance: Default::default(),
-        };
-
-        Ok(Event {
+        Ok(common::assemble_event(EventRow {
             id,
             timestamp,
             event_type,
             severity,
             message,
-            context,
-            metadata: metadata
-                .and_then(|v| v.as_object().cloned())
-                .map(|m| m.into_iter().collect())
-                .unwrap_or_default(),
-        })
-    }
-
-    fn parse_event_type(s: &str) -> EventType {
-        match s {
-            "ValidationError" => EventType::ValidationError,
-            "ConversionError" => EventType::ConversionError,
-            "SanitizationError" => EventType::SanitizationError,
-            "AuthenticationError" => EventType::AuthenticationError,
-            "AuthorizationError" => EventType::AuthorizationError,
-            "SystemError" => EventType::SystemError,
-            "ValidationSuccess" => EventType::ValidationSuccess,
-            "AuthenticationSuccess" => EventType::AuthenticationSuccess,
-            "LoginSuccess" => EventType::LoginSuccess,
-            "LoginFailure" => EventType::LoginFailure,
-            "ResourceCreated" => EventType::ResourceCreated,
-            "ResourceUpdated" => EventType::ResourceUpdated,
-            "ResourceDeleted" => EventType::ResourceDeleted,
-            "SystemStartup" => EventType::SystemStartup,
-            "SystemShutdown" => EventType::SystemShutdown,
-            "HealthCheck" => EventType::HealthCheck,
-            "Debug" => EventType::Debug,
-            "Warning" => EventType::Warning,
-            _ => EventType::Info,
-        }
-    }
-
-    fn parse_severity(s: &str) -> Severity {
-        match s {
-            "Debug" => Severity::Debug,
-            "Info" => Severity::Info,
-            "Warning" => Severity::Warning,
-            "Error" => Severity::Error,
-            "Critical" => Severity::Critical,
-            _ => Severity::Info,
-        }
+            operation: row.try_get("operation").unwrap_or_default(),
+            tenant_id: row.try_get("tenant_id").ok(),
+            user_id: row.try_get("user_id").ok(),
+            correlation_id,
+            resource_type: row.try_get("resource_type").ok(),
+            resource_id: row.try_get("resource_id").ok(),
+            module_path: row.try_get("module_path").unwrap_or_default(),
+            file: row.try_get("file").unwrap_or_default(),
+            line: line as u32,
+            contains_pii: contains_pii != 0,
+            contains_phi: contains_phi != 0,
+            security_relevant: security_relevant != 0,
+            metadata,
+        }))
     }
 }
 
@@ -549,7 +409,7 @@ impl DatabaseBackend for SqliteBackend {
 #[allow(clippy::panic, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::observe::types::EventType;
+    use crate::observe::types::{EventContext, EventType, Severity, TenantId, UserId};
 
     fn test_event() -> Event {
         Event::new(EventType::Info, "Test event")
@@ -701,38 +561,6 @@ mod tests {
             .await
             .expect("query should succeed");
         assert_eq!(result.events.len(), 1); // Still just one event
-    }
-
-    #[test]
-    fn test_parse_event_type() {
-        assert!(matches!(
-            SqliteBackend::parse_event_type("ValidationError"),
-            EventType::ValidationError
-        ));
-        assert!(matches!(
-            SqliteBackend::parse_event_type("Info"),
-            EventType::Info
-        ));
-        assert!(matches!(
-            SqliteBackend::parse_event_type("Unknown"),
-            EventType::Info
-        ));
-    }
-
-    #[test]
-    fn test_parse_severity() {
-        assert!(matches!(
-            SqliteBackend::parse_severity("Debug"),
-            Severity::Debug
-        ));
-        assert!(matches!(
-            SqliteBackend::parse_severity("Critical"),
-            Severity::Critical
-        ));
-        assert!(matches!(
-            SqliteBackend::parse_severity("Unknown"),
-            Severity::Info
-        ));
     }
 
     // ===== SQL Injection Regression Tests =====
