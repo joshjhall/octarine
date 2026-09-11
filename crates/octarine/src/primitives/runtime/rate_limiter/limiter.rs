@@ -393,14 +393,13 @@ mod tests {
             // Should have waited some time (at least a few ms)
             assert!(elapsed.as_millis() > 0);
 
-            // And the request should be counted as allowed. Compare as a lower
-            // bound, not an absolute: tokens may refill between `until_ready`
-            // returning and `stats()` being read (test-resilience Rule 6).
+            // Exactly one: `allowed` is incremented only in `until_ready`'s
+            // success arm, and stats were reset immediately before the single
+            // call. An exact assertion catches a retry loop that double-counts.
             let stats = limiter.stats();
-            assert!(
-                stats.allowed >= 1,
-                "Expected at least one allowed request, got {}",
-                stats.allowed
+            assert_eq!(
+                stats.allowed, 1,
+                "until_ready should record exactly one allowed request"
             );
         })
         .await
