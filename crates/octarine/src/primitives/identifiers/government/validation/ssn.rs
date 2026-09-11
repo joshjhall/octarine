@@ -221,8 +221,15 @@ mod tests {
         // Presidio invalidates the whole `98765432` prefix, not just the exact
         // 987654321. Area 987 is in the 9XX/ITIN range, so octarine rejects
         // every member of that prefix via the ITIN rule.
-        for ssn in ["987654320", "987654321", "987654329"] {
-            assert!(validate_ssn(ssn).is_err(), "{ssn} should be rejected");
+        // The loop variable is deliberately NOT interpolated into the assert
+        // message: CodeQL traces an SSN-shaped value reaching assertion output
+        // as cleartext logging of sensitive information, even for synthetic
+        // test constants. Index the position instead.
+        for (i, ssn) in ["987654320", "987654321", "987654329"].iter().enumerate() {
+            assert!(
+                validate_ssn(ssn).is_err(),
+                "98765432-prefix fixture #{i} should be rejected"
+            );
         }
     }
 

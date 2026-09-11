@@ -119,8 +119,22 @@ mod tests {
     fn test_validate_canada_sin() {
         let b = GovernmentBuilder::silent();
         assert!(b.validate_canada_sin(CANADA_SIN).is_ok());
-        // Break the Luhn checksum.
-        assert!(b.validate_canada_sin("046-454-287").is_err());
+        // Break ONLY the Luhn checksum: same allowed leading digit as
+        // CANADA_SIN, so this exercises the checksum path rather than the
+        // reserved-first-digit rule below.
+        assert!(b.validate_canada_sin("136-454-286").is_err());
+    }
+
+    #[test]
+    fn test_validate_canada_sin_rejects_reserved_first_digit() {
+        // Confirms the primitives-layer reserved-digit rule (ESDC: no SIN
+        // starts 0 or 8) propagates through the Layer 3 wrapper. Both
+        // fixtures are Luhn-valid, so only that rule can reject them.
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_canada_sin("012345674").is_err());
+        assert!(b.validate_canada_sin("846454288").is_err());
+        // Control: an allowed leading digit still validates.
+        assert!(b.validate_canada_sin(CANADA_SIN).is_ok());
     }
 
     #[test]
