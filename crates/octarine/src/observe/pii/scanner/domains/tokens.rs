@@ -15,14 +15,80 @@ use crate::primitives::identifiers::{
 };
 
 /// Scan for tokens and secrets (API keys, JWT, passwords, etc.)
-pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
-    let token = TokenIdentifierBuilder::new();
+/// Independent token predicates: each is a self-contained "is this present?"
+/// check that pushes one `PiiType`. Table-driven so the checks stay a flat
+/// list rather than a branch chain (issue #411).
+type TokenCheck = fn(&TokenIdentifierBuilder, &str) -> bool;
+const TOKEN_CHECKS: &[(TokenCheck, PiiType)] = &[
+    (
+        |t, text| t.is_jwt(text) || t.redact_jwts_in_text(text).as_ref() != text,
+        PiiType::Jwt,
+    ),
+    (
+        TokenIdentifierBuilder::is_likely_session_id,
+        PiiType::SessionId,
+    ),
+    (
+        |t, text| t.is_ssh_key(text) || t.redact_ssh_keys_in_text(text).as_ref() != text,
+        PiiType::SshKey,
+    ),
+    (
+        TokenIdentifierBuilder::is_onepassword_token,
+        PiiType::OnePasswordToken,
+    ),
+    (
+        TokenIdentifierBuilder::is_onepassword_vault_ref,
+        PiiType::OnePasswordVaultRef,
+    ),
+    (
+        TokenIdentifierBuilder::is_bearer_token,
+        PiiType::BearerToken,
+    ),
+    (
+        TokenIdentifierBuilder::is_url_with_credentials,
+        PiiType::UrlWithCredentials,
+    ),
+];
 
-    // Provider-specific token attribution. Iterate whitespace-split words and
-    // dispatch through detect_token_type so each provider gets its own PiiType
-    // variant (issue #97). Suppress the generic ApiKey emission when any
-    // provider matched — it is reserved for unrecognized api-key-shaped input.
+/// Independent credential predicates, same shape as [`TOKEN_CHECKS`].
+///
+/// Covers only the checks that run AFTER the connection-string pair in
+/// [`scan_tokens`]; the connection-string and framework-credential checks stay
+/// inline because the framework one is conditional on `ConnectionString` not
+/// already having been pushed, and their relative position is load-bearing for
+/// the order of the emitted `PiiType`s.
+type CredentialCheck = fn(&CredentialIdentifierBuilder, &str) -> bool;
+const CREDENTIAL_CHECKS: &[(CredentialCheck, PiiType)] = &[
+    (
+        CredentialIdentifierBuilder::is_passwords_present,
+        PiiType::Password,
+    ),
+    (CredentialIdentifierBuilder::is_pins_present, PiiType::Pin),
+    (
+        CredentialIdentifierBuilder::is_security_answers_present,
+        PiiType::SecurityAnswer,
+    ),
+    (
+        CredentialIdentifierBuilder::is_passphrases_present,
+        PiiType::Passphrase,
+    ),
+];
+
+/// Attribute provider-specific tokens word by word.
+///
+/// Iterates whitespace-split words and dispatches through `detect_token_type`
+/// so each provider gets its own `PiiType` variant (issue #97).
+///
+/// Returns `true` if any provider matched, which suppresses the generic
+/// `ApiKey` emission in [`scan_tokens`] — that variant is reserved for
+/// unrecognized api-key-shaped input.
+fn scan_provider_tokens(
+    token: &TokenIdentifierBuilder,
+    text: &str,
+    pii_types: &mut Vec<PiiType>,
+) -> bool {
     let mut provider_matched = false;
+
     for word in text.split_whitespace() {
         // Strip surrounding shell punctuation (quotes, commas, parens, colons,
         // semicolons) but preserve characters that appear inside provider
@@ -42,6 +108,15 @@ pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
         }
     }
 
+    provider_matched
+}
+
+/// Scan for tokens and secrets (API keys, JWT, passwords, etc.)
+pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
+    let token = TokenIdentifierBuilder::new();
+
+    let provider_matched = scan_provider_tokens(&token, text, pii_types);
+
     // Generic ApiKey fallback: only when no provider-specific match.
     if !provider_matched
         && (token.is_api_key(text) || token.redact_api_keys_in_text(text).as_ref() != text)
@@ -49,42 +124,12 @@ pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
         pii_types.push(PiiType::ApiKey);
     }
 
-    // JWT
-    if token.is_jwt(text) || token.redact_jwts_in_text(text).as_ref() != text {
-        pii_types.push(PiiType::Jwt);
+    for &(check, pii_type) in TOKEN_CHECKS {
+        if check(&token, text) {
+            pii_types.push(pii_type);
+        }
     }
 
-    // Session IDs
-    if token.is_likely_session_id(text) {
-        pii_types.push(PiiType::SessionId);
-    }
-
-    // SSH keys
-    if token.is_ssh_key(text) || token.redact_ssh_keys_in_text(text).as_ref() != text {
-        pii_types.push(PiiType::SshKey);
-    }
-
-    // 1Password tokens
-    if token.is_onepassword_token(text) {
-        pii_types.push(PiiType::OnePasswordToken);
-    }
-
-    // 1Password vault references
-    if token.is_onepassword_vault_ref(text) {
-        pii_types.push(PiiType::OnePasswordVaultRef);
-    }
-
-    // Bearer tokens
-    if token.is_bearer_token(text) {
-        pii_types.push(PiiType::BearerToken);
-    }
-
-    // URLs with credentials
-    if token.is_url_with_credentials(text) {
-        pii_types.push(PiiType::UrlWithCredentials);
-    }
-
-    // Credentials
     let credential = CredentialIdentifierBuilder::new();
 
     // Connection strings with credentials (MSSQL, JDBC, database URLs)
@@ -94,24 +139,19 @@ pub(super) fn scan_tokens(text: &str, pii_types: &mut Vec<PiiType>) {
 
     // Framework-style credentials (Django, Rails YAML, .env, Docker Compose).
     // Mapped to ConnectionString since they identify the same kind of secret —
-    // database access credentials in application configuration.
+    // database access credentials in application configuration. Conditional on
+    // ConnectionString not already being present, so it stays out of the table
+    // above and keeps its original position in the push order.
     if credential.is_framework_credential_present(text)
         && !pii_types.contains(&PiiType::ConnectionString)
     {
         pii_types.push(PiiType::ConnectionString);
     }
 
-    if credential.is_passwords_present(text) {
-        pii_types.push(PiiType::Password);
-    }
-    if credential.is_pins_present(text) {
-        pii_types.push(PiiType::Pin);
-    }
-    if credential.is_security_answers_present(text) {
-        pii_types.push(PiiType::SecurityAnswer);
-    }
-    if credential.is_passphrases_present(text) {
-        pii_types.push(PiiType::Passphrase);
+    for &(check, pii_type) in CREDENTIAL_CHECKS {
+        if check(&credential, text) {
+            pii_types.push(pii_type);
+        }
     }
 }
 
@@ -204,4 +244,92 @@ pub(super) fn is_token_present(text: &str) -> bool {
     // Password detection
     text.to_lowercase().contains("password")
         && (text.contains('=') || text.contains(':') || text.contains(' '))
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic, clippy::expect_used)]
+    use super::*;
+
+    /// The trim closure must preserve base64 `=` padding while stripping a
+    /// wrapping comma — an Azure `AccountKey=...==` inside a shell-ish line is
+    /// the case the closure's comment calls out.
+    ///
+    /// Asserts on the provider variant specifically: a trim that ate the `=`
+    /// padding would no longer match the Azure shape, so `AzureKey` is the
+    /// element that disappears.
+    #[test]
+    fn test_provider_token_wrapped_in_punctuation_is_still_detected() {
+        // Exactly 88 base64 chars ending in `==`, the length the Azure
+        // pattern requires. Strip that padding and it is 86 chars and no
+        // longer matches — which is what makes this input discriminating
+        // rather than decorative.
+        let bare = "AccountKey=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwx==";
+        let wrapped = format!("\"{bare}\",");
+
+        let mut bare_types = Vec::new();
+        scan_tokens(bare, &mut bare_types);
+        assert!(
+            bare_types.contains(&PiiType::AzureKey),
+            "precondition: bare Azure key should be attributed, got {bare_types:?}"
+        );
+
+        let mut wrapped_types = Vec::new();
+        scan_tokens(&wrapped, &mut wrapped_types);
+        assert!(
+            wrapped_types.contains(&PiiType::AzureKey),
+            "wrapping punctuation lost the Azure attribution: {wrapped_types:?} \
+             (the trim closure must strip the quote/comma but keep the `==` padding)"
+        );
+        assert_eq!(
+            bare_types, wrapped_types,
+            "wrapping punctuation changed detection: bare={bare_types:?} wrapped={wrapped_types:?}"
+        );
+    }
+
+    /// Words that trim away to nothing must hit the `is_empty` guard rather
+    /// than panicking or emitting a match.
+    #[test]
+    fn test_punctuation_only_words_are_skipped() {
+        let mut pii_types = Vec::new();
+        scan_tokens(" , ;; () \"\" :: ", &mut pii_types);
+        assert!(
+            pii_types.is_empty(),
+            "punctuation-only input produced {pii_types:?}"
+        );
+    }
+
+    /// Every table row must be reachable: a check wired to the wrong predicate
+    /// would emit the wrong `PiiType` here.
+    #[test]
+    fn test_token_check_table_emits_its_mapped_type() {
+        let token = TokenIdentifierBuilder::new();
+        let sample = "Bearer abcdefghijklmnopqrstuvwxyz0123456789";
+        let matched: Vec<PiiType> = TOKEN_CHECKS
+            .iter()
+            .filter(|(check, _)| check(&token, sample))
+            .map(|(_, pii)| *pii)
+            .collect();
+        assert!(
+            matched.contains(&PiiType::BearerToken),
+            "bearer sample matched {matched:?}, expected BearerToken among them"
+        );
+    }
+
+    /// The framework-credential check must not double-push `ConnectionString`
+    /// when the connection-string check already emitted it.
+    #[test]
+    fn test_connection_string_is_not_double_emitted() {
+        let text = "DATABASE_URL=postgres://admin:s3cr3tpassword@db.example.com:5432/appdb";
+        let mut pii_types = Vec::new();
+        scan_tokens(text, &mut pii_types);
+        let count = pii_types
+            .iter()
+            .filter(|p| **p == PiiType::ConnectionString)
+            .count();
+        assert!(
+            count <= 1,
+            "ConnectionString emitted {count} times: {pii_types:?}"
+        );
+    }
 }
