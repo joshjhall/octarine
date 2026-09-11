@@ -2,5 +2,5 @@
 
 pub use crate::primitives::identifiers::confidence::KeywordLanguage;
 pub use crate::primitives::identifiers::{
-    DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType,
+    DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType, UnknownIdentifierType,
 };

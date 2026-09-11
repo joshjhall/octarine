@@ -1,0 +1,69 @@
+# A person/location recognizer backed by OpenAI.
+#
+# Drop this file into your recognizer config directory and load it with
+# `octarine_llm::recognizer::loader::from_toml_dir`. Edit it while the process
+# is running and the change is picked up without a restart.
+
+[recognizer]
+# Instance name. Must be unique within the directory — it becomes the
+# recognizer's identity in metrics and audit records.
+class_name = "person_finder_openai"
+provider = "openai"
+model = "gpt-4o-mini"
+max_tokens = 512
+temperature = 0.0
+top_p = 1.0
+enabled = true
+supported_languages = ["en", "es"]
+country_code = "US"
+
+# The NAME of the environment variable holding the API key — never the key
+# itself. Config files get committed; secrets must not. Defaults to
+# OPENAI_API_KEY when omitted.
+api_key_env = "OPENAI_API_KEY"
+
+# Provider-specific knobs, passed through untouched.
+[recognizer.language_model_params]
+seed = 42
+
+[recognizer.prompt]
+system = """
+You are a precise PII detection engine. Identify people and place names in the \
+text supplied by the user.
+
+Respond with a JSON object and nothing else — no prose, no markdown fences. \
+The object has one key, "entities", whose value is an array. Each array item \
+has exactly these keys:
+  "type":  the entity label, PERSON or LOCATION
+  "text":  the matched substring, copied VERBATIM from the input
+  "score": your confidence, a number between 0.0 and 1.0
+
+Copy matched text exactly. Do not normalize case, trim punctuation, or correct \
+apparent typos. If you find nothing, return {"entities": []}.
+"""
+
+# Worked examples, appended to the system prompt in this order. `text` must
+# appear verbatim in `input`; offsets are optional and checked when present.
+[[recognizer.few_shot_examples]]
+input = "Alice met Bob in NYC"
+output = [
+  { entity_type = "PERSON", text = "Alice", start = 0, end = 5 },
+  { entity_type = "PERSON", text = "Bob", start = 10, end = 13 },
+  { entity_type = "NAMED_LOCATION", text = "NYC", start = 17, end = 20 },
+]
+
+[[recognizer.few_shot_examples]]
+input = "No personal details here."
+output = []
+
+# Maps the model's labels onto octarine identifier types. A label with no entry
+# passes through unchanged — this narrows vocabulary, it is not an allow-list.
+[recognizer.entity_mapping]
+PERSON = "PERSON"
+LOCATION = "NAMED_LOCATION"
+
+# "constant" pins every detection to `value`; "from_model" keeps the model's
+# own score (and must not set `value`).
+[recognizer.confidence]
+mode = "constant"
+value = 0.85

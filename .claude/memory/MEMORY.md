@@ -43,3 +43,4 @@
 - [New crate CI gates](project_new_crate_ci_gates.md) — a new workspace member fails SemVer (no baseline in origin/main; use `--exclude`) and needs lefthook.yml + four justfile release sites the crate-layout checklist omits
 - [No secrets in assert messages](feedback_secrets_in_assertion_messages.md) — `got: {rendered}` in an assert! is a CodeQL cleartext-logging sink even in a test asserting the secret stays hidden; state the property, omit the value
 - [No presidio conform scope](project_conform_no_presidio_scope.md) — `docs(presidio):` is rejected; use `identifiers` or `docs`
+- [IdentifierType string bridge](project_identifier_type_string_bridge.md) — labels.rs holds the 117-arm table (Presidio spellings, strict FromStr); exporting from primitives needs 4-5 re-export edits or `just doc` fails

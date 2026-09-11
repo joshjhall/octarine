@@ -1,5 +1,7 @@
 //! [`LLMRecognizer`] — an [`Recognizer`] backed by a language model.
 
+pub mod config;
+pub mod loader;
 pub mod parse;
 pub mod prompt;
 
@@ -11,7 +13,10 @@ use octarine::observe;
 use octarine::observe::metrics::{increment, increment_by, record};
 use octarine_problem::Result;
 
+use std::collections::HashMap;
+
 use crate::metrics::{self, Outcome, metric_names};
+use crate::recognizer::config::ConfidencePolicy;
 use crate::types::{LlmProvider, LlmRequest};
 
 /// Default ceiling on generated tokens.
@@ -69,6 +74,22 @@ pub struct LLMRecognizer<P: LlmProvider> {
     /// Whether to emit observe events. Mirrors the Layer 3 builder convention
     /// so a caller running the recognizer in a hot loop can silence it.
     emit_events: bool,
+    /// A config-supplied system prompt, replacing the built-in one.
+    ///
+    /// `None` keeps [`prompt::system_prompt`], which derives a prompt from the
+    /// requested entity types. A TOML-configured recognizer supplies its own,
+    /// which is how a config can specialize a recognizer to one entity type or
+    /// one document shape.
+    system_prompt: Option<String>,
+    /// Model entity label → octarine type, applied to detections before
+    /// anchoring. Empty means pass the model's labels through unchanged.
+    entity_mapping: HashMap<String, IdentifierType>,
+    /// How detections are scored. [`ConfidencePolicy::FromModel`] keeps what
+    /// the model reported.
+    confidence: ConfidencePolicy,
+    /// Recognizer name, when a config named it. `None` falls back to the
+    /// provider name, preserving the pre-config behaviour.
+    name: Option<String>,
 }
 
 impl<P: LlmProvider> LLMRecognizer<P> {
@@ -80,6 +101,10 @@ impl<P: LlmProvider> LLMRecognizer<P> {
             supported: Vec::new(),
             max_tokens: DEFAULT_MAX_TOKENS,
             emit_events: true,
+            system_prompt: None,
+            entity_mapping: HashMap::new(),
+            confidence: ConfidencePolicy::FromModel,
+            name: None,
         }
     }
 
@@ -97,6 +122,46 @@ impl<P: LlmProvider> LLMRecognizer<P> {
         self
     }
 
+    /// Replaces the built-in detection prompt.
+    ///
+    /// The supplied prompt is used verbatim, so it must still ask for the JSON
+    /// envelope [`parse`] expects — a prompt that
+    /// elicits prose produces a parse failure, not a silent empty result.
+    #[must_use]
+    pub fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system_prompt = Some(prompt.into());
+        self
+    }
+
+    /// Maps the model's entity labels onto octarine types.
+    ///
+    /// Applied to each detection before anchoring. A label with no mapping
+    /// passes through unchanged rather than being dropped: the mapping narrows
+    /// vocabulary differences, it is not an allow-list.
+    #[must_use]
+    pub fn with_entity_mapping(mut self, mapping: HashMap<String, IdentifierType>) -> Self {
+        self.entity_mapping = mapping;
+        self
+    }
+
+    /// Sets how detections are scored.
+    #[must_use]
+    pub fn with_confidence(mut self, confidence: ConfidencePolicy) -> Self {
+        self.confidence = confidence;
+        self
+    }
+
+    /// Overrides the recognizer name reported by
+    /// [`Recognizer::name`].
+    ///
+    /// A TOML-configured recognizer uses its `class_name`, so two instances of
+    /// the same provider stay distinguishable in metrics and audit records.
+    #[must_use]
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
     /// Disables observe event emission. Metrics are still recorded.
     #[must_use]
     pub fn silent(mut self) -> Self {
@@ -110,6 +175,40 @@ impl<P: LlmProvider> LLMRecognizer<P> {
     /// contract. Otherwise the request narrows to the intersection with the
     /// advertised set — asking a provider for types this recognizer does not
     /// support wastes prompt tokens.
+    /// Rewrites each detection's label through the configured mapping.
+    ///
+    /// An unmapped label passes through untouched. The mapping exists to
+    /// reconcile vocabulary — a model that says `PERSON` where octarine says
+    /// `PERSON`, or `LOC` where octarine says `NAMED_LOCATION` — not to filter,
+    /// so dropping unmapped labels would silently discard real detections from
+    /// a config that merely did not enumerate every type.
+    fn apply_entity_mapping(&self, raw: Vec<parse::RawEntity>) -> Vec<parse::RawEntity> {
+        if self.entity_mapping.is_empty() {
+            return raw;
+        }
+        raw.into_iter()
+            .map(|mut entity| {
+                if let Some(mapped) = self.entity_mapping.get(&entity.entity_type) {
+                    entity.entity_type = mapped.as_str().to_string();
+                }
+                entity
+            })
+            .collect()
+    }
+
+    /// Applies the configured scoring policy to anchored detections.
+    ///
+    /// [`ConfidencePolicy::FromModel`] is a no-op — the score `parse::anchor`
+    /// already clamped is what the model reported.
+    fn apply_confidence(&self, results: &mut [RecognizerResult]) {
+        let ConfidencePolicy::Constant(value) = self.confidence else {
+            return;
+        };
+        for result in results.iter_mut() {
+            result.score = value;
+        }
+    }
+
     fn resolve_entities(&self, requested: &[IdentifierType]) -> Vec<IdentifierType> {
         if requested.is_empty() {
             return self.supported.clone();
@@ -158,8 +257,14 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
             return Ok(Vec::new());
         }
 
+        // A config-supplied prompt wins; otherwise derive one from the
+        // requested entity types.
+        let system = self
+            .system_prompt
+            .clone()
+            .unwrap_or_else(|| prompt::system_prompt(&requested));
         let request = LlmRequest::for_detection(
-            prompt::system_prompt(&requested),
+            system,
             prompt::user_prompt(text),
             String::new(), // provider substitutes its configured model
             self.max_tokens,
@@ -234,7 +339,9 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
 
         record_outcome(self.provider.name(), Outcome::Ok);
 
-        let (results, unanchored) = parse::anchor(text, raw)?;
+        let raw = self.apply_entity_mapping(raw);
+        let (mut results, unanchored) = parse::anchor(text, raw)?;
+        self.apply_confidence(&mut results);
         increment_by(metric_names::entities_detected(), results.len() as u64);
         if unanchored > 0 {
             increment_by(metric_names::spans_unanchored(), unanchored as u64);
@@ -266,7 +373,7 @@ cache_read_tokens={} cache_hit={} finish_reason={:?} entities={} unanchored={} o
     }
 
     fn name(&self) -> &str {
-        self.provider.name()
+        self.name.as_deref().unwrap_or_else(|| self.provider.name())
     }
 
     fn supported_entities(&self) -> &[IdentifierType] {
@@ -341,6 +448,132 @@ mod tests {
             "the span must cover the detected value in the ORIGINAL text"
         );
         assert_eq!(first.score, 0.95);
+    }
+
+    // ---- config-driven behaviour -------------------------------------------
+
+    #[tokio::test]
+    async fn a_configured_system_prompt_replaces_the_built_in_one() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_system_prompt("CUSTOM_PROMPT_MARKER")
+            .silent();
+        let _ = rec.analyze("Reach alice@example.com", "en", &[]).await;
+
+        let calls = rec.provider.calls.lock().expect("lock");
+        let sent = calls.first().expect("one call");
+        assert_eq!(
+            sent.system_prompt, "CUSTOM_PROMPT_MARKER",
+            "the configured prompt must be sent verbatim, not appended to the default"
+        );
+    }
+
+    #[tokio::test]
+    async fn without_a_configured_prompt_the_built_in_one_is_used() {
+        // Guards the default path: `with_system_prompt` is opt-in.
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL)).silent();
+        let _ = rec.analyze("Reach alice@example.com", "en", &[]).await;
+
+        let calls = rec.provider.calls.lock().expect("lock");
+        let sent = calls.first().expect("one call");
+        assert!(
+            sent.system_prompt.contains("VERBATIM"),
+            "the built-in detection prompt must still be used by default"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_entity_mapping_rewrites_a_models_label() {
+        let mut mapping = HashMap::new();
+        mapping.insert("EMAIL_ADDRESS".to_string(), IdentifierType::Username);
+
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_entity_mapping(mapping)
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "en", &[])
+            .await
+            .expect("detection ok");
+
+        // Deliberately maps onto a DIFFERENT type than the model reported: a
+        // mapping to the same label would pass even if mapping were a no-op.
+        assert_eq!(
+            results.first().map(|r| r.entity_type.as_str()),
+            Some("USERNAME"),
+            "the mapped type must replace the model's own label"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_unmapped_label_passes_through_rather_than_being_dropped() {
+        // The mapping narrows vocabulary; it is not an allow-list.
+        let mut mapping = HashMap::new();
+        mapping.insert("SOMETHING_ELSE".to_string(), IdentifierType::Username);
+
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_entity_mapping(mapping)
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "en", &[])
+            .await
+            .expect("detection ok");
+
+        assert_eq!(
+            results.first().map(|r| r.entity_type.as_str()),
+            Some("EMAIL_ADDRESS"),
+            "an unmapped label must survive, not be filtered out"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_constant_confidence_overrides_the_models_score() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_confidence(ConfidencePolicy::Constant(0.42))
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "en", &[])
+            .await
+            .expect("detection ok");
+
+        // The stub reports 0.95, so 0.42 can only come from the policy.
+        assert_eq!(
+            results.first().map(|r| r.score),
+            Some(0.42),
+            "a constant policy must replace the model's reported score"
+        );
+    }
+
+    #[tokio::test]
+    async fn from_model_confidence_keeps_the_reported_score() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL))
+            .with_confidence(ConfidencePolicy::FromModel)
+            .silent();
+        let results = rec
+            .analyze("Reach alice@example.com", "en", &[])
+            .await
+            .expect("detection ok");
+
+        assert_eq!(
+            results.first().map(|r| r.score),
+            Some(0.95),
+            "from_model must leave the model's score untouched"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_configured_name_replaces_the_provider_name() {
+        let rec = LLMRecognizer::new(StubProvider::new(ONE_EMAIL)).with_name("person_finder");
+        assert_eq!(
+            rec.name(),
+            "person_finder",
+            "two instances of one provider must stay distinguishable"
+        );
+
+        let unnamed = LLMRecognizer::new(StubProvider::new(ONE_EMAIL));
+        assert_eq!(
+            unnamed.name(),
+            "stub",
+            "without a configured name the provider name is still used"
+        );
     }
 
     #[tokio::test]
