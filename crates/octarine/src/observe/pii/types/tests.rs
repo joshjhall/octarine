@@ -586,7 +586,7 @@ fn from_identifier_type_direct_mappings() {
 #[test]
 fn from_identifier_type_scanner_parity() {
     // Non-obvious mappings — these mirror what
-    // observe/pii/scanner/domains.rs pushes for each detected
+    // observe/pii/scanner/domains/ pushes for each detected
     // IdentifierType. Changing either side without the other would create
     // silent drift.
 
