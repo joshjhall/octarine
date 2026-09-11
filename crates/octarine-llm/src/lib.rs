@@ -97,5 +97,10 @@ pub use provider::{
     OpenAiProvider,
 };
 pub use recognizer::LLMRecognizer;
+pub use recognizer::config::{
+    ConfidenceConfig, ConfidencePolicy, FewShotEntity, FewShotExample, PromptConfig,
+    RecognizerConfig, RecognizerFile,
+};
+pub use recognizer::loader::{ConfigSet, LoadedRecognizer, ReloadHandle};
 pub use sse::{SseDecoder, SseEvent};
 pub use types::{FinishReason, LlmProvider, LlmRequest, LlmResponse, TokenUsage};

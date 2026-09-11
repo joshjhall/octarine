@@ -6,8 +6,10 @@
 
 mod core;
 mod financial;
+mod labels;
 mod personal;
 
 pub use core::{DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType};
 pub use financial::{CreditCardType, CryptoAddressType};
+pub use labels::UnknownIdentifierType;
 pub use personal::{CountryCode, CredentialMatch, CredentialType, PhoneRegion};

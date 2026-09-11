@@ -7,6 +7,8 @@
 
 use octarine::identifiers::IdentifierType;
 
+use super::config::FewShotExample;
+
 /// Builds the cache-eligible system prompt for a set of entity types.
 ///
 /// Passing an empty slice asks for every type the recognizer supports, matching
@@ -67,6 +69,58 @@ pub fn user_prompt(text: &str) -> String {
     format!("<<<BEGIN TEXT>>>\n{text}\n<<<END TEXT>>>")
 }
 
+/// Appends few-shot examples to a config-supplied system prompt.
+///
+/// Examples are rendered as the same JSON envelope the prompt asks for, so the
+/// model sees its target format demonstrated rather than only described. Rules
+/// stated in prose are followed inconsistently; a worked example of the exact
+/// output shape is the more reliable instruction.
+///
+/// Returns `system` unchanged when there are no examples — an empty
+/// "Examples:" heading would be noise in the cache-eligible prefix.
+///
+/// Output is **byte-stable** for a given config: examples render in declaration
+/// order with no interpolated state. Prompt caching depends on the prefix being
+/// byte-identical across calls, which is also why this is built once at
+/// construction rather than per call.
+#[must_use]
+pub fn with_few_shot_examples(system: &str, examples: &[FewShotExample]) -> String {
+    if examples.is_empty() {
+        return system.to_string();
+    }
+
+    let mut out = String::from(system);
+    out.push_str("\n\nExamples:\n");
+    for example in examples {
+        out.push_str("\nInput: ");
+        out.push_str(&example.input);
+        out.push_str("\nOutput: ");
+        out.push_str(&render_entities(example));
+        out.push('\n');
+    }
+    out
+}
+
+/// Renders one example's expected entities as the detection envelope.
+///
+/// Built with `serde_json` rather than string concatenation so a quote or
+/// backslash in the example text is escaped — hand-built JSON here would
+/// produce a malformed example, teaching the model to emit malformed output.
+fn render_entities(example: &FewShotExample) -> String {
+    let entities: Vec<serde_json::Value> = example
+        .output
+        .iter()
+        .map(|entity| {
+            serde_json::json!({
+                "type": entity.entity_type,
+                "text": entity.text,
+                "score": 1.0,
+            })
+        })
+        .collect();
+    serde_json::json!({ "entities": entities }).to_string()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
@@ -125,6 +179,90 @@ mod tests {
         assert!(
             prompt.contains(r#"{"entities": []}"#),
             "the empty-result example must render as literal JSON"
+        );
+    }
+
+    // ---- few-shot rendering ------------------------------------------------
+
+    fn example(input: &str, entity_type: &str, text: &str) -> FewShotExample {
+        FewShotExample {
+            input: input.to_string(),
+            output: vec![super::super::config::FewShotEntity {
+                entity_type: entity_type.to_string(),
+                text: text.to_string(),
+                start: None,
+                end: None,
+            }],
+        }
+    }
+
+    #[test]
+    fn no_examples_leaves_the_prompt_untouched() {
+        // An empty "Examples:" heading would be noise in the cached prefix.
+        let system = "Find PII.";
+        assert_eq!(with_few_shot_examples(system, &[]), system);
+    }
+
+    #[test]
+    fn examples_render_the_input_and_the_target_envelope() {
+        let rendered =
+            with_few_shot_examples("Find PII.", &[example("Alice met Bob", "PERSON", "Alice")]);
+        assert!(rendered.starts_with("Find PII."), "the system prompt leads");
+        assert!(rendered.contains("Alice met Bob"), "the input must appear");
+        assert!(
+            rendered.contains(r#""entities""#) && rendered.contains(r#""type":"PERSON""#),
+            "the example must demonstrate the envelope the prompt asks for: {rendered}"
+        );
+    }
+
+    #[test]
+    fn every_example_is_rendered_in_declaration_order() {
+        let rendered = with_few_shot_examples(
+            "Find PII.",
+            &[
+                example("Alice waited", "PERSON", "Alice"),
+                example("Bob called", "PERSON", "Bob"),
+            ],
+        );
+        let first = rendered.find("Alice").expect("first example must render");
+        let second = rendered.find("Bob").expect("second example must render");
+        assert!(
+            first < second,
+            "examples must keep declaration order, or the prompt is not byte-stable"
+        );
+    }
+
+    #[test]
+    fn example_text_containing_json_punctuation_is_escaped() {
+        // Hand-built JSON would emit a malformed example here, teaching the
+        // model that malformed output is acceptable.
+        let rendered = with_few_shot_examples(
+            "Find PII.",
+            &[example(r#"He said "hi" to Alice"#, "PERSON", "Alice")],
+        );
+        let line = rendered
+            .lines()
+            .find(|l| l.starts_with("Output: "))
+            .expect("an output line must be rendered");
+        let json = line.trim_start_matches("Output: ");
+        let parsed: serde_json::Value =
+            serde_json::from_str(json).expect("rendered example must be valid JSON");
+        let text = parsed
+            .get("entities")
+            .and_then(|e| e.get(0))
+            .and_then(|e| e.get("text"))
+            .and_then(serde_json::Value::as_str);
+        assert_eq!(text, Some("Alice"));
+    }
+
+    #[test]
+    fn few_shot_rendering_is_byte_stable() {
+        // Same reason as `prompt_is_byte_stable_for_the_same_entity_set`:
+        // prompt caching needs a byte-identical prefix.
+        let examples = [example("Alice met Bob", "PERSON", "Alice")];
+        assert_eq!(
+            with_few_shot_examples("Find PII.", &examples),
+            with_few_shot_examples("Find PII.", &examples)
         );
     }
 

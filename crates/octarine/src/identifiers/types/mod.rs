@@ -22,6 +22,7 @@ pub use biometric::{
 pub use cache::CacheStats;
 pub use core::{
     DetectionConfidence, DetectionResult, IdentifierMatch, IdentifierType, KeywordLanguage,
+    UnknownIdentifierType,
 };
 pub use correlation::{CorrelationConfig, CorrelationMatch, CredentialPairType};
 pub use financial::{CreditCardType, CryptoAddressType, FinancialTextPolicy};

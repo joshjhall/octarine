@@ -131,7 +131,8 @@ pub use types::{
     FingerprintRedactionStrategy, GovernmentTextPolicy, GpsFormat, IdentifierMatch, IdentifierType,
     IrisIdRedactionStrategy, KeywordLanguage, LocationTextPolicy, MedicalTextPolicy,
     MetricViolation, OrganizationalTextPolicy, PersonalTextPolicy, PhoneRegion,
-    PostalCodeNormalization, PostalCodeType, UuidVersion, VoiceIdRedactionStrategy,
+    PostalCodeNormalization, PostalCodeType, UnknownIdentifierType, UuidVersion,
+    VoiceIdRedactionStrategy,
 };
 
 // Re-export RedactionToken (public API for redaction tokens)

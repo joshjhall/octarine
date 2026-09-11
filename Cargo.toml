@@ -47,8 +47,15 @@ clap = { version = "4.0", features = ["derive", "env"] }
 # HTTP client
 reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
 
+# Layered configuration (TOML + env), and the TOML parser behind it
+figment = { version = "0.10", features = ["toml", "env", "test"] }
+toml = "0.9"
+
 # Async traits (async fn in trait objects — needed for object-safe `Recognizer`)
 async-trait = "0.1"
+
+# Filesystem watcher, for hot-reloading LLM recognizer configs
+notify = "8.2"
 
 # Byte buffers and stream combinators, for SSE response decoding
 bytes = "1.10"

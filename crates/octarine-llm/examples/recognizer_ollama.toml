@@ -1,0 +1,47 @@
+# The same recognizer against a local model — no credential, no cloud call.
+#
+# The only differences from recognizer_openai.toml are the provider, the model,
+# and the absence of `api_key_env`: Ollama authenticates nothing.
+
+[recognizer]
+class_name = "person_finder_ollama"
+provider = "ollama"
+model = "llama3"
+max_tokens = 512
+temperature = 0.0
+enabled = true
+
+# Optional. Defaults to http://localhost:11434 — set this for a remote Ollama.
+# base_url = "http://ollama.internal:11434"
+
+[recognizer.prompt]
+system = """
+You are a precise PII detection engine. Identify people and place names in the \
+text supplied by the user.
+
+Respond with a JSON object and nothing else — no prose, no markdown fences. \
+The object has one key, "entities", whose value is an array. Each array item \
+has exactly these keys:
+  "type":  the entity label, PERSON or LOCATION
+  "text":  the matched substring, copied VERBATIM from the input
+  "score": your confidence, a number between 0.0 and 1.0
+
+Copy matched text exactly. If you find nothing, return {"entities": []}.
+"""
+
+[[recognizer.few_shot_examples]]
+input = "Alice met Bob in NYC"
+output = [
+  { entity_type = "PERSON", text = "Alice" },
+  { entity_type = "NAMED_LOCATION", text = "NYC" },
+]
+
+[recognizer.entity_mapping]
+PERSON = "PERSON"
+LOCATION = "NAMED_LOCATION"
+
+# A local model's self-reported scores are less calibrated than a frontier
+# model's, so this config keeps them rather than pinning a constant it cannot
+# justify.
+[recognizer.confidence]
+mode = "from_model"

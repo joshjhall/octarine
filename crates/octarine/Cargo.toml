@@ -28,7 +28,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Configuration
-figment = { version = "0.10", features = ["toml", "env", "test"] }
+figment = { workspace = true }
 
 # Date and time
 chrono = { workspace = true }
