@@ -112,19 +112,19 @@ pub(crate) mod korea_driver_license {
 
 /// South Korea Passport patterns
 ///
-/// Format: `[MRS][A-Z]?[0-9]{7,8}` (M=multiple, R=resident, S=single;
-/// optional second letter for newer format).
+/// Format: `[MRSOD][A-Z]?[0-9]{7,8}` (M=multiple, R=resident, S=single,
+/// O=official, D=diplomatic; optional second letter for newer format).
 pub(crate) mod korea_passport {
     use super::*;
 
     /// Bare Korea passport (one or two letters + 7-8 digits)
     pub static STANDARD: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"\b[MRS][A-Z]?\d{7,8}\b").expect("BUG: Invalid regex pattern"));
+        Lazy::new(|| Regex::new(r"\b[MRSOD][A-Z]?\d{7,8}\b").expect("BUG: Invalid regex pattern"));
 
     /// Korea passport with explicit label
     pub static LABELED: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r"(?i)\b(?:KR[\s-]?passport|korean?[\s-]?passport|여권)[\s:#-]*([MRS][A-Z]?\d{7,8})\b",
+            r"(?i)\b(?:KR[\s-]?passport|korean?[\s-]?passport|여권)[\s:#-]*([MRSOD][A-Z]?\d{7,8})\b",
         )
         .expect("BUG: Invalid regex pattern")
     });

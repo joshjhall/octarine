@@ -35,9 +35,15 @@ pub(crate) mod ssn {
         Lazy::new(|| Regex::new(r"\b\d{3}\s\d{2}\s\d{4}\b").expect("BUG: Invalid regex pattern"));
 
     /// SSN exact match pattern (for validation)
+    ///
+    /// Hyphenation must be all-or-nothing: either both separators are present
+    /// or neither is. Half-hyphenated forms like "123-456789" are not a shape
+    /// the SSA ever prints and are rejected.
+    ///
     /// Example: "123-45-6789" or "123456789"
-    pub static EXACT: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"^\d{3}-?\d{2}-?\d{4}$").expect("BUG: Invalid regex pattern"));
+    pub static EXACT: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^(?:\d{3}-\d{2}-\d{4}|\d{9})$").expect("BUG: Invalid regex pattern")
+    });
 
     /// Returns all SSN patterns in priority order
     pub fn all() -> Vec<&'static Regex> {

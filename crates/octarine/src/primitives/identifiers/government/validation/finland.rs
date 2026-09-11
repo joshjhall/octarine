@@ -1,8 +1,10 @@
 //! Finland HETU (Henkilotunnus) validation
 //!
-//! Format: DDMMYY[+-A]NNN[check]
+//! Format: DDMMYY\[century\]NNN\[check\]
 //! - DD: day (01-31), MM: month (01-12), YY: year
-//! - Century marker: `-` (1900s), `+` (1800s), `A` (2000s)
+//! - Century marker: `+` (1800s); `-`, `Y`, `X`, `W`, `V`, `U` (1900s);
+//!   `A`, `B`, `C`, `D`, `E`, `F` (2000s). The letter groups beyond `-`/`+`/`A`
+//!   were added by DVV on 2023-01-01.
 //! - NNN: individual number (002-899, odd=male, even=female)
 //! - Check: (DDMMYYNNN) % 31 → lookup in check character string
 
@@ -12,7 +14,17 @@ use crate::primitives::types::Problem;
 const CHECK_CHARS: &[u8] = b"0123456789ABCDEFHJKLMNPRSTUVWXY";
 
 /// Valid century markers
-const VALID_CENTURY_MARKERS: &[char] = &['-', '+', 'A'];
+///
+/// Legacy markers: `+` (1800s), `-` (1900s), `A` (2000s).
+///
+/// DVV extended the set on 2023-01-01 after the legacy 30,000/day allocation
+/// was exhausted: `B, C, D, E, F` also denote the 2000s, and `Y, X, W, V, U`
+/// also denote the 1900s.
+const VALID_CENTURY_MARKERS: &[char] = &[
+    '-', '+', 'A', // Legacy
+    'B', 'C', 'D', 'E', 'F', // Post-2023, 2000s
+    'Y', 'X', 'W', 'V', 'U', // Post-2023, 1900s
+];
 
 // ============================================================================
 // Validation
@@ -75,8 +87,8 @@ pub fn validate_finland_hetu(value: &str) -> Result<(), Problem> {
     let century = chars.get(6).copied().unwrap_or(' ');
     if !VALID_CENTURY_MARKERS.contains(&century) {
         return Err(Problem::Validation(format!(
-            "Finland HETU century marker must be -, +, or A; got '{}'",
-            century
+            "Finland HETU century marker must be one of {:?}; got '{}'",
+            VALID_CENTURY_MARKERS, century
         )));
     }
 
@@ -213,7 +225,27 @@ mod tests {
 
     #[test]
     fn test_validate_hetu_invalid_century_marker() {
-        assert!(validate_finland_hetu("010190X1230").is_err());
+        // 'Z' is not in any DVV century-marker group (legacy or post-2023).
+        assert!(validate_finland_hetu("010190Z1230").is_err());
+        // A digit in the marker position is likewise invalid.
+        assert!(validate_finland_hetu("01019011230").is_err());
+        // Control: a legacy marker in the same position still validates.
+        assert!(validate_finland_hetu("010190-1230").is_ok());
+    }
+
+    #[test]
+    fn test_validate_hetu_post_2023_century_markers() {
+        // DVV added these on 2023-01-01; octarine rejected them before #427.
+        // 010100 + 901 -> mod 31 == 16 -> check char 'H'.
+        assert!(validate_finland_hetu_with_checksum("010100B901H").is_ok());
+
+        for marker in ['B', 'C', 'D', 'E', 'F', 'Y', 'X', 'W', 'V', 'U'] {
+            let hetu = make_valid_hetu("150685", marker, "456");
+            assert!(
+                validate_finland_hetu_with_checksum(&hetu).is_ok(),
+                "post-2023 marker '{marker}' should be valid"
+            );
+        }
     }
 
     #[test]

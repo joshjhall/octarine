@@ -112,6 +112,10 @@ fn validate_ssn_uncached(ssn: &str) -> Result<(), Problem> {
     // SSA Rule: Area 9XX is the ITIN range — not an SSN. Reject here so the
     // caller is forced to route through `validate_itin`, which enforces the
     // IRS middle-group constraint that this validator cannot.
+    //
+    // This also subsumes Presidio's `98765432`-prefix invalidation: every
+    // 9-digit value with that prefix has area 987, so it is rejected here
+    // rather than by a separate prefix check.
     if area.starts_with('9') {
         return Err(Problem::Validation(
             "9XX area is an ITIN, not an SSN — use validate_itin".into(),
@@ -189,6 +193,37 @@ mod tests {
         assert!(validate_ssn("123-45-6789").is_err());
         assert!(validate_ssn("123456789").is_err());
         assert!(validate_ssn("987654321").is_err()); // Reverse sequential
+    }
+
+    #[test]
+    fn test_ssn_rejects_inconsistent_hyphenation() {
+        // Hyphenation must be all-or-nothing; these half-hyphenated forms were
+        // accepted before #427.
+        assert!(validate_ssn("234-567890").is_err());
+        assert!(validate_ssn("234567-890").is_err());
+
+        // Controls: both canonical shapes of the SAME number still validate,
+        // so this cannot pass by rejecting the number itself.
+        assert!(validate_ssn("234-56-7890").is_ok());
+        assert!(validate_ssn("234567890").is_ok());
+    }
+
+    #[test]
+    fn test_ssn_rejects_space_delimiters() {
+        // Pins the pre-existing behaviour the issue asked about: mixed and
+        // space delimiters never reached the SSA rules at all.
+        assert!(validate_ssn("123-45 6789").is_err());
+        assert!(validate_ssn("234 56 7890").is_err());
+    }
+
+    #[test]
+    fn test_ssn_rejects_98765432_prefix() {
+        // Presidio invalidates the whole `98765432` prefix, not just the exact
+        // 987654321. Area 987 is in the 9XX/ITIN range, so octarine rejects
+        // every member of that prefix via the ITIN rule.
+        for ssn in ["987654320", "987654321", "987654329"] {
+            assert!(validate_ssn(ssn).is_err(), "{ssn} should be rejected");
+        }
     }
 
     #[test]

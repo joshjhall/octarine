@@ -105,6 +105,14 @@ pub fn validate_india_aadhaar_with_checksum(value: &str) -> Result<(), Problem> 
         ));
     }
 
+    // UIDAI convention: a palindromic Aadhaar is a test/placeholder value even
+    // when the Verhoeff checksum passes. Matches Presidio's `__check_aadhaar`.
+    if is_palindrome_aadhaar(&digits) {
+        return Err(Problem::Validation(
+            "Aadhaar cannot be a palindrome".to_string(),
+        ));
+    }
+
     Ok(())
 }
 
@@ -120,6 +128,13 @@ pub fn is_test_india_aadhaar(value: &str) -> bool {
     if let Some(first) = clean.chars().next()
         && clean.chars().all(|c| c == first)
     {
+        return true;
+    }
+
+    // Palindromes are UIDAI test/placeholder values (see
+    // `validate_india_aadhaar_with_checksum`).
+    let digits: Vec<u32> = clean.chars().filter_map(|c| c.to_digit(10)).collect();
+    if is_palindrome_aadhaar(&digits) {
         return true;
     }
 
@@ -670,6 +685,14 @@ fn extract_digits(value: &str) -> Result<Vec<u32>, Problem> {
     Ok(digits)
 }
 
+/// Check whether an Aadhaar's digits read the same forwards and backwards
+///
+/// UIDAI never issues palindromic Aadhaar numbers, so a Verhoeff-valid
+/// palindrome is a test/placeholder value rather than a real identifier.
+fn is_palindrome_aadhaar(digits: &[u32]) -> bool {
+    digits.iter().eq(digits.iter().rev())
+}
+
 /// Verhoeff checksum validation
 ///
 /// For a valid number, the Verhoeff checksum should be 0 when
@@ -855,6 +878,45 @@ mod tests {
     fn test_is_test_aadhaar() {
         assert!(is_test_india_aadhaar("2222 2222 2222"));
         assert!(!is_test_india_aadhaar("2345 6789 0123"));
+    }
+
+    #[test]
+    fn test_validate_aadhaar_rejects_verhoeff_valid_palindrome() {
+        // Verhoeff-valid AND a palindrome: UIDAI never issues these, so the
+        // checksum tier must reject despite the checksum passing.
+        for palindrome in ["200009900002", "200019910002"] {
+            assert!(
+                verhoeff_validate(
+                    &palindrome
+                        .chars()
+                        .filter_map(|c| c.to_digit(10))
+                        .collect::<Vec<u32>>()
+                ),
+                "fixture {palindrome} must be Verhoeff-valid or the test is vacuous"
+            );
+            assert!(
+                validate_india_aadhaar_with_checksum(palindrome).is_err(),
+                "palindrome {palindrome} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_aadhaar_accepts_non_palindrome() {
+        // Control: the palindrome rule must not swallow ordinary Aadhaars.
+        let aadhaar = make_valid_aadhaar("23456789012");
+        assert!(
+            validate_india_aadhaar_with_checksum(&aadhaar).is_ok(),
+            "non-palindrome {aadhaar} should still validate"
+        );
+    }
+
+    #[test]
+    fn test_is_test_aadhaar_flags_palindrome() {
+        assert!(is_test_india_aadhaar("200009900002"));
+        assert!(is_test_india_aadhaar("2000 0990 0002"));
+        // Control: a near-miss differing in one digit is not a palindrome.
+        assert!(!is_test_india_aadhaar("200009900003"));
     }
 
     #[test]

@@ -80,9 +80,9 @@ mod tests {
     use super::*;
 
     // "AB123456C" is a valid UK NINO (valid prefix, suffix A-D).
-    // "046-454-286" is a valid Canadian SIN (passes Luhn).
+    // "136-454-287" is a valid Canadian SIN (passes Luhn).
     const UK_NINO: &str = "AB123456C";
-    const CANADA_SIN: &str = "046-454-286";
+    const CANADA_SIN: &str = "136-454-287";
 
     #[test]
     fn test_is_national_id() {
