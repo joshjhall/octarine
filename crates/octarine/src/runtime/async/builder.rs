@@ -25,6 +25,7 @@
 //! ```
 
 use crate::observe::Result;
+use crate::observe::metrics::{MetricName, increment_by};
 use std::time::Duration;
 
 use super::{
@@ -32,20 +33,68 @@ use super::{
     RetryPolicy, WorkerConfig, WorkerPool,
 };
 
+crate::define_metrics! {
+    channels_created => "runtime.async.channels_created",
+    circuit_breakers_created => "runtime.async.circuit_breakers_created",
+    worker_pools_created => "runtime.async.worker_pools_created",
+    executors_created => "runtime.async.executors_created",
+}
+
 /// Unified builder for runtime components
 ///
 /// Provides a consistent API for creating all runtime components with
 /// shared configuration options.
-#[derive(Debug, Clone, Default)]
+///
+/// # Observability
+///
+/// Component construction is counted (`runtime.async.channels_created`,
+/// `runtime.async.circuit_breakers_created`,
+/// `runtime.async.worker_pools_created`, `runtime.async.executors_created`).
+/// Use [`silent()`](Self::silent) or [`with_events(false)`](Self::with_events)
+/// to skip recording.
+#[derive(Debug, Clone)]
 pub struct RuntimeBuilder {
     /// Default name prefix for components
     name_prefix: Option<String>,
+    /// Whether to record component-creation metrics
+    emit_events: bool,
+}
+
+impl Default for RuntimeBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RuntimeBuilder {
     /// Create a new RuntimeBuilder with default settings
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            name_prefix: None,
+            emit_events: true,
+        }
+    }
+
+    /// Create a builder that records no component-creation metrics
+    pub fn silent() -> Self {
+        Self {
+            name_prefix: None,
+            emit_events: false,
+        }
+    }
+
+    /// Enable or disable component-creation metrics
+    #[must_use]
+    pub fn with_events(mut self, emit: bool) -> Self {
+        self.emit_events = emit;
+        self
+    }
+
+    /// Count a component construction when events are enabled.
+    fn count_created(&self, metric: MetricName) {
+        if self.emit_events {
+            increment_by(metric, 1);
+        }
     }
 
     /// Set a default name prefix for all components
@@ -72,6 +121,7 @@ impl RuntimeBuilder {
     ///
     /// Uses Block overflow policy (backpressure).
     pub fn channel<T: Send + 'static>(&self, name: &str, capacity: usize) -> Channel<T> {
+        self.count_created(metric_names::channels_created());
         Channel::new(self.full_name(name), capacity)
     }
 
@@ -81,21 +131,25 @@ impl RuntimeBuilder {
     /// apply the builder's name prefix. Use this when you need full control
     /// over the channel configuration.
     pub fn channel_with_config<T: Send + 'static>(&self, config: ChannelConfig) -> Channel<T> {
+        self.count_created(metric_names::channels_created());
         Channel::with_config(config)
     }
 
     /// Create a high-throughput channel (large buffer, drop oldest on overflow)
     pub fn high_throughput_channel<T: Send + 'static>(&self, name: &str) -> Channel<T> {
+        self.count_created(metric_names::channels_created());
         Channel::with_config(ChannelConfig::high_throughput(self.full_name(name)))
     }
 
     /// Create a reliable channel (medium buffer, block on overflow)
     pub fn reliable_channel<T: Send + 'static>(&self, name: &str) -> Channel<T> {
+        self.count_created(metric_names::channels_created());
         Channel::with_config(ChannelConfig::reliable(self.full_name(name)))
     }
 
     /// Create a low-latency channel (small buffer, reject on overflow)
     pub fn low_latency_channel<T: Send + 'static>(&self, name: &str) -> Channel<T> {
+        self.count_created(metric_names::channels_created());
         Channel::with_config(ChannelConfig::low_latency(self.full_name(name)))
     }
 
@@ -109,6 +163,7 @@ impl RuntimeBuilder {
     ///
     /// Returns error if configuration is invalid (shouldn't happen with defaults).
     pub fn circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
+        self.count_created(metric_names::circuit_breakers_created());
         CircuitBreaker::new(&self.full_name(name), CircuitBreakerConfig::default())
     }
 
@@ -121,11 +176,13 @@ impl RuntimeBuilder {
         name: &str,
         config: CircuitBreakerConfig,
     ) -> Result<CircuitBreaker> {
+        self.count_created(metric_names::circuit_breakers_created());
         CircuitBreaker::new(&self.full_name(name), config)
     }
 
     /// Create a high-availability circuit breaker (strict thresholds)
     pub fn ha_circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
+        self.count_created(metric_names::circuit_breakers_created());
         CircuitBreaker::new(
             &self.full_name(name),
             CircuitBreakerConfig::high_availability(),
@@ -134,11 +191,13 @@ impl RuntimeBuilder {
 
     /// Create a database circuit breaker (more tolerant)
     pub fn db_circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
+        self.count_created(metric_names::circuit_breakers_created());
         CircuitBreaker::new(&self.full_name(name), CircuitBreakerConfig::database())
     }
 
     /// Create an API circuit breaker (same as high-availability)
     pub fn api_circuit_breaker(&self, name: &str) -> Result<CircuitBreaker> {
+        self.count_created(metric_names::circuit_breakers_created());
         CircuitBreaker::new(&self.full_name(name), CircuitBreakerConfig::external_api())
     }
 
@@ -148,6 +207,7 @@ impl RuntimeBuilder {
 
     /// Create a worker pool with specified number of workers
     pub fn worker_pool(&self, name: &str, workers: usize) -> WorkerPool {
+        self.count_created(metric_names::worker_pools_created());
         WorkerPool::new(self.full_name(name), workers)
     }
 
@@ -157,21 +217,25 @@ impl RuntimeBuilder {
     /// apply the builder's name prefix. Use this when you need full control
     /// over the worker pool configuration.
     pub fn worker_pool_with_config(&self, config: WorkerConfig) -> WorkerPool {
+        self.count_created(metric_names::worker_pools_created());
         WorkerPool::with_config(config)
     }
 
     /// Create a CPU-bound worker pool (workers = CPU count)
     pub fn cpu_worker_pool(&self, name: &str) -> WorkerPool {
+        self.count_created(metric_names::worker_pools_created());
         WorkerPool::with_config(WorkerConfig::cpu_bound(self.full_name(name)))
     }
 
     /// Create an I/O-bound worker pool (workers = 2x CPU count)
     pub fn io_worker_pool(&self, name: &str) -> WorkerPool {
+        self.count_created(metric_names::worker_pools_created());
         WorkerPool::with_config(WorkerConfig::io_bound(self.full_name(name)))
     }
 
     /// Create a single-threaded worker pool
     pub fn single_worker_pool(&self, name: &str) -> WorkerPool {
+        self.count_created(metric_names::worker_pools_created());
         WorkerPool::with_config(WorkerConfig::single_threaded(self.full_name(name)))
     }
 
@@ -181,6 +245,7 @@ impl RuntimeBuilder {
 
     /// Create an executor with default settings
     pub fn executor(&self, name: &str) -> Executor {
+        self.count_created(metric_names::executors_created());
         Executor::with_name(self.full_name(name))
     }
 
@@ -188,21 +253,25 @@ impl RuntimeBuilder {
     ///
     /// The name prefix is applied to the provided name.
     pub fn executor_with_config(&self, name: &str, config: ExecutorConfig) -> Executor {
+        self.count_created(metric_names::executors_created());
         Executor::with_config(self.full_name(name), config)
     }
 
     /// Create a lightweight executor (single thread, time only)
     pub fn lightweight_executor(&self, name: &str) -> Executor {
+        self.count_created(metric_names::executors_created());
         Executor::with_config(self.full_name(name), ExecutorConfig::lightweight())
     }
 
     /// Create a full-featured executor (multi-thread, all features)
     pub fn full_executor(&self, name: &str) -> Executor {
+        self.count_created(metric_names::executors_created());
         Executor::with_config(self.full_name(name), ExecutorConfig::full_featured())
     }
 
     /// Create a compute-only executor (multi-thread, no I/O)
     pub fn compute_executor(&self, name: &str) -> Executor {
+        self.count_created(metric_names::executors_created());
         Executor::with_config(self.full_name(name), ExecutorConfig::compute_only())
     }
 
@@ -240,10 +309,100 @@ mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
 
+    use crate::observe::metrics::{flush_for_testing, snapshot};
+
+    /// Serializes metrics-touching tests in this file against the shared
+    /// global registry.
+    static METRICS_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn counter_value(name: &str) -> u64 {
+        snapshot().counters.get(name).map_or(0, |c| c.value)
+    }
+
     #[test]
     fn test_runtime_builder_default() {
         let builder = RuntimeBuilder::new();
         assert!(builder.name_prefix.is_none());
+        // Default must route through new(), not derive a `false` flag.
+        assert!(RuntimeBuilder::default().emit_events);
+    }
+
+    #[test]
+    fn test_builder_event_flags() {
+        assert!(RuntimeBuilder::new().emit_events);
+        assert!(!RuntimeBuilder::silent().emit_events);
+        assert!(!RuntimeBuilder::new().with_events(false).emit_events);
+        assert!(RuntimeBuilder::silent().with_events(true).emit_events);
+    }
+
+    #[test]
+    fn test_with_name_prefix_survives_with_events() {
+        // with_events must not reset unrelated builder state.
+        let builder = RuntimeBuilder::new()
+            .with_name_prefix("svc")
+            .with_events(false);
+        assert_eq!(builder.full_name("chan"), "svc.chan");
+    }
+
+    #[test]
+    fn test_component_creation_counted() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = RuntimeBuilder::new();
+
+        flush_for_testing();
+        let channels_before = counter_value("runtime.async.channels_created");
+        let breakers_before = counter_value("runtime.async.circuit_breakers_created");
+        let executors_before = counter_value("runtime.async.executors_created");
+
+        let _channel: Channel<i32> = builder.channel("counted", 4);
+        let _reliable: Channel<i32> = builder.reliable_channel("counted2");
+        let _breaker = builder.circuit_breaker("counted").expect("breaker");
+        let _executor = builder.executor("counted");
+        flush_for_testing();
+
+        assert_eq!(
+            counter_value("runtime.async.channels_created"),
+            channels_before.saturating_add(2),
+            "both channel constructors must count",
+        );
+        assert_eq!(
+            counter_value("runtime.async.circuit_breakers_created"),
+            breakers_before.saturating_add(1),
+        );
+        assert_eq!(
+            counter_value("runtime.async.executors_created"),
+            executors_before.saturating_add(1),
+        );
+    }
+
+    #[test]
+    fn test_silent_builder_counts_nothing() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = RuntimeBuilder::silent().with_name_prefix("quiet");
+
+        flush_for_testing();
+        let channels_before = counter_value("runtime.async.channels_created");
+        let executors_before = counter_value("runtime.async.executors_created");
+
+        let channel: Channel<i32> = builder.channel("chan", 4);
+        let executor = builder.executor("exec");
+        flush_for_testing();
+
+        // The components are still fully constructed and named.
+        let (sender, _receiver) = channel.split();
+        assert_eq!(sender.name(), "quiet.chan");
+        assert_eq!(executor.name(), "quiet.exec");
+
+        assert_eq!(
+            counter_value("runtime.async.channels_created"),
+            channels_before,
+            "silent() must not count channel creation",
+        );
+        assert_eq!(
+            counter_value("runtime.async.executors_created"),
+            executors_before,
+            "silent() must not count executor creation",
+        );
     }
 
     #[test]

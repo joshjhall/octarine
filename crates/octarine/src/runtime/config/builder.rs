@@ -1,19 +1,32 @@
 //! Configuration builder for loading from environment and files
-// arch-check: allow file-length -- 16 mandatory doctest justification comments (issue #191) push file over 800 LOC; refactor deferred
+//!
+//! The batch-loading accumulators (`require`/`optional`/`secret`/`load`) live
+//! in `batch.rs`, and the resulting [`LoadedConfig`](super::loaded::LoadedConfig)
+//! in `loaded.rs`.
 
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::crypto::secrets::{Classification, SecretType, TypedSecret};
 use crate::observe;
+use crate::observe::metrics::{MetricName, increment_by, record};
 
 use super::error::ConfigError;
 use super::figment_adapter::FigmentAdapter;
 use super::value::ConfigValue;
+
+crate::define_metrics! {
+    pub(super)
+    build_ms => "runtime.config.build_ms",
+    load_ms => "runtime.config.load_ms",
+    configs_built => "runtime.config.configs_built",
+    configs_loaded => "runtime.config.configs_loaded",
+}
 
 /// Builder for loading configuration from environment variables and files
 ///
@@ -57,24 +70,26 @@ use super::value::ConfigValue;
 #[derive(Debug, Clone)]
 pub struct ConfigBuilder {
     /// Prefix for environment variables (e.g., "APP" -> "APP_PORT")
-    prefix: Option<String>,
+    pub(super) prefix: Option<String>,
     /// Separator between prefix and name (default: "_")
-    separator: String,
+    pub(super) separator: String,
     /// Loaded values (for batch operations)
-    values: HashMap<String, LoadedValue>,
+    pub(super) values: HashMap<String, LoadedValue>,
     /// Names of secret fields (values will be masked in logs)
-    secrets: Vec<String>,
+    pub(super) secrets: Vec<String>,
     /// Config files to load (in order)
     files: Vec<PathBuf>,
     /// Serialized defaults for struct-based config
     defaults_json: Option<serde_json::Value>,
+    /// Whether to emit events and record metrics
+    emit_events: bool,
 }
 
 #[derive(Debug, Clone)]
-struct LoadedValue {
-    raw: Option<String>,
-    is_secret: bool,
-    is_required: bool,
+pub(super) struct LoadedValue {
+    pub(super) raw: Option<String>,
+    pub(super) is_secret: bool,
+    pub(super) is_required: bool,
 }
 
 impl Default for ConfigBuilder {
@@ -94,7 +109,6 @@ impl ConfigBuilder {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        observe::debug("runtime.config", "Creating ConfigBuilder");
         Self {
             prefix: None,
             separator: "_".to_string(),
@@ -102,6 +116,55 @@ impl ConfigBuilder {
             secrets: Vec::new(),
             files: Vec::new(),
             defaults_json: None,
+            emit_events: true,
+        }
+    }
+
+    /// Create a builder that emits no events and records no metrics
+    ///
+    /// Config loading logs variable names and non-secret values; use this for
+    /// bulk or sensitive loads that must not reach the audit trail.
+    #[must_use]
+    pub fn silent() -> Self {
+        Self {
+            emit_events: false,
+            ..Self::new()
+        }
+    }
+
+    /// Enable or disable observe events and metrics
+    #[must_use]
+    pub fn with_events(mut self, emit: bool) -> Self {
+        self.emit_events = emit;
+        self
+    }
+
+    /// Emit a debug event when events are enabled.
+    pub(super) fn log_debug(&self, operation: &str, message: impl Into<String>) {
+        if self.emit_events {
+            observe::debug(operation, message.into());
+        }
+    }
+
+    /// Emit a warning when events are enabled.
+    pub(super) fn log_warn(&self, operation: &str, message: impl Into<String>) {
+        if self.emit_events {
+            observe::warn(operation, message.into());
+        }
+    }
+
+    /// Emit an info event when events are enabled.
+    pub(super) fn log_info(&self, operation: &str, message: impl Into<String>) {
+        if self.emit_events {
+            observe::info(operation, message.into());
+        }
+    }
+
+    /// Record duration and a success count for a completed operation.
+    pub(super) fn record_operation(&self, duration: MetricName, count: MetricName, start: Instant) {
+        if self.emit_events {
+            record(duration, start.elapsed().as_micros() as f64 / 1000.0);
+            increment_by(count, 1);
         }
     }
 
@@ -119,7 +182,7 @@ impl ConfigBuilder {
     #[must_use]
     pub fn with_prefix(mut self, prefix: impl Into<String>) -> Self {
         let prefix = prefix.into();
-        observe::debug("runtime.config", format!("Setting prefix: {}", prefix));
+        self.log_debug("runtime.config", format!("Setting prefix: {}", prefix));
         self.prefix = Some(prefix);
         self
     }
@@ -171,7 +234,7 @@ impl ConfigBuilder {
     #[must_use]
     pub fn with_defaults<T: Serialize>(mut self, defaults: T) -> Self {
         self.defaults_json = serde_json::to_value(defaults).ok();
-        observe::debug("runtime.config", "Set configuration defaults");
+        self.log_debug("runtime.config", "Set configuration defaults");
         self
     }
 
@@ -198,7 +261,7 @@ impl ConfigBuilder {
         if !path.exists() {
             return Err(ConfigError::file_error(path, "file not found"));
         }
-        observe::debug(
+        self.log_debug(
             "runtime.config",
             format!("Adding config file: {}", path.display()),
         );
@@ -224,13 +287,13 @@ impl ConfigBuilder {
     pub fn with_optional_file(mut self, path: impl AsRef<Path>) -> Self {
         let path = path.as_ref();
         if path.exists() {
-            observe::debug(
+            self.log_debug(
                 "runtime.config",
                 format!("Adding optional config file: {}", path.display()),
             );
             self.files.push(path.to_path_buf());
         } else {
-            observe::debug(
+            self.log_debug(
                 "runtime.config",
                 format!(
                     "Optional config file not found (skipped): {}",
@@ -282,7 +345,7 @@ impl ConfigBuilder {
             ));
         }
 
-        observe::debug(
+        self.log_debug(
             "runtime.config",
             format!("Adding secure config file: {}", path.display()),
         );
@@ -303,7 +366,7 @@ impl ConfigBuilder {
             return Err(ConfigError::file_error(path, "file not found"));
         }
 
-        observe::warn(
+        self.log_warn(
             "runtime.config",
             format!(
                 "Adding config file on non-Unix platform: Unix mode 0600 enforcement unavailable, caller must secure via directory-level ACLs: {}",
@@ -342,14 +405,15 @@ impl ConfigBuilder {
     ///
     /// Returns `ConfigError::ExtractionError` if deserialization fails.
     /// Returns `ConfigError::FileError` if a file cannot be read.
-    pub fn build_struct<T>(self) -> Result<T, ConfigError>
+    pub fn build_struct<T>(mut self) -> Result<T, ConfigError>
     where
         T: DeserializeOwned,
     {
+        let start = Instant::now();
         let mut adapter = FigmentAdapter::new();
 
         // Layer 1: Defaults (lowest priority)
-        if let Some(defaults) = self.defaults_json {
+        if let Some(defaults) = self.defaults_json.take() {
             adapter = adapter.with_defaults(defaults);
         }
 
@@ -366,7 +430,12 @@ impl ConfigBuilder {
         let file_count = adapter.file_count();
         let config: T = adapter.extract()?;
 
-        observe::info(
+        self.record_operation(
+            metric_names::build_ms(),
+            metric_names::configs_built(),
+            start,
+        );
+        self.log_info(
             "runtime.config.build",
             format!(
                 "Configuration loaded: {} file(s), prefix={:?}",
@@ -560,12 +629,12 @@ impl ConfigBuilder {
         let value = env::var(&full_name).ok();
 
         if is_secret {
-            observe::debug(
+            self.log_debug(
                 "runtime.config.get",
                 format!("Loading secret: {} (set: {})", full_name, value.is_some()),
             );
         } else {
-            observe::debug(
+            self.log_debug(
                 "runtime.config.get",
                 format!(
                     "Loading: {} = {}",
@@ -581,14 +650,14 @@ impl ConfigBuilder {
     /// Build the full environment variable name with prefix
     ///
     /// Includes protection against accidental double-prefixing.
-    fn full_name(&self, name: &str) -> String {
+    pub(super) fn full_name(&self, name: &str) -> String {
         match &self.prefix {
             Some(prefix) => {
                 let prefix_with_sep = format!("{}{}", prefix, self.separator);
 
                 // Check for potential double-prefixing
                 if name.starts_with(&prefix_with_sep) {
-                    observe::warn(
+                    self.log_warn(
                         "runtime.config.prefix",
                         format!(
                             "Potential double-prefix detected: '{}' already starts with '{}'. \
@@ -604,202 +673,6 @@ impl ConfigBuilder {
             None => name.to_string(),
         }
     }
-
-    // ========================================================================
-    // Batch loading API
-    // ========================================================================
-
-    /// Mark a field as required for batch loading
-    ///
-    /// The value must be set in the environment.
-    #[must_use]
-    pub fn require(mut self, name: &str) -> Self {
-        let full_name = self.full_name(name);
-        let value = env::var(&full_name).ok();
-
-        observe::debug(
-            "runtime.config.require",
-            format!("Requiring: {} (set: {})", full_name, value.is_some()),
-        );
-
-        self.values.insert(
-            name.to_string(),
-            LoadedValue {
-                raw: value,
-                is_secret: false,
-                is_required: true,
-            },
-        );
-        self
-    }
-
-    /// Mark a field as optional for batch loading
-    #[must_use]
-    pub fn optional(mut self, name: &str) -> Self {
-        let full_name = self.full_name(name);
-        let value = env::var(&full_name).ok();
-
-        observe::debug(
-            "runtime.config.optional",
-            format!("Loading optional: {} = {:?}", full_name, value),
-        );
-
-        self.values.insert(
-            name.to_string(),
-            LoadedValue {
-                raw: value,
-                is_secret: false,
-                is_required: false,
-            },
-        );
-        self
-    }
-
-    /// Mark a field as a secret for batch loading
-    ///
-    /// The value will be masked in logs and error messages.
-    #[must_use]
-    pub fn secret(mut self, name: &str) -> Self {
-        let full_name = self.full_name(name);
-        let value = env::var(&full_name).ok();
-
-        observe::debug(
-            "runtime.config.secret",
-            format!("Loading secret: {} (set: {})", full_name, value.is_some()),
-        );
-
-        self.secrets.push(name.to_string());
-        self.values.insert(
-            name.to_string(),
-            LoadedValue {
-                raw: value,
-                is_secret: true,
-                is_required: true, // Secrets are required by default
-            },
-        );
-        self
-    }
-
-    /// Mark a field as an optional secret
-    #[must_use]
-    pub fn optional_secret(mut self, name: &str) -> Self {
-        let full_name = self.full_name(name);
-        let value = env::var(&full_name).ok();
-
-        observe::debug(
-            "runtime.config.optional_secret",
-            format!(
-                "Loading optional secret: {} (set: {})",
-                full_name,
-                value.is_some()
-            ),
-        );
-
-        self.secrets.push(name.to_string());
-        self.values.insert(
-            name.to_string(),
-            LoadedValue {
-                raw: value,
-                is_secret: true,
-                is_required: false,
-            },
-        );
-        self
-    }
-
-    /// Load and validate the batch configuration
-    ///
-    /// Returns a `LoadedConfig` containing all loaded values.
-    /// Fails if any required values are missing.
-    ///
-    /// Note: For struct-based configuration, use [`build`](Self::build) or
-    /// [`build_struct`](Self::build_struct) instead.
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError::Missing` if any required value is not set.
-    pub fn load(self) -> Result<LoadedConfig, ConfigError> {
-        // Check for missing required values
-        for (name, loaded) in &self.values {
-            if loaded.is_required && loaded.raw.is_none() {
-                let full_name = self.full_name(name);
-                observe::warn(
-                    "runtime.config.build",
-                    format!("Missing required config: {}", full_name),
-                );
-                return Err(ConfigError::missing(full_name));
-            }
-        }
-
-        let count = self.values.len();
-        let secret_count = self.secrets.len();
-        observe::info(
-            "runtime.config.build",
-            format!(
-                "Configuration loaded: {} values ({} secrets)",
-                count, secret_count
-            ),
-        );
-
-        Ok(LoadedConfig {
-            prefix: self.prefix,
-            separator: self.separator,
-            values: self.values,
-        })
-    }
-}
-
-/// A loaded configuration ready for value extraction
-///
-/// Created by [`ConfigBuilder::build()`].
-#[derive(Debug)]
-pub struct LoadedConfig {
-    prefix: Option<String>,
-    separator: String,
-    values: HashMap<String, LoadedValue>,
-}
-
-impl LoadedConfig {
-    /// Get a value by name
-    ///
-    /// Returns a `ConfigValue` for type conversion.
-    pub fn get(&self, name: &str) -> ConfigValue {
-        let full_name = match &self.prefix {
-            Some(prefix) => format!("{}{}{}", prefix, self.separator, name),
-            None => name.to_string(),
-        };
-
-        let loaded = self.values.get(name);
-        let (raw, is_secret) = match loaded {
-            Some(l) => (l.raw.clone(), l.is_secret),
-            None => (None, false),
-        };
-
-        ConfigValue::new(full_name, raw, is_secret)
-    }
-
-    /// Check if a value is set
-    pub fn has(&self, name: &str) -> bool {
-        self.values
-            .get(name)
-            .map(|l| l.raw.is_some())
-            .unwrap_or(false)
-    }
-
-    /// Get all loaded variable names
-    pub fn keys(&self) -> impl Iterator<Item = &String> {
-        self.values.keys()
-    }
-
-    /// Get the number of loaded values
-    pub fn len(&self) -> usize {
-        self.values.len()
-    }
-
-    /// Check if no values were loaded
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
 }
 
 #[cfg(test)]
@@ -812,6 +685,139 @@ mod tests {
     )]
 
     use super::*;
+    use crate::observe::metrics::{flush_for_testing, snapshot};
+
+    /// Serializes metrics-touching tests in this file against the shared
+    /// global registry.
+    static METRICS_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn histogram_count(name: &str) -> u64 {
+        snapshot().histograms.get(name).map_or(0, |h| h.count)
+    }
+
+    // ========================================================================
+    // Observability
+    // ========================================================================
+
+    #[test]
+    fn test_builder_event_flags() {
+        assert!(ConfigBuilder::new().emit_events);
+        assert!(!ConfigBuilder::silent().emit_events);
+        assert!(!ConfigBuilder::new().with_events(false).emit_events);
+        assert!(ConfigBuilder::silent().with_events(true).emit_events);
+        // Default must route through new(), not derive a `false` flag.
+        assert!(ConfigBuilder::default().emit_events);
+    }
+
+    #[test]
+    fn test_silent_builder_preserves_behavior() {
+        // Disabling events must not change what the builder resolves.
+        let loud = ConfigBuilder::new()
+            .with_prefix("OCTARINE_TEST_SILENT_XYZ")
+            .get("VALUE")
+            .unwrap();
+        let quiet = ConfigBuilder::silent()
+            .with_prefix("OCTARINE_TEST_SILENT_XYZ")
+            .get("VALUE")
+            .unwrap();
+
+        assert_eq!(loud.is_set(), quiet.is_set());
+        assert_eq!(loud.name(), quiet.name());
+    }
+
+    #[test]
+    fn test_load_records_metrics() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        flush_for_testing();
+        let before = histogram_count("runtime.config.load_ms");
+
+        ConfigBuilder::new()
+            .with_prefix("OCTARINE_TEST_METRICS_XYZ")
+            .optional("VALUE")
+            .load()
+            .expect("optional value makes load succeed");
+        flush_for_testing();
+
+        assert!(
+            histogram_count("runtime.config.load_ms") > before,
+            "load() must record load_ms",
+        );
+    }
+
+    #[test]
+    fn test_silent_load_records_no_metrics() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        flush_for_testing();
+        let before = histogram_count("runtime.config.load_ms");
+
+        let loaded = ConfigBuilder::silent()
+            .with_prefix("OCTARINE_TEST_METRICS_XYZ")
+            .optional("VALUE")
+            .load()
+            .expect("silent load still succeeds");
+        flush_for_testing();
+
+        assert_eq!(loaded.len(), 1, "silent must not skip the actual work");
+        assert_eq!(
+            histogram_count("runtime.config.load_ms"),
+            before,
+            "silent() must not record load_ms",
+        );
+    }
+
+    #[test]
+    fn test_build_struct_records_metrics() {
+        #[derive(Debug, serde::Deserialize, serde::Serialize, Default, PartialEq)]
+        struct TestConfig {
+            port: u16,
+        }
+
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        flush_for_testing();
+        let before = histogram_count("runtime.config.build_ms");
+
+        let config: TestConfig = ConfigBuilder::new()
+            .with_defaults(TestConfig { port: 8080 })
+            .build_struct()
+            .expect("build_struct");
+        flush_for_testing();
+
+        // Defaults must still flow through after the `take()` refactor.
+        assert_eq!(config, TestConfig { port: 8080 });
+        assert!(
+            histogram_count("runtime.config.build_ms") > before,
+            "build_struct() must record build_ms",
+        );
+    }
+
+    #[test]
+    fn test_silent_build_struct_records_no_metrics() {
+        #[derive(Debug, serde::Deserialize, serde::Serialize, Default, PartialEq)]
+        struct TestConfig {
+            port: u16,
+        }
+
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        flush_for_testing();
+        let before = histogram_count("runtime.config.build_ms");
+
+        let config: TestConfig = ConfigBuilder::silent()
+            .with_defaults(TestConfig { port: 9090 })
+            .build_struct()
+            .expect("silent build_struct");
+        flush_for_testing();
+
+        assert_eq!(config, TestConfig { port: 9090 });
+        assert_eq!(
+            histogram_count("runtime.config.build_ms"),
+            before,
+            "silent() must not record build_ms",
+        );
+    }
 
     // ========================================================================
     // Tests that don't require environment variables

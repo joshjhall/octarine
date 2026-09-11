@@ -7,7 +7,7 @@
 use std::io::{Read, Write};
 use std::path::Path;
 
-use crate::observe::metrics::{MetricTimer, timer};
+use crate::observe::metrics::{MetricName, MetricTimer, increment_by, timer};
 use crate::observe::{self, Problem};
 use crate::primitives::io::file::{
     self as prim_file, FileMode, PortableLock, WriteOptions, file_size as prim_file_size,
@@ -22,6 +22,17 @@ use crate::io::magic::{
 
 use super::builder::SecureFileOpsBuilder;
 use super::config::{AuditLevel, SecureFileOpsConfig};
+
+crate::define_metrics! {
+    read_duration_ms => "io.file.read_duration_ms",
+    write_duration_ms => "io.file.write_duration_ms",
+    lock_duration_ms => "io.file.lock_duration_ms",
+    read_count => "io.file.read_count",
+    write_count => "io.file.write_count",
+    lock_count => "io.file.lock_count",
+    read_bytes => "io.file.read_bytes",
+    write_bytes => "io.file.write_bytes",
+}
 
 /// Secure file operations with audit trails and metrics
 ///
@@ -90,7 +101,7 @@ impl SecureFileOps {
 
         self.log_debug("io.file.read", format!("Reading file: {}", path_str));
 
-        let _timer = self.start_timer("io.file.read_duration_ms");
+        let _timer = self.start_timer(&metric_names::read_duration_ms());
 
         let result = prim_read_file(path.clone()).await.map_err(|e| {
             self.log_error(
@@ -100,8 +111,8 @@ impl SecureFileOps {
             e
         })?;
 
-        self.record_metric("io.file.read_count", 1);
-        self.record_metric("io.file.read_bytes", result.len() as u64);
+        self.record_metric(&metric_names::read_count(), 1);
+        self.record_metric(&metric_names::read_bytes(), result.len() as u64);
 
         self.log_info(
             "io.file.read",
@@ -218,7 +229,7 @@ impl SecureFileOps {
             format!("Writing {} bytes to {}", data_len, path_str),
         );
 
-        let _timer = self.start_timer("io.file.write_duration_ms");
+        let _timer = self.start_timer(&metric_names::write_duration_ms());
 
         prim_file::write_atomic_async(path, data, options)
             .await
@@ -230,8 +241,8 @@ impl SecureFileOps {
                 e
             })?;
 
-        self.record_metric("io.file.write_count", 1);
-        self.record_metric("io.file.write_bytes", data_len as u64);
+        self.record_metric(&metric_names::write_count(), 1);
+        self.record_metric(&metric_names::write_bytes(), data_len as u64);
 
         self.log_info(
             "io.file.write",
@@ -318,7 +329,7 @@ impl SecureFileOps {
 
         self.log_debug("io.file.read", format!("Reading file: {}", path_str));
 
-        let _timer = self.start_timer("io.file.read_duration_ms");
+        let _timer = self.start_timer(&metric_names::read_duration_ms());
 
         let result = prim_read_file_sync(path).map_err(|e| {
             self.log_error(
@@ -328,8 +339,8 @@ impl SecureFileOps {
             e
         })?;
 
-        self.record_metric("io.file.read_count", 1);
-        self.record_metric("io.file.read_bytes", result.len() as u64);
+        self.record_metric(&metric_names::read_count(), 1);
+        self.record_metric(&metric_names::read_bytes(), result.len() as u64);
 
         self.log_info(
             "io.file.read",
@@ -427,7 +438,7 @@ impl SecureFileOps {
             format!("Writing {} bytes to {}", data.len(), path_str),
         );
 
-        let _timer = self.start_timer("io.file.write_duration_ms");
+        let _timer = self.start_timer(&metric_names::write_duration_ms());
 
         prim_file::write_atomic(path, data, options).map_err(|e| {
             self.log_error(
@@ -437,8 +448,8 @@ impl SecureFileOps {
             e
         })?;
 
-        self.record_metric("io.file.write_count", 1);
-        self.record_metric("io.file.write_bytes", data.len() as u64);
+        self.record_metric(&metric_names::write_count(), 1);
+        self.record_metric(&metric_names::write_bytes(), data.len() as u64);
 
         self.log_info(
             "io.file.write",
@@ -517,11 +528,11 @@ impl SecureFileOps {
 
         self.log_debug("io.file.lock", format!("Acquiring lock on {}", path_str));
 
-        let _timer = self.start_timer("io.file.lock_duration_ms");
+        let _timer = self.start_timer(&metric_names::lock_duration_ms());
 
         let lock = lock_file_portable(path, create)?;
 
-        self.record_metric("io.file.lock_count", 1);
+        self.record_metric(&metric_names::lock_count(), 1);
 
         if lock.is_using_pidfile_fallback() {
             self.log_info(
@@ -641,20 +652,22 @@ impl SecureFileOps {
         }
     }
 
-    fn start_timer(&self, name: &str) -> Option<MetricTimer> {
+    /// Start a duration timer, or `None` when metrics are disabled.
+    ///
+    /// The returned `MetricTimer` records on drop, so callers bind it to a
+    /// `let _timer = ...` for the lifetime of the operation.
+    fn start_timer(&self, name: &MetricName) -> Option<MetricTimer> {
         if self.config.metrics_enabled {
-            Some(timer(name))
+            Some(timer(name.as_str()))
         } else {
             None
         }
     }
 
-    fn record_metric(&self, _name: &str, _value: u64) {
+    /// Add `value` to a counter metric, honoring the `metrics_enabled` config.
+    fn record_metric(&self, name: &MetricName, value: u64) {
         if self.config.metrics_enabled {
-            // Note: For full metric recording, consider using MetricName::new()
-            // and the typed metrics API. For now, we use the timer for duration
-            // and log the values via observe.
-            // The observe event infrastructure provides audit trail.
+            increment_by(name.clone(), value);
         }
     }
 }

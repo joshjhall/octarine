@@ -17,9 +17,10 @@
 
 use std::time::Instant;
 
+use crate::observe;
+use crate::observe::Problem;
 use crate::observe::ProblemExt;
 use crate::observe::metrics::{increment_by, record};
-use crate::observe::{Problem, event};
 use crate::primitives::identifiers::crypto::{KeyFormat, KeyType, SignatureAlgorithm};
 use crate::primitives::security::crypto::{CryptoAuditResult, CryptoPolicy, CryptoSecurityBuilder};
 
@@ -222,9 +223,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::threats_blocked(), threat_count as u64);
 
             if self.emit_events {
-                event::warn(format!(
-                    "crypto_validation_failed: Certificate validation failed with {threat_count} blocking threats",
-                ));
+                observe::warn(
+                    "crypto_validation_failed",
+                    format!("Certificate validation failed with {threat_count} blocking threats",),
+                );
             }
             return Err(Problem::validation(format!(
                 "Certificate has {threat_count} security issues",
@@ -239,9 +241,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::warnings_count(), warning_count as u64);
 
             if self.emit_events {
-                event::info(format!(
-                    "crypto_validation_warning: Certificate validated with {warning_count} warnings",
-                ));
+                observe::info(
+                    "crypto_validation_warning",
+                    format!("Certificate validated with {warning_count} warnings"),
+                );
             }
         }
 
@@ -273,9 +276,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::threats_blocked(), threat_count as u64);
 
             if self.emit_events {
-                event::warn(format!(
-                    "crypto_validation_failed: DER certificate validation failed with {threat_count} threats",
-                ));
+                observe::warn(
+                    "crypto_validation_failed",
+                    format!("DER certificate validation failed with {threat_count} threats",),
+                );
             }
             return Err(Problem::validation(format!(
                 "Certificate has {threat_count} security issues",
@@ -305,11 +309,14 @@ impl CryptoValidationBuilder {
         record(metric_names::audit_ms(), elapsed_ms);
 
         if self.emit_events {
-            event::info(format!(
-                "crypto_audit: Certificate audit completed with {} threats, max severity {}",
-                audit.threats.len(),
-                audit.max_severity
-            ));
+            observe::info(
+                "crypto_audit",
+                format!(
+                    "Certificate audit completed with {} threats, max severity {}",
+                    audit.threats.len(),
+                    audit.max_severity
+                ),
+            );
         }
 
         Ok(audit)
@@ -352,9 +359,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::threats_blocked(), threat_count as u64);
 
             if self.emit_events {
-                event::warn(format!(
-                    "crypto_validation_failed: SSH key validation failed with {threat_count} threats",
-                ));
+                observe::warn(
+                    "crypto_validation_failed",
+                    format!("SSH key validation failed with {threat_count} threats"),
+                );
             }
             return Err(Problem::validation(format!(
                 "SSH key has {threat_count} security issues",
@@ -388,10 +396,13 @@ impl CryptoValidationBuilder {
         record(metric_names::audit_ms(), elapsed_ms);
 
         if self.emit_events {
-            event::info(format!(
-                "crypto_audit: SSH key audit completed with {} threats",
-                audit.threats.len()
-            ));
+            observe::info(
+                "crypto_audit",
+                format!(
+                    "SSH key audit completed with {} threats",
+                    audit.threats.len()
+                ),
+            );
         }
 
         Ok(audit)
@@ -412,7 +423,7 @@ impl CryptoValidationBuilder {
         increment_by(metric_names::validated_count(), 1);
 
         if self.emit_events {
-            event::info("crypto_validation: PEM format validated");
+            observe::info("crypto_validation", "PEM format validated");
         }
         Ok(())
     }

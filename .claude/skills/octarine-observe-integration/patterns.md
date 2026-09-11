@@ -72,7 +72,7 @@ mod metric_names {
 
 ### crypto.*
 
-- `crypto.validation.certificate_ms` — certificate validation timing
+- `crypto.validation.validate_cert_ms` — certificate validation timing
 - `crypto.validation.ssh_key_ms` — SSH key validation timing
 - `crypto.validation.audit_ms` — crypto audit timing
 - `crypto.validation.validated` — crypto validation count
@@ -89,6 +89,29 @@ mod metric_names {
 ### http.*
 
 - `http.request.latency_ms` — HTTP request latency
+
+### io.*
+
+- `io.formats.read_ms` — format-aware file read timing
+- `io.formats.write_ms` — format-aware file write timing
+- `io.formats.files_read` — successful format-aware reads
+- `io.formats.files_written` — successful format-aware writes
+- `io.file.read_duration_ms` — `SecureFileOps` read timing
+- `io.file.write_duration_ms` — `SecureFileOps` write timing
+- `io.file.lock_duration_ms` — `SecureFileOps` lock acquisition timing
+- `io.file.read_count` / `io.file.write_count` / `io.file.lock_count` — operation counts
+- `io.file.read_bytes` / `io.file.write_bytes` — bytes read/written
+
+### runtime.*
+
+- `runtime.config.build_ms` — `build_struct()` timing
+- `runtime.config.load_ms` — `load()` timing
+- `runtime.config.configs_built` — successful `build_struct()` calls
+- `runtime.config.configs_loaded` — successful `load()` calls
+- `runtime.async.channels_created` — channels created via `RuntimeBuilder`
+- `runtime.async.circuit_breakers_created` — circuit breakers created
+- `runtime.async.worker_pools_created` — worker pools created
+- `runtime.async.executors_created` — executors created
 
 ### Modules MISSING Metrics (need attention)
 

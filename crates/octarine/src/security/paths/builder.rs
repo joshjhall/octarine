@@ -269,7 +269,9 @@ impl SecurityBuilder {
 
     /// Validate that path has no traversal
     pub fn validate_no_traversal(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_no_traversal(path)
+        self.instrument_validation("traversal", || {
+            PrimitiveSecurityBuilder::new().validate_no_traversal(path)
+        })
     }
 
     /// Check if path is safe from injection attacks
@@ -280,7 +282,9 @@ impl SecurityBuilder {
 
     /// Validate that path has no injection
     pub fn validate_no_injection(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_no_injection(path)
+        self.instrument_validation("injection", || {
+            PrimitiveSecurityBuilder::new().validate_no_injection(path)
+        })
     }
 
     /// Check if path is relative
@@ -291,7 +295,9 @@ impl SecurityBuilder {
 
     /// Validate that path is relative
     pub fn validate_relative(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_relative(path)
+        self.instrument_validation("relative", || {
+            PrimitiveSecurityBuilder::new().validate_relative(path)
+        })
     }
 
     /// Check if path is not empty
@@ -302,7 +308,36 @@ impl SecurityBuilder {
 
     /// Validate that path is not empty
     pub fn validate_not_empty(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_not_empty(path)
+        self.instrument_validation("not_empty", || {
+            PrimitiveSecurityBuilder::new().validate_not_empty(path)
+        })
+    }
+
+    /// Time a validation delegation and log the failure, when events are on.
+    ///
+    /// Shares `security.paths.validate_ms` with `validate_path` so all path
+    /// validation timing lands on one metric.
+    fn instrument_validation<F>(&self, check: &str, validate: F) -> Result<(), Problem>
+    where
+        F: FnOnce() -> Result<(), Problem>,
+    {
+        let start = Instant::now();
+        let result = validate();
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if let Err(ref e) = result {
+                observe::debug(
+                    "path_validation_failed",
+                    format!("Validation failed ({check}): {e}"),
+                );
+            }
+        }
+
+        result
     }
 
     // ========================================================================
@@ -350,7 +385,31 @@ impl SecurityBuilder {
         strategy: PathSanitizationStrategy,
     ) -> Result<String, Problem> {
         let prim_strategy: PrimitiveSanitizationStrategy = strategy.into();
-        PrimitiveSecurityBuilder::new().sanitize_with(path, prim_strategy)
+        let start = Instant::now();
+
+        let result = PrimitiveSecurityBuilder::new().sanitize_with(path, prim_strategy);
+
+        if self.emit_events {
+            record(
+                metric_names::sanitize_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if let Ok(ref sanitized) = result
+                && sanitized != path
+            {
+                observe::info(
+                    "path_sanitized",
+                    format!(
+                        "Path modified by {:?}: {} -> {} bytes",
+                        strategy,
+                        path.len(),
+                        sanitized.len()
+                    ),
+                );
+            }
+        }
+
+        result
     }
 
     // ========================================================================
@@ -411,6 +470,134 @@ mod tests {
     fn test_with_events() {
         let builder = SecurityBuilder::new().with_events(false);
         assert!(!builder.emit_events);
+    }
+
+    #[test]
+    fn test_delegating_validators_record_validate_ms() {
+        // The four delegating validators were previously uninstrumented; each
+        // must now land on the shared validate_ms histogram.
+        /// A delegating validator under test, as `(input, validator)`.
+        type ValidatorCase = (
+            &'static str,
+            fn(&SecurityBuilder, &str) -> Result<(), Problem>,
+        );
+
+        let cases: [ValidatorCase; 4] = [
+            ("../secret", |b, p| b.validate_no_traversal(p)),
+            ("$(whoami)", |b, p| b.validate_no_injection(p)),
+            ("/absolute/path", |b, p| b.validate_relative(p)),
+            ("", |b, p| b.validate_not_empty(p)),
+        ];
+
+        for (input, validate) in cases {
+            let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let builder = SecurityBuilder::new();
+
+            flush_for_testing();
+            let before = snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count);
+
+            // Each input is chosen to FAIL its validator, exercising the
+            // error branch as well as the timing.
+            assert!(
+                validate(&builder, input).is_err(),
+                "input {input:?} should fail its validator",
+            );
+            flush_for_testing();
+
+            let after = snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count);
+            assert!(
+                after > before,
+                "validate_ms should record for input {input:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn test_silent_delegating_validators_record_nothing() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = SecurityBuilder::silent();
+
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.paths.validate_ms")
+            .map_or(0, |h| h.count);
+
+        // Results must be unchanged by silencing: still Err, still Ok.
+        assert!(builder.validate_no_traversal("../secret").is_err());
+        assert!(builder.validate_no_traversal("safe/path").is_ok());
+        assert!(builder.validate_not_empty("").is_err());
+        assert!(builder.validate_relative("relative/path").is_ok());
+        flush_for_testing();
+
+        assert_eq!(
+            snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count),
+            before,
+            "silent() must not record validate_ms",
+        );
+    }
+
+    #[test]
+    fn test_sanitize_with_records_sanitize_ms() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = SecurityBuilder::new();
+
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.paths.sanitize_ms")
+            .map_or(0, |h| h.count);
+
+        let cleaned = builder
+            .sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean)
+            .expect("sanitize_with");
+        flush_for_testing();
+
+        assert!(!cleaned.contains(".."), "traversal must be removed");
+        assert!(
+            snapshot()
+                .histograms
+                .get("security.paths.sanitize_ms")
+                .map_or(0, |h| h.count)
+                > before,
+            "sanitize_with should record sanitize_ms",
+        );
+    }
+
+    #[test]
+    fn test_silent_sanitize_with_records_nothing() {
+        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let builder = SecurityBuilder::silent();
+
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.paths.sanitize_ms")
+            .map_or(0, |h| h.count);
+
+        let cleaned = builder
+            .sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean)
+            .expect("sanitize_with still works when silent");
+        flush_for_testing();
+
+        assert!(!cleaned.contains(".."), "silent must not skip the work");
+        assert_eq!(
+            snapshot()
+                .histograms
+                .get("security.paths.sanitize_ms")
+                .map_or(0, |h| h.count),
+            before,
+            "silent() must not record sanitize_ms",
+        );
     }
 
     #[test]
