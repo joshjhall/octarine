@@ -615,38 +615,41 @@ LMkl8mNtd2MbHD07VEPVzgaZQaEg
         let audit = builder
             .audit_certificate_pem(PARSEABLE_RSA_CERT_PEM)
             .expect("a real certificate must parse and audit");
-        // Every threat the audit reports must be populated: an empty
-        // description would mean the audit produced placeholder entries
-        // rather than real findings.
         // Assert the CONCRETE findings this fixture produces. The
         // certificate is self-signed with a 3650-day validity (over the
         // 825-day maximum), so the audit must name exactly those two
         // non-blocking threats. An audit that silently returned nothing --
         // or that stopped detecting either threat -- fails here.
-        assert_eq!(
-            audit.threats.len(),
-            2,
-            "expected exactly the two known threats for this fixture, got {:?}",
-            audit.threats,
-        );
-        assert!(
-            audit.threats.iter().any(|t| matches!(
+        //
+        // The failure messages deliberately carry only counts and flags, not
+        // the threats themselves: CodeQL traces certificate-derived data into
+        // a panic payload as cleartext logging of sensitive information.
+        let saw_validity_period = audit.threats.iter().any(|t| {
+            matches!(
                 t,
                 CryptoThreat::ExcessiveValidityPeriod {
                     days: 3650,
                     maximum: 825
                 }
-            )),
-            "the 3650-day validity period must be detected, got {:?}",
-            audit.threats,
+            )
+        });
+        let saw_self_signed = audit
+            .threats
+            .iter()
+            .any(|t| matches!(t, CryptoThreat::SelfSignedCertificate));
+
+        assert_eq!(
+            audit.threats.len(),
+            2,
+            "expected exactly the two known threats for this fixture",
         );
         assert!(
-            audit
-                .threats
-                .iter()
-                .any(|t| matches!(t, CryptoThreat::SelfSignedCertificate)),
-            "the self-signed certificate must be detected, got {:?}",
-            audit.threats,
+            saw_validity_period,
+            "the 3650-day validity period must be detected",
+        );
+        assert!(
+            saw_self_signed,
+            "the self-signed certificate must be detected",
         );
         // Neither threat blocks, so the audit passes with two warnings.
         assert!(audit.passed(), "neither known threat is blocking");
