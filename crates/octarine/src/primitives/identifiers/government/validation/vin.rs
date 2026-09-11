@@ -244,9 +244,8 @@ pub fn is_test_vin(vin: &str) -> bool {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
-    use super::super::cache::{clear_government_caches, vin_cache_stats};
+    use super::super::cache::{clear_government_caches, gov_cache_test_lock, vin_cache_stats};
     use super::*;
-    use serial_test::serial;
 
     #[test]
     fn test_vin_format() {
@@ -270,6 +269,7 @@ mod tests {
 
     #[test]
     fn test_vin_cache_hit() {
+        let _guard = gov_cache_test_lock();
         // Use a unique VIN for this test (all 3s has check digit 3)
         let vin = "33333333333333333";
 
@@ -292,6 +292,7 @@ mod tests {
 
     #[test]
     fn test_vin_cache_case_insensitive() {
+        let _guard = gov_cache_test_lock();
         let vin = "44444444444444444";
 
         // First call - populate cache
@@ -312,8 +313,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_clear_government_caches() {
+        let _guard = gov_cache_test_lock();
         // Populate caches with unique values
         let _ = validate_vin_with_checksum("22222222222222222");
 

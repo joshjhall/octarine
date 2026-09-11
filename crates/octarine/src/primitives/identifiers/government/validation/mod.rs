@@ -67,6 +67,8 @@ mod us_mbi;
 mod vin;
 
 // Re-export cache utilities
+#[cfg(any(test, feature = "testing"))]
+pub use cache::gov_cache_test_lock;
 pub use cache::{clear_government_caches, ssn_cache_stats, vin_cache_stats};
 
 // Re-export SSN functions

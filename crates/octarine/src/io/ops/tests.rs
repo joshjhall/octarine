@@ -108,6 +108,196 @@ fn test_builder() {
 }
 
 #[test]
+fn test_builder_silent_disables_events_and_metrics() {
+    let ops = SecureFileOpsBuilder::silent().build();
+
+    assert_eq!(ops.config.audit_level, AuditLevel::Off);
+    assert!(!ops.config.metrics_enabled);
+
+    // The default builder must differ, or the assertions above are vacuous.
+    let loud = SecureFileOps::builder().build();
+    assert_eq!(loud.config.audit_level, AuditLevel::Full);
+    assert!(loud.config.metrics_enabled);
+}
+
+#[test]
+fn test_builder_with_events_round_trip() {
+    let off = SecureFileOps::builder().with_events(false).build();
+    assert_eq!(off.config.audit_level, AuditLevel::Off);
+    assert!(!off.config.metrics_enabled);
+
+    // with_events(true) must undo a prior silent(), not merely leave it.
+    let back_on = SecureFileOpsBuilder::silent().with_events(true).build();
+    assert_eq!(back_on.config.audit_level, AuditLevel::Full);
+    assert!(back_on.config.metrics_enabled);
+}
+
+#[test]
+fn test_builder_explicit_audit_level_overrides_with_events() {
+    // The granular setters still win when applied after with_events.
+    let ops = SecureFileOps::builder()
+        .with_events(false)
+        .audit_level(AuditLevel::Errors)
+        .build();
+
+    assert_eq!(ops.config.audit_level, AuditLevel::Errors);
+    assert!(!ops.config.metrics_enabled, "metrics stay off");
+}
+
+// The metrics tests below use the `_sync` API deliberately: they exercise the
+// same `record_metric`/`start_timer` helpers as the async paths, and
+// `flush_for_testing()` blocks on a oneshot, which panics inside a tokio
+// runtime.
+
+fn metric_counter(name: &str) -> u64 {
+    crate::observe::metrics::snapshot()
+        .counters
+        .get(name)
+        .map_or(0, |c| c.value)
+}
+
+#[test]
+fn test_metrics_recorded_on_write_and_read() {
+    use crate::observe::metrics::flush_for_testing;
+
+    let _guard = crate::observe::metrics::metrics_test_lock();
+    let dir = tempdir().expect("temp dir");
+    let path = dir.path().join("metrics.bin");
+    let ops = SecureFileOps::new();
+
+    flush_for_testing();
+    let writes_before = metric_counter("io.file.write_count");
+    let reads_before = metric_counter("io.file.read_count");
+    let read_bytes_before = metric_counter("io.file.read_bytes");
+    let write_bytes_before = metric_counter("io.file.write_bytes");
+
+    let payload = b"0123456789";
+    let payload_len = payload.len() as u64;
+    ops.write_file_sync(&path, payload).expect("write");
+    let read_back = ops.read_file_sync(&path).expect("read");
+    flush_for_testing();
+
+    assert_eq!(read_back.len() as u64, payload_len);
+    // Growth, not an exact delta: the metrics registry is process-global and
+    // sibling tests in this file also read and write files concurrently, so
+    // only a lower bound is stable. The byte counters use >= payload_len,
+    // which still fails if a count were recorded in place of a byte total.
+    assert!(
+        metric_counter("io.file.write_count") > writes_before,
+        "write_count must increment on a write",
+    );
+    assert!(
+        metric_counter("io.file.read_count") > reads_before,
+        "read_count must increment on a read",
+    );
+    assert!(
+        metric_counter("io.file.read_bytes") >= read_bytes_before.saturating_add(payload_len),
+        "read_bytes must grow by at least the payload size, not by 1",
+    );
+    assert!(
+        metric_counter("io.file.write_bytes") >= write_bytes_before.saturating_add(payload_len),
+        "write_bytes must grow by at least the payload size, not by 1",
+    );
+}
+
+#[test]
+fn test_silent_ops_record_no_metrics_behaviorally() {
+    // BEHAVIORAL: fails if `if self.config.metrics_enabled` is deleted from
+    // record_metric/start_timer in core.rs. Both measurements sit inside ONE
+    // lock hold, so concurrent siblings cannot skew the comparison.
+    use crate::observe::metrics::flush_for_testing;
+
+    let _guard = crate::observe::metrics::metrics_test_lock();
+    let dir = tempdir().expect("temp dir");
+
+    flush_for_testing();
+    let start = metric_counter("io.file.write_count");
+
+    SecureFileOpsBuilder::silent()
+        .build()
+        .write_file_sync(dir.path().join("silent.bin"), b"data")
+        .expect("write");
+    flush_for_testing();
+    let after_silent = metric_counter("io.file.write_count");
+
+    SecureFileOps::new()
+        .write_file_sync(dir.path().join("loud.bin"), b"data")
+        .expect("write");
+    flush_for_testing();
+    let after_loud = metric_counter("io.file.write_count");
+
+    let silent_delta = after_silent.saturating_sub(start);
+    let loud_delta = after_loud.saturating_sub(after_silent);
+    assert_eq!(silent_delta, 0, "silent() must not record write_count");
+    assert!(
+        loud_delta > silent_delta,
+        "the loud write must record more than the silent one \
+         (silent {silent_delta}, loud {loud_delta})",
+    );
+}
+
+#[test]
+fn test_lock_metrics_recorded() {
+    use crate::observe::metrics::flush_for_testing;
+
+    let _guard = crate::observe::metrics::metrics_test_lock();
+    let dir = tempdir().expect("temp dir");
+    let path = dir.path().join("locked.bin");
+    let ops = SecureFileOps::new();
+
+    flush_for_testing();
+    let locks_before = metric_counter("io.file.lock_count");
+
+    ops.write_locked(&path, b"locked").expect("write locked");
+    flush_for_testing();
+
+    assert!(
+        metric_counter("io.file.lock_count") > locks_before,
+        "the lock path must record lock_count",
+    );
+}
+
+#[test]
+fn test_silent_ops_record_no_lock_metrics() {
+    // Gate-level, for the same reason as test_silent_ops_record_no_metrics:
+    // io.file.lock_count is process-global and shared with sibling tests.
+    let dir = tempdir().expect("temp dir");
+    let ops = SecureFileOpsBuilder::silent().build();
+
+    assert!(!ops.config.metrics_enabled);
+    ops.write_locked(dir.path().join("silent.bin"), b"locked")
+        .expect("write locked still succeeds when silent");
+}
+
+#[test]
+fn test_silent_ops_record_no_metrics() {
+    // Asserted at the gate rather than through the metrics registry: the
+    // registry is process-global and sibling tests in this file read and
+    // write files concurrently, so any "this counter did not move"
+    // assertion races them. `record_metric`/`start_timer` in core.rs are
+    // both gated on exactly this flag, and test_metrics_recorded_on_write_and_read
+    // covers the recording side.
+    let dir = tempdir().expect("temp dir");
+    let path = dir.path().join("silent.bin");
+    let ops = SecureFileOpsBuilder::silent().build();
+
+    assert!(
+        !ops.config.metrics_enabled,
+        "silent() must disable the flag record_metric/start_timer gate on",
+    );
+    assert_eq!(ops.config.audit_level, AuditLevel::Off);
+
+    // And the operation still works with events off.
+    ops.write_file_sync(&path, b"data")
+        .expect("write still succeeds when silent");
+    let read_back = ops.read_file_sync(&path).expect("read still succeeds");
+    assert_eq!(read_back, b"data".to_vec(), "silent must not break the op");
+
+    // The default builder must differ, or the flag assertions are vacuous.
+    assert!(SecureFileOps::new().config.metrics_enabled);
+}
+
+#[test]
 fn test_config_presets() {
     let secure = SecureFileOpsConfig::secure();
     assert!(secure.validate_magic);

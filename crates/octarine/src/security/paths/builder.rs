@@ -269,7 +269,9 @@ impl SecurityBuilder {
 
     /// Validate that path has no traversal
     pub fn validate_no_traversal(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_no_traversal(path)
+        self.instrument_validation("traversal", || {
+            PrimitiveSecurityBuilder::new().validate_no_traversal(path)
+        })
     }
 
     /// Check if path is safe from injection attacks
@@ -280,7 +282,9 @@ impl SecurityBuilder {
 
     /// Validate that path has no injection
     pub fn validate_no_injection(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_no_injection(path)
+        self.instrument_validation("injection", || {
+            PrimitiveSecurityBuilder::new().validate_no_injection(path)
+        })
     }
 
     /// Check if path is relative
@@ -291,7 +295,9 @@ impl SecurityBuilder {
 
     /// Validate that path is relative
     pub fn validate_relative(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_relative(path)
+        self.instrument_validation("relative", || {
+            PrimitiveSecurityBuilder::new().validate_relative(path)
+        })
     }
 
     /// Check if path is not empty
@@ -302,7 +308,39 @@ impl SecurityBuilder {
 
     /// Validate that path is not empty
     pub fn validate_not_empty(&self, path: &str) -> Result<(), Problem> {
-        PrimitiveSecurityBuilder::new().validate_not_empty(path)
+        self.instrument_validation("not_empty", || {
+            PrimitiveSecurityBuilder::new().validate_not_empty(path)
+        })
+    }
+
+    /// Time a validation delegation and log the failure, when events are on.
+    ///
+    /// Shares `security.paths.validate_ms` with `validate_path` so all path
+    /// validation timing lands on one metric.
+    fn instrument_validation<F>(&self, check: &str, validate: F) -> Result<(), Problem>
+    where
+        F: FnOnce() -> Result<(), Problem>,
+    {
+        let start = Instant::now();
+        let result = validate();
+
+        if self.emit_events {
+            record(
+                metric_names::validate_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if let Err(ref e) = result {
+                // warn, not debug: these guard the same threat classes as
+                // validate_path, which also warns. A quieter level would drop
+                // traversal/injection rejections out of the audit trail.
+                observe::warn(
+                    "path_validation_failed",
+                    format!("Validation failed ({check}): {e}"),
+                );
+            }
+        }
+
+        result
     }
 
     // ========================================================================
@@ -319,16 +357,18 @@ impl SecurityBuilder {
 
         let result = PrimitiveSecurityBuilder::new().sanitize(path);
 
-        if self.emit_events
-            && let Ok(ref sanitized) = result
-        {
-            let modified = sanitized != path;
+        if self.emit_events {
+            // Timed on both Ok and Err: sanitize_with() and validate_path()
+            // time every attempt, and all three feed shared histograms, so
+            // skipping failures here would give one metric two meanings.
             record(
                 metric_names::sanitize_ms(),
                 start.elapsed().as_micros() as f64 / 1000.0,
             );
 
-            if modified {
+            if let Ok(ref sanitized) = result
+                && sanitized != path
+            {
                 observe::info(
                     "path_sanitized",
                     format!(
@@ -350,7 +390,31 @@ impl SecurityBuilder {
         strategy: PathSanitizationStrategy,
     ) -> Result<String, Problem> {
         let prim_strategy: PrimitiveSanitizationStrategy = strategy.into();
-        PrimitiveSecurityBuilder::new().sanitize_with(path, prim_strategy)
+        let start = Instant::now();
+
+        let result = PrimitiveSecurityBuilder::new().sanitize_with(path, prim_strategy);
+
+        if self.emit_events {
+            record(
+                metric_names::sanitize_ms(),
+                start.elapsed().as_micros() as f64 / 1000.0,
+            );
+            if let Ok(ref sanitized) = result
+                && sanitized != path
+            {
+                observe::info(
+                    "path_sanitized",
+                    format!(
+                        "Path modified by {:?}: {} -> {} bytes",
+                        strategy,
+                        path.len(),
+                        sanitized.len()
+                    ),
+                );
+            }
+        }
+
+        result
     }
 
     // ========================================================================
@@ -392,11 +456,6 @@ mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
     use crate::observe::metrics::{flush_for_testing, snapshot};
-    use std::sync::Mutex;
-
-    /// Serializes metrics-touching tests within this file so they don't race
-    /// each other on the shared global registry.
-    static METRICS_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_builder_creation() {
@@ -413,6 +472,189 @@ mod tests {
         assert!(!builder.emit_events);
     }
 
+    #[test]
+    fn test_silent_security_records_no_metrics_behaviorally() {
+        // BEHAVIORAL: fails if the `if self.emit_events` wrapper is deleted
+        // from instrument_validation(). Both measurements sit inside ONE lock
+        // hold.
+        let _guard = crate::observe::metrics::metrics_test_lock();
+
+        fn validate_samples() -> u64 {
+            snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count)
+        }
+
+        flush_for_testing();
+        let start = validate_samples();
+
+        assert!(
+            SecurityBuilder::silent()
+                .validate_no_traversal("../x")
+                .is_err()
+        );
+        flush_for_testing();
+        let after_silent = validate_samples();
+
+        assert!(
+            SecurityBuilder::new()
+                .validate_no_traversal("../x")
+                .is_err()
+        );
+        flush_for_testing();
+        let after_loud = validate_samples();
+
+        let silent_delta = after_silent.saturating_sub(start);
+        let loud_delta = after_loud.saturating_sub(after_silent);
+        assert_eq!(silent_delta, 0, "silent() must not record validate_ms");
+        assert!(
+            loud_delta > silent_delta,
+            "the loud validation must record more than the silent one \
+             (silent {silent_delta}, loud {loud_delta})",
+        );
+    }
+
+    #[test]
+    fn test_delegating_validators_record_validate_ms() {
+        // The four delegating validators were previously uninstrumented; each
+        // must now land on the shared validate_ms histogram.
+        /// A delegating validator under test, as `(input, validator)`.
+        type ValidatorCase = (
+            &'static str,
+            fn(&SecurityBuilder, &str) -> Result<(), Problem>,
+        );
+
+        let cases: [ValidatorCase; 4] = [
+            ("../secret", |b, p| b.validate_no_traversal(p)),
+            ("$(whoami)", |b, p| b.validate_no_injection(p)),
+            ("/absolute/path", |b, p| b.validate_relative(p)),
+            ("", |b, p| b.validate_not_empty(p)),
+        ];
+
+        for (input, validate) in cases {
+            let _guard = crate::observe::metrics::metrics_test_lock();
+            let builder = SecurityBuilder::new();
+
+            flush_for_testing();
+            let before = snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count);
+
+            // Each input is chosen to FAIL its validator, exercising the
+            // error branch as well as the timing.
+            assert!(
+                validate(&builder, input).is_err(),
+                "input {input:?} should fail its validator",
+            );
+            flush_for_testing();
+
+            let after = snapshot()
+                .histograms
+                .get("security.paths.validate_ms")
+                .map_or(0, |h| h.count);
+            assert!(
+                after > before,
+                "validate_ms should record for input {input:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn test_silent_delegating_validators_record_nothing() {
+        // Gate-level: instrument_validation puts record() behind this flag,
+        // and the metrics registry is process-global so an absolute "did not
+        // move" assertion races concurrent sibling tests. The recording side
+        // is covered by test_delegating_validators_record_validate_ms.
+        let builder = SecurityBuilder::silent();
+        assert!(!builder.emit_events);
+        assert!(
+            SecurityBuilder::new().emit_events,
+            "the default must differ, or the assertion above is vacuous",
+        );
+
+        // Results must be unchanged by silencing: still Err, still Ok.
+        assert!(builder.validate_no_traversal("../secret").is_err());
+        assert!(builder.validate_no_traversal("safe/path").is_ok());
+        assert!(builder.validate_not_empty("").is_err());
+        assert!(builder.validate_relative("relative/path").is_ok());
+    }
+    #[test]
+    fn test_sanitize_with_records_sanitize_ms() {
+        let _guard = crate::observe::metrics::metrics_test_lock();
+        let builder = SecurityBuilder::new();
+
+        flush_for_testing();
+        let before = snapshot()
+            .histograms
+            .get("security.paths.sanitize_ms")
+            .map_or(0, |h| h.count);
+
+        let cleaned = builder
+            .sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean)
+            .expect("sanitize_with");
+        flush_for_testing();
+
+        assert!(!cleaned.contains(".."), "traversal must be removed");
+        assert!(
+            snapshot()
+                .histograms
+                .get("security.paths.sanitize_ms")
+                .map_or(0, |h| h.count)
+                > before,
+            "sanitize_with should record sanitize_ms",
+        );
+    }
+
+    #[test]
+    fn test_sanitize_and_sanitize_with_time_symmetrically() {
+        // Both feed security.paths.sanitize_ms, so both must time every
+        // attempt -- if either skipped a branch the histogram would mean two
+        // different things depending on the entry point. Each call is
+        // measured against its OWN immediately-preceding reading rather than
+        // asserting a +2 delta across both: the registry is process-global,
+        // so concurrent sibling tests can land samples in between.
+        let _guard = crate::observe::metrics::metrics_test_lock();
+        let builder = SecurityBuilder::new();
+
+        fn sanitize_samples() -> u64 {
+            snapshot()
+                .histograms
+                .get("security.paths.sanitize_ms")
+                .map_or(0, |h| h.count)
+        }
+
+        flush_for_testing();
+        let before_sanitize = sanitize_samples();
+        let _ = builder.sanitize("../etc/passwd");
+        flush_for_testing();
+        let after_sanitize = sanitize_samples();
+
+        let _ = builder.sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean);
+        flush_for_testing();
+        let after_sanitize_with = sanitize_samples();
+
+        assert!(
+            after_sanitize > before_sanitize,
+            "sanitize() must record a sanitize_ms sample",
+        );
+        assert!(
+            after_sanitize_with > after_sanitize,
+            "sanitize_with() must record a sanitize_ms sample too",
+        );
+    }
+    #[test]
+    fn test_silent_sanitize_with_records_nothing() {
+        // Gate-level, as above.
+        let builder = SecurityBuilder::silent();
+        assert!(!builder.emit_events);
+
+        let cleaned = builder
+            .sanitize_with("../etc/passwd", PathSanitizationStrategy::Clean)
+            .expect("sanitize_with still works when silent");
+        assert!(!cleaned.contains(".."), "silent must not skip the work");
+    }
     #[test]
     fn test_security_detection() {
         let security = SecurityBuilder::silent();
@@ -448,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_metrics_validate_ms_recorded() {
-        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::observe::metrics::metrics_test_lock();
         let builder = SecurityBuilder::new();
         flush_for_testing();
         let before = snapshot()
@@ -468,7 +710,7 @@ mod tests {
 
     #[test]
     fn test_metrics_threats_detected_counter() {
-        let _guard = METRICS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::observe::metrics::metrics_test_lock();
         let builder = SecurityBuilder::new();
         flush_for_testing();
         let before = snapshot()

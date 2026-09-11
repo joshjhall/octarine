@@ -17,9 +17,10 @@
 
 use std::time::Instant;
 
+use crate::observe;
+use crate::observe::Problem;
 use crate::observe::ProblemExt;
 use crate::observe::metrics::{increment_by, record};
-use crate::observe::{Problem, event};
 use crate::primitives::identifiers::crypto::{KeyFormat, KeyType, SignatureAlgorithm};
 use crate::primitives::security::crypto::{CryptoAuditResult, CryptoPolicy, CryptoSecurityBuilder};
 
@@ -222,9 +223,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::threats_blocked(), threat_count as u64);
 
             if self.emit_events {
-                event::warn(format!(
-                    "crypto_validation_failed: Certificate validation failed with {threat_count} blocking threats",
-                ));
+                observe::warn(
+                    "crypto_validation_failed",
+                    format!("Certificate validation failed with {threat_count} blocking threats",),
+                );
             }
             return Err(Problem::validation(format!(
                 "Certificate has {threat_count} security issues",
@@ -239,9 +241,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::warnings_count(), warning_count as u64);
 
             if self.emit_events {
-                event::info(format!(
-                    "crypto_validation_warning: Certificate validated with {warning_count} warnings",
-                ));
+                observe::info(
+                    "crypto_validation_warning",
+                    format!("Certificate validated with {warning_count} warnings"),
+                );
             }
         }
 
@@ -273,9 +276,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::threats_blocked(), threat_count as u64);
 
             if self.emit_events {
-                event::warn(format!(
-                    "crypto_validation_failed: DER certificate validation failed with {threat_count} threats",
-                ));
+                observe::warn(
+                    "crypto_validation_failed",
+                    format!("DER certificate validation failed with {threat_count} threats",),
+                );
             }
             return Err(Problem::validation(format!(
                 "Certificate has {threat_count} security issues",
@@ -305,11 +309,14 @@ impl CryptoValidationBuilder {
         record(metric_names::audit_ms(), elapsed_ms);
 
         if self.emit_events {
-            event::info(format!(
-                "crypto_audit: Certificate audit completed with {} threats, max severity {}",
-                audit.threats.len(),
-                audit.max_severity
-            ));
+            observe::info(
+                "crypto_audit",
+                format!(
+                    "Certificate audit completed with {} threats, max severity {}",
+                    audit.threats.len(),
+                    audit.max_severity
+                ),
+            );
         }
 
         Ok(audit)
@@ -352,9 +359,10 @@ impl CryptoValidationBuilder {
             increment_by(metric_names::threats_blocked(), threat_count as u64);
 
             if self.emit_events {
-                event::warn(format!(
-                    "crypto_validation_failed: SSH key validation failed with {threat_count} threats",
-                ));
+                observe::warn(
+                    "crypto_validation_failed",
+                    format!("SSH key validation failed with {threat_count} threats"),
+                );
             }
             return Err(Problem::validation(format!(
                 "SSH key has {threat_count} security issues",
@@ -388,10 +396,13 @@ impl CryptoValidationBuilder {
         record(metric_names::audit_ms(), elapsed_ms);
 
         if self.emit_events {
-            event::info(format!(
-                "crypto_audit: SSH key audit completed with {} threats",
-                audit.threats.len()
-            ));
+            observe::info(
+                "crypto_audit",
+                format!(
+                    "SSH key audit completed with {} threats",
+                    audit.threats.len()
+                ),
+            );
         }
 
         Ok(audit)
@@ -412,7 +423,7 @@ impl CryptoValidationBuilder {
         increment_by(metric_names::validated_count(), 1);
 
         if self.emit_events {
-            event::info("crypto_validation: PEM format validated");
+            observe::info("crypto_validation", "PEM format validated");
         }
         Ok(())
     }
@@ -562,6 +573,110 @@ FAKE_TEST_DATA_NOT_A_REAL_RSA_KEY
     const SAMPLE_CERTIFICATE_PEM: &str = r#"-----BEGIN CERTIFICATE-----
 FAKE_TEST_DATA_NOT_A_REAL_CERTIFICATE
 -----END CERTIFICATE-----"#;
+
+    // A real, parseable RSA certificate (shared with the x509 primitive
+    // tests). The local SAMPLE_CERTIFICATE_PEM is deliberately fake and
+    // cannot be parsed, so it cannot exercise the validate/audit paths.
+    #[cfg(feature = "crypto-validation")]
+    const PARSEABLE_RSA_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIDoTCCAomgAwIBAgIUIBqYDTwPs0w1FbKM9mMOE7PJUoYwDQYJKoZIhvcNAQEL
+BQAwODEWMBQGA1UEAwwNb2N0YXJpbmUudGVzdDERMA8GA1UECgwIT2N0YXJpbmUx
+CzAJBgNVBAYTAlVTMB4XDTI2MDcwMzE3MDQ1NFoXDTM2MDYzMDE3MDQ1NFowODEW
+MBQGA1UEAwwNb2N0YXJpbmUudGVzdDERMA8GA1UECgwIT2N0YXJpbmUxCzAJBgNV
+BAYTAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmrg8ir1LmYXF
+TjrgU3U7xXa8U25MWcVM17Af0IG3jPPpriGs/IClbYHOi/gHCfJFnU23q1+FVDUW
+whaDnymCBWvrcCu0eYMMleF/P/dwOYbjII+9JuTTermGFCT2k3ccwYRFJvXjsfcP
+U/Tfq9Rq3yu5mOW014FGf5CCYhG1W9bosJPSfh0GWBDGi9Ohdaw+tlRdvU+pNWSk
+IXLGe1rXCU1u3u7cK4/mHSOksW2k1Iz483B5xGX5ifKX6x2XqRtzooP45et6TLWr
+qkaUIwPkX4dXpJ4JKM3G4ZeMDPXPm8lhUKUXL4TfNALMNs7nPM+0Aqfd2roRUWg3
+TI2uwB1seQIDAQABo4GiMIGfMB0GA1UdDgQWBBRxWIHTY+24T212hsxG8kRS0A4a
+wjAfBgNVHSMEGDAWgBRxWIHTY+24T212hsxG8kRS0A4awjA/BgNVHREEODA2gg1v
+Y3RhcmluZS50ZXN0ghF3d3cub2N0YXJpbmUudGVzdIESdGVzdEBvY3RhcmluZS50
+ZXN0MAsGA1UdDwQEAwIChDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUA
+A4IBAQAxCxOT/4l3/e9LspAEXohIWzGd03m/7eHCtqKwRBbTxtLQR6uXxJcTw+ou
+FhjoJXM0NpuoEX67kYPhK/xlGdSA38erqPIvfRCvWSz0PkvVnGU3wICQYijr61gX
+NqkABZp7la/v+Ri4Z0mA6e8Jjn+3y9/kSHAlPVtB2M6LpD+9TRXbY017fzMob95r
+TgJHncR9NUia7FyIlgFQD2mAviwTKXo62jwClR/4UbMDyW7WDB7RYsJtlD1ljV5Y
+s65IEVG6SQCLEcR2Or1dlnSJEs1Yd2lh/Mm8okWlW+ku4i3Y1VFzlXPchg0qQZ1+
+LMkl8mNtd2MbHD07VEPVzgaZQaEg
+-----END CERTIFICATE-----";
+
+    #[test]
+    #[cfg(feature = "crypto-validation")]
+    fn test_certificate_paths_are_exercised() {
+        use crate::primitives::security::crypto::CryptoThreat;
+
+        // Locks in the event:: -> observe:: migration on the certificate
+        // PEM/DER paths: previously nothing called them, so a reverted or
+        // malformed observe:: call there would not have been caught.
+        let builder = CryptoValidationBuilder::new();
+
+        // PEM: parseable input reaches the audit + event code.
+        let audit = builder
+            .audit_certificate_pem(PARSEABLE_RSA_CERT_PEM)
+            .expect("a real certificate must parse and audit");
+        // Assert the CONCRETE findings this fixture produces. The
+        // certificate is self-signed with a 3650-day validity (over the
+        // 825-day maximum), so the audit must name exactly those two
+        // non-blocking threats. An audit that silently returned nothing --
+        // or that stopped detecting either threat -- fails here.
+        //
+        // The failure messages deliberately carry only counts and flags, not
+        // the threats themselves: CodeQL traces certificate-derived data into
+        // a panic payload as cleartext logging of sensitive information.
+        let saw_validity_period = audit.threats.iter().any(|t| {
+            matches!(
+                t,
+                CryptoThreat::ExcessiveValidityPeriod {
+                    days: 3650,
+                    maximum: 825
+                }
+            )
+        });
+        let saw_self_signed = audit
+            .threats
+            .iter()
+            .any(|t| matches!(t, CryptoThreat::SelfSignedCertificate));
+
+        assert_eq!(
+            audit.threats.len(),
+            2,
+            "expected exactly the two known threats for this fixture",
+        );
+        assert!(
+            saw_validity_period,
+            "the 3650-day validity period must be detected",
+        );
+        assert!(
+            saw_self_signed,
+            "the self-signed certificate must be detected",
+        );
+        // Neither threat blocks, so the audit passes with two warnings.
+        assert!(audit.passed(), "neither known threat is blocking");
+        assert_eq!(audit.warnings().len(), 2);
+
+        // validate_certificate_pem walks the same code, and either validates
+        // or fails on a blocking threat -- never panics.
+        let _ = builder.validate_certificate_pem(PARSEABLE_RSA_CERT_PEM);
+
+        // DER: unparseable bytes must surface an error, not panic, and must
+        // not be mistaken for a valid certificate.
+        assert!(
+            builder
+                .validate_certificate_der(b"not-a-der-certificate")
+                .is_err(),
+            "garbage DER must fail to parse",
+        );
+
+        // The fake PEM fixture must NOT parse, confirming the assertions above
+        // depend on real certificate data.
+        assert!(
+            builder
+                .audit_certificate_pem(SAMPLE_CERTIFICATE_PEM)
+                .is_err(),
+            "the fake fixture must not parse",
+        );
+    }
 
     #[test]
     #[cfg(feature = "crypto-validation")]

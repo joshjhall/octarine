@@ -89,13 +89,16 @@
 //! - Missing required values fail fast with clear errors
 //! - `with_secure_file()` validates file permissions (0600 on Unix)
 
+mod batch;
 mod builder;
 mod error;
 mod figment_adapter;
+mod loaded;
 mod value;
 
-pub use builder::{ConfigBuilder, LoadedConfig};
+pub use builder::ConfigBuilder;
 pub use error::ConfigError;
+pub use loaded::LoadedConfig;
 pub use value::ConfigValue;
 
 // Re-export secret types for convenient access

@@ -55,6 +55,7 @@ mod tests {
 
     #[test]
     fn test_cache_stats_and_subcaches() {
+        let _guard = crate::primitives::identifiers::gov_cache_test_lock();
         let b = GovernmentBuilder::silent();
         // Caches populate lazily on validation with checksum work.
         b.clear_caches();
@@ -75,6 +76,7 @@ mod tests {
 
     #[test]
     fn test_clear_caches_resets_size() {
+        let _guard = crate::primitives::identifiers::gov_cache_test_lock();
         let b = GovernmentBuilder::silent();
         let _ = b.validate_vin_with_checksum("1HGBH41JXMN109186");
         b.clear_caches();

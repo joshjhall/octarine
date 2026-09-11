@@ -259,3 +259,32 @@ pub fn snapshot() -> MetricSnapshot {
 pub fn flush_for_testing() {
     async_dispatch::flush_for_testing();
 }
+
+/// Process-wide lock serializing tests that assert on exact metric values.
+///
+/// The metrics registry is global, so a test doing
+/// `snapshot() -> act -> snapshot()` and asserting an exact delta races every
+/// other test recording the same metric. A per-file lock is not enough: under
+/// `cargo test` (and therefore `cargo llvm-cov`) the whole crate's tests share
+/// one process, so the lock must be shared crate-wide. Under `cargo nextest`
+/// each test gets its own process and the lock is simply uncontended.
+///
+/// Hold it for the whole snapshot/act/snapshot sequence:
+///
+/// Test-only helper gated behind `cfg(test)`, so it is not reachable from a
+/// doctest binary - ignored rather than run.
+/// ```ignore
+/// let _guard = metrics_test_lock();
+/// flush_for_testing();
+/// let before = counter_value("my.metric");
+/// // ... act ...
+/// flush_for_testing();
+/// assert_eq!(counter_value("my.metric"), before + 1);
+/// ```
+#[cfg(any(test, feature = "testing"))]
+pub fn metrics_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    // A poisoned lock only means some other metrics test panicked; the guard
+    // is still sound to take, and failing here would mask that test's error.
+    LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
