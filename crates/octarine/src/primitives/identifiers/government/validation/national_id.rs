@@ -560,6 +560,10 @@ mod tests {
         // is_canada_sin_shape gates on digit grouping only, so a 0-leading
         // value still routes here and must be rejected.
         assert!(validate_national_id("012345674").is_err());
+        // Both reserved digits, not just '0' — a refactor that special-cased
+        // one would otherwise slip through. Luhn-valid, so only the
+        // reserved-digit rule can reject it.
+        assert!(validate_national_id("846454288").is_err());
     }
 
     #[test]
