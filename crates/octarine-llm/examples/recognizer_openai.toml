@@ -23,7 +23,8 @@ country_code = "US"
 
 # The NAME of the environment variable holding the API key — never the key
 # itself. Config files get committed; secrets must not. Defaults to
-# OPENAI_API_KEY when omitted.
+# OPENAI_API_KEY for this provider; required (no default) for
+# openai_compatible, whose base_url is an operator-chosen host.
 api_key_env = "OPENAI_API_KEY"
 
 # Provider-specific knobs. Validated and round-tripped, but not yet forwarded

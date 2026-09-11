@@ -114,6 +114,14 @@ impl RecognizerConfig {
                 "recognizer.base_url",
                 "is required when provider = \"openai_compatible\"",
             )),
+            // No credential default for this provider — see `credential_env`.
+            // Without an explicit variable an operator's real OPENAI_API_KEY
+            // would be sent to whatever third-party host `base_url` names.
+            "openai_compatible" if self.api_key_env.is_none() => Err(invalid(
+                "recognizer.api_key_env",
+                "is required when provider = \"openai_compatible\", whose base_url is an \
+operator-chosen host; there is no safe default credential to send to it",
+            )),
             _ => Ok(()),
         }
     }
@@ -121,20 +129,31 @@ impl RecognizerConfig {
     /// The environment variable this config reads its credential from.
     ///
     /// `None` for `ollama`, which authenticates nothing.
+    ///
+    /// A per-provider default applies only where the provider's endpoint is
+    /// fixed and vendor-owned. **`openai_compatible` has no default** — its
+    /// `base_url` points at an arbitrary third-party host, so defaulting to
+    /// `OPENAI_API_KEY` would mean an operator who forgot `api_key_env` sends a
+    /// real OpenAI credential to an unrelated endpoint. `validate` requires the
+    /// field explicitly for that provider instead.
     #[must_use]
     pub fn credential_env(&self) -> Option<&str> {
         if self.provider == "ollama" {
             return None;
         }
-        Some(
-            self.api_key_env
-                .as_deref()
-                .unwrap_or(match self.provider.as_str() {
-                    "anthropic" => "ANTHROPIC_API_KEY",
-                    "azure_openai" => "AZURE_OPENAI_API_KEY",
-                    _ => "OPENAI_API_KEY",
-                }),
-        )
+        if let Some(explicit) = self.api_key_env.as_deref() {
+            return Some(explicit);
+        }
+        match self.provider.as_str() {
+            "anthropic" => Some("ANTHROPIC_API_KEY"),
+            "azure_openai" => Some("AZURE_OPENAI_API_KEY"),
+            "openai" => Some("OPENAI_API_KEY"),
+            // No safe default: the endpoint is operator-chosen. Unreachable in
+            // practice because `validate_provider_fields` requires `api_key_env`
+            // for `openai_compatible`, but a fallthrough here must never invent
+            // a credential for an unknown provider.
+            _ => None,
+        }
     }
 
     /// Resolves every `entity_mapping` value to an [`IdentifierType`].
@@ -578,6 +597,84 @@ mod tests {
     }
 
     // ---- scalar fields -----------------------------------------------------
+
+    #[test]
+    fn openai_compatible_requires_an_explicit_credential_variable() {
+        // No safe default: base_url is an operator-chosen third-party host, so
+        // falling back to OPENAI_API_KEY would exfiltrate a real credential.
+        let mut config = base();
+        config.provider = "openai_compatible".to_string();
+        config.base_url = Some("https://api.groq.com/openai/v1".to_string());
+        config.api_key_env = None;
+
+        let err = config
+            .validate()
+            .expect_err("an omitted api_key_env must not silently reuse OPENAI_API_KEY");
+        assert!(
+            err.to_string().contains("recognizer.api_key_env"),
+            "the rejection must name the field to set: {err}"
+        );
+        assert_eq!(
+            config.credential_env(),
+            None,
+            "there must be no default credential for an operator-chosen host"
+        );
+    }
+
+    #[test]
+    fn openai_compatible_accepts_an_explicit_credential_variable() {
+        let mut config = base();
+        config.provider = "openai_compatible".to_string();
+        config.base_url = Some("https://api.groq.com/openai/v1".to_string());
+        config.api_key_env = Some("GROQ_API_KEY".to_string());
+
+        assert!(config.validate().is_ok());
+        assert_eq!(config.credential_env(), Some("GROQ_API_KEY"));
+    }
+
+    #[test]
+    fn each_vendor_provider_defaults_to_its_own_credential_variable() {
+        // A wrong default would send one vendor's key to another.
+        for (provider, expected) in [
+            ("openai", Some("OPENAI_API_KEY")),
+            ("anthropic", Some("ANTHROPIC_API_KEY")),
+            ("azure_openai", Some("AZURE_OPENAI_API_KEY")),
+            ("ollama", None),
+        ] {
+            let mut config = base();
+            config.provider = provider.to_string();
+            assert_eq!(
+                config.credential_env(),
+                expected,
+                "{provider} must read {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_explicit_api_key_env_overrides_the_per_provider_default() {
+        let mut config = base();
+        config.provider = "openai".to_string();
+        config.api_key_env = Some("MY_OWN_KEY".to_string());
+        assert_eq!(config.credential_env(), Some("MY_OWN_KEY"));
+    }
+
+    #[test]
+    fn an_empty_few_shot_input_is_rejected_by_name() {
+        let mut config = base();
+        config.few_shot_examples = vec![FewShotExample {
+            input: "   ".to_string(),
+            output: Vec::new(),
+        }];
+        let err = config
+            .validate()
+            .expect_err("an empty example teaches nothing");
+        assert!(
+            err.to_string()
+                .contains("recognizer.few_shot_examples[0].input"),
+            "must name the indexed path: {err}"
+        );
+    }
 
     #[test]
     fn an_unknown_provider_names_the_value_and_lists_the_known_ones() {

@@ -591,3 +591,92 @@ system = "Find PII."
         .expect("an unsupported language returns empty, not an error");
     assert!(out.is_empty(), "de is outside the configured set");
 }
+
+// ---- every provider arm actually constructs --------------------------------
+
+/// Builds a config naming `provider`, with whatever extra fields it requires.
+///
+/// Provider constructors are pure and non-networked, so a build proves the
+/// wiring without a credential that works or a request that goes anywhere.
+fn provider_config(dir: &Path, provider: &str, extra: &str) -> PathBuf {
+    let path = dir.join(format!("{provider}.toml"));
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+[recognizer]
+class_name = "{provider}_recognizer"
+provider = "{provider}"
+model = "some-model"
+{extra}
+
+[recognizer.prompt]
+system = "Find PII."
+"#
+        ),
+    )
+    .expect("write");
+    path
+}
+
+#[test]
+fn every_provider_arm_builds_a_recognizer() {
+    // build_recognizer has five arms sharing one `configure` helper. Without
+    // this, a typo in an unexercised arm — a swapped argument, a wrong field —
+    // would ship undetected: only ollama and openai were reached before.
+    //
+    // `api_key_env` points every cloud arm at ONE variable that this test's
+    // process already has set, so no real credential is involved.
+    let key_var = "PATH"; // always set, never a real credential
+    let cases = [
+        ("ollama", String::new()),
+        ("openai", format!("api_key_env = \"{key_var}\"")),
+        ("anthropic", format!("api_key_env = \"{key_var}\"")),
+        (
+            "azure_openai",
+            format!(
+                "api_key_env = \"{key_var}\"\nendpoint = \"https://example.openai.azure.com\"\n\
+api_version = \"2024-02-01\""
+            ),
+        ),
+        (
+            "openai_compatible",
+            format!("api_key_env = \"{key_var}\"\nbase_url = \"https://api.groq.com/openai/v1\""),
+        ),
+    ];
+
+    for (provider, extra) in cases {
+        let dir = tempfile::tempdir().expect("tempdir");
+        provider_config(dir.path(), provider, &extra);
+
+        let configs = loader::load_dir(dir.path())
+            .unwrap_or_else(|e| panic!("{provider} config must load: {e}"));
+        let built = loader::build_all(&configs)
+            .unwrap_or_else(|e| panic!("{provider} arm must construct: {e}"));
+
+        assert_eq!(
+            built.first().map(|r| r.name()),
+            Some(format!("{provider}_recognizer").as_str()),
+            "{provider} must build a recognizer named after its class_name"
+        );
+    }
+}
+
+#[test]
+fn openai_compatible_without_an_explicit_credential_var_is_rejected() {
+    // Otherwise an operator pointing base_url at a third party and forgetting
+    // api_key_env would send their real OPENAI_API_KEY to that host.
+    let dir = tempfile::tempdir().expect("tempdir");
+    provider_config(
+        dir.path(),
+        "openai_compatible",
+        "base_url = \"https://api.groq.com/openai/v1\"",
+    );
+
+    let err = loader::load_dir(dir.path())
+        .expect_err("an omitted api_key_env must not fall back to OPENAI_API_KEY");
+    assert!(
+        err.to_string().contains("recognizer.api_key_env"),
+        "the rejection must name the field to set: {err}"
+    );
+}

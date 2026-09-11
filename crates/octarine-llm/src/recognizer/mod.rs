@@ -184,7 +184,7 @@ impl<P: LlmProvider> LLMRecognizer<P> {
     }
 
     /// Whether this recognizer handles `language`.
-    fn speaks(&self, language: &str) -> bool {
+    fn is_language_supported(&self, language: &str) -> bool {
         self.languages.is_empty()
             || self
                 .languages
@@ -210,12 +210,6 @@ impl<P: LlmProvider> LLMRecognizer<P> {
         self
     }
 
-    /// Chooses which entity types to request.
-    ///
-    /// An empty `requested` slice means "everything", per the [`Recognizer`]
-    /// contract. Otherwise the request narrows to the intersection with the
-    /// advertised set — asking a provider for types this recognizer does not
-    /// support wastes prompt tokens.
     /// Rewrites each detection's label through the configured mapping.
     ///
     /// An unmapped label passes through untouched. The mapping exists to
@@ -250,6 +244,12 @@ impl<P: LlmProvider> LLMRecognizer<P> {
         }
     }
 
+    /// Chooses which entity types to request.
+    ///
+    /// An empty `requested` slice means "everything", per the [`Recognizer`]
+    /// contract. Otherwise the request narrows to the intersection with the
+    /// advertised set — asking a provider for types this recognizer does not
+    /// support wastes prompt tokens.
     fn resolve_entities(&self, requested: &[IdentifierType]) -> Vec<IdentifierType> {
         if requested.is_empty() {
             return self.supported.clone();
@@ -288,7 +288,7 @@ impl<P: LlmProvider> Recognizer for LLMRecognizer<P> {
         // A recognizer scoped to other languages has nothing to say about this
         // text, and calling the provider would bill for a guaranteed-empty
         // answer. Empty, not an error: see `with_languages`.
-        if !self.speaks(language) {
+        if !self.is_language_supported(language) {
             return Ok(Vec::new());
         }
 

@@ -191,13 +191,22 @@ checked in.
 
 | Provider | Default variable |
 |---|---|
-| `openai`, `openai_compatible` | `OPENAI_API_KEY` |
+| `openai` | `OPENAI_API_KEY` |
 | `anthropic` | `ANTHROPIC_API_KEY` |
 | `azure_openai` | `AZURE_OPENAI_API_KEY` |
 | `ollama` | none — authenticates nothing |
+| `openai_compatible` | **none — `api_key_env` is required** |
 
 Override with `api_key_env`. An unset or empty variable fails at construction
-with a message naming it, rather than as a 401 several seconds later.
+with a message naming it, rather than as a 401 several seconds later. A value
+with surrounding whitespace (a key piped from a file keeps its trailing newline)
+is trimmed rather than sent verbatim.
+
+`openai_compatible` deliberately has **no** default. Its `base_url` points at an
+operator-chosen third-party host, so defaulting to `OPENAI_API_KEY` would mean
+that forgetting one optional field silently sends a real OpenAI credential to an
+unrelated endpoint. Naming the variable is required for that provider, and a
+config omitting it fails to load.
 
 ## Hot reload
 
