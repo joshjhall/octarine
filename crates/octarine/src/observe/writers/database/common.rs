@@ -212,13 +212,15 @@ pub(super) fn build_query_plan(query: &AuditQuery, dialect: SqlDialect) -> Query
 /// Assemble the final [`QueryResult`] from a fetched page and total count
 ///
 /// `has_more` is inferred from the page being full: if the caller asked for a
-/// limit and got at least that many rows, another page may exist.
+/// limit and got at least that many rows, another page may exist. A limit of
+/// zero is excluded — `events.len() >= 0` holds vacuously, which would report
+/// a further page for a query that asked for no rows at all.
 pub(super) fn assemble_query_result(
     events: Vec<Event>,
     total_count: i64,
     query: &AuditQuery,
 ) -> QueryResult {
-    let has_more = query.limit.is_some_and(|l| events.len() >= l);
+    let has_more = query.limit.is_some_and(|l| l > 0 && events.len() >= l);
 
     QueryResult {
         events,
@@ -731,6 +733,22 @@ mod tests {
         let unlimited = AuditQuery::default();
         let result = assemble_query_result(vec![Event::new(EventType::Info, "a")], 1, &unlimited);
         assert!(!result.has_more);
+    }
+
+    #[test]
+    fn test_assemble_query_result_zero_limit_reports_no_further_page() {
+        // `events.len() >= 0` is vacuously true, so an unguarded comparison
+        // would claim a further page exists for a query that asked for no
+        // rows — and would do so even on an empty result set.
+        let query = AuditQuery {
+            limit: Some(0),
+            ..Default::default()
+        };
+        let result = assemble_query_result(Vec::new(), 0, &query);
+        assert!(
+            !result.has_more,
+            "a zero-row page cannot imply a further page"
+        );
     }
 
     // =========================================================================
