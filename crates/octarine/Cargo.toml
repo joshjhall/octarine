@@ -13,6 +13,9 @@ authors.workspace = true
 readme = "../../README.md"
 keywords = ["security", "validation", "sanitization", "observability", "audit"]
 categories = ["development-tools", "web-programming"]
+# `src/bin/cli_smoke.rs` is a test-only harness for the CLI entry points
+# (see tests/cli_smoke.rs); it is not part of the published API.
+exclude = ["src/bin/*"]
 
 [lib]
 # Keep the import path `octarine` even though the package publishes as
@@ -281,6 +284,17 @@ fake = { version = "5.1", features = ["derive"] }
 assert_cmd = "2.0"
 rexpect = "0.7"
 prometheus-parse = "0.2"
+# Mints JWTs for the http middleware enforcement tests; the crate validates
+# tokens but does not re-export an encoder.
+jsonwebtoken = { version = "11.0", features = ["rust_crypto"] }
+
+# Test-only binary driving CliApp::run / run_with_args / run_cli as a real
+# subprocess (these call clap's get_matches(), so they cannot run in-process
+# under a test harness). Exercised by tests/cli_smoke.rs.
+[[bin]]
+name = "cli_smoke"
+path = "src/bin/cli_smoke.rs"
+required-features = ["cli"]
 
 [[bench]]
 name = "pii_redaction"

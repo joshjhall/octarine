@@ -1,3 +1,4 @@
+mod csrf;
 mod lockout;
 #[cfg(feature = "auth-totp")]
 mod mfa;
