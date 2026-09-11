@@ -555,6 +555,11 @@ mod tests {
     #[test]
     fn test_auto_detect_canada_sin() {
         assert!(validate_national_id("136-454-287").is_ok());
+        // The reserved-first-digit rule must also be reachable through the
+        // auto-detect dispatcher, not just via validate_canada_sin directly:
+        // is_canada_sin_shape gates on digit grouping only, so a 0-leading
+        // value still routes here and must be rejected.
+        assert!(validate_national_id("012345674").is_err());
     }
 
     #[test]

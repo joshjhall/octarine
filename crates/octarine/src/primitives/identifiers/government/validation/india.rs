@@ -115,9 +115,12 @@ pub fn validate_india_aadhaar(value: &str) -> Result<(), Problem> {
 /// this function and `is_test_india_aadhaar`).
 ///
 /// Callers that must not reject a genuine issued Aadhaar under any
-/// circumstances should use [`validate_india_aadhaar`] (format only) or call
-/// `verhoeff_validate` directly, and treat [`is_test_india_aadhaar`] as the
-/// advisory signal.
+/// circumstances should use [`validate_india_aadhaar`], which enforces
+/// format only (12 digits, leading 2-9) and never applies the palindrome
+/// rule, treating [`is_test_india_aadhaar`] as an advisory signal rather
+/// than a gate. Note this trades away the Verhoeff check as well: the
+/// checksum and the palindrome rule are not separately selectable through
+/// the public API.
 ///
 /// # Errors
 ///
@@ -941,6 +944,17 @@ mod tests {
             validate_india_aadhaar_with_checksum(&aadhaar).is_ok(),
             "a non-palindrome Aadhaar should still validate"
         );
+    }
+
+    #[test]
+    fn test_format_only_validator_accepts_palindrome() {
+        // Pins the escape hatch documented on
+        // `validate_india_aadhaar_with_checksum`: the format-only tier must
+        // NOT apply the palindrome rule. If a refactor ever centralizes that
+        // rule into `validate_india_aadhaar`, this fails.
+        assert!(validate_india_aadhaar("200009900002").is_ok());
+        // Control: the checksum tier still rejects the same value.
+        assert!(validate_india_aadhaar_with_checksum("200009900002").is_err());
     }
 
     #[test]
