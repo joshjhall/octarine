@@ -38,3 +38,5 @@
 - [hibp tests are feature-gated](project_hibp_feature_gated_tests.md) — `cargo test -- hibp` silently matches 0 tests without `--features auth-hibp`; check the count, not the exit code
 - [worktree-rm Bad file descriptor](project_worktree_rm_submodule_bad_fd.md) — the `--force` retry still deregisters; delete the branch by hand and leave the inert target/ remnant
 - [Release generator + gates](project_release_generator_and_gates.md) — changelog dedup fixed 2026-09-06; re-point the tag after any amend, and let CI be the gate
+- [rumdl version skew](project_rumdl_version_skew.md) — CI pins rumdl 0.1.91 vs local 0.2.68; a markdown line starting `#667` passes `just lint-md` locally and fails MD032 on CI
+- [Unicode range tests go vacuous](feedback_unicode_range_tests_vacuous.md) — a "representative" char for a new codepoint range usually sits in an already-covered block; test the guard directly and assert both bounds
