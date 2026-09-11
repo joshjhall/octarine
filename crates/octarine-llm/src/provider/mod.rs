@@ -84,6 +84,42 @@ impl std::fmt::Debug for Credential {
     }
 }
 
+/// Describes a response-decode failure without quoting the body.
+///
+/// `reqwest::Error`'s own `Display` prints only the URL, but its **source**
+/// is the underlying `serde_json::Error`, whose `Display` quotes the offending
+/// value in full — `invalid type: string "...", expected a sequence`. For this
+/// crate that value is model output about the text under analysis, so it is
+/// the PII detection is meant to find.
+///
+/// Nothing prints that source today, which is exactly why this is worth
+/// pinning: a later `{e:?}`, an `anyhow` chain, or any source-walking logger
+/// would surface it silently. The reachable path is a provider refusing on
+/// content policy with **HTTP 200** and a wrong-typed body — `problem_for_status`
+/// never runs on a success status, and `analyze` logs the resulting `Problem`.
+///
+/// Reports the serde position and category, the same treatment
+/// [`parse_entities`](crate::recognizer::parse::parse_entities) applies.
+pub(crate) fn decode_problem(provider: &str, err: &reqwest::Error) -> Problem {
+    use std::error::Error as _;
+
+    let detail = err
+        .source()
+        .and_then(|s| s.downcast_ref::<serde_json::Error>())
+        .map_or_else(
+            || "malformed body".to_string(),
+            |e| {
+                format!(
+                    "{:?} at line {}, column {}",
+                    e.classify(),
+                    e.line(),
+                    e.column()
+                )
+            },
+        );
+    Problem::Parse(format!("{provider} response did not decode ({detail})"))
+}
+
 /// Rejects a value that would alter the URL it is interpolated into.
 ///
 /// Azure addresses a model by splicing the deployment name and API version

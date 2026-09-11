@@ -808,3 +808,94 @@ async fn ollama_request_disables_streaming_and_nests_its_options() {
         "max_tokens is Ollama's options.num_predict"
     );
 }
+
+#[tokio::test]
+async fn a_wrong_typed_success_body_does_not_leak_its_content() {
+    // HTTP 200 with a wrong-typed body: `problem_for_status` never runs (the
+    // status is a success), so the decode error is the only thing describing
+    // the failure — and `analyze` logs it. serde's message quotes the
+    // offending value verbatim, which here is model output about the
+    // analyzed text.
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "choices": "refused: cannot process SSN 123-45-6789 for alice@example.com"
+        })))
+        .mount(&server)
+        .await;
+
+    let provider =
+        OpenAiProvider::with_base_url("sk-test", "gpt-4o", &server.uri()).expect("builds");
+    let problem = provider
+        .complete(&request())
+        .await
+        .expect_err("a wrong-typed body must fail to decode");
+
+    // Both renderings: Display is what gets logged, Debug is one keystroke away.
+    let shown = format!("{problem} | {problem:?}");
+    assert!(!shown.contains("123-45-6789"), "an SSN reached the Problem");
+    assert!(
+        !shown.contains("alice@example.com"),
+        "an email reached the Problem"
+    );
+    assert!(
+        shown.contains("openai"),
+        "the provider must still be identified"
+    );
+    assert!(
+        shown.contains("line 1"),
+        "the serde position must survive for debugging"
+    );
+}
+
+#[tokio::test]
+async fn an_anthropic_wrong_typed_body_does_not_leak_either() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/messages"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "content": "flagged: alice@example.com appears in the input"
+        })))
+        .mount(&server)
+        .await;
+
+    let provider = AnthropicProvider::with_base_url("sk-ant", "claude-sonnet-5", &server.uri())
+        .expect("builds");
+    let problem = provider
+        .complete(&request())
+        .await
+        .expect_err("a wrong-typed body must fail to decode");
+
+    let shown = format!("{problem} | {problem:?}");
+    assert!(
+        !shown.contains("alice@example.com"),
+        "an email reached the Problem"
+    );
+    assert!(shown.contains("anthropic"));
+}
+
+#[tokio::test]
+async fn an_ollama_wrong_typed_body_does_not_leak_either() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/chat"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "message": "flagged: alice@example.com appears in the input"
+        })))
+        .mount(&server)
+        .await;
+
+    let provider = OllamaProvider::with_base_url("llama3", &server.uri()).expect("builds");
+    let problem = provider
+        .complete(&request())
+        .await
+        .expect_err("a wrong-typed body must fail to decode");
+
+    let shown = format!("{problem} | {problem:?}");
+    assert!(
+        !shown.contains("alice@example.com"),
+        "an email reached the Problem"
+    );
+    assert!(shown.contains("ollama"));
+}

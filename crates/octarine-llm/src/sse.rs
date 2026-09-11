@@ -35,14 +35,25 @@ pub struct SseEvent {
     pub data: String,
 }
 
-/// Maximum bytes buffered for a single un-terminated line.
+/// Maximum bytes the decoder will retain for one un-dispatched event.
 ///
-/// A peer that streams forever without emitting a newline would otherwise grow
-/// the buffer without bound for the whole 120s request timeout — a
-/// memory-exhaustion vector, and a reachable one: the Ollama and
+/// Bounds **total retention** — the un-parsed buffer plus every `data:` line
+/// accumulated so far — not the length of any single line. A per-line cap is
+/// not enough, because a peer controls both the length of each line and how
+/// many it sends before a terminating blank line:
+///
+/// - an oversized line preceded by a short one (`:keepalive\n`) slips past a
+///   cap evaluated once per chunk, and
+/// - an endless run of individually legal small lines never trips a per-line
+///   cap at all, yet retains just as much memory.
+///
+/// Both are the same defect — what actually grows is `buffer + pending` — so
+/// the check is on that sum, evaluated as lines are consumed.
+///
+/// The threat is real rather than theoretical: the Ollama and
 /// OpenAI-compatible base URLs are caller-configurable and may point at a
-/// third-party or local service. 1 MiB is far above any real SSE frame (a
-/// detection response is a few KB) while still bounding the damage.
+/// third-party or local service, which then has the full 120s request timeout
+/// to grow this. 1 MiB is far above any genuine detection response (a few KB).
 pub const MAX_LINE_BYTES: usize = 1024 * 1024;
 
 /// Incremental SSE decoder.
@@ -58,9 +69,10 @@ pub struct SseDecoder {
     pending: Vec<String>,
     /// Set once the `[DONE]` sentinel is seen; further input is ignored.
     done: bool,
-    /// Set when a single line exceeded [`MAX_LINE_BYTES`]. Latching rather than
-    /// merely truncating: a line that long means the peer is not speaking SSE,
-    /// so continuing to parse its output would be guesswork.
+    /// Set when retained bytes exceeded [`MAX_LINE_BYTES`]. Latching rather
+    /// than merely truncating: a peer that retains that much without
+    /// dispatching an event is not speaking SSE, so continuing to parse its
+    /// output would be guesswork.
     overflowed: bool,
 }
 
@@ -75,7 +87,7 @@ impl SseDecoder {
     }
 
     /// Whether the `[DONE]` sentinel has been observed, or the stream was
-    /// abandoned because a line exceeded [`MAX_LINE_BYTES`].
+    /// abandoned because retained bytes exceeded [`MAX_LINE_BYTES`].
     ///
     /// Both mean "stop reading"; [`is_overflowed`](SseDecoder::is_overflowed)
     /// distinguishes the orderly ending from the abandoned one.
@@ -84,8 +96,8 @@ impl SseDecoder {
         self.done || self.overflowed
     }
 
-    /// Whether decoding was abandoned because a single un-terminated line
-    /// exceeded [`MAX_LINE_BYTES`].
+    /// Whether decoding was abandoned because retained bytes exceeded
+    /// [`MAX_LINE_BYTES`].
     ///
     /// A caller must treat this as a failure rather than as end-of-stream: the
     /// content received so far is arbitrarily truncated.
@@ -104,26 +116,17 @@ impl SseDecoder {
         }
         self.buffer.extend_from_slice(chunk);
 
-        // Guard BEFORE parsing, measured on the FIRST LINE rather than on the
-        // whole buffer. Gating on "no newline anywhere" would miss the case
-        // where a single chunk delivers an oversized line *and* its terminator
-        // together: the buffer would then contain a newline, the guard would
-        // not fire, and `take_line` would hand the whole oversized line
-        // straight to `pending` — the exact exhaustion this cap exists to stop.
-        let first_line_len = self
-            .buffer
-            .iter()
-            .position(|&b| b == b'\n')
-            .unwrap_or(self.buffer.len());
-        if first_line_len > MAX_LINE_BYTES {
-            self.overflowed = true;
-            self.buffer.clear();
-            self.pending.clear();
-            return Vec::new();
-        }
-
         let mut events = Vec::new();
-        while let Some(line) = self.take_line() {
+        // The cap is checked on every iteration, not once per chunk. Checking
+        // once would let the first line's length decide the fate of every
+        // later line in the same buffer: a two-byte keep-alive would disarm
+        // the cap for whatever followed it.
+        loop {
+            if self.retained_bytes() > MAX_LINE_BYTES {
+                self.latch_overflow();
+                return Vec::new();
+            }
+            let Some(line) = self.take_line() else { break };
             if let Some(event) = self.consume_line(&line) {
                 events.push(event);
             }
@@ -132,6 +135,26 @@ impl SseDecoder {
             }
         }
         events
+    }
+
+    /// Total bytes held for an event that has not been dispatched yet.
+    ///
+    /// The un-parsed tail plus every accumulated `data:` line — the quantity
+    /// that actually grows under a hostile peer. Either half alone can be kept
+    /// small while the sum grows without bound.
+    fn retained_bytes(&self) -> usize {
+        self.pending
+            .iter()
+            .map(String::len)
+            .sum::<usize>()
+            .saturating_add(self.buffer.len())
+    }
+
+    /// Abandons the stream and releases everything held.
+    fn latch_overflow(&mut self) {
+        self.overflowed = true;
+        self.buffer.clear();
+        self.pending.clear();
     }
 
     /// Bytes currently buffered for an incomplete line. Test-only accessor.
@@ -407,6 +430,76 @@ mod tests {
             "an oversized line must trip the cap even when terminated in the same chunk"
         );
         assert_eq!(d.buffered_len(), 0);
+    }
+
+    #[test]
+    fn an_oversized_line_is_caught_even_when_it_is_not_the_first_line() {
+        // The bypass in the per-chunk check: it measured only the FIRST line,
+        // so a two-byte keep-alive ahead of the oversized line disarmed the cap
+        // for everything after it in the same buffer.
+        let mut d = SseDecoder::new();
+        let mut chunk = String::from(":keepalive\n");
+        chunk.push_str("data: ");
+        chunk.push_str(&"x".repeat(MAX_LINE_BYTES.saturating_add(1)));
+        chunk.push('\n');
+
+        let events = d.push(&Bytes::from(chunk));
+
+        assert!(events.is_empty());
+        assert!(
+            d.is_overflowed(),
+            "an oversized line must trip the cap wherever it sits in the chunk"
+        );
+        assert_eq!(
+            d.retained_bytes(),
+            0,
+            "everything held must be released on overflow"
+        );
+    }
+
+    #[test]
+    fn a_flood_of_legal_small_lines_without_a_terminator_is_bounded() {
+        // Every line here is individually legal and far under the cap; only
+        // the SUM grows. `pending` is flushed on a blank line, and this peer
+        // never sends one.
+        let mut d = SseDecoder::new();
+        let line = format!("data: {}\n", "y".repeat(16 * 1024));
+
+        for _ in 0..400 {
+            let _ = d.push(&Bytes::from(line.clone()));
+            if d.is_overflowed() {
+                break;
+            }
+        }
+
+        assert!(
+            d.is_overflowed(),
+            "accumulated retention must trip the cap even when every line is legal"
+        );
+        assert_eq!(d.retained_bytes(), 0);
+    }
+
+    #[test]
+    fn retention_is_released_by_a_blank_line_so_a_long_stream_is_fine() {
+        // The guard must bound retention, not total stream length: a peer that
+        // dispatches events normally can send far more than the cap in total.
+        let mut d = SseDecoder::new();
+        let payload = "z".repeat(64 * 1024);
+        let mut dispatched = 0usize;
+
+        for _ in 0..40 {
+            let events = push(&mut d, &format!("data: {payload}\n\n"));
+            dispatched = dispatched.saturating_add(events.len());
+            assert!(
+                !d.is_overflowed(),
+                "well-behaved traffic must not trip the cap"
+            );
+        }
+
+        assert_eq!(dispatched, 40, "every event must still be delivered");
+        // 40 x 64 KiB = 2.5 MiB total, well past the 1 MiB cap, yet retention
+        // returns to zero after each blank line.
+        assert_eq!(d.retained_bytes(), 0);
     }
 
     #[test]

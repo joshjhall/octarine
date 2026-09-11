@@ -200,7 +200,7 @@ impl LlmProvider for OllamaProvider {
         let decoded: ChatResponse = response
             .json()
             .await
-            .map_err(|e| Problem::Parse(format!("ollama response did not decode: {e}")))?;
+            .map_err(|e| super::decode_problem("ollama", &e))?;
 
         decoded.into_llm_response(&self.model)
     }

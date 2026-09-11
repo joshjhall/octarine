@@ -225,7 +225,7 @@ pub(crate) async fn post_chat_completion(
     let decoded: ChatResponse = response
         .json()
         .await
-        .map_err(|e| Problem::Parse(format!("{provider} response did not decode: {e}")))?;
+        .map_err(|e| super::decode_problem(provider, &e))?;
 
     decoded.into_llm_response(model)
 }

@@ -246,7 +246,7 @@ impl LlmProvider for AnthropicProvider {
         let decoded: MessagesResponse = response
             .json()
             .await
-            .map_err(|e| Problem::Parse(format!("anthropic response did not decode: {e}")))?;
+            .map_err(|e| super::decode_problem("anthropic", &e))?;
 
         decoded.into_llm_response(&self.model)
     }
