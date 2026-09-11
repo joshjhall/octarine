@@ -106,14 +106,16 @@ Each gap includes the source domain report reference. Severity rule: blocks a Pr
   `ContextWindow` type — `ContextAnalyzer::with_language`, surfaced at Layer 3 as
   `ConfidenceBuilder::with_language(KeywordLanguage)` and
   `with_language_hint(impl AsRef<str>)`. The default is unchanged: with no hint
-  every language table is scanned. Keyword matching is whole-word for
-  space-delimited scripts (so French `nom` no longer boosts inside
-  `nomination`), and substring for CJK/Thai, which have no word boundaries.
+  every language table is scanned. Keyword matching is whole-word: a boundary
+  is the string edge, a non-alphanumeric character, or a character from a
+  script written without spaces (Han, kana, hangul, Thai, fullwidth forms), so
+  French `nom` no longer boosts inside `nomination` while `apiキー` still
+  matches flush against native text.
 - **Still open**: the identifiers named in the bullets above that did **not**
   get native keywords — `KoreaFrn`, `KoreaBrn`, `KoreaDriverLicense`,
   `KoreaPassport`, `AustraliaTfn`/`Abn`/`Medicare`/`Acn`, `IndiaGstin`,
   `SingaporeNric`/`Uen`, and `SpainNie` — remain at `&[]` in every language.
-  #667 covered the core 13 identifiers plus `ItalyFiscalCode`, `SpainNif`,
+  PR #667 covered the core 13 identifiers plus `ItalyFiscalCode`, `SpainNif`,
   `PolandPesel`, `FinlandHetu`, `KoreaRrn`, `IndiaAadhaar`, `IndiaPan`, and
   `ThailandTnin`. The remainder is a data-only follow-up: the registry, the
   per-language files, and the hint API all support them already.
