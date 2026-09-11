@@ -20,8 +20,11 @@ pub(crate) mod masking;
 pub(crate) mod patterns;
 pub(crate) mod utils;
 
-// Re-export the language selector used by confidence scoring
-pub(crate) use keywords::KeywordLanguage;
+// Re-export the language selector used by confidence scoring.
+// Public so Layer 3 can re-export it as part of the language-hint API
+// (`octarine::identifiers::KeywordLanguage`); the `primitives` module itself
+// stays `pub(crate)`, so this is not an external path.
+pub use keywords::KeywordLanguage;
 
 // Re-export commonly used utilities for sibling modules
 pub use luhn::{

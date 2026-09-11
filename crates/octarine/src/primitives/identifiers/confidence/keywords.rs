@@ -276,6 +276,177 @@ mod tests {
     }
 
     #[test]
+    fn test_country_scoped_types_have_native_keywords() {
+        // #667 acceptance: country-specific identifiers resolve in their own
+        // language. Each of these returned `&[]` in every language before.
+        let cases = [
+            (IdentifierType::ItalyFiscalCode, KeywordLanguage::It),
+            (IdentifierType::SpainNif, KeywordLanguage::Es),
+            (IdentifierType::PolandPesel, KeywordLanguage::Pl),
+            (IdentifierType::FinlandHetu, KeywordLanguage::Fi),
+            (IdentifierType::KoreaRrn, KeywordLanguage::Ko),
+            (IdentifierType::IndiaAadhaar, KeywordLanguage::Hi),
+            (IdentifierType::IndiaPan, KeywordLanguage::Hi),
+            (IdentifierType::ThailandTnin, KeywordLanguage::Th),
+        ];
+        for (entity_type, language) in cases {
+            assert!(
+                !context_keywords(&entity_type, language).is_empty(),
+                "{entity_type:?} has no {language:?} keywords"
+            );
+        }
+    }
+
+    #[test]
+    fn test_country_scoped_types_are_not_force_fitted() {
+        // Coverage is additive, not uniform: an Italian codice fiscale has no
+        // Swedish or Thai terminology and must stay empty there rather than
+        // being padded with a translation Presidio does not have.
+        for language in [
+            KeywordLanguage::Sv,
+            KeywordLanguage::Th,
+            KeywordLanguage::Ar,
+        ] {
+            assert!(
+                context_keywords(&IdentifierType::ItalyFiscalCode, language).is_empty(),
+                "ItalyFiscalCode should have no {language:?} keywords"
+            );
+        }
+    }
+
+    #[test]
+    fn test_top_entities_covered_in_every_language() {
+        // Every non-English language table must cover the core identifier set,
+        // not just the BankAccount entry PR #666 shipped.
+        let core = [
+            IdentifierType::Ssn,
+            IdentifierType::CreditCard,
+            IdentifierType::Email,
+            IdentifierType::PhoneNumber,
+            IdentifierType::BankAccount,
+            IdentifierType::RoutingNumber,
+            IdentifierType::DriverLicense,
+            IdentifierType::Passport,
+            IdentifierType::Birthdate,
+            IdentifierType::IpAddress,
+            IdentifierType::ApiKey,
+            IdentifierType::PersonalName,
+            IdentifierType::Iban,
+        ];
+        for language in KeywordLanguage::all() {
+            for entity_type in &core {
+                assert!(
+                    !context_keywords(entity_type, language).is_empty(),
+                    "{language:?} table is missing {entity_type:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_no_duplicate_identifier_rows_per_language() {
+        // A duplicated key would make the first row win silently in the linear
+        // `find`, hiding every keyword in the later row.
+        for language in KeywordLanguage::all() {
+            let mut seen: Vec<&IdentifierType> = Vec::new();
+            for (entity_type, _) in language.keywords() {
+                assert!(
+                    !seen.contains(&entity_type),
+                    "{language:?} lists {entity_type:?} twice"
+                );
+                seen.push(entity_type);
+            }
+        }
+    }
+
+    #[test]
+    fn test_no_empty_keyword_entries() {
+        // An empty string keyword would `contains("")` == true and boost every
+        // single match unconditionally.
+        for language in KeywordLanguage::all() {
+            for (entity_type, keywords) in language.keywords() {
+                assert!(
+                    !keywords.is_empty(),
+                    "{language:?} {entity_type:?} has an empty keyword list"
+                );
+                for keyword in *keywords {
+                    assert!(
+                        !keyword.trim().is_empty(),
+                        "{language:?} {entity_type:?} has a blank keyword"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_from_tag_resolves_known_languages() {
+        assert_eq!(KeywordLanguage::from_tag("it"), Some(KeywordLanguage::It));
+        assert_eq!(KeywordLanguage::from_tag("IT"), Some(KeywordLanguage::It));
+        assert_eq!(
+            KeywordLanguage::from_tag("it-IT"),
+            Some(KeywordLanguage::It)
+        );
+        assert_eq!(
+            KeywordLanguage::from_tag("fr_CA"),
+            Some(KeywordLanguage::Fr)
+        );
+        assert_eq!(
+            KeywordLanguage::from_tag("zh-Hans"),
+            Some(KeywordLanguage::ZhHans)
+        );
+        assert_eq!(
+            KeywordLanguage::from_tag("zh_hant"),
+            Some(KeywordLanguage::ZhHant)
+        );
+        assert_eq!(
+            KeywordLanguage::from_tag("zh-TW"),
+            Some(KeywordLanguage::ZhHant)
+        );
+        // Bare "zh" defaults to Simplified.
+        assert_eq!(
+            KeywordLanguage::from_tag("zh"),
+            Some(KeywordLanguage::ZhHans)
+        );
+        // Presidio spells Korean "kr" in some language YAMLs.
+        assert_eq!(KeywordLanguage::from_tag("kr"), Some(KeywordLanguage::Ko));
+    }
+
+    #[test]
+    fn test_from_tag_resolves_three_segment_chinese_tags() {
+        // script + region, the form the "hant-tw"/"hant-hk"/"hant-mo" arms exist
+        // for.
+        for tag in ["zh-Hant-TW", "zh-Hant-HK", "zh_hant_mo"] {
+            assert_eq!(
+                KeywordLanguage::from_tag(tag),
+                Some(KeywordLanguage::ZhHant),
+                "tag {tag:?} should resolve to Traditional"
+            );
+        }
+        assert_eq!(
+            KeywordLanguage::from_tag("zh-Hans-CN"),
+            Some(KeywordLanguage::ZhHans)
+        );
+        // Reverse order (region before script) is not a real BCP-47 spelling and
+        // is not special-cased — it falls back to Simplified, like bare "zh".
+        assert_eq!(
+            KeywordLanguage::from_tag("zh-TW-Hant"),
+            Some(KeywordLanguage::ZhHans)
+        );
+    }
+
+    #[test]
+    fn test_from_tag_rejects_unknown() {
+        for tag in ["", "klingon", "xx", "zzz-ZZ", "  "] {
+            assert_eq!(
+                KeywordLanguage::from_tag(tag),
+                None,
+                "tag {tag:?} should not resolve"
+            );
+        }
+    }
+
+    #[test]
     fn test_every_language_table_resolves() {
         // Every KeywordLanguage variant must resolve to a (possibly empty)
         // table without panicking.

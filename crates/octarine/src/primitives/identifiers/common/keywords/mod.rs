@@ -99,6 +99,54 @@ impl KeywordLanguage {
         Self::ALL.into_iter()
     }
 
+    /// Resolve a language tag to a [`KeywordLanguage`], or `None` if unknown.
+    ///
+    /// Accepts a bare ISO 639-1 code (`"it"`), a region-qualified BCP-47 tag
+    /// whose region is ignored (`"it-IT"`, `"fr_CA"`), and a script-qualified
+    /// Chinese tag (`"zh-Hans"`, `"zh_hant"`). Matching is case-insensitive and
+    /// treats `-` and `_` as the same separator.
+    ///
+    /// A bare `"zh"` resolves to [`KeywordLanguage::ZhHans`], the more widely
+    /// used script; callers who need Traditional must say so explicitly.
+    /// Returns `None` for anything unrecognized so the caller can decide the
+    /// fallback — the confidence builders' `with_language_hint` treat `None` as
+    /// "no hint" (scan every language) rather than "match nothing".
+    #[must_use]
+    pub fn from_tag(tag: &str) -> Option<KeywordLanguage> {
+        let normalized = tag.trim().to_lowercase().replace('_', "-");
+        // Split the primary language subtag from any region/script suffix.
+        let (primary, suffix) = match normalized.split_once('-') {
+            Some((primary, suffix)) => (primary, suffix),
+            None => (normalized.as_str(), ""),
+        };
+
+        match primary {
+            "en" => Some(KeywordLanguage::En),
+            "de" => Some(KeywordLanguage::De),
+            "es" => Some(KeywordLanguage::Es),
+            "fi" => Some(KeywordLanguage::Fi),
+            "fr" => Some(KeywordLanguage::Fr),
+            "it" => Some(KeywordLanguage::It),
+            "ja" => Some(KeywordLanguage::Ja),
+            "ko" | "kr" => Some(KeywordLanguage::Ko),
+            "pl" => Some(KeywordLanguage::Pl),
+            "sv" => Some(KeywordLanguage::Sv),
+            "th" => Some(KeywordLanguage::Th),
+            "tr" => Some(KeywordLanguage::Tr),
+            "ar" => Some(KeywordLanguage::Ar),
+            "hi" => Some(KeywordLanguage::Hi),
+            "zh" => match suffix {
+                // Traditional-script tags, including the region shorthands
+                // (Taiwan, Hong Kong, Macau) that imply Traditional.
+                "hant" | "tw" | "hk" | "mo" | "hant-tw" | "hant-hk" | "hant-mo" => {
+                    Some(KeywordLanguage::ZhHant)
+                }
+                _ => Some(KeywordLanguage::ZhHans),
+            },
+            _ => None,
+        }
+    }
+
     /// The keyword table for this language.
     ///
     /// Returns `(IdentifierType, &[keyword])` pairs; identifier types absent

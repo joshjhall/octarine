@@ -56,6 +56,71 @@ pub struct ContextAnalyzer {
 /// Base confidence score when no context is present.
 const BASE_CONFIDENCE: f64 = 0.5;
 
+/// Whether `c` belongs to a script written without spaces between words.
+///
+/// Han, kana, hangul, and Thai text runs together, so there is no word boundary
+/// to look for on that side of a match — a keyword abutting such a character is
+/// a legitimate hit, not an accidental infix.
+///
+/// Only scripts octarine ships keywords for are listed. Arabic and Devanagari
+/// are deliberately **absent**: both are space-separated, so they take the
+/// ordinary boundary path. Other scriptio-continua scripts (Khmer, Lao,
+/// Burmese) are likewise absent because there are no [`KeywordLanguage`]
+/// variants for them — add the range together with the language table, never
+/// ahead of it.
+fn is_unspaced_script(c: char) -> bool {
+    matches!(c,
+        '\u{3040}'..='\u{30FF}'   // hiragana + katakana
+        | '\u{3400}'..='\u{4DBF}' // CJK unified ideographs extension A
+        | '\u{4E00}'..='\u{9FFF}' // CJK unified ideographs
+        | '\u{F900}'..='\u{FAFF}' // CJK compatibility ideographs
+        | '\u{AC00}'..='\u{D7AF}' // hangul syllables
+        | '\u{1100}'..='\u{11FF}' // hangul jamo
+        | '\u{3130}'..='\u{318F}' // hangul compatibility jamo
+        | '\u{0E00}'..='\u{0E7F}' // Thai
+        | '\u{FF00}'..='\u{FFEF}' // halfwidth + fullwidth forms
+    )
+}
+
+/// Whether `keyword` occurs in `text` at word boundaries.
+///
+/// Plain substring matching over-fires on short keywords: French `"nom"` would
+/// match inside `"nomination"`, and Turkish `"ad"` inside `"adres"`, boosting
+/// confidence on text that says nothing about a name. Both keywords are correct
+/// and worth keeping, so the boundary check lives here rather than the shorter
+/// entries being deleted from the tables.
+///
+/// A boundary is the start/end of the text, a non-alphanumeric character, or a
+/// character from a script written **without** spaces (Han, kana, hangul,
+/// Thai). That last clause is what makes the rule safe for mixed-script
+/// keywords: Japanese `"apiキー"` inside `"apiキーを教えてください"`, or a bare
+/// `"iban"` inside `"您的iban账号是"`, have native characters — not spaces —
+/// on either side, and would be rejected by a naive alphanumeric-only test.
+/// The decision is made per **adjacent character**, not from the keyword's own
+/// script, because a keyword may mix both.
+///
+/// The accepted trade-off: a short Latin keyword flush against an unrelated
+/// unspaced-script character (`"广告ad投放"`) does match. Separating that from a
+/// genuine hit needs word segmentation, which this layer does not have — and a
+/// false positive costs one over-boosted confidence score, whereas the false
+/// negative it replaces silently disabled every CJK keyword.
+/// `test_short_latin_keyword_abutting_cjk_is_accepted` pins the behavior.
+///
+/// `text` is expected to be already lowercased (the analyzer lowercases the
+/// window); keywords are lowercase by table invariant.
+fn is_keyword_in_text(text: &str, keyword: &str) -> bool {
+    let is_boundary =
+        |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() || is_unspaced_script(c));
+
+    text.match_indices(keyword).any(|(start, matched)| {
+        let before = text.get(..start).and_then(|s| s.chars().next_back());
+        let after = text
+            .get(start.saturating_add(matched.len())..)
+            .and_then(|s| s.chars().next());
+        is_boundary(before) && is_boundary(after)
+    })
+}
+
 impl Default for ContextAnalyzer {
     fn default() -> Self {
         Self::new()
@@ -75,6 +140,27 @@ impl ContextAnalyzer {
     #[must_use]
     pub fn with_config(config: ContextConfig) -> Self {
         Self { config }
+    }
+
+    /// Restrict keyword matching to a single language.
+    ///
+    /// Without a hint the analyzer scans every language's table, matching any
+    /// known keyword regardless of script. A hint narrows matching to the named
+    /// language, which raises precision when the corpus language is known.
+    ///
+    /// ```ignore
+    /// use octarine::primitives::identifiers::confidence::ContextAnalyzer;
+    /// use octarine::primitives::identifiers::common::KeywordLanguage;
+    /// use octarine::primitives::identifiers::IdentifierType;
+    ///
+    /// let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::It);
+    /// let text = "codice fiscale: RSSMRA85T10A562S";
+    /// assert!(analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    /// ```
+    #[must_use]
+    pub fn with_language(mut self, language: KeywordLanguage) -> Self {
+        self.config.language = Some(language);
+        self
     }
 
     /// Analyze context around a match and return a confidence score.
@@ -153,15 +239,20 @@ impl ContextAnalyzer {
         // Case-insensitive: lowercase the window (keywords are already lowercase)
         let window_lower = window.to_lowercase();
 
-        // Scan every language's keyword table. With no language hint the analyzer
-        // matches any known keyword regardless of script — preserving the
-        // pre-refactor behavior where non-Latin keywords lived in the same list.
-        // First match is sufficient (no double-boost).
-        KeywordLanguage::all().any(|language| {
+        // With a language hint, scan only that language's table. With no hint,
+        // scan every language — matching any known keyword regardless of script,
+        // preserving the pre-refactor behavior where non-Latin keywords lived in
+        // the same list. First match is sufficient (no double-boost).
+        let is_keyword_present = |language: KeywordLanguage| {
             context_keywords(entity_type, language)
                 .iter()
-                .any(|kw| window_lower.contains(kw))
-        })
+                .any(|kw| is_keyword_in_text(&window_lower, kw))
+        };
+
+        match self.config.language {
+            Some(language) => is_keyword_present(language),
+            None => KeywordLanguage::all().any(is_keyword_present),
+        }
     }
 }
 
@@ -319,6 +410,7 @@ mod tests {
             window_size: 200,
             boost_factor: 0.25,
             max_confidence: 0.8,
+            ..ContextConfig::default()
         };
         let analyzer = ContextAnalyzer::with_config(config);
 
@@ -349,6 +441,300 @@ mod tests {
             (score - BASE_CONFIDENCE).abs() < f64::EPSILON,
             "Empty text should return base confidence"
         );
+    }
+
+    #[test]
+    fn test_short_keyword_does_not_match_inside_a_word() {
+        // Turkish "ad" (name) must not boost on "adres" (address), and French
+        // "nom" must not boost on "nomination". Under plain substring matching
+        // both of these fire.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        let text = "adres: 12345678901";
+        assert!(!analyzer.is_context_present(text, 7, 18, &IdentifierType::PersonalName));
+
+        let french = ContextAnalyzer::new().with_language(KeywordLanguage::Fr);
+        let text = "nomination 12345678901";
+        assert!(!french.is_context_present(text, 11, 22, &IdentifierType::PersonalName));
+    }
+
+    #[test]
+    fn test_short_keyword_still_matches_as_a_whole_word() {
+        // The boundary check must not cost recall: the same short keywords must
+        // still match when they stand alone, including next to punctuation.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(analyzer.is_context_present(
+            "ad: Mehmet Yilmaz",
+            4,
+            17,
+            &IdentifierType::PersonalName
+        ));
+
+        let french = ContextAnalyzer::new().with_language(KeywordLanguage::Fr);
+        assert!(french.is_context_present(
+            "nom: Jean Dupont",
+            5,
+            16,
+            &IdentifierType::PersonalName
+        ));
+        // ...and at the very start/end of the window.
+        assert!(french.is_context_present("Jean Dupont nom", 0, 11, &IdentifierType::PersonalName));
+    }
+
+    #[test]
+    fn test_boundary_check_is_accent_aware() {
+        // A boundary is any NON-alphanumeric char, and `char::is_alphanumeric`
+        // is Unicode-aware — so an accented letter abutting the keyword is NOT
+        // a boundary. German "name" must not match inside "nachnamen".
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::De);
+        assert!(!analyzer.is_context_present(
+            "nachnamen 123-45-6789",
+            10,
+            21,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_mixed_script_keyword_matches_glued_to_native_text() {
+        // A keyword mixing ASCII with a non-spaced script ("apiキー", "api密钥")
+        // sits flush against native characters in real sentences — there is no
+        // space to find. Deciding the rule from the KEYWORD's script rather
+        // than the ADJACENT character silently killed every one of these.
+        let japanese = ContextAnalyzer::new().with_language(KeywordLanguage::Ja);
+        assert!(japanese.is_context_present(
+            "apiキーを教えてください sk_live_abcdef",
+            34,
+            51,
+            &IdentifierType::ApiKey
+        ));
+
+        let chinese = ContextAnalyzer::new().with_language(KeywordLanguage::ZhHans);
+        assert!(chinese.is_context_present(
+            "api密钥是sk_live_abcdef",
+            13,
+            30,
+            &IdentifierType::ApiKey
+        ));
+    }
+
+    #[test]
+    fn test_ascii_keyword_matches_inside_unspaced_text() {
+        // A pure-ASCII keyword ("iban") in CJK text has native characters on
+        // both sides, never spaces. It must still match.
+        let chinese = ContextAnalyzer::new().with_language(KeywordLanguage::ZhHans);
+        assert!(chinese.is_context_present(
+            "您的iban账号是DE89370400440532013000",
+            16,
+            38,
+            &IdentifierType::Iban
+        ));
+    }
+
+    #[test]
+    fn test_every_unspaced_script_range_is_pinned() {
+        // Both bounds of every range in `is_unspaced_script`, so a dropped or
+        // transposed bound fails here rather than silently resurrecting the
+        // false-negative. Also assert the characters just OUTSIDE each range
+        // are excluded, which is what makes the bounds exact. Reaching these
+        // through
+        // `is_context_present` alone is not possible for every range — the
+        // keyword tables contain no standalone jamo or ext-A ideographs — which
+        // is exactly how the first Korean test came to re-verify an
+        // already-covered range instead of the new one.
+        // BOTH bounds of every inclusive range, so an off-by-one or a
+        // transposed digit at either end fails here.
+        for (c, range) in [
+            ('\u{3040}', "hiragana/katakana lower"),
+            ('\u{30FF}', "hiragana/katakana upper"),
+            ('\u{3400}', "CJK ext-A lower"),
+            ('\u{4DBF}', "CJK ext-A upper"),
+            ('\u{4E00}', "CJK unified lower"),
+            ('\u{9FFF}', "CJK unified upper"),
+            ('\u{F900}', "CJK compatibility lower"),
+            ('\u{FAFF}', "CJK compatibility upper"),
+            ('\u{AC00}', "hangul syllables lower"),
+            ('\u{D7AF}', "hangul syllables upper"),
+            ('\u{1100}', "hangul jamo lower"),
+            ('\u{11FF}', "hangul jamo upper"),
+            ('\u{3130}', "hangul compatibility jamo lower"),
+            ('\u{318F}', "hangul compatibility jamo upper"),
+            ('\u{0E00}', "Thai lower"),
+            ('\u{0E7F}', "Thai upper"),
+            ('\u{FF00}', "fullwidth forms lower"),
+            ('\u{FFEF}', "fullwidth forms upper"),
+        ] {
+            assert!(
+                is_unspaced_script(c),
+                "{range} code point U+{:04X} should count as unspaced",
+                c as u32
+            );
+        }
+
+        // Space-separated scripts must NOT be in the list — they take the
+        // ordinary boundary path. The `*-just-*` entries sit one code point
+        // outside a range, pinning the bound from the other side.
+        for (c, script) in [
+            ('\u{0627}', "Arabic"),
+            ('\u{0905}', "Devanagari"),
+            ('a', "Latin"),
+            ('\u{0410}', "Cyrillic"),
+            ('\u{303F}', "just below hiragana"),
+            ('\u{3300}', "just above katakana"),
+            ('\u{33FF}', "just below CJK ext-A"),
+            ('\u{A000}', "just above CJK unified"),
+            ('\u{10FF}', "just below hangul jamo"),
+            ('\u{312F}', "just below hangul compatibility jamo"),
+            ('\u{3190}', "just above hangul compatibility jamo"),
+            ('\u{0DFF}', "just below Thai"),
+            ('\u{0E80}', "just above Thai"),
+        ] {
+            assert!(
+                !is_unspaced_script(c),
+                "{script} code point U+{:04X} must not count as unspaced",
+                c as u32
+            );
+        }
+    }
+
+    #[test]
+    fn test_compatibility_jamo_is_a_boundary_in_matching() {
+        // The range check above is direct; this drives the same range through
+        // the real matching path with a standalone jamo abutting the keyword.
+        assert!(is_keyword_in_text("ㄱiban ㅣ", "iban"));
+    }
+
+    #[test]
+    fn test_korean_keyword_matches_glued_to_hangul() {
+        // Precomposed hangul syllables (U+AC00-D7AF) abutting the keyword.
+        // NOTE: this covers the SYLLABLES range only — the jamo ranges are
+        // pinned by `test_every_unspaced_script_range_is_pinned` above.
+        let korean = ContextAnalyzer::new().with_language(KeywordLanguage::Ko);
+        assert!(korean.is_context_present(
+            "주민등록번호는900101-1234567입니다",
+            22,
+            36,
+            &IdentifierType::KoreaRrn
+        ));
+    }
+
+    #[test]
+    fn test_fullwidth_alphanumerics_count_as_a_boundary() {
+        // Fullwidth Latin letters are `is_alphanumeric()`, so without the
+        // FF00-FFEF range they would block the match exactly as native CJK did.
+        // (Fullwidth *punctuation* would pass either way — a vacuous test.)
+        let chinese = ContextAnalyzer::new().with_language(KeywordLanguage::ZhHans);
+        assert!(chinese.is_context_present(
+            "ＸＹiban ＤＥ89370400440532013000",
+            13,
+            43,
+            &IdentifierType::Iban
+        ));
+    }
+
+    #[test]
+    fn test_short_latin_keyword_abutting_cjk_is_accepted() {
+        // Documents the accepted precision trade-off: a short Latin keyword
+        // flush against an unrelated CJK character DOES match, because this
+        // layer has no word segmentation to tell it from a genuine hit. If that
+        // ever becomes intolerable the fix is segmentation, not narrowing the
+        // boundary rule — narrowing resurrects the CJK false-negative.
+        let turkish = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(turkish.is_context_present(
+            "广告ad投放 12345678901",
+            17,
+            28,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_unspaced_boundary_does_not_leak_into_latin() {
+        // The unspaced-script escape must not weaken the Latin rule: Turkish
+        // "ad" is still rejected inside "adres", where the adjacent character
+        // is a Latin letter, not a CJK one.
+        let turkish = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(!turkish.is_context_present(
+            "adres: 12345678901",
+            7,
+            18,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_first_occurrence_invalid_later_one_valid() {
+        // The match walk must not stop at the first boundary-failing hit:
+        // "ad" is embedded in "adres" first, then stands alone.
+        let turkish = ContextAnalyzer::new().with_language(KeywordLanguage::Tr);
+        assert!(turkish.is_context_present(
+            "adres yok, ad: Mehmet",
+            15,
+            21,
+            &IdentifierType::PersonalName
+        ));
+    }
+
+    #[test]
+    fn test_non_spaced_scripts_still_substring_match() {
+        // Japanese/Chinese/Thai have no word boundaries, so those keywords must
+        // keep matching by substring — the boundary rule must not silently
+        // disable every CJK keyword.
+        let japanese = ContextAnalyzer::new().with_language(KeywordLanguage::Ja);
+        assert!(japanese.is_context_present(
+            "お客様の電話番号は090-1234-5678です",
+            27,
+            40,
+            &IdentifierType::PhoneNumber
+        ));
+
+        let thai = ContextAnalyzer::new().with_language(KeywordLanguage::Th);
+        assert!(thai.is_context_present(
+            "เลขประจำตัวประชาชน 1234567890123",
+            55,
+            68,
+            &IdentifierType::ThailandTnin
+        ));
+    }
+
+    #[test]
+    fn test_italian_hint_matches_italian_keyword() {
+        // Acceptance criterion from #667: an Italian hint reports context for
+        // an Italian codice fiscale label.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::It);
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_wrong_language_hint_does_not_match() {
+        // The hint must actually filter. A German hint on Italian text must NOT
+        // report context — if `with_language` were a no-op this would still
+        // match via the Italian table and the test would pass vacuously.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::De);
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(!analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_no_hint_scans_all_languages() {
+        // Default behavior is unchanged: with no hint the same Italian text
+        // matches, because every language table is scanned.
+        let analyzer = ContextAnalyzer::new();
+        let text = "codice fiscale: RSSMRA85T10A562S";
+        assert!(analyzer.is_context_present(text, 16, 32, &IdentifierType::ItalyFiscalCode));
+    }
+
+    #[test]
+    fn test_hint_still_matches_english_when_english() {
+        // A hint narrows rather than disables: English text under an English
+        // hint behaves exactly as the unhinted analyzer does.
+        let analyzer = ContextAnalyzer::new().with_language(KeywordLanguage::En);
+        let text = "social security number is 123-45-6789";
+        assert!(analyzer.is_context_present(text, 26, 37, &IdentifierType::Ssn));
+
+        // ...and the same English text under a Thai hint does not.
+        let thai = ContextAnalyzer::new().with_language(KeywordLanguage::Th);
+        assert!(!thai.is_context_present(text, 26, 37, &IdentifierType::Ssn));
     }
 
     #[test]
