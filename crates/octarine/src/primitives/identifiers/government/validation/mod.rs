@@ -84,10 +84,14 @@ pub use itin::{is_test_itin, is_valid_itin_group, validate_itin};
 pub use us_mbi::{is_test_us_mbi, is_valid_mbi_letter, validate_us_mbi};
 
 // Re-export driver's license functions
-pub use driver_license::{is_test_driver_license, validate_driver_license};
+pub use driver_license::{
+    is_test_driver_license, validate_driver_license, validate_driver_license_with_checksum,
+};
 
 // Re-export passport functions
-pub use passport::{is_test_passport, validate_passport};
+pub use passport::{
+    is_test_passport, validate_passport, validate_us_passport, validate_us_passport_strict,
+};
 
 // Re-export national ID functions
 pub use national_id::{

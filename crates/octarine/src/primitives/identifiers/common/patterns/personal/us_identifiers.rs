@@ -189,25 +189,110 @@ pub(crate) mod driver_license {
             .expect("BUG: Invalid regex pattern")
     });
 
-    /// State-specific patterns (US)
+    /// State-specific patterns with a distinctive alpha-bearing layout (US)
+    ///
+    /// These layouts carry at least one letter in a fixed position, which
+    /// makes them specific enough to report at high confidence without any
+    /// surrounding "DL" / "license" keyword. Digits-only state layouts live in
+    /// [`weak_state_patterns`] instead — see its docs for why.
+    ///
+    /// Covers the alpha-bearing layouts of the top 20 US states by population.
     pub fn state_patterns() -> HashMap<&'static str, Regex> {
         let mut patterns = HashMap::new();
         patterns.insert(
             "CA",
             Regex::new(r"\b[A-Z]\d{7}\b").expect("BUG: Invalid regex pattern"),
-        ); // California
-        patterns.insert(
-            "TX",
-            Regex::new(r"\b\d{8}\b").expect("BUG: Invalid regex pattern"),
-        ); // Texas
-        patterns.insert(
-            "NY",
-            Regex::new(r"\b[A-Z]\d{7}|[A-Z]\d{18}\b").expect("BUG: Invalid regex pattern"),
-        ); // New York
+        ); // California: 1 letter + 7 digits
         patterns.insert(
             "FL",
             Regex::new(r"\b[A-Z]\d{12}\b").expect("BUG: Invalid regex pattern"),
-        ); // Florida
+        ); // Florida: 1 letter + 12 digits
+        patterns.insert(
+            "IL",
+            Regex::new(r"\b[A-Z]\d{11,12}\b").expect("BUG: Invalid regex pattern"),
+        ); // Illinois: 1 letter + 11-12 digits
+        patterns.insert(
+            "NY",
+            Regex::new(r"\b[A-Z]\d{18}\b").expect("BUG: Invalid regex pattern"),
+        ); // New York: 1 letter + 18 digits (the 9-digit layout is weak)
+        patterns.insert(
+            "NJ",
+            Regex::new(r"\b[A-Z]\d{14}\b").expect("BUG: Invalid regex pattern"),
+        ); // New Jersey: 1 letter + 14 digits
+        patterns.insert(
+            "MD",
+            Regex::new(r"\b[A-Z]\d{12}\b").expect("BUG: Invalid regex pattern"),
+        ); // Maryland: 1 letter + 12 digits
+        patterns.insert(
+            "WI",
+            Regex::new(r"\b[A-Z]\d{13}\b").expect("BUG: Invalid regex pattern"),
+        ); // Wisconsin: 1 letter + 13 digits
+        patterns.insert(
+            "MI",
+            Regex::new(r"\b[A-Z]\d{10}(?:\d{2})?\b").expect("BUG: Invalid regex pattern"),
+        ); // Michigan: 1 letter + 10 or 12 digits
+        patterns.insert(
+            "OH",
+            Regex::new(r"\b[A-Z]{2}\d{3,7}\b").expect("BUG: Invalid regex pattern"),
+        ); // Ohio: 2 letters + 3-7 digits
+        patterns.insert(
+            "AZ",
+            Regex::new(r"\b[A-Z]\d{8}\b").expect("BUG: Invalid regex pattern"),
+        ); // Arizona: 1 letter + 8 digits
+        patterns.insert(
+            "IN",
+            Regex::new(r"\b[A-Z]\d{9}\b").expect("BUG: Invalid regex pattern"),
+        ); // Indiana: 1 letter + 9 digits
+        patterns.insert(
+            "WA",
+            Regex::new(r"\b[A-Z]{7}\d{3}[A-Z0-9]{2}\b").expect("BUG: Invalid regex pattern"),
+        ); // Washington: 7 letters + 3 digits + 2 alphanumeric
+        patterns
+    }
+
+    /// Digits-only state license layouts (US) — weak signal, context required
+    ///
+    /// Several populous states issue licenses that are nothing but digits: TX
+    /// (7-8), PA (8), GA (7-9), TN (7-9), NC (up to 12), NY (9), VA (9), MA
+    /// (9), MO (9), AZ (9), IN (9-10).
+    ///
+    /// A bare `\d{7,9}` matches every order number, invoice number, and
+    /// account reference in a typical corpus, so these patterns are kept out
+    /// of [`state_patterns`] and reported at `Medium` confidence, upgraded to
+    /// `High` only when a driver-license keyword appears nearby. Putting them
+    /// in the high-confidence set would drown the redaction signal in false
+    /// positives — the mirror image of the over-permissive
+    /// `validate_driver_license` fallback this module's callers replaced.
+    pub fn weak_state_patterns() -> HashMap<&'static str, Regex> {
+        let mut patterns = HashMap::new();
+        patterns.insert(
+            "TX",
+            Regex::new(r"\b\d{7,8}\b").expect("BUG: Invalid regex pattern"),
+        ); // Texas: 7-8 digits
+        patterns.insert(
+            "PA",
+            Regex::new(r"\b\d{8}\b").expect("BUG: Invalid regex pattern"),
+        ); // Pennsylvania: 8 digits
+        patterns.insert(
+            "GA",
+            Regex::new(r"\b\d{7,9}\b").expect("BUG: Invalid regex pattern"),
+        ); // Georgia: 7-9 digits
+        patterns.insert(
+            "TN",
+            Regex::new(r"\b\d{7,9}\b").expect("BUG: Invalid regex pattern"),
+        ); // Tennessee: 7-9 digits
+        patterns.insert(
+            "NC",
+            Regex::new(r"\b\d{1,12}\b").expect("BUG: Invalid regex pattern"),
+        ); // North Carolina: 1-12 digits
+        patterns.insert(
+            "NINE_DIGIT",
+            Regex::new(r"\b\d{9}\b").expect("BUG: Invalid regex pattern"),
+        ); // NY / VA / MA / MO / AZ 9-digit layout
+        patterns.insert(
+            "IN",
+            Regex::new(r"\b\d{9,10}\b").expect("BUG: Invalid regex pattern"),
+        ); // Indiana: 9-10 digits
         patterns
     }
 }

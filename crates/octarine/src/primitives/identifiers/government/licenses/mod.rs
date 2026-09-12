@@ -8,7 +8,8 @@
 //! # Architecture
 //!
 //! Validators are organized by region:
-//! - `north_america`: US states, Canadian provinces, Mexico
+//! - `north_america`: jurisdictions with bespoke check-digit algorithms
+//! - `us_states`: table-driven US states (format-only validation)
 //! - `europe`: EU countries, UK (future)
 //! - `asia`: Asian countries (future)
 //! - `oceania`: Australia, New Zealand (future)
@@ -34,6 +35,7 @@
 //! 3. Register in `VALIDATORS` static
 
 pub(crate) mod north_america;
+pub(crate) mod us_states;
 
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
@@ -90,8 +92,13 @@ pub trait LicenseValidator: Send + Sync {
 static VALIDATORS: Lazy<HashMap<&'static str, Box<dyn LicenseValidator>>> = Lazy::new(|| {
     let mut map: HashMap<&'static str, Box<dyn LicenseValidator>> = HashMap::new();
 
-    // Register North American validators
+    // Register North American validators (bespoke check-digit algorithms)
     for validator in north_america::validators() {
+        map.insert(validator.jurisdiction_code(), validator);
+    }
+
+    // Register table-driven US states (format-only, no published check digit)
+    for validator in us_states::validators() {
         map.insert(validator.jurisdiction_code(), validator);
     }
 

@@ -214,17 +214,36 @@ Each gap includes the source domain report reference. Severity rule: blocks a Pr
 
 ### HIGH-3. US Driver License — 4 states only + permissive fallback
 
-- **Presidio**: Single regex with ~20 state alternatives + fallback digits-only pattern.
-- **Octarine**: `state_patterns()` in `common/patterns/personal/us_identifiers.rs:105` returns only `CA, TX, NY, FL`. `LicenseValidator` impls for `CA, FL, NE, WA`. `validate_driver_license` falls through to generic "6-13 alphanumeric" — far too permissive, false-positives on any customer/order ID.
-- **Recommendation**: Port Presidio's full state-alternation regex as stopgap. Build per-state `LicenseValidator` for top 20 states. Replace generic 6-13 fallback with explicit "unknown jurisdiction" `Problem::Validation`. Source: `gap_government_americas.md` H1.
-- **Effort**: Medium (1 week full; 1 day stopgap).
+- **Status**: ✅ Closed in #440. The top 20 US states by population are covered
+  by the jurisdiction registry. The 16 format-only states are declarative rows
+  in `primitives/identifiers/government/licenses/us_states.rs` (a `Layout` enum
+  plus one generic `TableValidator`), while CA, FL, NE and WA keep their bespoke
+  check-digit impls in `licenses/north_america.rs`. The permissive "6-13
+  alphanumeric" fallback is gone: `validate_driver_license` now returns an
+  "unknown jurisdiction" `Problem::Validation` listing the supported states, so
+  `CUST123456` no longer validates as a license. Format and check digit are
+  split per the module-wide convention —
+  `validate_driver_license` is format-only,
+  `validate_driver_license_with_checksum` also verifies the check digit for the
+  jurisdictions that publish one. Detection is tiered to keep the added
+  digits-only layouts from false-positiving on order numbers:
+  `state_patterns()` holds the alpha-bearing layouts (High confidence) and the
+  new `weak_state_patterns()` holds digits-only layouts at Medium, upgraded to
+  High only with a nearby driver-license keyword.
 
 ### HIGH-4. US Passport rejects valid legacy 9-digit numbers
 
-- **Presidio**: Two patterns — `\b[0-9]{9}\b` (legacy, weak 0.05) and `\b[A-Z][0-9]{8}\b` (Next Generation, weak 0.1).
-- **Octarine** (`primitives/identifiers/government/validation/passport.rs:73`): `validate_passport` requires "alphabetic series letter + digits"; bare 9-digit fails. Also rejects test patterns including `A12345678` (sequential), `A98765432` (descending) — silently drops valid (but unfortunate) real-world numbers.
-- **Recommendation**: Add `validate_us_passport` accepting both `[0-9]{9}` and `[A-Z][0-9]{8}`. Move test-pattern rejection behind opt-in `validate_passport_strict`. Distinguish `IdentifierType::UsPassport` from generic `Passport`. Source: `gap_government_americas.md` H2.
-- **Effort**: Medium (half-day).
+- **Status**: ✅ Closed in #440. `validate_us_passport` in
+  `primitives/identifiers/government/validation/passport.rs` accepts both US
+  layouts — 9 digits (legacy books, Presidio's `\b[0-9]{9}\b`) and 1 letter + 8
+  digits (Next Generation, `\b[A-Z][0-9]{8}\b`) — and does **not** reject test
+  patterns, so a real number whose digits happen to run in sequence
+  (`A12345678`) is no longer silently dropped. Test-pattern rejection moved
+  behind the opt-in `validate_us_passport_strict`. Both are wired through the
+  primitive builder, the Layer 3 observe-instrumented builder, and the shortcut
+  layer. The generic ICAO `validate_passport` is unchanged, so existing
+  non-US callers are unaffected; `IdentifierType::Passport` already carries the
+  `US_PASSPORT` label, so no new variant was needed.
 
 ### HIGH-5. IBAN — only 25 country lengths checked, no per-country BBAN structural validation
 
@@ -424,7 +443,7 @@ Still open after #667:
 
 ### Phase 4: Missing country packs (2-4 weeks)
 
-- **US** (CRIT-5, CRIT-6, HIGH-3, HIGH-4, HIGH-10): ITIN, MBI, per-state Driver License (top 20), state Medical License, US Passport 9-digit acceptance.
+- **US** (CRIT-5, CRIT-6, HIGH-10): state Medical License remains. ITIN, MBI, per-state Driver License (top 20, HIGH-3) and US Passport 9-digit acceptance (HIGH-4) have shipped.
 - **UK** (CRIT-10, HIGH-11): NHS, Driving Licence, Passport in `validation/uk.rs`.
 - **Germany** (CRIT-9): Implement `icao_doc_9303::check_digit` helper, then `DE_TAX_ID` + `DE_ID_CARD` + `DE_PASSPORT` first, then the German pack remainder (`DE_FUEHRERSCHEIN`, `DE_VAT_ID`, `DE_SOCIAL_SECURITY`, `DE_HEALTH_INSURANCE`, `DE_BSNR`, `DE_LANR`, `DE_HANDELSREGISTER`, `DE_KFZ`).
 - **Sweden** (CRIT-11): `SE_PERSONNUMMER` (Luhn + samordningsnummer day≥61) + `SE_ORGANISATIONSNUMMER`.

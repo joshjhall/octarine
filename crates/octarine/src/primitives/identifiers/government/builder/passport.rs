@@ -24,6 +24,28 @@ impl GovernmentIdentifierBuilder {
         validation::validate_passport(passport)
     }
 
+    /// Validate a US passport number (lenient)
+    ///
+    /// Accepts both US layouts — 9 digits (legacy) and 1 letter + 8 digits
+    /// (Next Generation) — and does not reject test patterns. Use
+    /// [`Self::validate_us_passport_strict`] to reject those.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the number matches neither US layout
+    pub fn validate_us_passport(&self, passport: &str) -> Result<(), Problem> {
+        validation::validate_us_passport(passport)
+    }
+
+    /// Validate a US passport number, rejecting known test patterns (strict)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format is invalid or the number is a test pattern
+    pub fn validate_us_passport_strict(&self, passport: &str) -> Result<(), Problem> {
+        validation::validate_us_passport_strict(passport)
+    }
+
     /// Redact passport with explicit strategy
     ///
     /// # Examples

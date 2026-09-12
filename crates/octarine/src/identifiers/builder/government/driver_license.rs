@@ -24,6 +24,34 @@ impl GovernmentBuilder {
         self.inner.validate_driver_license(license, state)
     }
 
+    /// Validate driver's license format and check digit for a specific state
+    ///
+    /// Stricter than [`Self::validate_driver_license`]: additionally verifies
+    /// the check digit for the jurisdictions that publish one (CA, FL, WA).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format is invalid, the check digit fails, or
+    /// the jurisdiction is not supported
+    pub fn validate_driver_license_with_checksum(
+        &self,
+        license: &str,
+        state: &str,
+    ) -> Result<(), Problem> {
+        let result = self
+            .inner
+            .validate_driver_license_with_checksum(license, state);
+
+        if self.emit_events && result.is_err() {
+            observe::warn(
+                "driver_license_validation_failed",
+                "Invalid driver's license format or check digit",
+            );
+        }
+
+        result
+    }
+
     /// Redact a driver's license with explicit strategy
     #[must_use]
     pub fn redact_driver_license_with_strategy(
@@ -89,6 +117,51 @@ mod tests {
         assert!(b.validate_driver_license("12345678", "TX").is_ok());
         // Wrong shape for CA (CA requires letter + 7 digits).
         assert!(b.validate_driver_license("12345678", "CA").is_err());
+    }
+
+    #[test]
+    fn test_validate_driver_license_covers_added_states() {
+        let b = GovernmentBuilder::silent();
+        assert!(b.validate_driver_license("12345678", "PA").is_ok());
+        assert!(b.validate_driver_license("A12345678901", "IL").is_ok());
+        assert!(b.validate_driver_license("A1234567890123", "WI").is_ok());
+    }
+
+    #[test]
+    fn test_validate_driver_license_rejects_unknown_jurisdiction() {
+        let b = GovernmentBuilder::silent();
+        // The issue #440 regression — a customer ID is no longer waved through
+        // for an unrecognised state.
+        assert!(b.validate_driver_license("CUST123456", "XX").is_err());
+    }
+
+    #[test]
+    fn test_validate_driver_license_with_checksum_is_stricter() {
+        let b = GovernmentBuilder::silent();
+        // Correct CA shape, but the check digit does not verify — so the two
+        // validators must disagree, or the split is cosmetic.
+        assert!(b.validate_driver_license("A1234567", "CA").is_ok());
+        assert!(
+            b.validate_driver_license_with_checksum("A1234567", "CA")
+                .is_err()
+        );
+
+        // A format-only jurisdiction has no check digit to fail, so both agree.
+        assert!(
+            b.validate_driver_license_with_checksum("12345678", "PA")
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_validate_driver_license_events_enabled() {
+        let b = GovernmentBuilder::new();
+        assert!(b.validate_driver_license("A1234567", "CA").is_ok());
+        assert!(b.validate_driver_license("CUST123456", "XX").is_err());
+        assert!(
+            b.validate_driver_license_with_checksum("A1234567", "CA")
+                .is_err()
+        );
     }
 
     #[test]

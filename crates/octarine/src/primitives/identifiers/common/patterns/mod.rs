@@ -87,8 +87,18 @@ mod tests {
         ); // California
         assert!(
             states
-                .get("TX")
-                .expect("TX pattern should exist")
+                .get("OH")
+                .expect("OH pattern should exist")
+                .is_match("AB12345")
+        ); // Ohio
+
+        // Digits-only layouts live in the weak tier, not here — a bare run of
+        // digits is too generic to report at high confidence.
+        assert!(!states.contains_key("TX"));
+        let weak = driver_license::weak_state_patterns();
+        assert!(
+            weak.get("TX")
+                .expect("TX weak pattern should exist")
                 .is_match("12345678")
         ); // Texas
     }
