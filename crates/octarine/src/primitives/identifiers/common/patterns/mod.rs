@@ -87,10 +87,64 @@ mod tests {
         ); // California
         assert!(
             states
-                .get("TX")
-                .expect("TX pattern should exist")
+                .get("OH")
+                .expect("OH pattern should exist")
+                .is_match("AB12345")
+        ); // Ohio
+
+        // Digits-only layouts live in the weak tier, not here — a bare run of
+        // digits is too generic to report at high confidence.
+        assert!(!states.contains_key("TX"));
+        let weak = driver_license::weak_state_patterns();
+        assert!(
+            weak.get("TX")
+                .expect("TX weak pattern should exist")
                 .is_match("12345678")
         ); // Texas
+    }
+
+    #[test]
+    fn test_alpha_bearing_state_patterns_match_their_layout() {
+        // Each added alpha-bearing entry gets a direct assertion, so a typo in
+        // one state's regex is not masked by the others.
+        let states = driver_license::state_patterns();
+        let cases: &[(&str, &str)] = &[
+            ("CA", "A1234567"),
+            ("FL", "A123456789012"),
+            ("IL", "A12345678901"),
+            ("NY", "A123456789012345678"),
+            ("NJ", "A12345678901234"),
+            ("MD", "A123456789012"),
+            ("WI", "A1234567890123"),
+            ("MI", "A1234567890"),
+            ("OH", "AB12345"),
+            ("AZ", "A12345678"),
+            ("IN", "A123456789"),
+            ("WA", "SMITHJA123AB"),
+        ];
+        for (code, sample) in cases {
+            let pattern = states
+                .get(code)
+                .unwrap_or_else(|| panic!("{code} pattern should exist"));
+            assert!(pattern.is_match(sample), "{code} did not match {sample:?}");
+        }
+        assert_eq!(
+            cases.len(),
+            states.len(),
+            "a state_patterns entry has no direct test"
+        );
+    }
+
+    #[test]
+    fn test_weak_state_patterns_are_digits_only() {
+        // The weak tier exists to hold shapes too generic for high confidence;
+        // an alpha-bearing value must never match one.
+        for (code, pattern) in driver_license::weak_state_patterns() {
+            assert!(
+                !pattern.is_match("ABCDEFGH"),
+                "{code} weak pattern matched letters"
+            );
+        }
     }
 
     #[test]

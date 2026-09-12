@@ -1,17 +1,21 @@
-//! North American driver's license validators
+//! North American driver's license validators with bespoke algorithms
 //!
-//! Supports US states and Canadian provinces.
+//! This module holds the jurisdictions whose validation cannot be expressed as
+//! a format table — each has a hand-written check-digit algorithm. The
+//! remaining US states in the top 20 by population are declarative rows in
+//! [`super::us_states`].
 //!
 //! # US States Implemented
 //!
 //! - **California (US-CA)**: 1 letter + 7 digits with check digit
 //! - **Florida (US-FL)**: 1 letter + 12 digits with check digit
-//! - **Nebraska (US-NE)**: Letter + 3-8 digits or 8 digits, with check digit
+//! - **Nebraska (US-NE)**: Letter + 3-8 digits or 8 digits (check digit not
+//!   publicly documented, so `is_checksum_valid` reports `None`)
 //! - **Washington (US-WA)**: 12 characters (letters and digits) with check digit
 //!
 //! # Check Digit Algorithms
 //!
-//! Most US states use weighted sum algorithms where character values are
+//! These states use weighted sum algorithms where character values are
 //! multiplied by position weights, summed, and the result mod 10 equals
 //! the check digit.
 

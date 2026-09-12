@@ -161,7 +161,7 @@ pub fn redact_driver_licenses_in_text_with_strategy(
     let mut result = Cow::Borrowed(text);
 
     // Check state-specific patterns
-    for (_state, pattern) in patterns::driver_license::state_patterns() {
+    for pattern in patterns::driver_license::state_patterns().values() {
         if pattern.is_match(&result) {
             result = Cow::Owned(
                 pattern

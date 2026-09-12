@@ -1,6 +1,7 @@
-//! Government identifier shortcuts (SSN, EIN, Singapore, Australia).
+//! US government identifier shortcuts (SSN, EIN, ITIN, MBI, Driver License, Passport).
 //!
 //! Convenience functions over [`GovernmentBuilder`](super::super::GovernmentBuilder).
+//! Non-US jurisdictions live in [`super::government_international`].
 
 use crate::observe::Problem;
 use crate::primitives::identifiers::SsnRedactionStrategy;
@@ -122,617 +123,74 @@ pub fn validate_us_mbi(mbi: &str) -> Result<(), Problem> {
 }
 
 // =============================================================================
-// Singapore UEN
+// US Driver License
 // =============================================================================
 
-/// Check if value is a Singapore UEN
+/// Check if value looks like a US driver's license
 #[must_use]
-pub fn is_singapore_uen(value: &str) -> bool {
-    GovernmentBuilder::new().is_singapore_uen(value)
+pub fn is_driver_license(value: &str) -> bool {
+    GovernmentBuilder::new().is_driver_license(value)
 }
 
-/// Find all Singapore UEN values in text
+/// Find all driver's licenses in text
 #[must_use]
-pub fn find_singapore_uens(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_singapore_uens_in_text(text)
+pub fn find_driver_licenses(text: &str) -> Vec<IdentifierMatch> {
+    GovernmentBuilder::new().find_driver_licenses_in_text(text)
 }
 
-/// Validate a Singapore UEN layout
+/// Validate a driver's license format for a US state
+///
+/// Covers the top 20 states by population. An unrecognised state code is an
+/// error, not a pass-through — use the detection layer for shape-only checks.
 ///
 /// # Errors
 ///
-/// Returns `Problem` if the UEN does not match any published layout.
-pub fn validate_singapore_uen(uen: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_singapore_uen(uen)
+/// Returns `Problem` if the license does not match any layout the state
+/// issues, or if the state is not a supported jurisdiction.
+pub fn validate_driver_license(license: &str, state: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_driver_license(license, state)
 }
 
-/// Validate a Singapore UEN with its layout-specific weighted mod-11 checksum
+/// Validate a driver's license format **and** check digit for a US state
+///
+/// Stricter than [`validate_driver_license`]: also verifies the check digit
+/// for the jurisdictions that publish one (CA, FL, WA).
 ///
 /// # Errors
 ///
-/// Returns `Problem` if the UEN layout, registration year, entity type, or
-/// check letter is invalid.
-pub fn validate_singapore_uen_with_checksum(uen: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_singapore_uen_with_checksum(uen)
-}
-
-// =============================================================================
-// Australia Medicare
-// =============================================================================
-
-/// Check if value is an Australian Medicare number
-#[must_use]
-pub fn is_australia_medicare(value: &str) -> bool {
-    GovernmentBuilder::new().is_australia_medicare(value)
-}
-
-/// Find all Australian Medicare numbers in text
-#[must_use]
-pub fn find_australia_medicares(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_australia_medicares_in_text(text)
-}
-
-/// Validate an Australian Medicare format
-///
-/// # Errors
-///
-/// Returns `Problem` if the Medicare format is invalid.
-pub fn validate_australia_medicare(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_australia_medicare(value)
+/// Returns `Problem` if the format is invalid, the check digit fails, or the
+/// state is not a supported jurisdiction.
+pub fn validate_driver_license_with_checksum(license: &str, state: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_driver_license_with_checksum(license, state)
 }
 
 // =============================================================================
-// Australia ACN
+// US Passport
 // =============================================================================
 
-/// Check if value is an Australian Company Number
-#[must_use]
-pub fn is_australia_acn(value: &str) -> bool {
-    GovernmentBuilder::new().is_australia_acn(value)
-}
-
-/// Find all Australian ACNs in text
-#[must_use]
-pub fn find_australia_acns(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_australia_acns_in_text(text)
-}
-
-/// Validate an Australian ACN format
+/// Validate a US passport number (lenient)
+///
+/// Accepts both layouts the US has issued and that remain in circulation:
+/// 9 digits (legacy books) and 1 letter + 8 digits (Next Generation). Test
+/// patterns are **not** rejected — a real number is not invalid because its
+/// digits happen to run in sequence. Use [`validate_us_passport_strict`] when
+/// filtering sample and documentation numbers is the point.
 ///
 /// # Errors
 ///
-/// Returns `Problem` if the ACN format is invalid.
-pub fn validate_australia_acn(acn: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_australia_acn(acn)
+/// Returns `Problem` if the number matches neither US layout.
+pub fn validate_us_passport(passport: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_us_passport(passport)
 }
 
-// =============================================================================
-// South Korea — RRN, FRN, Driver License, Passport, BRN
-// =============================================================================
-
-/// Check if value is a South Korea RRN (Resident Registration Number)
-#[must_use]
-pub fn is_korea_rrn(value: &str) -> bool {
-    GovernmentBuilder::new().is_korea_rrn(value)
-}
-
-/// Find all South Korea RRNs in text
-#[must_use]
-pub fn find_korea_rrns(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_korea_rrns_in_text(text)
-}
-
-/// Validate a South Korea RRN format
+/// Validate a US passport number, rejecting known test patterns (strict)
 ///
 /// # Errors
 ///
-/// Returns `Problem` if the RRN format is invalid.
-pub fn validate_korea_rrn(rrn: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_korea_rrn(rrn)
-}
-
-/// Check if value is a South Korea FRN (Foreign Registration Number)
-#[must_use]
-pub fn is_korea_frn(value: &str) -> bool {
-    GovernmentBuilder::new().is_korea_frn(value)
-}
-
-/// Find all South Korea FRNs in text
-#[must_use]
-pub fn find_korea_frns(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_korea_frns_in_text(text)
-}
-
-/// Validate a South Korea FRN format
-///
-/// # Errors
-///
-/// Returns `Problem` if the FRN format is invalid.
-pub fn validate_korea_frn(frn: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_korea_frn(frn)
-}
-
-/// Check if value is a South Korea Driver License
-#[must_use]
-pub fn is_korea_driver_license(value: &str) -> bool {
-    GovernmentBuilder::new().is_korea_driver_license(value)
-}
-
-/// Find all South Korea Driver Licenses in text
-#[must_use]
-pub fn find_korea_driver_licenses(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_korea_driver_licenses_in_text(text)
-}
-
-/// Validate a South Korea Driver License format
-///
-/// # Errors
-///
-/// Returns `Problem` if the license format or region is invalid.
-pub fn validate_korea_driver_license(dl: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_korea_driver_license(dl)
-}
-
-/// Check if value is a South Korea Passport
-#[must_use]
-pub fn is_korea_passport(value: &str) -> bool {
-    GovernmentBuilder::new().is_korea_passport(value)
-}
-
-/// Find all South Korea passports in text
-#[must_use]
-pub fn find_korea_passports(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_korea_passports_in_text(text)
-}
-
-/// Validate a South Korea Passport format
-///
-/// # Errors
-///
-/// Returns `Problem` if the passport format is invalid.
-pub fn validate_korea_passport(passport: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_korea_passport(passport)
-}
-
-/// Check if value is a South Korea BRN (Business Registration Number)
-#[must_use]
-pub fn is_korea_brn(value: &str) -> bool {
-    GovernmentBuilder::new().is_korea_brn(value)
-}
-
-/// Find all South Korea BRNs in text
-#[must_use]
-pub fn find_korea_brns(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_korea_brns_in_text(text)
-}
-
-/// Validate a South Korea BRN format
-///
-/// # Errors
-///
-/// Returns `Problem` if the BRN format is invalid.
-pub fn validate_korea_brn(brn: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_korea_brn(brn)
-}
-
-// =============================================================================
-// Italy — Partita IVA (VAT), Passport, Identity Card, Driver License
-// =============================================================================
-//
-// `ItalyFiscalCode` (Codice Fiscale) shortcuts are deliberately omitted —
-// they predate the shortcuts file and remain accessible through
-// `GovernmentBuilder` directly.
-
-/// Check if value is an Italy Partita IVA (VAT)
-#[must_use]
-pub fn is_italy_vat(value: &str) -> bool {
-    GovernmentBuilder::new().is_italy_vat(value)
-}
-
-/// Find all Italy VAT mentions in text (label-anchored)
-#[must_use]
-pub fn find_italy_vats(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_italy_vats_in_text(text)
-}
-
-/// Validate an Italy VAT format
-///
-/// # Errors
-///
-/// Returns `Problem` if the VAT is not exactly 11 digits.
-pub fn validate_italy_vat(vat: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_italy_vat(vat)
-}
-
-/// Validate an Italy VAT with mod-10 Luhn-style checksum
-///
-/// # Errors
-///
-/// Returns `Problem` if format or checksum fails.
-pub fn validate_italy_vat_with_checksum(vat: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_italy_vat_with_checksum(vat)
-}
-
-/// Check if value is an Italy passport
-#[must_use]
-pub fn is_italy_passport(value: &str) -> bool {
-    GovernmentBuilder::new().is_italy_passport(value)
-}
-
-/// Find all Italy passport mentions in text (label-anchored)
-#[must_use]
-pub fn find_italy_passports(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_italy_passports_in_text(text)
-}
-
-/// Validate an Italy passport format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format is invalid.
-pub fn validate_italy_passport(passport: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_italy_passport(passport)
-}
-
-/// Check if value is an Italy identity card (paper, CIE 2.0, or CIE 3.0)
-#[must_use]
-pub fn is_italy_identity_card(value: &str) -> bool {
-    GovernmentBuilder::new().is_italy_identity_card(value)
-}
-
-/// Find all Italy identity card mentions in text (label-anchored)
-#[must_use]
-pub fn find_italy_identity_cards(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_italy_identity_cards_in_text(text)
-}
-
-/// Validate an Italy identity card format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format matches none of the three supported
-/// layouts.
-pub fn validate_italy_identity_card(card: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_italy_identity_card(card)
-}
-
-/// Check if value is an Italy driver license (standard or U1 Carta
-/// Conducente)
-#[must_use]
-pub fn is_italy_driver_license(value: &str) -> bool {
-    GovernmentBuilder::new().is_italy_driver_license(value)
-}
-
-/// Find all Italy driver license mentions in text
-#[must_use]
-pub fn find_italy_driver_licenses(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_italy_driver_licenses_in_text(text)
-}
-
-/// Validate an Italy driver license format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format matches neither the standard nor U1
-/// form.
-pub fn validate_italy_driver_license(license: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_italy_driver_license(license)
-}
-
-// ----------------------------------------------------------------------
-// UK identifiers — NHS Number, Passport, Driving Licence
-// ----------------------------------------------------------------------
-
-/// Check if value is a UK NHS Number (10 digits)
-#[must_use]
-pub fn is_uk_nhs(value: &str) -> bool {
-    GovernmentBuilder::new().is_uk_nhs(value)
-}
-
-/// Find all UK NHS Number mentions in text (label-anchored or grouped form)
-#[must_use]
-pub fn find_uk_nhs(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_uk_nhs_in_text(text)
-}
-
-/// Validate a UK NHS Number format (10 digits after stripping separators)
-///
-/// # Errors
-///
-/// Returns `Problem` if the format is invalid.
-pub fn validate_uk_nhs(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_uk_nhs(value)
-}
-
-/// Validate a UK NHS Number including the mod-11 weighted checksum
-///
-/// # Errors
-///
-/// Returns `Problem` if format or checksum fails, or if the value is a
-/// placeholder pattern (all identical digits).
-pub fn validate_uk_nhs_with_checksum(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_uk_nhs_with_checksum(value)
-}
-
-/// Check if value is a UK passport (2 letters + 7 digits)
-#[must_use]
-pub fn is_uk_passport(value: &str) -> bool {
-    GovernmentBuilder::new().is_uk_passport(value)
-}
-
-/// Find all UK passport mentions in text (label-anchored)
-#[must_use]
-pub fn find_uk_passports(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_uk_passports_in_text(text)
-}
-
-/// Validate a UK passport format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format is invalid.
-pub fn validate_uk_passport(passport: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_uk_passport(passport)
-}
-
-/// Check if value is a UK DVLA driving licence (16-char structural shape)
-#[must_use]
-pub fn is_uk_driving_licence(value: &str) -> bool {
-    GovernmentBuilder::new().is_uk_driving_licence(value)
-}
-
-/// Find all UK DVLA driving licence mentions in text (label-anchored)
-#[must_use]
-pub fn find_uk_driving_licences(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_uk_driving_licences_in_text(text)
-}
-
-/// Validate a UK DVLA driving licence shape
-///
-/// # Errors
-///
-/// Returns `Problem` if the 16-character structural shape does not match,
-/// or if the surname is the all-9 placeholder.
-pub fn validate_uk_driving_licence(licence: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_uk_driving_licence(licence)
-}
-
-// ============================================================================
-// Turkey
-// ============================================================================
-
-/// Check if value is a Turkey TCKN (T.C. Kimlik Numarası)
-#[must_use]
-pub fn is_turkey_tckn(value: &str) -> bool {
-    GovernmentBuilder::new().is_turkey_tckn(value)
-}
-
-/// Find all Turkey TCKNs in text (label-anchored only)
-#[must_use]
-pub fn find_turkey_tckns(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_turkey_tckns_in_text(text)
-}
-
-/// Validate a Turkey TCKN format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format is invalid.
-pub fn validate_turkey_tckn(tckn: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_turkey_tckn(tckn)
-}
-
-/// Validate a Turkey TCKN with NVI mod-10 dual-check-digit verification
-///
-/// # Errors
-///
-/// Returns `Problem` if the format or either check digit is invalid.
-pub fn validate_turkey_tckn_with_checksum(tckn: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_turkey_tckn_with_checksum(tckn)
-}
-
-/// Check if value is a Turkey license plate
-#[must_use]
-pub fn is_turkey_license_plate(value: &str) -> bool {
-    GovernmentBuilder::new().is_turkey_license_plate(value)
-}
-
-/// Find all Turkey license plates in text
-#[must_use]
-pub fn find_turkey_license_plates(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_turkey_license_plates_in_text(text)
-}
-
-/// Validate a Turkey license plate format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format is invalid.
-pub fn validate_turkey_license_plate(plate: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_turkey_license_plate(plate)
-}
-
-// ============================================================================
-// Sweden
-// ============================================================================
-
-/// Check if value is a Sweden personnummer (shape + date sanity)
-#[must_use]
-pub fn is_sweden_personnummer(value: &str) -> bool {
-    GovernmentBuilder::new().is_sweden_personnummer(value)
-}
-
-/// Find all Sweden personnummers in text (label-anchored only)
-#[must_use]
-pub fn find_sweden_personnummers(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_sweden_personnummers_in_text(text)
-}
-
-/// Validate a Sweden personnummer format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format or date is invalid.
-pub fn validate_sweden_personnummer(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_sweden_personnummer(value)
-}
-
-/// Validate a Sweden personnummer with Luhn checksum verification
-///
-/// # Errors
-///
-/// Returns `Problem` if the format, date, or checksum is invalid.
-pub fn validate_sweden_personnummer_with_checksum(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_sweden_personnummer_with_checksum(value)
-}
-
-/// Check if value is a Sweden organisationsnummer (shape + third-digit rule)
-#[must_use]
-pub fn is_sweden_orgnummer(value: &str) -> bool {
-    GovernmentBuilder::new().is_sweden_orgnummer(value)
-}
-
-/// Find all Sweden organisationsnummers in text (label-anchored only)
-#[must_use]
-pub fn find_sweden_orgnummers(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_sweden_orgnummers_in_text(text)
-}
-
-/// Validate a Sweden organisationsnummer format
-///
-/// # Errors
-///
-/// Returns `Problem` if the format or third-digit rule is invalid.
-pub fn validate_sweden_orgnummer(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_sweden_orgnummer(value)
-}
-
-/// Validate a Sweden organisationsnummer with Luhn checksum verification
-///
-/// # Errors
-///
-/// Returns `Problem` if the format or checksum is invalid.
-pub fn validate_sweden_orgnummer_with_checksum(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_sweden_orgnummer_with_checksum(value)
-}
-
-// ============================================================================
-// Germany — Steuer-IdNr, Personalausweis (nPA), Reisepass
-// ============================================================================
-
-/// Check if value is a valid German Steuer-IdNr (tax ID)
-#[must_use]
-pub fn is_germany_tax_id(value: &str) -> bool {
-    GovernmentBuilder::new().is_germany_tax_id(value)
-}
-
-/// Find all German Steuer-IdNr mentions in text (label-anchored only)
-#[must_use]
-pub fn find_germany_tax_ids(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_germany_tax_ids_in_text(text)
-}
-
-/// Validate a German Steuer-IdNr format (structural + checksum rules)
-///
-/// # Errors
-///
-/// Returns `Problem` if the value is not a valid Steuer-IdNr.
-pub fn validate_germany_tax_id(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_germany_tax_id(value)
-}
-
-/// Validate a German Steuer-IdNr with ISO 7064 mod-11,10 checksum verification
-///
-/// # Errors
-///
-/// Returns `Problem` if the format, structural rule, or checksum is invalid.
-pub fn validate_germany_tax_id_with_checksum(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_germany_tax_id_with_checksum(value)
-}
-
-/// Check if value is a valid German Personalausweis (nPA) number
-#[must_use]
-pub fn is_germany_id_card(value: &str) -> bool {
-    GovernmentBuilder::new().is_germany_id_card(value)
-}
-
-/// Find all German Personalausweis mentions in text (label-anchored only)
-#[must_use]
-pub fn find_germany_id_cards(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_germany_id_cards_in_text(text)
-}
-
-/// Validate a German Personalausweis format
-///
-/// # Errors
-///
-/// Returns `Problem` if the value is not a valid nPA number.
-pub fn validate_germany_id_card(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_germany_id_card(value)
-}
-
-/// Validate a German Personalausweis with ICAO Doc 9303 check-digit verification
-///
-/// # Errors
-///
-/// Returns `Problem` if the format or check digit is invalid.
-pub fn validate_germany_id_card_with_checksum(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_germany_id_card_with_checksum(value)
-}
-
-/// Check if value is a valid German Reisepass (passport) number
-#[must_use]
-pub fn is_germany_passport(value: &str) -> bool {
-    GovernmentBuilder::new().is_germany_passport(value)
-}
-
-/// Find all German Reisepass mentions in text (label-anchored only)
-#[must_use]
-pub fn find_germany_passports(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_germany_passports_in_text(text)
-}
-
-/// Validate a German Reisepass format
-///
-/// # Errors
-///
-/// Returns `Problem` if the value is not a valid passport number.
-pub fn validate_germany_passport(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_germany_passport(value)
-}
-
-/// Validate a German Reisepass with ICAO Doc 9303 check-digit verification
-///
-/// # Errors
-///
-/// Returns `Problem` if the format or check digit is invalid.
-pub fn validate_germany_passport_with_checksum(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_germany_passport_with_checksum(value)
-}
-
-// ============================================================================
-// Spain — Passport
-// ============================================================================
-
-/// Check if value is a valid Spanish passport number (3 letters + 6 digits)
-#[must_use]
-pub fn is_spain_passport(value: &str) -> bool {
-    GovernmentBuilder::new().is_spain_passport(value)
-}
-
-/// Find all Spanish passport mentions in text (label-anchored only)
-#[must_use]
-pub fn find_spain_passports(text: &str) -> Vec<IdentifierMatch> {
-    GovernmentBuilder::new().find_spain_passports_in_text(text)
-}
-
-/// Validate a Spanish passport format (3 letters + 6 digits, no checksum)
-///
-/// # Errors
-///
-/// Returns `Problem` if the value is not a valid passport format.
-pub fn validate_spain_passport(value: &str) -> Result<(), Problem> {
-    GovernmentBuilder::new().validate_spain_passport(value)
+/// Returns `Problem` if the format is invalid, or the number is a known test
+/// pattern (all-zero, all-same-digit, or a sequential run).
+pub fn validate_us_passport_strict(passport: &str) -> Result<(), Problem> {
+    GovernmentBuilder::new().validate_us_passport_strict(passport)
 }
 
 #[cfg(test)]
@@ -760,217 +218,27 @@ mod tests {
     }
 
     #[test]
-    fn test_singapore_uen_shortcuts() {
-        assert!(is_singapore_uen("201912345K"));
-        assert!(!is_singapore_uen("not a uen"));
-        assert!(validate_singapore_uen("201912345K").is_ok());
-        assert!(validate_singapore_uen("").is_err());
-        assert!(!find_singapore_uens("UEN: 201912345K registered").is_empty());
-        // Checksum variant is stricter: 201912345K is layout-valid but its
-        // check letter should be 'R'.
-        assert!(validate_singapore_uen_with_checksum("201912345R").is_ok());
-        assert!(validate_singapore_uen_with_checksum("201912345K").is_err());
+    fn test_us_driver_license_shortcuts() {
+        assert!(is_driver_license("A1234567"));
+        assert!(!is_driver_license("!"));
+        assert!(validate_driver_license("A1234567", "CA").is_ok());
+        assert!(validate_driver_license("12345678", "PA").is_ok());
+        // Unknown jurisdiction is an error, not a pass-through (issue #440).
+        assert!(validate_driver_license("CUST123456", "XX").is_err());
+        // The checksum variant is stricter on a jurisdiction that has one.
+        assert!(validate_driver_license_with_checksum("A1234567", "CA").is_err());
+        assert!(!find_driver_licenses("DL# A1234567").is_empty());
     }
 
     #[test]
-    fn test_australia_medicare_shortcuts() {
-        assert!(is_australia_medicare("2123 45670 1"));
-        assert!(!is_australia_medicare("1234567890")); // first digit not 2-6
-        assert!(validate_australia_medicare("2123456701").is_ok());
-        assert!(validate_australia_medicare("").is_err());
-        assert!(!find_australia_medicares("Patient Medicare 2123 45670 1").is_empty());
-    }
-
-    #[test]
-    fn test_australia_acn_shortcuts() {
-        assert!(is_australia_acn("004 085 616"));
-        assert!(!is_australia_acn("12345678")); // too short
-        assert!(validate_australia_acn("004085616").is_ok());
-        assert!(validate_australia_acn("").is_err());
-        assert!(!find_australia_acns("ACN 004 085 616 active").is_empty());
-    }
-
-    #[test]
-    fn test_korea_rrn_shortcuts() {
-        assert!(is_korea_rrn("900115-1234567"));
-        assert!(!is_korea_rrn("900115-5234567")); // gender 5 is FRN, not RRN
-        assert!(validate_korea_rrn("900115-1234567").is_ok());
-        assert!(validate_korea_rrn("").is_err());
-        assert!(!find_korea_rrns("RRN: 900115-1234567").is_empty());
-    }
-
-    #[test]
-    fn test_korea_frn_shortcuts() {
-        assert!(is_korea_frn("900115-5234567"));
-        assert!(!is_korea_frn("900115-1234567")); // gender 1 is RRN, not FRN
-        assert!(validate_korea_frn("900115-5234567").is_ok());
-        assert!(validate_korea_frn("").is_err());
-        assert!(!find_korea_frns("FRN: 900115-5234567").is_empty());
-    }
-
-    #[test]
-    fn test_korea_driver_license_shortcuts() {
-        assert!(is_korea_driver_license("11-90-123456-78"));
-        assert!(!is_korea_driver_license("10-90-123456-78")); // region 10 out of range
-        assert!(validate_korea_driver_license("11-90-123456-78").is_ok());
-        assert!(validate_korea_driver_license("").is_err());
-        assert!(!find_korea_driver_licenses("Driver License: 11-90-123456-78 issued").is_empty());
-    }
-
-    #[test]
-    fn test_korea_passport_shortcuts() {
-        assert!(is_korea_passport("M12345678"));
-        assert!(is_korea_passport("MA12345678"));
-        assert!(!is_korea_passport("A12345678")); // wrong prefix
-        assert!(validate_korea_passport("M12345678").is_ok());
-        assert!(validate_korea_passport("").is_err());
-        assert!(!find_korea_passports("KR passport: M12345678 valid").is_empty());
-    }
-
-    #[test]
-    fn test_korea_brn_shortcuts() {
-        assert!(is_korea_brn("123-45-67890"));
-        assert!(!is_korea_brn("12-345-6789")); // wrong shape (SSN-like)
-        assert!(validate_korea_brn("123-45-67890").is_ok());
-        assert!(validate_korea_brn("").is_err());
-        assert!(!find_korea_brns("BRN: 123-45-67890 registered").is_empty());
-    }
-
-    #[test]
-    fn test_uk_nhs_shortcuts() {
-        assert!(is_uk_nhs("9434765919"));
-        assert!(is_uk_nhs("943 476 5919"));
-        assert!(!is_uk_nhs("not a number"));
-        assert!(validate_uk_nhs("9434765919").is_ok());
-        assert!(validate_uk_nhs_with_checksum("9434765919").is_ok());
-        // Bad checksum
-        assert!(validate_uk_nhs_with_checksum("9434765910").is_err());
-        // Placeholder
-        assert!(validate_uk_nhs_with_checksum("9999999999").is_err());
-        // Text scanning requires label or grouped form
-        assert!(!find_uk_nhs("NHS Number: 9434765919 in records").is_empty());
-        assert!(find_uk_nhs("9434765919").is_empty());
-    }
-
-    #[test]
-    fn test_uk_passport_shortcuts() {
-        assert!(is_uk_passport("AB1234567"));
-        assert!(!is_uk_passport("AB123")); // too short
-        assert!(validate_uk_passport("AB1234567").is_ok());
-        assert!(validate_uk_passport("").is_err());
-        // Text scanning requires UK-anchored label
-        assert!(!find_uk_passports("UK passport: AB1234567 valid").is_empty());
-        assert!(find_uk_passports("Reference AB1234567").is_empty());
-    }
-
-    #[test]
-    fn test_uk_driving_licence_shortcuts() {
-        assert!(is_uk_driving_licence("MORGA753116SM9IJ"));
-        assert!(!is_uk_driving_licence("too short"));
-        assert!(validate_uk_driving_licence("MORGA753116SM9IJ").is_ok());
-        // All-9 surname is the DVLA placeholder
-        assert!(validate_uk_driving_licence("99999753116AB1XY").is_err());
-        // Text scanning requires label
-        assert!(!find_uk_driving_licences("DVLA MORGA753116SM9IJ").is_empty());
-    }
-
-    #[test]
-    fn test_turkey_tckn_shortcuts() {
-        // Bare 11-digit shape passes the format check
-        assert!(is_turkey_tckn("12345678901"));
-        // Leading zero rejected at pattern level
-        assert!(!is_turkey_tckn("01234567890"));
-        assert!(validate_turkey_tckn("12345678901").is_ok());
-        assert!(validate_turkey_tckn("").is_err());
-        // All-same rejected
-        assert!(validate_turkey_tckn("11111111111").is_err());
-        // Text scanning requires a label — bare digits collide with phones
-        assert!(!find_turkey_tckns("TCKN: 12345678901").is_empty());
-        assert!(find_turkey_tckns("12345678901").is_empty());
-    }
-
-    #[test]
-    fn test_turkey_license_plate_shortcuts() {
-        assert!(is_turkey_license_plate("34 ABC 123"));
-        assert!(!is_turkey_license_plate("82 ABC 123")); // province out of range
-        assert!(validate_turkey_license_plate("34 ABC 123").is_ok());
-        assert!(validate_turkey_license_plate("34 QBC 123").is_err()); // reserved letter
-        assert!(!find_turkey_license_plates("Plaka: 34 ABC 123").is_empty());
-    }
-
-    #[test]
-    fn test_sweden_personnummer_shortcuts() {
-        // Canonical Swedish test personnummer.
-        assert!(is_sweden_personnummer("19121212-1212"));
-        assert!(validate_sweden_personnummer("19121212-1212").is_ok());
-        assert!(validate_sweden_personnummer_with_checksum("19121212-1212").is_ok());
-        assert!(validate_sweden_personnummer("").is_err());
-        // Bad month rejected.
-        assert!(validate_sweden_personnummer("811328-1234").is_err());
-        // Text scanning requires a label — bare digits collide with dates/phones.
-        assert!(!find_sweden_personnummers("personnummer: 19121212-1212").is_empty());
-        assert!(find_sweden_personnummers("19121212-1212").is_empty());
-    }
-
-    #[test]
-    fn test_sweden_orgnummer_shortcuts() {
-        // 556016-0680 has third digit 6 (>= 2) and a valid Luhn check digit.
-        assert!(is_sweden_orgnummer("556016-0680"));
-        assert!(validate_sweden_orgnummer("556016-0680").is_ok());
-        assert!(validate_sweden_orgnummer_with_checksum("556016-0680").is_ok());
-        // Third digit < 2 is a personnummer shape, not an orgnummer.
-        assert!(!is_sweden_orgnummer("551016-0680"));
-        assert!(validate_sweden_orgnummer("").is_err());
-        // Label-gated text scanning.
-        assert!(!find_sweden_orgnummers("orgnr: 556016-0680").is_empty());
-        assert!(find_sweden_orgnummers("556016-0680").is_empty());
-    }
-
-    #[test]
-    fn test_germany_tax_id_shortcuts() {
-        // 10002345676: valid ISO 7064 mod-11,10 checksum + structural rule.
-        assert!(is_germany_tax_id("10002345676"));
-        assert!(validate_germany_tax_id("10002345676").is_ok());
-        assert!(validate_germany_tax_id_with_checksum("10002345676").is_ok());
-        assert!(validate_germany_tax_id("").is_err());
-        // Tampered check digit rejected.
-        assert!(validate_germany_tax_id_with_checksum("10002345675").is_err());
-        // Label-gated text scanning — bare 11 digits collide with other IDs.
-        assert!(!find_germany_tax_ids("Steuer-IdNr: 10002345676").is_empty());
-        assert!(find_germany_tax_ids("10002345676").is_empty());
-    }
-
-    #[test]
-    fn test_germany_id_card_shortcuts() {
-        assert!(is_germany_id_card("CH20064148"));
-        assert!(validate_germany_id_card("CH20064148").is_ok());
-        assert!(validate_germany_id_card_with_checksum("CH20064148").is_ok());
-        assert!(validate_germany_id_card("").is_err());
-        // Tampered check digit rejected.
-        assert!(validate_germany_id_card_with_checksum("CH20064149").is_err());
-        assert!(!find_germany_id_cards("Personalausweis CH20064148").is_empty());
-    }
-
-    #[test]
-    fn test_germany_passport_shortcuts() {
-        assert!(is_germany_passport("T220001293"));
-        assert!(validate_germany_passport("T220001293").is_ok());
-        assert!(validate_germany_passport_with_checksum("T220001293").is_ok());
-        assert!(validate_germany_passport("").is_err());
-        // Tampered check digit rejected.
-        assert!(validate_germany_passport_with_checksum("T220001294").is_err());
-        assert!(!find_germany_passports("Reisepass T220001293").is_empty());
-    }
-
-    #[test]
-    fn test_spain_passport_shortcuts() {
-        assert!(is_spain_passport("ABC123456"));
-        assert!(validate_spain_passport("ABC123456").is_ok());
-        assert!(validate_spain_passport("").is_err());
-        // Wrong shape rejected.
-        assert!(validate_spain_passport("AB1234567").is_err());
-        // Label-gated text scanning — bare shape does not match.
-        assert!(!find_spain_passports("pasaporte ABC123456").is_empty());
-        assert!(find_spain_passports("ABC123456").is_empty());
+    fn test_us_passport_shortcuts() {
+        // Legacy 9-digit books are accepted (issue #440).
+        assert!(validate_us_passport("123456789").is_ok());
+        assert!(validate_us_passport("A83726159").is_ok());
+        assert!(validate_us_passport("AB1234567").is_err());
+        // Strict rejects test patterns the lenient variant allows.
+        assert!(validate_us_passport("A12345678").is_ok());
+        assert!(validate_us_passport_strict("A12345678").is_err());
+        assert!(validate_us_passport_strict("A83726159").is_ok());
     }
 }

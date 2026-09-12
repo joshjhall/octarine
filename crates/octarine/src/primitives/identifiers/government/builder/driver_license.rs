@@ -24,6 +24,23 @@ impl GovernmentIdentifierBuilder {
         validation::validate_driver_license(license, state)
     }
 
+    /// Validate driver's license format and check digit for a specific state
+    ///
+    /// Stricter than [`Self::validate_driver_license`]: additionally verifies
+    /// the check digit for the jurisdictions that publish one (CA, FL, WA).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Problem` if the format is invalid, the check digit fails, or
+    /// the jurisdiction is not supported
+    pub fn validate_driver_license_with_checksum(
+        &self,
+        license: &str,
+        state: &str,
+    ) -> Result<(), Problem> {
+        validation::validate_driver_license_with_checksum(license, state)
+    }
+
     /// Redact driver's license with explicit strategy
     ///
     /// # Examples
