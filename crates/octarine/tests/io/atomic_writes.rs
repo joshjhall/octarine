@@ -1,6 +1,9 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
-use octarine::io::{FileMode, SecureFileOps, WriteOptions, write_atomic};
+use octarine::io::{SecureFileOps, WriteOptions, write_atomic};
+// Only the #[cfg(unix)] permission tests below name FileMode.
+#[cfg(unix)]
+use octarine::io::FileMode;
 use tempfile::tempdir;
 
 /// Write atomic → read back via SecureFileOps → verify content round-trips.

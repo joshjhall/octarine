@@ -42,6 +42,12 @@ pub fn random_u128() -> Result<u128, CryptoError> {
 }
 
 /// Generate a random usize value.
+///
+/// # Platform Support
+///
+/// Requires a 32-bit or 64-bit target. Narrowing a wider random draw to a
+/// smaller `usize` would silently discard entropy, so unsupported pointer
+/// widths fail the build rather than degrade the CSPRNG.
 #[inline]
 pub fn random_usize() -> Result<usize, CryptoError> {
     #[cfg(target_pointer_width = "64")]
@@ -51,6 +57,10 @@ pub fn random_usize() -> Result<usize, CryptoError> {
     #[cfg(target_pointer_width = "32")]
     {
         random_u32().map(|v| v as usize)
+    }
+    #[cfg(not(any(target_pointer_width = "64", target_pointer_width = "32")))]
+    {
+        compile_error!("random_usize: unsupported target_pointer_width (expected 32 or 64)");
     }
 }
 
@@ -162,6 +172,10 @@ pub fn random_u64_bounded(bound: u64) -> Result<u64, CryptoError> {
 /// # Errors
 ///
 /// Returns an error if bound is 0 or if the OS CSPRNG fails.
+///
+/// # Platform Support
+///
+/// Requires a 32-bit or 64-bit target — see [`random_usize`].
 #[inline]
 pub fn random_usize_bounded(bound: usize) -> Result<usize, CryptoError> {
     #[cfg(target_pointer_width = "64")]
@@ -171,6 +185,12 @@ pub fn random_usize_bounded(bound: usize) -> Result<usize, CryptoError> {
     #[cfg(target_pointer_width = "32")]
     {
         random_u32_bounded(bound as u32).map(|v| v as usize)
+    }
+    #[cfg(not(any(target_pointer_width = "64", target_pointer_width = "32")))]
+    {
+        compile_error!(
+            "random_usize_bounded: unsupported target_pointer_width (expected 32 or 64)"
+        );
     }
 }
 

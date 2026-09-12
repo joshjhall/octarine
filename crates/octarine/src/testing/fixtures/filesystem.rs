@@ -61,7 +61,7 @@ pub fn nested_temp_dir() -> TempDir {
     dir
 }
 
-/// Read-only directory fixture (Unix only)
+/// Read-only directory fixture
 ///
 /// Creates a temporary directory with no write permissions.
 /// Useful for testing permission denied scenarios.
@@ -70,6 +70,19 @@ pub fn nested_temp_dir() -> TempDir {
 ///
 /// The fixture restores write permissions before cleanup to allow
 /// the temporary directory to be deleted.
+///
+/// # Platform Behavior
+///
+/// Unix and Windows both provide this fixture with the same API, but the
+/// underlying semantics differ and tests must not assume the Unix behavior:
+///
+/// - **Unix**: mode `0o555` on the directory prevents creating, renaming, or
+///   deleting entries inside it.
+/// - **Windows**: the read-only *attribute* on a directory does **not**
+///   prevent creating children — it is largely advisory for directories.
+///   Assert permission-denied against writes to the pre-created
+///   `existing.txt` (which is itself marked read-only), not against directory
+///   mutation.
 #[cfg(unix)]
 #[fixture]
 pub fn readonly_dir() -> ReadonlyDir {
@@ -114,6 +127,61 @@ impl Drop for ReadonlyDir {
     }
 }
 
+/// Read-only directory fixture (Windows variant)
+///
+/// Mirrors the Unix fixture's API exactly — see [`readonly_dir`] for the
+/// platform behavior differences. Both the directory and the pre-created
+/// `existing.txt` are marked read-only; on Windows only the *file* flag
+/// actually denies writes.
+#[cfg(windows)]
+#[fixture]
+pub fn readonly_dir() -> ReadonlyDir {
+    let dir = TempDir::new().expect("Failed to create temp directory");
+
+    // Create a file before making it read-only
+    let file_path = dir.path().join("existing.txt");
+    fs::write(&file_path, "readonly content").expect("Failed to write initial file");
+
+    // The read-only attribute on a directory is advisory on Windows, but the
+    // flag on the file itself does deny writes — set both so the fixture is
+    // useful for permission-denied tests.
+    set_readonly(&file_path, true).expect("Failed to mark file read-only");
+    set_readonly(dir.path(), true).expect("Failed to mark directory read-only");
+
+    ReadonlyDir { inner: dir }
+}
+
+/// Wrapper for readonly directory that restores permissions on drop
+#[cfg(windows)]
+pub struct ReadonlyDir {
+    inner: TempDir,
+}
+
+#[cfg(windows)]
+impl ReadonlyDir {
+    /// Get the path to the readonly directory
+    pub fn path(&self) -> &std::path::Path {
+        self.inner.path()
+    }
+}
+
+#[cfg(windows)]
+impl Drop for ReadonlyDir {
+    fn drop(&mut self) {
+        // Clear the read-only flags so TempDir cleanup can succeed
+        let _ = set_readonly(self.inner.path(), false);
+        let _ = set_readonly(&self.inner.path().join("existing.txt"), false);
+    }
+}
+
+/// Toggle the Windows read-only attribute on a path.
+#[cfg(windows)]
+fn set_readonly(path: &std::path::Path, readonly: bool) -> std::io::Result<()> {
+    let mut perms = fs::metadata(path)?.permissions();
+    perms.set_readonly(readonly);
+    fs::set_permissions(path, perms)
+}
+
 /// Directory with various symlink scenarios
 ///
 /// Creates a temp directory with:
@@ -135,6 +203,14 @@ impl Drop for ReadonlyDir {
 /// ├── loop_a               # Symlink → loop_b
 /// └── loop_b               # Symlink → loop_a
 /// ```
+///
+/// # Platform Behavior
+///
+/// Available on both Unix and Windows with an identical tree. On Windows,
+/// creating symlinks requires `SeCreateSymbolicLinkPrivilege` — enable
+/// Developer Mode or run elevated. The fixture panics with that guidance
+/// rather than falling back to a plain-file tree, which would let symlink
+/// tests pass without ever exercising a symlink.
 #[cfg(unix)]
 #[fixture]
 pub fn symlink_dir() -> TempDir {
@@ -164,6 +240,48 @@ pub fn symlink_dir() -> TempDir {
     // Symlink loop: a → b → a
     symlink(base.join("loop_b"), base.join("loop_a")).expect("Failed to create loop_a");
     symlink(base.join("loop_a"), base.join("loop_b")).expect("Failed to create loop_b");
+
+    dir
+}
+
+/// Directory with various symlink scenarios (Windows variant)
+///
+/// Builds the same tree as the Unix fixture — see [`symlink_dir`] for the
+/// structure and the privilege requirement. Windows distinguishes file and
+/// directory symlinks at creation time, so each link is created with the
+/// variant matching its target.
+#[cfg(windows)]
+#[fixture]
+pub fn symlink_dir() -> TempDir {
+    use std::os::windows::fs::{symlink_dir as win_symlink_dir, symlink_file};
+
+    /// Shared guidance for every symlink creation failure in this fixture.
+    const PRIVILEGE_HINT: &str = "failed to create symlink — Windows requires \
+         SeCreateSymbolicLinkPrivilege (enable Developer Mode or run elevated)";
+
+    let dir = TempDir::new().expect("Failed to create temp directory");
+    let base = dir.path();
+
+    // Create a regular file
+    fs::write(base.join("real_file.txt"), "real content").expect("Failed to write file");
+
+    // Create a directory
+    fs::create_dir(base.join("real_dir")).expect("Failed to create directory");
+    fs::write(base.join("real_dir/inside.txt"), "inside dir").expect("Failed to write file");
+
+    // Symlink to file
+    symlink_file(base.join("real_file.txt"), base.join("link_to_file")).expect(PRIVILEGE_HINT);
+
+    // Symlink to directory
+    win_symlink_dir(base.join("real_dir"), base.join("link_to_dir")).expect(PRIVILEGE_HINT);
+
+    // Broken symlink (target doesn't exist). The target is never created, so
+    // the file variant is used — Windows records the kind at creation time.
+    symlink_file(base.join("nonexistent"), base.join("broken_link")).expect(PRIVILEGE_HINT);
+
+    // Symlink loop: a → b → a
+    symlink_file(base.join("loop_b"), base.join("loop_a")).expect(PRIVILEGE_HINT);
+    symlink_file(base.join("loop_a"), base.join("loop_b")).expect(PRIVILEGE_HINT);
 
     dir
 }
@@ -280,6 +398,54 @@ mod tests {
 
         // Directory symlink works
         assert!(base.join("link_to_dir").exists());
+        assert!(base.join("link_to_dir/inside.txt").exists());
+
+        // Broken symlink: symlink_metadata succeeds but exists() returns false
+        assert!(fs::symlink_metadata(base.join("broken_link")).is_ok());
+        assert!(!base.join("broken_link").exists());
+
+        // Symlink loop exists
+        assert!(fs::symlink_metadata(base.join("loop_a")).is_ok());
+    }
+
+    #[cfg(windows)]
+    #[rstest::rstest]
+    fn test_readonly_dir_fixture(readonly_dir: ReadonlyDir) {
+        let existing = readonly_dir.path().join("existing.txt");
+
+        // Should have an existing file
+        assert!(existing.exists());
+
+        // The read-only ATTRIBUTE is what this fixture guarantees on Windows;
+        // assert the flag itself rather than a denied directory mutation,
+        // which Windows permits (see the fixture's Platform Behavior note).
+        let perms = fs::metadata(&existing)
+            .expect("Failed to read existing.txt metadata")
+            .permissions();
+        assert!(
+            perms.readonly(),
+            "existing.txt should carry the read-only attribute"
+        );
+
+        // A read-only file denies writes even for an administrator.
+        assert!(
+            fs::write(&existing, "overwrite").is_err(),
+            "Writing to a read-only file should fail"
+        );
+    }
+
+    #[cfg(windows)]
+    #[rstest::rstest]
+    fn test_symlink_dir_fixture(symlink_dir: TempDir) {
+        let base = symlink_dir.path();
+
+        // Regular symlink works, and is genuinely a symlink (not a copy)
+        assert!(base.join("link_to_file").exists());
+        assert!(base.join("link_to_file").is_symlink());
+        assert!(fs::read_link(base.join("link_to_file")).is_ok());
+
+        // Directory symlink resolves through to the target's contents
+        assert!(base.join("link_to_dir").is_symlink());
         assert!(base.join("link_to_dir/inside.txt").exists());
 
         // Broken symlink: symlink_metadata succeeds but exists() returns false
