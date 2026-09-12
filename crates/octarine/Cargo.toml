@@ -282,11 +282,19 @@ test-case = "3.3"
 wiremock = "0.6"
 fake = { version = "5.1", features = ["derive"] }
 assert_cmd = "2.0"
-rexpect = "0.7"
 prometheus-parse = "0.2"
 # Mints JWTs for the http middleware enforcement tests; the crate validates
 # tokens but does not re-export an encoder.
 jsonwebtoken = { version = "11.0", features = ["rust_crypto"] }
+
+# rexpect drives pty-based interactive CLI sessions via `nix`, so it builds on
+# Unix only -- mirroring the `[target.'cfg(unix)'.dependencies]` entry above.
+# Its sole consumer is `testing::cli::interactive`, which is itself
+# `#[cfg(unix)]`. An unconditional dev-dependency here would break
+# `cargo check --all-targets` on Windows, where dev-deps are built for the
+# test targets even though nothing references them.
+[target.'cfg(unix)'.dev-dependencies]
+rexpect = "0.7"
 
 # Test-only binary driving CliApp::run / run_with_args / run_cli as a real
 # subprocess (these call clap's get_matches(), so they cannot run in-process
