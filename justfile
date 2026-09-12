@@ -9,8 +9,13 @@ default: check clippy test
 # ─── Build & Check ───────────────────────────────────────────────────────────
 
 # Type-check the workspace (matches CI flag set — see check-windows / check-macos)
+#
+# --all-targets is required, not optional: without it `#[cfg(test)] mod tests`
+# is never compiled, so platform-gated tests (the #[cfg(windows)] fixtures and
+# the #[cfg(not(unix))] writer smoke test) would silently never build on the
+# only jobs that could ever build them.
 check:
-    cargo check --workspace --all-features
+    cargo check --workspace --all-features --all-targets
 
 # Build the workspace
 build:
