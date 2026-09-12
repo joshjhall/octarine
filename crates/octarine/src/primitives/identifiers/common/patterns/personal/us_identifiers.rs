@@ -197,7 +197,14 @@ pub(crate) mod driver_license {
     /// [`weak_state_patterns`] instead — see its docs for why.
     ///
     /// Covers the alpha-bearing layouts of the top 20 US states by population.
-    pub fn state_patterns() -> HashMap<&'static str, Regex> {
+    pub fn state_patterns() -> &'static HashMap<&'static str, Regex> {
+        &STATE_PATTERNS
+    }
+
+    /// Compiled once — `find_driver_licenses_in_text` runs on the PII
+    /// redaction hot path, and rebuilding this map per call recompiles every
+    /// regex in it (measured: ~28ms per call for this map alone).
+    static STATE_PATTERNS: Lazy<HashMap<&'static str, Regex>> = Lazy::new(|| {
         let mut patterns = HashMap::new();
         patterns.insert(
             "CA",
@@ -248,7 +255,7 @@ pub(crate) mod driver_license {
             Regex::new(r"\b[A-Z]{7}\d{3}[A-Z0-9]{2}\b").expect("BUG: Invalid regex pattern"),
         ); // Washington: 7 letters + 3 digits + 2 alphanumeric
         patterns
-    }
+    });
 
     /// Digits-only state license layouts (US) — weak signal, context required
     ///
@@ -263,7 +270,12 @@ pub(crate) mod driver_license {
     /// in the high-confidence set would drown the redaction signal in false
     /// positives — the mirror image of the over-permissive
     /// `validate_driver_license` fallback this module's callers replaced.
-    pub fn weak_state_patterns() -> HashMap<&'static str, Regex> {
+    pub fn weak_state_patterns() -> &'static HashMap<&'static str, Regex> {
+        &WEAK_STATE_PATTERNS
+    }
+
+    /// Compiled once, for the same hot-path reason as [`STATE_PATTERNS`].
+    static WEAK_STATE_PATTERNS: Lazy<HashMap<&'static str, Regex>> = Lazy::new(|| {
         let mut patterns = HashMap::new();
         patterns.insert(
             "TX",
@@ -294,7 +306,7 @@ pub(crate) mod driver_license {
             Regex::new(r"\b\d{9,10}\b").expect("BUG: Invalid regex pattern"),
         ); // Indiana: 9-10 digits
         patterns
-    }
+    });
 }
 
 /// Passport patterns

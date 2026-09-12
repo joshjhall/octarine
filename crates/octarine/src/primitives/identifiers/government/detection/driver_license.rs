@@ -273,6 +273,33 @@ mod tests {
     }
 
     #[test]
+    fn test_pattern_maps_are_compiled_once() {
+        // These maps are rebuilt on every `find_driver_licenses_in_text`, which
+        // sits on the PII redaction hot path. If they ever stop being `Lazy`
+        // statics, every call recompiles 19 regexes: measured at ~44ms per
+        // call, which took one redaction-heavy integration test from 15s to
+        // 97s and timed it out in CI.
+        //
+        // Two calls returning the SAME address proves the map is a static, not
+        // a fresh allocation per call.
+        let a = patterns::driver_license::state_patterns();
+        let b = patterns::driver_license::state_patterns();
+        assert!(
+            std::ptr::eq(a, b),
+            "state_patterns() rebuilds its map per call — regexes are being \
+             recompiled on the redaction hot path"
+        );
+
+        let a = patterns::driver_license::weak_state_patterns();
+        let b = patterns::driver_license::weak_state_patterns();
+        assert!(
+            std::ptr::eq(a, b),
+            "weak_state_patterns() rebuilds its map per call — regexes are \
+             being recompiled on the redaction hot path"
+        );
+    }
+
+    #[test]
     fn test_empty_input() {
         assert!(!is_driver_license(""));
         assert!(find_driver_licenses_in_text("").is_empty());
