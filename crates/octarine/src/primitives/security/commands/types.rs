@@ -445,7 +445,9 @@ mod tests {
 
     #[test]
     fn test_allowlist_symlink_resolution_real_binary() {
-        // Test with real binaries that should exist
+        // Test with real binaries that should exist. Only the Unix arm below
+        // consumes this, so it is unused on other platforms.
+        #[cfg_attr(not(unix), allow(unused_variables))]
         let allowlist = AllowList::new().allow("sh");
 
         // /bin/sh should exist on Unix systems

@@ -1,8 +1,9 @@
 #![allow(clippy::panic, clippy::expect_used)]
 
-use octarine::io::{
-    AuditLevel, FileMode, MagicFileType, SecureFileOps, SecureFileOpsConfig, WriteOptions,
-};
+use octarine::io::{AuditLevel, MagicFileType, SecureFileOps, SecureFileOpsConfig, WriteOptions};
+// Only the #[cfg(unix)] permission tests below name FileMode.
+#[cfg(unix)]
+use octarine::io::FileMode;
 use tempfile::tempdir;
 
 // =========================================================================
