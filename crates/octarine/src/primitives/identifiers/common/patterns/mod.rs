@@ -104,6 +104,50 @@ mod tests {
     }
 
     #[test]
+    fn test_alpha_bearing_state_patterns_match_their_layout() {
+        // Each added alpha-bearing entry gets a direct assertion, so a typo in
+        // one state's regex is not masked by the others.
+        let states = driver_license::state_patterns();
+        let cases: &[(&str, &str)] = &[
+            ("CA", "A1234567"),
+            ("FL", "A123456789012"),
+            ("IL", "A12345678901"),
+            ("NY", "A123456789012345678"),
+            ("NJ", "A12345678901234"),
+            ("MD", "A123456789012"),
+            ("WI", "A1234567890123"),
+            ("MI", "A1234567890"),
+            ("OH", "AB12345"),
+            ("AZ", "A12345678"),
+            ("IN", "A123456789"),
+            ("WA", "SMITHJA123AB"),
+        ];
+        for (code, sample) in cases {
+            let pattern = states
+                .get(code)
+                .unwrap_or_else(|| panic!("{code} pattern should exist"));
+            assert!(pattern.is_match(sample), "{code} did not match {sample:?}");
+        }
+        assert_eq!(
+            cases.len(),
+            states.len(),
+            "a state_patterns entry has no direct test"
+        );
+    }
+
+    #[test]
+    fn test_weak_state_patterns_are_digits_only() {
+        // The weak tier exists to hold shapes too generic for high confidence;
+        // an alpha-bearing value must never match one.
+        for (code, pattern) in driver_license::weak_state_patterns() {
+            assert!(
+                !pattern.is_match("ABCDEFGH"),
+                "{code} weak pattern matched letters"
+            );
+        }
+    }
+
+    #[test]
     fn test_passport_patterns() {
         assert!(passport::EXPLICIT.is_match("Passport: 123456789"));
         assert!(passport::WITH_PREFIX.is_match("PP# 987654321"));

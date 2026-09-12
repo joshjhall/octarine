@@ -157,8 +157,15 @@ pub static US_STATE_FORMATS: &[StateFormat] = &[
     StateFormat {
         code: "US-NC",
         name: "North Carolina",
-        layouts: &[Layout::DigitRange(1, 12)],
-        description: "1-12 digits (e.g. 123456789)",
+        // AAMVA documents NC as 1-12 digits, but a 1-digit "license" is not a
+        // shape the DMV issues, and a floor of 1 would make this row accept
+        // almost any short numeric token — a zip+4, a truncated account
+        // number — reintroducing for one named state exactly the
+        // over-permissiveness the unknown-jurisdiction error removed. The
+        // floor is raised to the 8 digits NC actually issues; the ceiling
+        // keeps AAMVA's 12 to cover historical numbers.
+        layouts: &[Layout::DigitRange(8, 12)],
+        description: "8-12 digits (e.g. 123456789)",
     },
     StateFormat {
         code: "US-MI",
@@ -422,6 +429,45 @@ mod tests {
         assert!(!wi.is_format_valid("A123456789012"));
     }
 
+    /// Per-state `(code, accepted, rejected)` — the rejected value is always a
+    /// shape that is valid for SOME other jurisdiction, so a validator that
+    /// ignored layout would pass it.
+    const PER_STATE_CASES: &[(&str, &str, &str)] = &[
+        ("US-TX", "12345678", "A1234567"),              // rejects CA shape
+        ("US-NY", "123456789", "12345678"),             // rejects PA shape
+        ("US-PA", "12345678", "1234567"),               // rejects 7 digits
+        ("US-IL", "A12345678901", "A1234567"),          // rejects CA shape
+        ("US-OH", "AB12345", "ABC1234"),                // rejects 3 letters
+        ("US-GA", "123456789", "123456"),               // rejects 6 digits
+        ("US-NC", "123456789", "1234567"),              // rejects 7 digits (below issued floor)
+        ("US-MI", "A1234567890", "A12345678901"),       // rejects IL shape
+        ("US-NJ", "A12345678901234", "A1234567890123"), // rejects WI shape
+        ("US-VA", "A123456789", "A1234567"),            // rejects CA shape
+        ("US-AZ", "A12345678", "A1234567"),             // rejects CA shape
+        ("US-TN", "123456789", "123456"),               // rejects 6 digits
+        ("US-MA", "S12345678", "S1234567"),             // rejects 7 digits
+        ("US-IN", "A123456789", "A12345678"),           // rejects AZ shape
+        ("US-MO", "A123456789", "A1234"),               // rejects 4 digits
+        ("US-MD", "A123456789012", "A1234567890123"),   // rejects WI shape
+        ("US-WI", "A1234567890123", "A123456789012"),   // rejects MD shape
+    ];
+
+    #[test]
+    fn test_every_state_accepts_its_shape_and_rejects_a_neighbours() {
+        // Individual coverage for all 17 table rows, not just the handful with
+        // bespoke tests above.
+        assert_eq!(
+            PER_STATE_CASES.len(),
+            US_STATE_FORMATS.len(),
+            "PER_STATE_CASES is out of sync with the table"
+        );
+        for (code, accepted, rejected) in PER_STATE_CASES {
+            let v = validator_for(code);
+            assert!(v.is_format_valid(accepted), "{code} rejected {accepted:?}");
+            assert!(!v.is_format_valid(rejected), "{code} accepted {rejected:?}");
+        }
+    }
+
     #[test]
     fn test_every_table_state_has_a_valid_and_invalid_example() {
         // Guards against a table row whose layouts accept nothing (or
@@ -438,6 +484,32 @@ mod tests {
             // accepts something.
             assert!(!format.layouts.is_empty(), "{} has no layouts", format.code);
         }
+    }
+
+    #[test]
+    fn test_no_state_accepts_a_trivially_short_numeric_token() {
+        // A bare "5" or "123" must not validate as anyone's license. NC is the
+        // state at risk here: AAMVA's documented floor of 1 digit would accept
+        // both, so this pins the deliberately-raised floor.
+        for format in US_STATE_FORMATS {
+            let v = TableValidator::new(format);
+            for token in ["5", "12", "123", "1234"] {
+                assert!(
+                    !v.is_format_valid(token),
+                    "{} accepted the short token {token:?}",
+                    format.code
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_north_carolina_floor_is_issued_length() {
+        let v = validator_for("US-NC");
+        assert!(v.is_format_valid("12345678")); // 8 digits, the floor
+        assert!(v.is_format_valid("123456789012")); // 12 digits, the ceiling
+        assert!(!v.is_format_valid("1234567")); // 7 — below what NC issues
+        assert!(!v.is_format_valid("1234567890123")); // 13 — above AAMVA
     }
 
     #[test]

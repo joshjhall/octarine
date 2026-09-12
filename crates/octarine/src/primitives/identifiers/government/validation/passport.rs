@@ -272,8 +272,19 @@ pub fn is_test_passport(passport: &str) -> bool {
         return false;
     }
 
-    // All-zero digits after letter
-    let digits = &upper[1..];
+    // The digit run to analyse. A letter-prefixed number (ICAO, and the US
+    // Next Generation layout) carries its series letter at index 0, which is
+    // not part of the run. A bare-digit number — the US legacy 9-digit
+    // layout, which reaches here through `validate_us_passport_strict` — has
+    // no series letter, so slicing off index 0 unconditionally would drop a
+    // real digit and misjudge the rest: "923456789" is not sequential, but
+    // its tail "23456789" is, and the number would be rejected as a test
+    // pattern.
+    let digits = if upper.starts_with(|c: char| c.is_ascii_alphabetic()) {
+        upper.get(1..).unwrap_or("")
+    } else {
+        upper.as_str()
+    };
     if digits.chars().all(|c| c == '0') {
         return true;
     }
@@ -561,6 +572,42 @@ mod tests {
 
         assert!(validate_us_passport("A00000000").is_ok());
         assert!(validate_us_passport_strict("A00000000").is_err());
+    }
+
+    #[test]
+    fn test_is_test_passport_analyses_whole_run_for_bare_digits() {
+        // A bare-digit (legacy US) number has no series letter, so the whole
+        // 9-digit string is the run. "923456789" is NOT monotonic — only its
+        // tail "23456789" is — so slicing off index 0 would wrongly call it a
+        // test pattern.
+        assert!(!is_test_passport("923456789"));
+        assert!(!is_test_passport("023456789"));
+        // Genuinely sequential bare-digit numbers are still caught.
+        assert!(is_test_passport("123456789"));
+        assert!(is_test_passport("987654321"));
+        assert!(is_test_passport("000000000"));
+        assert!(is_test_passport("111111111"));
+    }
+
+    #[test]
+    fn test_is_test_passport_still_skips_the_series_letter() {
+        // The letter-prefixed path is unchanged: the run excludes the letter,
+        // so "A12345678" is sequential and "A92345678" is not.
+        assert!(is_test_passport("A12345678"));
+        assert!(is_test_passport("A98765432"));
+        assert!(!is_test_passport("A92345678"));
+        assert!(is_test_passport("A00000000"));
+    }
+
+    #[test]
+    fn test_us_passport_strict_accepts_non_sequential_legacy_numbers() {
+        // The end-to-end consequence of the two tests above: a real legacy
+        // book whose trailing digits happen to run in sequence must survive
+        // the strict validator.
+        assert!(validate_us_passport_strict("923456789").is_ok());
+        assert!(validate_us_passport_strict("023456789").is_ok());
+        // A fully sequential one is still rejected.
+        assert!(validate_us_passport_strict("123456789").is_err());
     }
 
     #[test]
