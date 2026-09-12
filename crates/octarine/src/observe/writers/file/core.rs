@@ -204,6 +204,22 @@ pub(super) async fn get_file(
             })?;
         }
 
+        // On non-Unix platforms `set_mode` is a no-op, so this file — and every
+        // file a later rotation opens — carries whatever ACL it inherited. The
+        // one-shot construction warning in `from_builder` cannot cover
+        // rotations, so warn per open to keep the isolation gap visible.
+        #[cfg(not(unix))]
+        {
+            crate::observe::warn(
+                "observe.writers.file",
+                format!(
+                    "Log file {} opened without mode enforcement (configured file_mode={} is a no-op on this platform). Restrict access via OS-level ACLs.",
+                    path.display(),
+                    writer.file_mode
+                ),
+            );
+        }
+
         *file_guard = Some(file);
 
         // Record when file was opened
@@ -707,6 +723,47 @@ mod tests {
         assert!(is_json.is_err(), "Human readable should not be valid JSON");
 
         // Cleanup
+        let _ = tokio::fs::remove_dir_all(&log_dir).await;
+    }
+
+    /// Smoke test for the non-Unix construction and open path.
+    ///
+    /// On non-Unix platforms `set_mode` is a no-op and `from_builder` /
+    /// `get_file` take their `#[cfg(not(unix))]` warning arms. Those arms had
+    /// no coverage at all (issue #416, finding 3): this asserts the writer
+    /// still constructs, opens a file, and persists an event through them.
+    #[cfg(not(unix))]
+    #[tokio::test]
+    async fn test_non_unix_writer_smoke() {
+        let log_dir = std::env::temp_dir().join("test_non_unix_smoke");
+        let _ = tokio::fs::remove_dir_all(&log_dir).await;
+        tokio::fs::create_dir_all(&log_dir)
+            .await
+            .expect("Failed to create test dir");
+
+        let log_dir_str = log_dir
+            .to_str()
+            .expect("Temp dir path should be valid UTF-8");
+        let writer = FileWriter::new(log_dir_str, "test.log")
+            .await
+            .expect("FileWriter should construct on non-Unix platforms");
+
+        let event = Event::new(EventType::Info, "non-unix smoke event");
+        writer
+            .write_event(&event)
+            .await
+            .expect("Failed to write event");
+        writer.flush().await.expect("Failed to flush");
+        drop(writer);
+
+        let contents = tokio::fs::read_to_string(log_dir.join("test.log"))
+            .await
+            .expect("Log file should exist after a write on non-Unix");
+        assert!(
+            contents.contains("non-unix smoke event"),
+            "Event should be persisted on non-Unix; got: {contents}"
+        );
+
         let _ = tokio::fs::remove_dir_all(&log_dir).await;
     }
 }

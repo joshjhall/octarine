@@ -196,6 +196,12 @@ pub fn ct_select_u64(condition: bool, a: u64, b: u64) -> u64 {
 }
 
 /// Select between two usize values in constant time.
+///
+/// # Platform Support
+///
+/// Requires a 32-bit or 64-bit target. On any other pointer width the
+/// selection would round-trip through a narrower integer and silently drop
+/// high bits, so unsupported widths fail the build instead.
 #[must_use]
 #[inline]
 pub fn ct_select_usize(condition: bool, a: usize, b: usize) -> usize {
@@ -206,6 +212,10 @@ pub fn ct_select_usize(condition: bool, a: usize, b: usize) -> usize {
     #[cfg(target_pointer_width = "32")]
     {
         ct_select_u32(condition, a as u32, b as u32) as usize
+    }
+    #[cfg(not(any(target_pointer_width = "64", target_pointer_width = "32")))]
+    {
+        compile_error!("ct_select_usize: unsupported target_pointer_width (expected 32 or 64)");
     }
 }
 

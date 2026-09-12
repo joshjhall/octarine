@@ -8,8 +8,14 @@
 //! ### Filesystem Fixtures
 //! - [`temp_dir()`] - Empty temporary directory
 //! - [`nested_temp_dir()`] - Directory with nested structure
-//! - [`readonly_dir()`] - Directory with no write permissions (Unix)
-//! - [`symlink_dir()`] - Directory with various symlink scenarios (Unix)
+//! - [`readonly_dir()`] - Directory with no write permissions
+//! - [`symlink_dir()`] - Directory with various symlink scenarios
+//!
+//! `readonly_dir()` and `symlink_dir()` are available on both Unix and
+//! Windows, but their platform semantics differ (directory read-only is
+//! advisory on Windows; Windows symlinks need
+//! `SeCreateSymbolicLinkPrivilege`). See each fixture's `# Platform Behavior`
+//! section before asserting against them.
 //!
 //! ### File Fixtures
 //! - [`temp_file_with_content()`] - Temporary file with specific content
