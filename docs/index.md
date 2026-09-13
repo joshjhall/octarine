@@ -31,6 +31,13 @@ API principles, error handling, and usage examples
 - Async patterns
 - Code examples
 
+### 🔍 [PII Analysis](./analyze/)
+
+Detection orchestration — the analyzer engine and its pipeline
+
+- [Analysis pipeline](./analyze/pipeline.md) - recognizers, scoring, conflict
+  resolution, explanations
+
 ### 🔒 [Security](./security/)
 
 Security patterns, OWASP compliance, and threat models
