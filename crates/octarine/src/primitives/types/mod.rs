@@ -11,6 +11,8 @@
 //! - `crypto` - Crypto types (`KeyType`, `KeyFormat`, `SignatureAlgorithm`)
 //! - `dates` - Date parsing utilities
 //! - `network` - Network types (`PortRange`)
+//! - `uuid` - UUID predicates (`is_uuid_shape`, `is_uuid_present`), shared by
+//!   `data` and `identifiers` so neither depends on the other
 //!
 //! ## Architecture Note
 //!
@@ -51,6 +53,7 @@
 mod crypto;
 mod dates;
 mod network;
+mod uuid;
 
 // Re-export commonly used types
 #[cfg(feature = "crypto-validation")]
@@ -60,6 +63,9 @@ pub(crate) use dates::{
     get_current_year, is_leap_year, parse_eu_date, parse_iso_date, parse_us_date,
 };
 pub use network::PortRange;
+#[allow(unused_imports)]
+pub(crate) use uuid::{is_uuid_present, is_uuid_shape};
+
 pub use octarine_problem::{Problem, Result};
 
 // Re-export the event-free constructors trait from Layer 0 (octarine-problem)

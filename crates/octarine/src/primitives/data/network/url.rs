@@ -459,12 +459,17 @@ pub fn normalize_path_segments_with_patterns<'a>(
     }
 }
 
-/// Check if a segment looks like a UUID.
+/// Check if a segment contains a UUID.
 ///
-/// UUID format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (8-4-4-4-12 hex chars)
+/// UUID format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (8-4-4-4-12 hex chars).
+///
+/// Matching is substring-with-word-boundaries, not whole-segment: a composite
+/// segment like `report-550e8400-...-446655440000.pdf` is just as unbounded a
+/// metrics label as a bare UUID, so it is collapsed too. The predicate lives in
+/// `primitives::types` so this module does not depend on
+/// `primitives::identifiers` (issue #753).
 fn is_uuid_segment(segment: &str) -> bool {
-    // Use the identifiers module for proper UUID detection
-    crate::primitives::identifiers::network::NetworkIdentifierBuilder::new().is_uuid(segment)
+    crate::primitives::types::is_uuid_present(segment)
 }
 
 /// Check if a segment is purely numeric.
@@ -516,6 +521,40 @@ mod tests {
                 .as_ref(),
             "/api/items/{uuid}/details"
         );
+    }
+
+    #[test]
+    fn test_normalize_path_segments_composite_uuid_segment() {
+        // A composite segment is as unbounded a metrics label as a bare UUID, so
+        // it is collapsed too. This is the pre-existing behaviour of the
+        // identifiers-backed check, preserved when the predicate moved to
+        // primitives::types (issue #753).
+        assert_eq!(
+            normalize_path_segments("/files/snapshot.550e8400-e29b-41d4-a716-446655440000.json")
+                .as_ref(),
+            "/files/{uuid}"
+        );
+        assert_eq!(
+            normalize_path_segments("/files/report-550e8400-e29b-41d4-a716-446655440000").as_ref(),
+            "/files/{uuid}"
+        );
+    }
+
+    #[test]
+    fn test_normalize_path_segments_uuid_needs_word_boundary() {
+        // Extra hex digits glued to the UUID mean no word boundary, so this is
+        // not a UUID segment and is left alone - the same rule the identifier
+        // regexes apply. Fails if the check degrades to a naive substring scan.
+        let path = "/files/abc550e8400-e29b-41d4-a716-446655440000def";
+        assert_eq!(normalize_path_segments(path).as_ref(), path);
+    }
+
+    #[test]
+    fn test_normalize_path_segments_rejects_nil_uuid() {
+        // The nil UUID fails the version/variant rules, matching the identifier
+        // patterns - it is left as a literal segment.
+        let path = "/users/00000000-0000-0000-0000-000000000000";
+        assert_eq!(normalize_path_segments(path).as_ref(), path);
     }
 
     #[test]
