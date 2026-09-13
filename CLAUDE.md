@@ -18,7 +18,8 @@ Layer 1: primitives/ (pub(crate))  - Pure functions, NO observe dependencies
             ↓
 Layer 2: observe/ (pub)            - Observability, uses primitives only
             ↓
-Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/ (pub)
+Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/,
+         analyze/, anonymize/ (pub)
                                    - Uses primitives + observe
 ```
 
@@ -26,7 +27,8 @@ Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/ (p
 
 1. `primitives/` has NO internal dependencies (external crates + Problem type only)
 1. `observe/` uses primitives ONLY
-1. Layer 3 (`data/`, `security/`, `identifiers/`, `runtime/`, `crypto/`, `io/`, `auth/`, `http/`) uses primitives + observe
+1. Layer 3 (`data/`, `security/`, `identifiers/`, `runtime/`, `crypto/`, `io/`,
+   `auth/`, `http/`, `analyze/`, `anonymize/`) uses primitives + observe
 1. Production code NEVER imports `testing/`
 
 See `docs/architecture/layer-architecture.md` for full details.
@@ -124,6 +126,8 @@ crates/octarine/src/
 ├── io/             # Layer 3: I/O operations (pub)
 ├── auth/           # Layer 3: Auth operations (pub)
 ├── http/           # Layer 3: HTTP operations (pub)
+├── analyze/        # Layer 3: Detection orchestration, conflict resolution (pub)
+├── anonymize/      # Layer 3: Anonymization operators, engine, token vault (pub)
 └── testing/        # Test infrastructure (feature-gated)
 ```
 

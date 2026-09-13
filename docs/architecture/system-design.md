@@ -91,6 +91,8 @@ automatically:
 - `io/` — file operations
 - `auth/` — authentication flows
 - `http/` — HTTP operations
+- `analyze/` — detection orchestration and conflict resolution
+- `anonymize/` — per-entity anonymization operators, engine, and token vault
 
 ### Testing Infrastructure (`crates/octarine/src/testing/`, feature-gated)
 

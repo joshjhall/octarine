@@ -21,10 +21,12 @@ octarine uses a **three-layer architecture** where each layer can only depend on
 │  │  data/   │ │security/ │ │identifi- │ │ runtime/ │ │ crypto/  │          │
 │  │          │ │          │ │  ers/    │ │          │ │          │          │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                                   │
-│  │   io/    │ │  auth/   │ │  http/   │  All: Public API with full         │
-│  │          │ │          │ │          │  observability                      │
-│  └──────────┘ └──────────┘ └──────────┘                                    │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
+│  │   io/    │ │  auth/   │ │  http/   │ │ analyze/ │ │anonymize/│          │
+│  │          │ │          │ │          │ │          │ │          │          │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
+│                                                                             │
+│  All: Public API with full observability                                    │
 │                                                                             │
 │  Can use: primitives, observe                                               │
 │  Cannot use: testing (except in #[cfg(test)] blocks)                        │
@@ -167,7 +169,7 @@ use crate::security::*;
 use crate::testing::*;
 ```
 
-### Layer 3: security/, runtime/ (Application Modules)
+### Layer 3: data/, security/, identifiers/, runtime/, crypto/, io/, auth/, http/, analyze/, anonymize/ (Application Modules)
 
 **Visibility**: `pub` - Full public API
 
@@ -214,7 +216,8 @@ transformation. The operation takes input, consults config, returns a result.
 No persistent state between calls.
 
 **Examples**: `data/*`, `security/{commands,formats,network,paths,queries}`,
-`identifiers/`, `crypto/validation`, `io/formats`, `runtime/async`.
+`identifiers/`, `crypto/validation`, `io/formats`, `runtime/async`,
+`anonymize/` (engine + types + shortcuts), `analyze/`.
 
 **File layout**:
 
@@ -237,7 +240,7 @@ evolve independently of the internal primitives.
 connections, or any module where successive calls share mutable state.
 
 **Examples**: `auth/{session,lockout,mfa,remember,reset}`, `runtime/database`,
-`crypto/secrets`.
+`crypto/secrets`, `anonymize/vault` (session-scoped token store).
 
 **File layout**:
 
@@ -309,8 +312,7 @@ Normal dependency flow:       Testing dependency flow:
 |--------|----------------------|
 | primitives/ | ❌ Never |
 | observe/ | ❌ Never |
-| security/ | ❌ Never (except `#[cfg(test)]`) |
-| runtime/ | ❌ Never (except `#[cfg(test)]`) |
+| Layer 3 (`data/`, `security/`, `identifiers/`, `runtime/`, `crypto/`, `io/`, `auth/`, `http/`, `analyze/`, `anonymize/`) | ❌ Never (except `#[cfg(test)]`) |
 | testing/ | N/A (is testing) |
 | External crate (dev-deps) | ✅ Yes |
 
