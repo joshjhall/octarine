@@ -40,6 +40,13 @@ Security patterns, OWASP compliance, and threat models
 - Threat modeling
 - Security checklist
 
+### 🎭 [Anonymization](./anonymize/)
+
+Turning detector output into anonymized text
+
+- [Operators](./anonymize/operators.md) - the engine, the operator reference, and writing your own
+- [Token vault](./anonymize/token-vault.md) - reversible pseudonymization for LLM prompts
+
 ### 🚀 [Operations](./operations/)
 
 Audit logging and operational observability

@@ -158,12 +158,15 @@ crates/octarine/src/
 ├── io/                # Layer 3 (pub)
 ├── auth/              # Layer 3 (pub)
 ├── http/              # Layer 3 (pub)
+├── analyze/           # Layer 3 (pub): detection orchestration
+├── anonymize/         # Layer 3 (pub): operator surface + token vault
 └── testing/           # Test infrastructure (feature = "testing")
 
 docs/
 ├── architecture/      # This section
 ├── api/               # API documentation
 ├── security/          # Security patterns
+├── anonymize/         # Anonymization operators and token vault
 └── operations/        # Deployment and ops
 ```
 
