@@ -172,26 +172,34 @@ pub mod identifiers;
 /// and applies the engine-side passes that turn them into a coherent result
 /// set — octarine's parity surface for Presidio's `AnalyzerEngine`.
 ///
-/// It currently provides
-/// [`ConflictResolution`](analyze::ConflictResolution), which reconciles
-/// overlapping detections: Presidio-compatible same-type containment dedup by
-/// default, plus an opt-in cross-type strategy that closes a documented
-/// Presidio gap. The remaining pipeline passes (score thresholds, ad-hoc
-/// recognizers, allow/deny lists, decision-process trace) land as follow-up
-/// work.
+/// [`AnalyzerEngine`](analyze::AnalyzerEngine) drives a
+/// [`RecognizerRegistry`](analyze::RecognizerRegistry) of pluggable
+/// [`Recognizer`](analyze::Recognizer)s through an explicit pipeline:
+/// recognize, stamp provenance, enhance scores from surrounding context,
+/// reconcile overlaps via
+/// [`ConflictResolution`](analyze::ConflictResolution), threshold, and
+/// explain. The built-in
+/// [`IdentifierRecognizer`](analyze::IdentifierRecognizer) is registered by
+/// default, so the engine detects octarine's whole identifier catalog with no
+/// setup.
+///
+/// Per-entity thresholds, ad-hoc recognizer injection, allow/deny lists, and
+/// the structured decision-process record land as follow-up work; see the
+/// module documentation for the pipeline's extension seams.
 ///
 /// # Quick Start
 ///
 /// ```rust
-/// use octarine::analyze::ConflictResolution;
-/// use octarine::identifiers::Identifiers;
+/// use octarine::analyze::AnalyzerEngine;
 ///
-/// let text = "Contact: alice@example.com";
-/// let matches = Identifiers::new().scan_text(text);
+/// # tokio_test::block_on(async {
+/// let results = AnalyzerEngine::new()
+///     .analyze("Contact: alice@example.com", "en")
+///     .await?;
 ///
-/// // Drop a match nested inside a longer one, regardless of type.
-/// let resolved = ConflictResolution::CrossTypeContainment.resolve(text, matches);
-/// # let _ = resolved;
+/// assert!(results.iter().any(|r| r.entity_type == "EMAIL_ADDRESS"));
+/// # Ok::<(), octarine::observe::Problem>(())
+/// # }).unwrap();
 /// ```
 pub mod analyze;
 

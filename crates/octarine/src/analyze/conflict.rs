@@ -4,9 +4,16 @@
 //! the same span found twice, a short match nested inside a longer one, or two
 //! matches that partially intersect. [`ConflictResolution`] selects how those
 //! conflicts are reconciled before the results reach redaction.
+//!
+//! The same four strategies apply to both span types the crate carries:
+//! [`resolve`](ConflictResolution::resolve) over [`IdentifierMatch`] for direct
+//! identifier scans, and
+//! [`resolve_results`](ConflictResolution::resolve_results) over
+//! [`RecognizerResult`] for the [`analyze`](crate::analyze) pipeline.
 
 use std::cmp::Ordering;
 
+use crate::anonymize::{PiiSpan, RecognizerResult};
 use crate::primitives::identifiers::types::IdentifierMatch;
 
 /// Strategy for reconciling overlapping [`IdentifierMatch`] spans.
@@ -131,6 +138,131 @@ impl ConflictResolution {
             Self::RemoveIntersections => remove_intersections(text, matches),
         }
     }
+
+    /// Reconciles overlaps among [`RecognizerResult`]s — the
+    /// [`analyze`](crate::analyze) pipeline's dedup pass.
+    ///
+    /// Same strategies, same ordering rules as [`resolve`](Self::resolve), but
+    /// over the type the pipeline actually carries. Running the pipeline
+    /// through the [`IdentifierMatch`] form instead would mean converting in
+    /// and back out, and [`IdentifierMatch`] has no `recognition_metadata` or
+    /// `analysis_explanation` — the round trip would silently discard the
+    /// provenance of every surviving detection, which is precisely what the
+    /// decision-process trace is built on.
+    ///
+    /// # Ranking
+    ///
+    /// Where [`resolve`](Self::resolve) ranks by
+    /// [`DetectionConfidence`](crate::primitives::identifiers::types::DetectionConfidence),
+    /// this ranks by [`RecognizerResult::score`]. Scores are compared with
+    /// [`f64::total_cmp`], so a `NaN` score sorts deterministically instead of
+    /// poisoning the sort — it cannot arise through
+    /// [`RecognizerResult::new`], which rejects non-finite scores, but a
+    /// directly-constructed value could carry one.
+    ///
+    /// # Divergence from `resolve`
+    ///
+    /// [`RemoveIntersections`](Self::RemoveIntersections) trims **offsets
+    /// only**. [`IdentifierMatch`] carries a `matched_text` copy that must be
+    /// re-sliced when its span moves; [`RecognizerResult`] carries no text, so
+    /// there is nothing to keep in sync and `text` is unused for every
+    /// strategy here. It is still taken, so the two methods stay
+    /// interchangeable at call sites and a future pass that needs the text —
+    /// context re-evaluation after a trim, say — does not change the
+    /// signature.
+    #[must_use]
+    pub fn resolve_results(
+        self,
+        text: &str,
+        results: Vec<RecognizerResult>,
+    ) -> Vec<RecognizerResult> {
+        let _ = text;
+        match self {
+            Self::None => {
+                let mut sorted = results;
+                sort_results_by_position(&mut sorted);
+                sorted
+            }
+            Self::SameTypeContainment => drop_contained_results(results, true),
+            Self::CrossTypeContainment => drop_contained_results(results, false),
+            Self::RemoveIntersections => remove_intersections_results(results),
+        }
+    }
+}
+
+/// Sorts results into reading order: by start, then by end.
+fn sort_results_by_position(results: &mut [RecognizerResult]) {
+    results.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| a.end.cmp(&b.end)));
+}
+
+/// [`RecognizerResult`] analogue of [`drop_contained`].
+///
+/// Ordering is longest-span-first so a container is always visited before
+/// anything nested inside it — ranking by score first would let a
+/// high-confidence *inner* span be kept before the span enclosing it was ever
+/// tested, and both would survive.
+fn drop_contained_results(
+    results: Vec<RecognizerResult>,
+    same_type_only: bool,
+) -> Vec<RecognizerResult> {
+    let mut by_span: Vec<RecognizerResult> =
+        results.into_iter().filter(|r| r.end > r.start).collect();
+    by_span.sort_by(|a, b| {
+        let a_len = a.end.saturating_sub(a.start);
+        let b_len = b.end.saturating_sub(b.start);
+        b_len
+            .cmp(&a_len)
+            .then_with(|| b.score.total_cmp(&a.score))
+            .then_with(|| a.start.cmp(&b.start))
+    });
+
+    let mut kept: Vec<RecognizerResult> = Vec::new();
+    for candidate in by_span {
+        let absorbed = kept.iter().any(|k| {
+            let type_matches = !same_type_only || k.entity_type == candidate.entity_type;
+            type_matches && candidate.contained_in(k)
+        });
+        if !absorbed {
+            kept.push(candidate);
+        }
+    }
+
+    sort_results_by_position(&mut kept);
+    kept
+}
+
+/// [`RecognizerResult`] analogue of [`remove_intersections`], trimming offsets
+/// only.
+fn remove_intersections_results(results: Vec<RecognizerResult>) -> Vec<RecognizerResult> {
+    let mut by_priority: Vec<RecognizerResult> =
+        results.into_iter().filter(|r| r.end > r.start).collect();
+    by_priority.sort_by(|a, b| {
+        b.score
+            .total_cmp(&a.score)
+            .then_with(|| a.start.cmp(&b.start))
+            .then_with(|| a.end.cmp(&b.end))
+    });
+
+    let mut kept: Vec<RecognizerResult> = Vec::new();
+    for mut candidate in by_priority {
+        let mut blockers: Vec<(usize, usize)> = kept
+            .iter()
+            .filter(|k| k.intersects(&candidate))
+            .map(|k| (k.start, k.end))
+            .collect();
+        blockers.sort_unstable();
+
+        let Some((start, end)) = longest_free_subrange(candidate.start, candidate.end, &blockers)
+        else {
+            continue;
+        };
+        candidate.start = start;
+        candidate.end = end;
+        kept.push(candidate);
+    }
+
+    sort_results_by_position(&mut kept);
+    kept
 }
 
 /// Sorts matches into reading order: by start, then by end.
@@ -781,5 +913,151 @@ mod tests {
         assert_eq!(snap_to_boundaries(text, 0, 999), Some((0, text.len())));
         // Nothing survives a collapsed range.
         assert_eq!(snap_to_boundaries(text, 3, 3), None);
+    }
+
+    // =========================================================================
+    // resolve_results — the RecognizerResult form used by the analyze pipeline
+    // =========================================================================
+
+    /// Builds a result carrying `recognizer` provenance, so a pass that drops
+    /// metadata is visible rather than merely suspected.
+    fn rr(entity_type: &str, start: usize, end: usize, score: f64) -> RecognizerResult {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert(
+            "recognizer_name".to_string(),
+            serde_json::Value::String("test-recognizer".to_string()),
+        );
+        RecognizerResult::new(entity_type, start, end, score)
+            .expect("test span and score are valid")
+            .with_metadata(metadata)
+    }
+
+    fn spans(results: &[RecognizerResult]) -> Vec<(&str, usize, usize)> {
+        results
+            .iter()
+            .map(|r| (r.entity_type.as_str(), r.start, r.end))
+            .collect()
+    }
+
+    #[test]
+    fn results_same_type_containment_keeps_only_the_longer_span() {
+        let text = "user@example.com";
+        let out = ConflictResolution::SameTypeContainment.resolve_results(
+            text,
+            vec![
+                rr("EMAIL_ADDRESS", 0, 16, 0.8),
+                rr("EMAIL_ADDRESS", 5, 12, 0.9),
+            ],
+        );
+
+        assert_eq!(
+            spans(&out),
+            vec![("EMAIL_ADDRESS", 0, 16)],
+            "the nested same-type span must lose to the longer one even though it scored higher"
+        );
+    }
+
+    #[test]
+    fn results_same_type_containment_keeps_a_nested_different_type() {
+        // Presidio parity: a PHONE_NUMBER inside a URL keeps both.
+        let text = "https://x.com/555-123-4567";
+        let out = ConflictResolution::SameTypeContainment.resolve_results(
+            text,
+            vec![rr("URL", 0, 26, 0.8), rr("PHONE_NUMBER", 14, 26, 0.9)],
+        );
+
+        assert_eq!(
+            spans(&out),
+            vec![("URL", 0, 26), ("PHONE_NUMBER", 14, 26)],
+            "cross-type containment must survive the same-type strategy"
+        );
+    }
+
+    #[test]
+    fn results_cross_type_containment_absorbs_the_nested_span() {
+        let text = "https://x.com/555-123-4567";
+        let out = ConflictResolution::CrossTypeContainment.resolve_results(
+            text,
+            vec![rr("URL", 0, 26, 0.8), rr("PHONE_NUMBER", 14, 26, 0.9)],
+        );
+
+        assert_eq!(
+            spans(&out),
+            vec![("URL", 0, 26)],
+            "cross-type containment must drop the nested span regardless of type"
+        );
+    }
+
+    #[test]
+    fn results_dedup_preserves_recognition_metadata() {
+        // The reason resolve_results exists: converting through
+        // IdentifierMatch and back would silently drop this.
+        let text = "user@example.com";
+        let out = ConflictResolution::SameTypeContainment.resolve_results(
+            text,
+            vec![
+                rr("EMAIL_ADDRESS", 0, 16, 0.8),
+                rr("EMAIL_ADDRESS", 5, 12, 0.9),
+            ],
+        );
+
+        let survivor = out.first().expect("one result should survive");
+        let metadata = survivor
+            .recognition_metadata
+            .as_ref()
+            .expect("recognition_metadata must survive the dedup pass");
+        assert_eq!(
+            metadata.get("recognizer_name").and_then(|v| v.as_str()),
+            Some("test-recognizer"),
+        );
+    }
+
+    #[test]
+    fn results_none_preserves_every_span_sorted() {
+        let text = "user@example.com";
+        let out = ConflictResolution::None.resolve_results(
+            text,
+            vec![
+                rr("EMAIL_ADDRESS", 5, 12, 0.9),
+                rr("EMAIL_ADDRESS", 0, 16, 0.8),
+            ],
+        );
+
+        assert_eq!(
+            spans(&out),
+            vec![("EMAIL_ADDRESS", 0, 16), ("EMAIL_ADDRESS", 5, 12)],
+            "None is a pass-through that only sorts"
+        );
+    }
+
+    #[test]
+    fn results_zero_width_dropped_by_every_strategy_but_none() {
+        let text = "user@example.com";
+        let zero = vec![rr("EMAIL_ADDRESS", 4, 4, 0.9)];
+
+        assert!(
+            ConflictResolution::SameTypeContainment
+                .resolve_results(text, zero.clone())
+                .is_empty(),
+            "a zero-width span covers no text and cannot be redacted"
+        );
+        assert_eq!(
+            ConflictResolution::None.resolve_results(text, zero).len(),
+            1,
+            "None retains zero-width spans by contract"
+        );
+    }
+
+    #[test]
+    fn results_remove_intersections_trims_the_lower_scoring_span() {
+        let text = "aaaaaaaaaaaaaaaaaaaa";
+        let out = ConflictResolution::RemoveIntersections
+            .resolve_results(text, vec![rr("A", 0, 10, 0.9), rr("B", 5, 15, 0.5)]);
+
+        assert_eq!(
+            spans(&out),
+            vec![("A", 0, 10), ("B", 10, 15)],
+            "the higher-scoring span stays intact; the lower one is trimmed off its overlap"
+        );
     }
 }
