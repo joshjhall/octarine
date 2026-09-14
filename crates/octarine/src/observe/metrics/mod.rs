@@ -260,6 +260,46 @@ pub fn flush_for_testing() {
     async_dispatch::flush_for_testing();
 }
 
+/// How many times the **calling thread** has recorded `name`.
+///
+/// Use this instead of [`snapshot`] whenever a test needs to assert that a
+/// metric was *not* recorded. The registry behind `snapshot()` is
+/// process-global, so under `cargo test` (one process per crate, not per test)
+/// an absolute "this counter did not move" assertion races every concurrently
+/// running sibling that records the same metric — and
+/// [`metrics_test_lock`] cannot prevent that, because it only serializes the
+/// handful of tests that opt into taking it.
+///
+/// A thread-local tally has no such race: each test owns its thread, and the
+/// recording call updates the tally synchronously before queueing. No
+/// [`flush_for_testing`] call is needed.
+///
+/// Counts recordings, not accumulated values: `increment_by(name, 5)` counts
+/// once. Covers the `increment`/`increment_by`/`gauge`/`record` path only —
+/// a [`MetricTimer`] records straight to the registry on drop and is not
+/// tallied.
+///
+/// Test-only helper gated behind `cfg(test)`, so it is not reachable from a
+/// doctest binary - ignored rather than run.
+/// ```ignore
+/// reset_local_metrics();
+/// SilentBuilder::new().do_work();
+/// assert_eq!(local_metric_count("my.metric"), 0, "silent() must not record");
+/// ```
+#[cfg(any(test, feature = "testing"))]
+pub fn local_metric_count(name: &str) -> u64 {
+    async_dispatch::local_metric_count(name)
+}
+
+/// Clear the calling thread's metric tally.
+///
+/// Call at the start of a test that uses [`local_metric_count`], so an earlier
+/// test that ran on the same worker thread cannot contribute to the count.
+#[cfg(any(test, feature = "testing"))]
+pub fn reset_local_metrics() {
+    async_dispatch::reset_local_metrics();
+}
+
 /// Process-wide lock serializing tests that assert on exact metric values.
 ///
 /// The metrics registry is global, so a test doing

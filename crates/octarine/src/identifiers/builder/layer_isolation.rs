@@ -99,14 +99,31 @@ fn count_with_marker_of_type(writer: &MemoryWriter, marker: &str, ty: EventType)
 /// Named proxy around a shared `MemoryWriter` so multiple concurrent tests can
 /// register distinct capture writers against the global registry (the built-in
 /// `MemoryWriter::name()` is a fixed `"memory"`).
+///
+/// Also **filters by marker at write time**. A registered writer receives
+/// *every* event dispatched anywhere in the test binary —
+/// `writers::dispatch_to_writers` applies no per-writer routing beyond a
+/// severity check — so under `cargo test` (one process for the whole crate) the
+/// suite-wide event flood rolls the bounded ring buffer and evicts this test's
+/// own event before the poll below reads it back. That is what made these tests
+/// fail under `cargo test` while passing under nextest's process-per-test model
+/// (issue #793). Dropping non-matching events here keeps the ring holding only
+/// this test's events, which makes the capture independent of how many other
+/// tests share the process. Raising the capacity would only move the threshold.
 struct CaptureWriter {
     inner: Arc<MemoryWriter>,
     name: &'static str,
+    /// Substrings this writer captures. An event is stored only if its message
+    /// contains at least one; everything else is dropped before it can evict.
+    markers: Vec<String>,
 }
 
 #[async_trait]
 impl Writer for CaptureWriter {
     async fn write(&self, event: &Event) -> Result<(), WriterError> {
+        if !self.markers.iter().any(|m| event.message.contains(m)) {
+            return Ok(());
+        }
         self.inner.write(event).await
     }
 
@@ -123,11 +140,14 @@ impl Writer for CaptureWriter {
     }
 }
 
-fn register_capture(name: &'static str) -> Arc<MemoryWriter> {
+/// Register a capture writer that stores only events whose message contains one
+/// of `markers`. See [`CaptureWriter`] for why the filter is mandatory.
+fn register_capture(name: &'static str, markers: &[&str]) -> Arc<MemoryWriter> {
     let inner = Arc::new(MemoryWriter::with_capacity(64));
     register_writer(Box::new(CaptureWriter {
         inner: Arc::clone(&inner),
         name,
+        markers: markers.iter().map(|m| (*m).to_string()).collect(),
     }));
     inner
 }
@@ -143,7 +163,9 @@ fn layer1_problem_constructors_dispatch_no_events() {
 
     let name = "layer_isolation_l1_silent";
     let marker = "L1_NOEVENT_409_a71c";
-    let capture = register_capture(name);
+    // The filter must admit the very marker whose ABSENCE is asserted, or the
+    // leak assertion below would pass vacuously for want of capture.
+    let capture = register_capture(name, &[marker]);
 
     // Construct via the Layer-1 trait. The message carries the marker so a leak
     // would be visible in the captured events.
@@ -155,7 +177,7 @@ fn layer1_problem_constructors_dispatch_no_events() {
     // dispatcher actually flushed rather than merely timing out on silence.
     let probe_name = "layer_isolation_l1_probe";
     let probe_marker = "L1_PROBE_409_a71c";
-    let probe = register_capture(probe_name);
+    let probe = register_capture(probe_name, &[probe_marker]);
     dispatch(Event::new(EventType::Info, probe_marker));
     let flushed = poll_until(POLL_DEADLINE, || {
         count_with_marker(&probe, probe_marker) >= 1
@@ -193,7 +215,9 @@ fn layer3_metrics_builder_emits_security_event_on_cardinality_breach() {
     let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l3_metrics";
-    let capture = register_capture(name);
+    // Both the loud and the silent marker: the silent one must be capturable,
+    // or its `== 0` assertion would hold merely because it was filtered out.
+    let capture = register_capture(name, &["409777", "409888"]);
 
     // A distinctive over-limit count (default max is 20). The count appears in
     // the emitted message ("... N labels ... (input: N)"), so it doubles as the
@@ -235,7 +259,15 @@ fn layer3_environment_builder_emits_security_event_on_critical_override() {
     let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l3_env";
-    let capture = register_capture(name);
+    // Includes the silent path's marker (LD_PRELOAD), so its `== 0` assertion
+    // reflects a real absence rather than a filtered-out event.
+    let capture = register_capture(
+        name,
+        &[
+            "Cannot override critical system variable 'PATH'",
+            "LD_PRELOAD",
+        ],
+    );
 
     // PATH is a critical system variable; the primitive returns
     // Problem::security("Cannot override critical system variable 'PATH'").
@@ -279,7 +311,12 @@ fn layer3_generic_builder_emits_warning_on_benign_failure() {
     let fast_flush = ensure_test_dispatcher();
 
     let name = "layer_isolation_l3_benign";
-    let capture = register_capture(name);
+    // Includes the silent path's marker, so its `== 0` assertion reflects a
+    // real absence rather than a filtered-out event.
+    let capture = register_capture(
+        name,
+        &["9_benign_warn_marker_ident", "9_benign_silent_marker_ident"],
+    );
 
     // Leading digit -> "must start with letter or underscore" (Validation),
     // not a security detection. The identifier appears in the emitted message.

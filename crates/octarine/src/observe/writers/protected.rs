@@ -124,6 +124,7 @@ mod tests {
         register_writer(Box::new(MemoryWriterHandle {
             inner: Arc::clone(&capture),
             name: "protected_dispatch_capture",
+            marker,
         }));
 
         let writer = ProtectedWriter::new();
@@ -147,9 +148,17 @@ mod tests {
 
     // Named proxy around an external `MemoryWriter` so multiple tests can
     // register their own capture without colliding on the shared registry.
+    //
+    // Filters by marker at write time: a registered writer receives *every*
+    // event dispatched anywhere in the test binary, so under `cargo test` (one
+    // process for the whole crate) the suite-wide flood would roll the bounded
+    // ring and evict this test's own event before it is read back (issue #793).
+    // Dropping non-matching events keeps the ring holding only this test's
+    // events, independent of how many other tests share the process.
     struct MemoryWriterHandle {
         inner: std::sync::Arc<crate::observe::writers::MemoryWriter>,
         name: &'static str,
+        marker: &'static str,
     }
 
     #[async_trait::async_trait]
@@ -158,6 +167,9 @@ mod tests {
             &self,
             event: &Event,
         ) -> std::result::Result<(), crate::observe::writers::WriterError> {
+            if !event.message.contains(self.marker) {
+                return Ok(());
+            }
             self.inner.write(event).await
         }
 

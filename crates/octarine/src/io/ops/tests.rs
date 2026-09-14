@@ -203,31 +203,30 @@ fn test_metrics_recorded_on_write_and_read() {
 #[test]
 fn test_silent_ops_record_no_metrics_behaviorally() {
     // BEHAVIORAL: fails if `if self.config.metrics_enabled` is deleted from
-    // record_metric/start_timer in core.rs. Both measurements sit inside ONE
-    // lock hold, so concurrent siblings cannot skew the comparison.
-    use crate::observe::metrics::flush_for_testing;
+    // record_metric/start_timer in core.rs.
+    //
+    // Measured with the per-thread tally rather than the global registry
+    // snapshot. `io.file.write_count` is process-global and five sibling tests
+    // in this very file write files without taking `metrics_test_lock()`, so an
+    // absolute `== 0` against the registry races them (issue #793). The
+    // thread-local count is attributable to this test alone, which makes the
+    // zero assertion exact rather than merely likely.
+    use crate::observe::metrics::{local_metric_count, reset_local_metrics};
 
-    let _guard = crate::observe::metrics::metrics_test_lock();
     let dir = tempdir().expect("temp dir");
-
-    flush_for_testing();
-    let start = metric_counter("io.file.write_count");
+    reset_local_metrics();
 
     SecureFileOpsBuilder::silent()
         .build()
         .write_file_sync(dir.path().join("silent.bin"), b"data")
         .expect("write");
-    flush_for_testing();
-    let after_silent = metric_counter("io.file.write_count");
+    let silent_delta = local_metric_count("io.file.write_count");
 
     SecureFileOps::new()
         .write_file_sync(dir.path().join("loud.bin"), b"data")
         .expect("write");
-    flush_for_testing();
-    let after_loud = metric_counter("io.file.write_count");
+    let loud_delta = local_metric_count("io.file.write_count").saturating_sub(silent_delta);
 
-    let silent_delta = after_silent.saturating_sub(start);
-    let loud_delta = after_loud.saturating_sub(after_silent);
     assert_eq!(silent_delta, 0, "silent() must not record write_count");
     assert!(
         loud_delta > silent_delta,

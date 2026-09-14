@@ -728,31 +728,32 @@ mod tests {
     #[test]
     fn test_silent_config_records_no_metrics_behaviorally() {
         // BEHAVIORAL: fails if the `if self.emit_events` wrapper is deleted
-        // from record_operation(). Both measurements sit inside ONE lock hold,
-        // so concurrent siblings cannot skew the comparison.
-        let _guard = crate::observe::metrics::metrics_test_lock();
+        // from record_operation().
+        //
+        // Measured with the per-thread tally rather than the global registry
+        // snapshot. `ConfigBuilder::new()` appears at ~60 call sites across the
+        // crate, almost none of which take `metrics_test_lock()`, so an
+        // absolute `== 0` against the process-global histogram races them
+        // (issue #793). The thread-local count is attributable to this test
+        // alone, making the zero assertion exact rather than merely likely.
+        use crate::observe::metrics::{local_metric_count, reset_local_metrics};
 
-        flush_for_testing();
-        let start = histogram_count("runtime.config.load_ms");
+        reset_local_metrics();
 
         ConfigBuilder::silent()
             .with_prefix("OCTARINE_TEST_BEHAVIORAL_XYZ")
             .optional("VALUE")
             .load()
             .expect("silent load");
-        flush_for_testing();
-        let after_silent = histogram_count("runtime.config.load_ms");
+        let silent_delta = local_metric_count("runtime.config.load_ms");
 
         ConfigBuilder::new()
             .with_prefix("OCTARINE_TEST_BEHAVIORAL_XYZ")
             .optional("VALUE")
             .load()
             .expect("loud load");
-        flush_for_testing();
-        let after_loud = histogram_count("runtime.config.load_ms");
+        let loud_delta = local_metric_count("runtime.config.load_ms").saturating_sub(silent_delta);
 
-        let silent_delta = after_silent.saturating_sub(start);
-        let loud_delta = after_loud.saturating_sub(after_silent);
         assert_eq!(silent_delta, 0, "silent() must not record load_ms");
         assert!(
             loud_delta > silent_delta,

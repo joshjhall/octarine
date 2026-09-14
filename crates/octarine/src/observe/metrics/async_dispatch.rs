@@ -156,21 +156,82 @@ impl MetricsDispatcher {
     }
 }
 
+// Per-thread tally of metric recordings, for tests that must assert a metric
+// was *not* recorded.
+//
+// The global registry cannot answer that question: it is process-wide, and
+// under `cargo test` (one process for the whole crate) an unrelated sibling
+// test recording the same metric makes an absolute "did not move" assertion
+// fail. Serializing with `metrics_test_lock()` does not help, because that
+// lock is opt-in and the vast majority of tests that touch metrics never take
+// it.
+//
+// The queue entry points below run *synchronously on the calling thread*
+// before handing the update to the background dispatcher, and each test owns
+// its thread, so a thread-local tally attributes every recording to exactly
+// the test that caused it. See `local_metric_count`.
+#[cfg(any(test, feature = "testing"))]
+thread_local! {
+    static LOCAL_TALLY: std::cell::RefCell<std::collections::HashMap<String, u64>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Record one metric recording against the calling thread's tally.
+#[cfg(any(test, feature = "testing"))]
+fn tally_local(name: &str) {
+    LOCAL_TALLY.with(|t| {
+        if let Ok(mut map) = t.try_borrow_mut() {
+            let entry = map.entry(name.to_string()).or_insert(0);
+            *entry = entry.saturating_add(1);
+        }
+    });
+}
+
+/// How many times the **calling thread** has recorded `name`.
+///
+/// Counts recordings, not the accumulated value: an `increment_by(name, 5)`
+/// counts once. Covers the [`queue_counter_increment`] / [`queue_gauge_set`] /
+/// [`queue_histogram_record`] path only — a [`crate::observe::metrics::MetricTimer`]
+/// writes to the registry directly on drop and is not tallied.
+///
+/// Needs no `flush_for_testing()`: the tally is updated before the update is
+/// queued, so it is current the moment the recording call returns.
+#[cfg(any(test, feature = "testing"))]
+pub(super) fn local_metric_count(name: &str) -> u64 {
+    LOCAL_TALLY.with(|t| t.borrow().get(name).copied().unwrap_or(0))
+}
+
+/// Clear the calling thread's tally.
+#[cfg(any(test, feature = "testing"))]
+pub(super) fn reset_local_metrics() {
+    LOCAL_TALLY.with(|t| {
+        if let Ok(mut map) = t.try_borrow_mut() {
+            map.clear();
+        }
+    });
+}
+
 /// Queue a counter increment (non-blocking, synchronous API)
 ///
 /// This function returns immediately. Metrics are queued to a tokio channel
 /// and processed asynchronously in the background.
 pub(super) fn queue_counter_increment(name: String, amount: u64) {
+    #[cfg(any(test, feature = "testing"))]
+    tally_local(&name);
     METRICS_DISPATCHER.queue(MetricUpdate::CounterIncrement { name, amount });
 }
 
 /// Queue a gauge set (non-blocking, synchronous API)
 pub(super) fn queue_gauge_set(name: String, value: i64) {
+    #[cfg(any(test, feature = "testing"))]
+    tally_local(&name);
     METRICS_DISPATCHER.queue(MetricUpdate::GaugeSet { name, value });
 }
 
 /// Queue a histogram record (non-blocking, synchronous API)
 pub(super) fn queue_histogram_record(name: String, value: f64) {
+    #[cfg(any(test, feature = "testing"))]
+    tally_local(&name);
     METRICS_DISPATCHER.queue(MetricUpdate::HistogramRecord { name, value });
 }
 
