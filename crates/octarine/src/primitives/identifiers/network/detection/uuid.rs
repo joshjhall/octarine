@@ -223,6 +223,166 @@ mod tests {
         assert!(!is_uuid("550e8400-e29b-41d4-a716")); // incomplete
     }
 
+    /// `is_uuid` and `primitives::types::is_uuid_shape` must agree.
+    ///
+    /// The shape predicate was extracted to `primitives::types` so
+    /// `primitives::data::network` can recognize UUID path segments without
+    /// depending on this module (issue #753). Nothing in the type system keeps
+    /// the two definitions aligned, so this test does.
+    ///
+    /// The corpus is deliberately **whole-string** only: `is_uuid` matches with
+    /// regex word boundaries and therefore accepts a UUID embedded in a longer
+    /// value, while `is_uuid_shape` is anchored and does not. That divergence is
+    /// intended and is asserted separately below rather than being papered over
+    /// here.
+    #[test]
+    fn test_agrees_with_shared_shape_predicate() {
+        use crate::primitives::types::is_uuid_shape;
+
+        let corpus = [
+            // Valid, one per version, plus case and variant coverage.
+            "550e8400-e29b-11d4-a716-446655440000",
+            "550e8400-e29b-21d4-9716-446655440000",
+            "550e8400-e29b-31d4-b716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-51d4-8716-446655440000",
+            "550E8400-E29B-41D4-A716-446655440000",
+            // Rejected for structure.
+            "00000000-0000-0000-0000-000000000000", // nil: version 0, variant 0
+            "550e8400-e29b-01d4-a716-446655440000", // version 0
+            "550e8400-e29b-61d4-a716-446655440000", // version 6
+            "550e8400-e29b-41d4-7716-446655440000", // variant 7
+            "550e8400-e29b-41d4-c716-446655440000", // variant c
+            // Rejected for shape.
+            "550e8400-e29b-41d4-a716-44665544000", // one char short
+            "550e8400-e29b-41d4-a716-4466554400000", // one char long
+            "550e8400-e29b-41d4-a716-44665544000z", // non-hex
+            "550e8400e29b41d4a716446655440000",    // unhyphenated
+            "not-a-uuid",
+            "",
+        ];
+
+        // Assertion messages carry the corpus INDEX, not the value: interpolating
+        // an identifier is a cleartext-logging sink even here, where the test
+        // exists to confirm the identifier is handled correctly.
+        for (index, value) in corpus.iter().enumerate() {
+            assert_eq!(
+                is_uuid(value),
+                is_uuid_shape(value),
+                "detection and shared shape predicate disagree on corpus[{index}]"
+            );
+        }
+    }
+
+    /// `is_uuid` and `primitives::types::is_uuid_present` must agree on embedded
+    /// UUIDs — that is the whole point of the substring variant.
+    ///
+    /// `is_uuid_present` is what `primitives::data::network` uses to collapse URL
+    /// path segments, so a divergence here would silently change which segments
+    /// are masked in metrics labels.
+    #[test]
+    fn test_substring_predicate_agrees_on_embedded_uuids() {
+        use crate::primitives::types::{is_uuid_present, is_uuid_shape};
+
+        let embedded = [
+            (
+                "sentence",
+                "request id.550e8400-e29b-41d4-a716-446655440000 received",
+            ),
+            (
+                "filename",
+                "report-550e8400-e29b-41d4-a716-446655440000.pdf",
+            ),
+            ("dotted prefix", "v1.550e8400-e29b-41d4-a716-446655440000"),
+            (
+                "path segment",
+                "/users/550e8400-e29b-41d4-a716-446655440000/orders",
+            ),
+        ];
+        // Messages name the case, never the value (cleartext-logging sink).
+        for (name, value) in embedded {
+            assert!(is_uuid(value), "detection should match the {name} case");
+            assert!(
+                is_uuid_present(value),
+                "substring predicate should match the {name} case"
+            );
+            // The anchored predicate is the one that must NOT match these.
+            assert!(
+                !is_uuid_shape(value),
+                "anchored predicate should reject the {name} case"
+            );
+        }
+    }
+
+    #[test]
+    fn test_substring_predicate_requires_word_boundaries() {
+        use crate::primitives::types::is_uuid_present;
+
+        // Glued to a word character there is no boundary, so neither the regexes
+        // nor the substring predicate match. The non-ASCII cases matter because
+        // the regex crate's `\b` is Unicode-aware: a byte-level boundary check
+        // would read the accent's continuation byte as a non-word character,
+        // find a boundary the regex does not, and diverge here.
+        for (name, glued) in [
+            ("ASCII hex", "abc550e8400-e29b-41d4-a716-446655440000def"),
+            (
+                "accented letter before",
+                "café550e8400-e29b-41d4-a716-446655440000",
+            ),
+            (
+                "accented letter after",
+                "550e8400-e29b-41d4-a716-446655440000café",
+            ),
+            ("CJK before", "日本550e8400-e29b-41d4-a716-446655440000"),
+        ] {
+            assert!(!is_uuid(glued), "detection should reject {name} glue");
+            assert!(
+                !is_uuid_present(glued),
+                "substring predicate should reject {name} glue"
+            );
+        }
+
+        // A non-ASCII NON-word character is still a boundary, and both agree.
+        let bounded = "«550e8400-e29b-41d4-a716-446655440000»";
+        assert!(is_uuid(bounded));
+        assert!(is_uuid_present(bounded));
+    }
+
+    /// The regex `\w` class is wider than `char::is_alphanumeric()`.
+    ///
+    /// Marks, join controls, and connector punctuation are all word characters
+    /// to `\b`, so glueing one to a UUID removes the boundary. Pinned against
+    /// the real regexes because an alphanumeric-only approximation would call
+    /// these positions boundaries and diverge.
+    #[test]
+    fn test_substring_predicate_matches_full_unicode_word_class() {
+        use crate::primitives::types::is_uuid_present;
+
+        let uuid = "550e8400-e29b-41d4-a716-446655440000";
+        // Messages name the case, never the value: interpolating an identifier
+        // into an assertion is a cleartext-logging sink even in a test whose
+        // point is that the identifier is rejected.
+        for (glue, name) in [
+            ('\u{301}', "combining acute"),
+            ('\u{200d}', "zero-width joiner"),
+            ('\u{203f}', "undertie"),
+        ] {
+            for (value, side) in [
+                (format!("{glue}{uuid}"), "before"),
+                (format!("{uuid}{glue}"), "after"),
+            ] {
+                assert!(
+                    !is_uuid(&value),
+                    "detection should reject a {name} {side} the UUID"
+                );
+                assert!(
+                    !is_uuid_present(&value),
+                    "substring predicate should reject a {name} {side} the UUID"
+                );
+            }
+        }
+    }
+
     #[test]
     fn test_is_uuid_v4() {
         assert!(is_uuid_v4("550e8400-e29b-41d4-a716-446655440000")); // v4
