@@ -629,6 +629,28 @@ mod tests {
     }
 
     #[test]
+    fn an_exhausted_budget_keeps_the_entity_with_events_enabled_too() {
+        // The fail-closed path must not depend on whether observability is on.
+        // The sibling test covers emit_events=false; this one drives the same
+        // BudgetExceeded decision through the branch that also builds and emits
+        // the warn, and asserts the entity still survives it.
+        let text = "123-45-0000";
+        let results = vec![rr("US_SSN", 0, 11, 0.9)];
+        // Would match if the budget were ignored — so a regression that drops
+        // the budget check turns this red rather than leaving it vacuous.
+        let allow = AllowList::regex("^123-45-0000$", Duration::ZERO).expect("valid pattern");
+
+        let (kept, suppressed) = apply_allow_list(results, text, &allow, true);
+
+        assert_eq!(suppressed, 0, "an unfinished check must not suppress");
+        assert_eq!(
+            kept.len(),
+            1,
+            "the entity is kept on a budget trip whether or not events are emitted"
+        );
+    }
+
+    #[test]
     fn the_suppressed_count_is_reported_even_when_events_are_silenced() {
         let text = "a@b.com c@d.com";
         let results = vec![

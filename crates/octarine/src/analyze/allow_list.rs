@@ -199,6 +199,10 @@ impl AllowList {
     /// match rather than inside it, because the crate exposes no interruptible
     /// deadline. A trip returns [`AllowDecision::BudgetExceeded`], and the
     /// caller **keeps** the detection.
+    ///
+    /// The comparison is `elapsed >= budget`, so a [`Duration::ZERO`] budget
+    /// always trips — "no time allowed" is a meaningful setting, and making it
+    /// deterministic keeps the guard from depending on clock resolution.
     #[must_use]
     pub fn is_allowed(&self, matched_text: &str) -> AllowDecision {
         match self {
@@ -213,7 +217,12 @@ impl AllowList {
             Self::Regex { regex, budget } => {
                 let started = Instant::now();
                 let matched = regex.is_match(matched_text);
-                if started.elapsed() > *budget {
+                // `>=`, not `>`: a zero budget means "no time allowed" and must
+                // trip deterministically. With `>` it would depend on two
+                // monotonic clock reads differing, which a coarse-resolution
+                // platform can tie — turning the fail-closed guard into a
+                // timing accident.
+                if started.elapsed() >= *budget {
                     return AllowDecision::BudgetExceeded;
                 }
                 if matched {
@@ -321,6 +330,30 @@ mod tests {
             outcome.is_err(),
             "a pattern exceeding the size limit must be rejected at construction"
         );
+    }
+
+    #[test]
+    fn a_zero_budget_always_trips_regardless_of_clock_resolution() {
+        // "No time allowed" must be a deterministic outcome, not a race against
+        // clock granularity: `>=` makes a zero budget trip on every platform.
+        // The pattern below WOULD match, so a dropped budget check flips this
+        // to Allowed and the test goes red.
+        let allow = AllowList::regex("^exact$", Duration::ZERO).expect("valid pattern");
+        for _ in 0..100 {
+            assert_eq!(
+                allow.is_allowed("exact"),
+                AllowDecision::BudgetExceeded,
+                "a zero budget must trip every time, not merely usually"
+            );
+        }
+    }
+
+    #[test]
+    fn a_generous_budget_does_not_trip() {
+        // The mirror of the test above: `>=` must not make every check trip.
+        let allow = AllowList::regex("^exact$", Duration::from_secs(3600)).expect("valid pattern");
+        assert_eq!(allow.is_allowed("exact"), AllowDecision::Allowed);
+        assert_eq!(allow.is_allowed("other"), AllowDecision::NotAllowed);
     }
 
     #[test]

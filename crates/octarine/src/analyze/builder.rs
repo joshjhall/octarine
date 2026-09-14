@@ -535,6 +535,67 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn suppressing_a_detection_records_the_allow_list_metric() {
+        // Measured with the per-thread tally, not a registry snapshot: these
+        // counters are process-global and sibling tests analyze concurrently,
+        // so an absolute delta races them. The thread-local count is
+        // attributable to this test alone.
+        use crate::observe::metrics::{local_metric_count, reset_local_metrics};
+
+        let text = "reach test@example.com or real.person@corp.com";
+        let engine = AnalyzerEngine::new(); // events ON — silent() would skip the increment
+
+        reset_local_metrics();
+        let before = local_metric_count("analyze.engine.results_allow_listed");
+
+        let results = engine
+            .analyze_request(
+                &AnalyzeRequest::new(text, "en")
+                    .with_allow_list(AllowList::exact(["test@example.com"])),
+            )
+            .await
+            .expect("analysis succeeds");
+
+        let after = local_metric_count("analyze.engine.results_allow_listed");
+        assert!(
+            after > before,
+            "a suppressed detection must record the allow-list metric \
+             (before {before}, after {after})"
+        );
+        assert!(
+            !results
+                .iter()
+                .any(|r| text.get(r.start..r.end) == Some("test@example.com")),
+            "fixture must actually suppress, or the metric assertion is vacuous"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_silent_engine_records_no_allow_list_metric() {
+        // The gate, asserted as a zero on the thread-local tally rather than a
+        // snapshot delta: silencing must suppress the metric, not just the log.
+        use crate::observe::metrics::{local_metric_count, reset_local_metrics};
+
+        let text = "reach test@example.com";
+        let engine = AnalyzerEngine::silent();
+
+        reset_local_metrics();
+        let _ = engine
+            .analyze_request(
+                &AnalyzeRequest::new(text, "en")
+                    .with_allow_list(AllowList::exact(["test@example.com"])),
+            )
+            .await
+            .expect("analysis succeeds");
+
+        assert_eq!(
+            local_metric_count("analyze.engine.results_allow_listed"),
+            0,
+            "a silent engine must not record the allow-list metric"
+        );
+    }
+
     #[test]
     fn silent_engine_reports_events_disabled() {
         let engine = AnalyzerEngine::silent();
