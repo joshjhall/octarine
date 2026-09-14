@@ -46,3 +46,5 @@
 - [IdentifierType string bridge](project_identifier_type_string_bridge.md) — labels.rs holds the 117-arm table (Presidio spellings, strict FromStr); exporting from primitives needs 4-5 re-export edits or `just doc` fails
 - [Config fields must be wired](feedback_config_fields_must_be_wired.md) — a parsed+validated+documented field with no consumer is a silent no-op; grep each field name outside its declaration/validation/tests
 - [Metric tests vs global registry](project_metrics_tests_global_registry.md) — exact counter deltas pass under nextest, fail under `cargo test`/coverage; assert growth or the gate, not absolutes
+- [Thread-local metrics tally](project_metrics_thread_local_tally.md) — assert "metric NOT recorded" with local_metric_count, not a snapshot delta; metrics_test_lock is opt-in and cannot make a zero-delta safe
+- [Capture writers see every event](project_observe_capture_writer_eviction.md) — a registered test writer receives the whole binary's events; filter by marker at write time or the flood evicts yours
