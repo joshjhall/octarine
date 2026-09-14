@@ -475,38 +475,33 @@ mod tests {
     #[test]
     fn test_silent_security_records_no_metrics_behaviorally() {
         // BEHAVIORAL: fails if the `if self.emit_events` wrapper is deleted
-        // from instrument_validation(). Both measurements sit inside ONE lock
-        // hold.
-        let _guard = crate::observe::metrics::metrics_test_lock();
+        // from instrument_validation().
+        //
+        // Measured with the per-thread tally rather than the global registry
+        // snapshot. `security.paths.validate_ms` is process-global and sibling
+        // tests validate paths without taking `metrics_test_lock()`, so an
+        // absolute `== 0` against the registry races them (issue #793). The
+        // thread-local count is attributable to this test alone, making the
+        // zero assertion exact rather than merely likely.
+        use crate::observe::metrics::{local_metric_count, reset_local_metrics};
 
-        fn validate_samples() -> u64 {
-            snapshot()
-                .histograms
-                .get("security.paths.validate_ms")
-                .map_or(0, |h| h.count)
-        }
-
-        flush_for_testing();
-        let start = validate_samples();
+        reset_local_metrics();
 
         assert!(
             SecurityBuilder::silent()
                 .validate_no_traversal("../x")
                 .is_err()
         );
-        flush_for_testing();
-        let after_silent = validate_samples();
+        let silent_delta = local_metric_count("security.paths.validate_ms");
 
         assert!(
             SecurityBuilder::new()
                 .validate_no_traversal("../x")
                 .is_err()
         );
-        flush_for_testing();
-        let after_loud = validate_samples();
+        let loud_delta =
+            local_metric_count("security.paths.validate_ms").saturating_sub(silent_delta);
 
-        let silent_delta = after_silent.saturating_sub(start);
-        let loud_delta = after_loud.saturating_sub(after_silent);
         assert_eq!(silent_delta, 0, "silent() must not record validate_ms");
         assert!(
             loud_delta > silent_delta,

@@ -321,29 +321,29 @@ mod tests {
     #[test]
     fn test_silent_builder_records_no_metrics_behaviorally() {
         // BEHAVIORAL, not gate-only: this fails if the `if self.emit_events`
-        // wrapper in instrument_read/instrument_write is deleted. Both
-        // measurements are taken inside ONE lock hold, so the comparison is
-        // immune to concurrent siblings even though the registry is global.
-        let _guard = crate::observe::metrics::metrics_test_lock();
-        let dir = tempdir().expect("temp dir");
+        // wrapper in instrument_read/instrument_write is deleted.
+        //
+        // Measured with the per-thread tally rather than the global registry
+        // snapshot. `io.formats.write_ms` is process-global and sibling tests
+        // write files without taking `metrics_test_lock()`, so an absolute
+        // `== 0` against the registry races them (issue #793). The
+        // thread-local count is attributable to this test alone, making the
+        // zero assertion exact rather than merely likely.
+        use crate::observe::metrics::{local_metric_count, reset_local_metrics};
 
-        flush_for_testing();
-        let start = histogram_count("io.formats.write_ms");
+        let dir = tempdir().expect("temp dir");
+        reset_local_metrics();
 
         FormatIoBuilder::silent()
             .write_json_file(&dir.path().join("silent.json"), r#"{"a":1}"#)
             .expect("write");
-        flush_for_testing();
-        let after_silent = histogram_count("io.formats.write_ms");
+        let silent_delta = local_metric_count("io.formats.write_ms");
 
         FormatIoBuilder::new()
             .write_json_file(&dir.path().join("loud.json"), r#"{"a":1}"#)
             .expect("write");
-        flush_for_testing();
-        let after_loud = histogram_count("io.formats.write_ms");
+        let loud_delta = local_metric_count("io.formats.write_ms").saturating_sub(silent_delta);
 
-        let silent_delta = after_silent.saturating_sub(start);
-        let loud_delta = after_loud.saturating_sub(after_silent);
         assert_eq!(silent_delta, 0, "silent() must record no write_ms sample");
         assert!(
             loud_delta > silent_delta,
