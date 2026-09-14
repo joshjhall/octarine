@@ -16,6 +16,7 @@ crate::define_metrics! {
     analyze_ms => "analyze.engine.analyze_ms",
     results_returned => "analyze.engine.results_returned",
     results_filtered => "analyze.engine.results_filtered",
+    results_allow_listed => "analyze.engine.results_allow_listed",
     recognizer_errors => "analyze.engine.recognizer_errors",
 }
 
@@ -184,7 +185,10 @@ impl AnalyzerEngine {
         // 5. Context enhancement.
         pipeline::enhance_context(&mut results, text, request.language());
 
-        // 6. Allow-list — documented seam, deliberately not implemented.
+        // 6. Allow-list. Before dedup, so an allow-listed span cannot absorb a
+        //    real detection and then take it down with it.
+        let (results, allow_listed) =
+            pipeline::apply_allow_list(results, text, request.allow_list(), self.emit_events);
 
         // 7. Reconcile overlaps.
         let results = pipeline::deduplicate(results, text, self.conflict);
@@ -204,9 +208,15 @@ impl AnalyzerEngine {
             if !results.is_empty() {
                 increment_by(metric_names::results_returned(), results.len() as u64);
             }
+            // `results_filtered` counts every drop between detection and
+            // return; `results_allow_listed` is the allow-list's share of it,
+            // not a separate population.
             let filtered = detected.saturating_sub(results.len());
             if filtered > 0 {
                 increment_by(metric_names::results_filtered(), filtered as u64);
+            }
+            if allow_listed > 0 {
+                increment_by(metric_names::results_allow_listed(), allow_listed as u64);
             }
             if failures > 0 {
                 increment_by(metric_names::recognizer_errors(), failures as u64);
@@ -226,7 +236,7 @@ mod tests {
 
     use async_trait::async_trait;
 
-    use crate::analyze::Recognizer;
+    use crate::analyze::{AllowList, Recognizer};
     use crate::primitives::identifiers::types::IdentifierType;
 
     /// Emits a caller-supplied result set verbatim.
@@ -452,6 +462,76 @@ mod tests {
         assert!(
             results.is_empty(),
             "the only recognizer failed, so there is nothing to return"
+        );
+    }
+
+    #[tokio::test]
+    async fn allow_listed_detection_is_suppressed_end_to_end() {
+        // The whole point of the feature, exercised the way a caller uses it:
+        // a documented sample address is suppressed while a real one in the
+        // same text survives with its score and span intact.
+        let text = "reach test@example.com or real.person@corp.com";
+        let engine = AnalyzerEngine::silent();
+
+        let baseline = engine
+            .analyze_request(&AnalyzeRequest::new(text, "en"))
+            .await
+            .expect("analysis succeeds");
+        assert!(
+            baseline
+                .iter()
+                .any(|r| text.get(r.start..r.end) == Some("test@example.com")),
+            "fixture must detect the sample address, or the test below is vacuous"
+        );
+
+        let filtered = engine
+            .analyze_request(
+                &AnalyzeRequest::new(text, "en")
+                    .with_allow_list(AllowList::exact(["test@example.com"])),
+            )
+            .await
+            .expect("analysis succeeds");
+
+        assert!(
+            !filtered
+                .iter()
+                .any(|r| text.get(r.start..r.end) == Some("test@example.com")),
+            "the allow-listed address must not be returned"
+        );
+        assert!(
+            filtered
+                .iter()
+                .any(|r| text.get(r.start..r.end) == Some("real.person@corp.com")),
+            "the non-allow-listed address must survive untouched"
+        );
+        assert_eq!(
+            filtered.len(),
+            baseline.len().saturating_sub(1),
+            "exactly one detection was suppressed"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_allow_list_that_matches_nothing_changes_nothing() {
+        let text = "reach real.person@corp.com";
+        let engine = AnalyzerEngine::silent();
+
+        let baseline = engine
+            .analyze_request(&AnalyzeRequest::new(text, "en"))
+            .await
+            .expect("analysis succeeds");
+        let with_allow = engine
+            .analyze_request(
+                &AnalyzeRequest::new(text, "en")
+                    .with_allow_list(AllowList::exact(["nobody@nowhere.invalid"])),
+            )
+            .await
+            .expect("analysis succeeds");
+
+        assert!(!baseline.is_empty(), "fixture must detect something");
+        assert_eq!(
+            baseline, with_allow,
+            "a non-matching allow-list must be indistinguishable from none"
         );
     }
 

@@ -7,8 +7,8 @@
 //!
 //! # Deliberately absent fields
 //!
-//! Presidio's `analyze()` takes a wider knob set than this one — allow-list,
-//! ad-hoc recognizers, per-entity thresholds, regex flags. Those are **not**
+//! Presidio's `analyze()` takes a wider knob set than this one — ad-hoc
+//! recognizers, per-entity thresholds, regex flags. Those are **not**
 //! stubbed here. A field that parses and validates but reaches no consumer is
 //! a silent no-op: callers set it, nothing happens, and the bug surfaces only
 //! in production output. Each knob lands with the pass that reads it, tracked
@@ -16,6 +16,7 @@
 
 use std::fmt;
 
+use crate::analyze::AllowList;
 use crate::primitives::identifiers::types::IdentifierType;
 
 /// Per-call configuration for one analysis run.
@@ -46,6 +47,7 @@ pub struct AnalyzeRequest {
     entities: Vec<IdentifierType>,
     score_threshold: Option<f64>,
     return_decision_process: bool,
+    allow_list: AllowList,
 }
 
 impl AnalyzeRequest {
@@ -63,6 +65,7 @@ impl AnalyzeRequest {
             entities: Vec::new(),
             score_threshold: None,
             return_decision_process: false,
+            allow_list: AllowList::None,
         }
     }
 
@@ -98,6 +101,28 @@ impl AnalyzeRequest {
         self
     }
 
+    /// Suppresses detections whose matched text `allow_list` accepts.
+    ///
+    /// Applied after context enhancement and **before** overlap reconciliation,
+    /// so an allow-listed span cannot absorb a real detection and take it down
+    /// with it. See [`AllowList`] for match modes and case sensitivity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use octarine::analyze::{AllowList, AnalyzeRequest};
+    ///
+    /// let request = AnalyzeRequest::new("Contact: test@example.com", "en")
+    ///     .with_allow_list(AllowList::exact(["test@example.com"]));
+    ///
+    /// assert!(!request.allow_list().is_empty());
+    /// ```
+    #[must_use]
+    pub fn with_allow_list(mut self, allow_list: AllowList) -> Self {
+        self.allow_list = allow_list;
+        self
+    }
+
     /// The text being analyzed.
     #[must_use]
     pub fn text(&self) -> &str {
@@ -126,6 +151,12 @@ impl AnalyzeRequest {
     #[must_use]
     pub fn return_decision_process(&self) -> bool {
         self.return_decision_process
+    }
+
+    /// The allow-list suppressing known false positives for this run.
+    #[must_use]
+    pub fn allow_list(&self) -> &AllowList {
+        &self.allow_list
     }
 }
 
@@ -249,6 +280,11 @@ mod tests {
         );
         assert_eq!(request.score_threshold(), None);
         assert!(!request.return_decision_process());
+        assert_eq!(
+            request.allow_list(),
+            &AllowList::None,
+            "a request must suppress nothing until asked to"
+        );
     }
 
     #[test]
@@ -263,6 +299,20 @@ mod tests {
         assert_eq!(request.entities(), &[IdentifierType::Email]);
         assert_eq!(request.score_threshold(), Some(0.75));
         assert!(request.return_decision_process());
+    }
+
+    #[test]
+    fn with_allow_list_sets_only_the_allow_list() {
+        let base = AnalyzeRequest::new("text", "en").with_score_threshold(0.5);
+        let request = base.clone().with_allow_list(AllowList::exact(["sample"]));
+
+        assert_eq!(request.allow_list(), &AllowList::exact(["sample"]));
+        // Every other knob must survive untouched.
+        assert_eq!(request.text(), base.text());
+        assert_eq!(request.language(), base.language());
+        assert_eq!(request.score_threshold(), Some(0.5));
+        assert_eq!(request.entities(), base.entities());
+        assert!(!request.return_decision_process());
     }
 
     #[test]
