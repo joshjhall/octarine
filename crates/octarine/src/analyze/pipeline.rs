@@ -18,7 +18,7 @@
 //! | 3 | [`run_recognizers`] | await each, aggregate |
 //! | 4 | [`inject_metadata`] | stamp recognizer provenance |
 //! | 5 | [`enhance_context`] | raise scores on nearby context keywords |
-//! | 6 | *allow-list* | **not implemented** — see below |
+//! | 6 | [`apply_allow_list`] | drop caller-declared false positives |
 //! | 7 | [`deduplicate`] | reconcile overlapping spans |
 //! | 8 | [`apply_threshold`] | drop low-scoring results |
 //! | 9 | [`finalize`] | strip explanations unless requested |
@@ -28,20 +28,28 @@
 //! precede thresholding for the same reason in reverse: a span absorbed by a
 //! longer one should not influence the surviving set's scores.
 //!
+//! Allow-listing (6) must precede dedup (7), which is where octarine's order
+//! is load-bearing in its own right. Run the other way round, an allow-listed
+//! long span that had already absorbed a shorter, *non*-allow-listed detection
+//! would take that real detection down with it when it was suppressed — a
+//! false negative with no trace. Filtering first lets the shorter detection
+//! survive into reconciliation on its own merits.
+//!
 //! # Unimplemented passes
 //!
-//! Steps 2 and 6 are **documented seams, not stubs**. Step 2 (NLP
-//! `process_text` producing tokens and lemmas) requires an NER model; step 6
-//! (allow-list filtering) is a feature with its own semantics to settle. Each
-//! lands with the pass that reads it — a knob that parses but reaches no
-//! consumer is a silent no-op, and the only way a caller finds out is wrong
-//! output in production.
+//! Step 2 is a **documented seam, not a stub**: NLP `process_text` producing
+//! tokens and lemmas requires an NER model. It lands with the pass that reads
+//! it — a knob that parses but reaches no consumer is a silent no-op, and the
+//! only way a caller finds out is wrong output in production.
 
 use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::analyze::{AnalysisExplanation, ConflictResolution, Recognizer, RecognizerRegistry};
+use crate::analyze::{
+    AllowDecision, AllowList, AnalysisExplanation, ConflictResolution, Recognizer,
+    RecognizerRegistry,
+};
 use crate::anonymize::RecognizerResult;
 use crate::observe;
 use crate::primitives::identifiers::confidence::{
@@ -276,6 +284,77 @@ pub(crate) fn mark_context_enhanced(result: &mut RecognizerResult) {
     metadata.insert(CONTEXT_ENHANCED_KEY.to_string(), Value::Bool(true));
 }
 
+/// Step 6 — drops detections the caller declared false positives.
+///
+/// Returns the surviving results and the number suppressed, so the caller can
+/// record a metric: an allow-list quietly eating every detection is exactly the
+/// misconfiguration worth seeing in a dashboard.
+///
+/// # Fail-closed
+///
+/// Two paths keep a detection the allow-list *might* have covered:
+///
+/// - **Budget exceeded.** The check did not finish, so it did not conclude
+///   "allowed". Suppressing on an unfinished check would delete PII on a
+///   timing accident.
+/// - **Un-sliceable span.** A `start..end` that is not a char boundary — or
+///   runs past the end of `text` — yields no text to test. The detection stands.
+///
+/// This is the **opposite** direction from the pattern timeout in a
+/// recognizer, and deliberately so: there, giving up means a missed detection;
+/// here, giving up would mean a *suppressed* one. For a PII detector the safe
+/// failure is always the one that keeps the entity.
+///
+/// `emit_events` gates the warn only. The suppressed count is returned either
+/// way — silencing observability must not silence the metric.
+#[must_use]
+pub(crate) fn apply_allow_list(
+    results: Vec<RecognizerResult>,
+    text: &str,
+    allow_list: &AllowList,
+    emit_events: bool,
+) -> (Vec<RecognizerResult>, usize) {
+    if allow_list.is_empty() {
+        return (results, 0);
+    }
+
+    let mut kept = Vec::with_capacity(results.len());
+    let mut suppressed = 0usize;
+
+    for result in results {
+        // `get` rather than indexing: a span that is not a char boundary must
+        // not panic, and `indexing_slicing` is denied crate-wide.
+        let Some(matched) = text.get(result.start..result.end) else {
+            kept.push(result);
+            continue;
+        };
+
+        match allow_list.is_allowed(matched) {
+            AllowDecision::Allowed => {
+                suppressed = suppressed.saturating_add(1);
+            }
+            AllowDecision::NotAllowed => kept.push(result),
+            AllowDecision::BudgetExceeded => {
+                if emit_events {
+                    // The entity type is safe to log; the matched text is not —
+                    // it is by definition a candidate identifier.
+                    observe::warn(
+                        "analyze_allow_list_timeout",
+                        format!(
+                            "Allow-list check exceeded its budget for a '{}' detection; \
+                             keeping the entity",
+                            result.entity_type
+                        ),
+                    );
+                }
+                kept.push(result);
+            }
+        }
+    }
+
+    (kept, suppressed)
+}
+
 /// Step 7 — reconciles overlapping spans.
 #[must_use]
 pub(crate) fn deduplicate(
@@ -330,6 +409,8 @@ pub(crate) fn finalize(
 mod tests {
     #![allow(clippy::panic, clippy::expect_used)]
     use super::*;
+
+    use std::time::Duration;
 
     use async_trait::async_trait;
 
@@ -386,6 +467,207 @@ mod tests {
         fn supported_entities(&self) -> &[IdentifierType] {
             &[]
         }
+    }
+
+    // ---- Step 6: allow-list ----------------------------------------------
+
+    #[test]
+    fn allow_list_none_is_a_true_no_op() {
+        let text = "user@example.com and 123-45-6789";
+        let results = vec![rr("EMAIL_ADDRESS", 0, 16, 0.9), rr("US_SSN", 21, 32, 0.85)];
+
+        let (kept, suppressed) = apply_allow_list(results.clone(), text, &AllowList::None, false);
+
+        assert_eq!(suppressed, 0);
+        assert_eq!(
+            kept, results,
+            "the None fast path must not reorder or alter"
+        );
+    }
+
+    #[test]
+    fn allow_list_suppresses_only_the_listed_span() {
+        let text = "user@example.com and 123-45-6789";
+        let results = vec![rr("EMAIL_ADDRESS", 0, 16, 0.9), rr("US_SSN", 21, 32, 0.85)];
+
+        let (kept, suppressed) = apply_allow_list(
+            results,
+            text,
+            &AllowList::exact(["user@example.com"]),
+            false,
+        );
+
+        assert_eq!(suppressed, 1);
+        assert_eq!(
+            kept.iter()
+                .map(|r| r.entity_type.as_str())
+                .collect::<Vec<_>>(),
+            vec!["US_SSN"],
+            "the SSN was never allow-listed and must survive"
+        );
+    }
+
+    #[test]
+    fn allow_list_matches_the_span_text_not_the_whole_input() {
+        // The allow-list entry is the *matched* substring. An entry equal to
+        // the full input must not suppress a detection covering part of it.
+        let text = "email: user@example.com";
+        let results = vec![rr("EMAIL_ADDRESS", 7, 23, 0.9)];
+
+        let (kept, suppressed) = apply_allow_list(results, text, &AllowList::exact([text]), false);
+
+        assert_eq!(suppressed, 0);
+        assert_eq!(kept.len(), 1, "the whole input is not the matched span");
+    }
+
+    #[test]
+    fn a_span_that_does_not_slice_cleanly_is_kept() {
+        // A span running past the end of the text yields nothing to test
+        // against, so the detection must stand rather than be suppressed on a
+        // check that never ran.
+        let text = "short";
+        let results = vec![rr("US_SSN", 0, 99, 0.9)];
+
+        let (kept, suppressed) =
+            apply_allow_list(results, text, &AllowList::exact(["short"]), false);
+
+        assert_eq!(suppressed, 0);
+        assert_eq!(kept.len(), 1, "an un-sliceable span fails closed: kept");
+    }
+
+    #[test]
+    fn a_non_char_boundary_span_is_kept_rather_than_panicking() {
+        // Slicing mid-codepoint would panic under indexing; `get` returns None
+        // and the detection is kept.
+        let text = "héllo";
+        let results = vec![rr("PERSON", 1, 2, 0.9)];
+
+        let (kept, suppressed) = apply_allow_list(results, text, &AllowList::exact(["h"]), false);
+
+        assert_eq!(suppressed, 0);
+        assert_eq!(kept.len(), 1);
+    }
+
+    #[test]
+    fn allow_listing_runs_before_dedup_so_a_contained_detection_survives() {
+        // This is the reason step 6 precedes step 7. A long allow-listed span
+        // contains a shorter, non-allow-listed detection. Run in this order,
+        // the long span is suppressed first and the short one survives dedup on
+        // its own merits. Reversed, dedup would absorb the short one into the
+        // long one and the subsequent suppression would delete BOTH.
+        let text = "contact Jane Doe <jane@example.com> now";
+        let long = rr("EMAIL_ADDRESS", 8, 35, 0.9); // "Jane Doe <jane@example.com>"
+        let short = rr("PERSON", 8, 16, 0.85); // "Jane Doe"
+
+        let allow = AllowList::exact(["Jane Doe <jane@example.com>"]);
+
+        // Correct order: allow-list, then dedup.
+        let (kept, suppressed) =
+            apply_allow_list(vec![long.clone(), short.clone()], text, &allow, false);
+        assert_eq!(suppressed, 1);
+        let correct = deduplicate(kept, text, ConflictResolution::CrossTypeContainment);
+        assert_eq!(
+            correct
+                .iter()
+                .map(|r| r.entity_type.as_str())
+                .collect::<Vec<_>>(),
+            vec!["PERSON"],
+            "the non-allow-listed PERSON must survive"
+        );
+
+        // Reversed order: dedup first absorbs PERSON, then suppression takes
+        // the survivor — and the real detection is gone.
+        let deduped = deduplicate(
+            vec![long, short],
+            text,
+            ConflictResolution::CrossTypeContainment,
+        );
+        let (reversed, _) = apply_allow_list(deduped, text, &allow, false);
+        assert!(
+            reversed.is_empty(),
+            "reversing the passes must lose the PERSON — this is what the \
+             chosen order prevents, and asserting it keeps the ordering honest"
+        );
+    }
+
+    #[test]
+    fn regex_allow_list_suppresses_matching_spans() {
+        let text = "123-45-0000 and 123-45-6789";
+        let results = vec![rr("US_SSN", 0, 11, 0.9), rr("US_SSN", 16, 27, 0.9)];
+        let allow =
+            AllowList::regex(r"^\d{3}-\d{2}-0000$", Duration::from_secs(5)).expect("valid pattern");
+
+        let (kept, suppressed) = apply_allow_list(results, text, &allow, false);
+
+        assert_eq!(suppressed, 1);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(
+            kept.first().map(|r| r.start),
+            Some(16),
+            "the reserved-block SSN is suppressed; the real-shaped one is not"
+        );
+    }
+
+    #[test]
+    fn an_exhausted_budget_keeps_the_entity() {
+        // Fail-closed: a check that could not conclude must never suppress. A
+        // zero budget is always exceeded, which is exactly the path under test.
+        let text = "123-45-0000";
+        let results = vec![rr("US_SSN", 0, 11, 0.9)];
+        // This pattern WOULD match — so if the budget were ignored, the entity
+        // would be suppressed and this test would fail.
+        let allow = AllowList::regex("^123-45-0000$", Duration::ZERO).expect("valid pattern");
+
+        let (kept, suppressed) = apply_allow_list(results, text, &allow, false);
+
+        assert_eq!(suppressed, 0, "an unfinished check must not suppress");
+        assert_eq!(
+            kept.len(),
+            1,
+            "the entity is kept when the allow-list check runs out of budget"
+        );
+    }
+
+    #[test]
+    fn an_exhausted_budget_keeps_the_entity_with_events_enabled_too() {
+        // The fail-closed path must not depend on whether observability is on.
+        // The sibling test covers emit_events=false; this one drives the same
+        // BudgetExceeded decision through the branch that also builds and emits
+        // the warn, and asserts the entity still survives it.
+        let text = "123-45-0000";
+        let results = vec![rr("US_SSN", 0, 11, 0.9)];
+        // Would match if the budget were ignored — so a regression that drops
+        // the budget check turns this red rather than leaving it vacuous.
+        let allow = AllowList::regex("^123-45-0000$", Duration::ZERO).expect("valid pattern");
+
+        let (kept, suppressed) = apply_allow_list(results, text, &allow, true);
+
+        assert_eq!(suppressed, 0, "an unfinished check must not suppress");
+        assert_eq!(
+            kept.len(),
+            1,
+            "the entity is kept on a budget trip whether or not events are emitted"
+        );
+    }
+
+    #[test]
+    fn the_suppressed_count_is_reported_even_when_events_are_silenced() {
+        let text = "a@b.com c@d.com";
+        let results = vec![
+            rr("EMAIL_ADDRESS", 0, 7, 0.9),
+            rr("EMAIL_ADDRESS", 8, 15, 0.9),
+        ];
+        let allow = AllowList::exact(["a@b.com", "c@d.com"]);
+
+        let (silent_kept, silent_count) = apply_allow_list(results.clone(), text, &allow, false);
+        let (loud_kept, loud_count) = apply_allow_list(results, text, &allow, true);
+
+        assert_eq!(silent_count, 2);
+        assert_eq!(
+            silent_count, loud_count,
+            "emit_events changes logging only, never the tally"
+        );
+        assert!(silent_kept.is_empty() && loud_kept.is_empty());
     }
 
     #[tokio::test]

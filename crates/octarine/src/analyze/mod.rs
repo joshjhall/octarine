@@ -32,6 +32,9 @@
 //!   an LLM, a customer's own pattern set).
 //! - [`IdentifierRecognizer`](crate::analyze::IdentifierRecognizer) — the built-in adapter over octarine's identifier
 //!   detection. Registered by default, so the engine is useful with no setup.
+//! - [`AllowList`](crate::analyze::AllowList) — caller-declared false positives, suppressed
+//!   before overlap reconciliation so an allow-listed span cannot take a real
+//!   detection down with it.
 //! - [`ConflictResolution`](crate::analyze::ConflictResolution) — overlap reconciliation, with Presidio-compatible
 //!   same-type containment as the default and an opt-in cross-type strategy
 //!   that closes a documented Presidio gap.
@@ -50,15 +53,15 @@
 //! 3. Run each recognizer and aggregate
 //! 4. Stamp recognizer provenance into result metadata
 //! 5. Raise scores for detections with a supportive keyword nearby
-//! 6. *Allow-list filtering* — a documented seam
+//! 6. Drop detections the caller allow-listed
 //! 7. Reconcile overlapping spans
 //! 8. Drop results below the score threshold
 //! 9. Strip explanations unless the caller asked to keep them
 //!
-//! Steps 2 and 6 are deliberately absent rather than stubbed. A knob that
-//! parses but reaches no consumer is a silent no-op — callers set it, nothing
-//! happens, and the only symptom is wrong output. Each lands with the pass
-//! that reads it.
+//! Step 2 is deliberately absent rather than stubbed. A knob that parses but
+//! reaches no consumer is a silent no-op — callers set it, nothing happens, and
+//! the only symptom is wrong output. Each lands with the pass that reads it, as
+//! step 6's [`AllowList`](crate::analyze::AllowList) did.
 //!
 //! # Where dedup happens
 //!
@@ -70,6 +73,7 @@
 //!
 //! All spans are half-open (`start` inclusive, `end` exclusive).
 
+mod allow_list;
 mod builder;
 mod conflict;
 mod identifiers;
@@ -79,6 +83,7 @@ mod registry;
 mod shortcuts;
 mod types;
 
+pub use allow_list::{AllowDecision, AllowList};
 pub use builder::AnalyzerEngine;
 pub use conflict::ConflictResolution;
 pub use identifiers::IdentifierRecognizer;
