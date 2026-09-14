@@ -99,10 +99,35 @@ pub static HOSTNAME: Lazy<Regex> = Lazy::new(|| {
         .expect("BUG: Invalid regex pattern")
 });
 
+/// Hostname anchored for whole-value classification (with optional port)
+///
+/// Unlike [`HOSTNAME`], this matches the *entire* value, so it can answer
+/// "is this string a hostname?" rather than "does this string contain a
+/// hostname-shaped word?". Multiple dot-separated labels are allowed so that
+/// fully-qualified names (`server01.example.com`) classify as hostnames.
+///
+/// Example: "server01", "db-primary:5432", "cache-node-3.internal"
+pub static HOSTNAME_ANCHORED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(?::\d{1,5})?$",
+    )
+    .expect("BUG: Invalid regex pattern")
+});
+
 /// Port number (standalone or with colon)
 /// Example: ":8080", ":443", ":3000"
 pub static PORT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r":([1-9]\d{0,4})\b").expect("BUG: Invalid regex pattern"));
+
+/// Port anchored for whole-value classification
+///
+/// Unlike [`PORT`], this matches the *entire* value, so it can answer "is this
+/// string a port?" rather than "does this string contain a `:port`-shaped
+/// substring?" — the latter accepts prose such as `"meeting at 3:30"`.
+///
+/// Example: ":8080", ":443", ":3000"
+pub static PORT_ANCHORED: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^:([1-9]\d{0,4})$").expect("BUG: Invalid regex pattern"));
 
 // Phone patterns
 /// International phone with country code
