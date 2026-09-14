@@ -31,24 +31,63 @@ pub fn is_domain(value: &str) -> bool {
     patterns::network::DOMAIN.is_match(trimmed)
 }
 
-/// Check if value is a hostname
+/// Conservative filter shared by whole-value and in-text hostname detection.
+///
+/// A hostname-shaped token is otherwise indistinguishable from a plain English
+/// word, so require at least one of: a hyphen, an ASCII digit, a dot (a
+/// multi-label name is self-evidently a hostname), or a `:port` suffix.
+///
+/// Trade-off: bare `localhost` is filtered out; `localhost:8080` and
+/// `api.localhost` pass.
+fn is_likely_real_hostname(matched: &str) -> bool {
+    matched.contains('-')
+        || matched.contains('.')
+        || matched.contains(':')
+        || matched.chars().any(|c| c.is_ascii_digit())
+}
+
+/// Check if the whole value is a hostname
+///
+/// Two guards, because neither alone suffices:
+///
+/// 1. [`HOSTNAME_ANCHORED`](patterns::network::HOSTNAME_ANCHORED) matches the
+///    entire value, rejecting anything with a space or punctuation
+///    (`"hello world"`, `"Hello, world."`).
+/// 2. [`is_likely_real_hostname`] rejects a bare English word that happens to
+///    be anchored-valid (`"hello"`, `"report"`).
+///
+/// Without both, this returned `true` for arbitrary prose, which made
+/// `detect_network_identifier` — where hostname is the last fallthrough —
+/// never return `None`.
+///
+/// Trade-off: bare `localhost` is rejected (no hyphen, digit, dot, or port);
+/// `localhost:8080` and `api.localhost` pass. This matches the long-standing
+/// behavior of [`find_hostnames_in_text`].
 #[must_use]
 pub fn is_hostname(value: &str) -> bool {
     let trimmed = value.trim();
     if exceeds_safe_length(trimmed, MAX_IDENTIFIER_LENGTH) {
         return false;
     }
-    patterns::network::HOSTNAME.is_match(trimmed)
+    patterns::network::HOSTNAME_ANCHORED.is_match(trimmed) && is_likely_real_hostname(trimmed)
 }
 
-/// Check if value is a port number
+/// Check if the whole value is a port number
+///
+/// Uses [`PORT_ANCHORED`](patterns::network::PORT_ANCHORED) rather than the
+/// unanchored [`PORT`](patterns::network::PORT), which scans for a `:port`
+/// substring and so accepts prose like `"meeting at 3:30"`. Because port is
+/// checked before hostname in [`detect_network_identifier`], an unanchored
+/// check here would keep that function from returning `None` on such text.
+///
+/// [`detect_network_identifier`]: super::detect_network_identifier
 #[must_use]
 pub fn is_port(value: &str) -> bool {
     let trimmed = value.trim();
     if exceeds_safe_length(trimmed, MAX_IDENTIFIER_LENGTH) {
         return false;
     }
-    patterns::network::PORT.is_match(trimmed)
+    patterns::network::PORT_ANCHORED.is_match(trimmed)
 }
 
 // ============================================================================
@@ -74,13 +113,6 @@ pub fn find_domains_in_text(text: &str) -> Vec<IdentifierMatch> {
         ));
     }
     deduplicate_matches(matches)
-}
-
-/// Conservative filter: HOSTNAME regex matches any single word, so require
-/// a hyphen, an ASCII digit, or a `:port` suffix to avoid flagging plain
-/// English. Trade-off: bare `localhost` is filtered; `localhost:8080` passes.
-fn is_likely_real_hostname(matched: &str) -> bool {
-    matched.contains('-') || matched.chars().any(|c| c.is_ascii_digit()) || matched.contains(':')
 }
 
 /// Find all hostname-like tokens in text
@@ -288,6 +320,62 @@ mod tests {
         assert!(is_hostname("server1"));
         assert!(is_hostname("my-server"));
         assert!(is_hostname("db-server-01"));
+        // Fully-qualified and ported forms keep classifying
+        assert!(is_hostname("server01.example.com"));
+        assert!(is_hostname("db-primary:5432"));
+        assert!(is_hostname("cache-node-3"));
+    }
+
+    /// Prose containing whitespace or punctuation is not a hostname.
+    ///
+    /// These cases are caught by the *anchor* alone: each begins with a
+    /// hostname-shaped word, so an unanchored `is_match` accepts them all.
+    #[test]
+    fn test_is_hostname_rejects_multi_word_prose() {
+        assert!(!is_hostname("hello world"));
+        assert!(!is_hostname("Hello, world."));
+        assert!(!is_hostname("the quarterly report"));
+        assert!(!is_hostname("just some words"));
+        // Leading token is a genuine hostname — only the anchor rejects this
+        assert!(!is_hostname("server01 and more"));
+        assert!(!is_hostname("db-primary:5432 is down"));
+    }
+
+    /// A single bare English word is anchored-valid but not a hostname.
+    ///
+    /// These cases are caught by `is_likely_real_hostname` alone: each matches
+    /// `HOSTNAME_ANCHORED` end to end, so the anchor does not reject them.
+    #[test]
+    fn test_is_hostname_rejects_bare_words() {
+        assert!(!is_hostname("hello"));
+        assert!(!is_hostname("words"));
+        assert!(!is_hostname("report"));
+        // Documented trade-off: bare localhost has no hyphen/digit/dot/port
+        assert!(!is_hostname("localhost"));
+        // ...but the qualified forms do pass
+        assert!(is_hostname("localhost:8080"));
+        assert!(is_hostname("api.localhost"));
+    }
+
+    /// Empty and whitespace-only input must not classify as a hostname.
+    #[test]
+    fn test_is_hostname_rejects_empty() {
+        assert!(!is_hostname(""));
+        assert!(!is_hostname("   "));
+    }
+
+    /// Malformed dot placement is rejected by the multi-label anchor.
+    ///
+    /// The repeated `(?:\.label)*` group is new capability — the old
+    /// unanchored pattern accepted all of these — so pin the boundaries rather
+    /// than infer them from the regex by inspection.
+    #[test]
+    fn test_is_hostname_rejects_malformed_dots() {
+        assert!(!is_hostname(".example.com")); // leading dot
+        assert!(!is_hostname("example.com.")); // trailing dot
+        assert!(!is_hostname("example..com")); // consecutive dots
+        assert!(!is_hostname("-example.com")); // leading hyphen
+        assert!(!is_hostname("example-.com")); // label ends with hyphen
     }
 
     #[test]
@@ -297,6 +385,19 @@ mod tests {
         assert!(is_port(":3000"));
         assert!(!is_port(":0")); // Port 0 is invalid (pattern starts with [1-9])
         assert!(!is_port("8080")); // Missing colon
+    }
+
+    /// Text merely *containing* a `:port`-shaped substring is not a port.
+    ///
+    /// Caught by the anchor: the unanchored `PORT` pattern matches inside each
+    /// of these, so `is_match` accepted them all before #772.
+    #[test]
+    fn test_is_port_rejects_surrounding_text() {
+        assert!(!is_port("meeting at 3:30"));
+        assert!(!is_port("db-primary:5432 is down"));
+        assert!(!is_port("ratio 16:9"));
+        assert!(!is_port(":8080 open"));
+        assert!(!is_port("host:8080"));
     }
 
     #[test]

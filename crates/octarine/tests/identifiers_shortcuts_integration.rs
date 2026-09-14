@@ -276,6 +276,70 @@ fn test_detect_data_type_discriminates_between_types() {
     );
 }
 
+/// Arbitrary prose is not an identifier — `detect_data_type` returns `None`.
+///
+/// Regression for #772: `is_hostname` matched an unanchored pattern, so the
+/// hostname fallthrough (the last arm of network detection) claimed the first
+/// bare word of any string and this function effectively never returned `None`.
+/// The `#413` integration tests could only assert *discrimination between*
+/// known types because of this hole.
+#[test]
+fn test_detect_data_type_returns_none_for_prose() {
+    for prose in [
+        "just some words",
+        "the quarterly report",
+        "Hello, world.",
+        "hello world",
+        // Same bug class via the port arm, which is checked before hostname:
+        // the unanchored PORT pattern matched the ":30" inside this string.
+        "meeting at 3:30",
+        "aspect ratio 16:9",
+    ] {
+        assert_eq!(
+            detect_data_type(prose),
+            None,
+            "prose {prose:?} must not be classified as an identifier"
+        );
+    }
+}
+
+/// Values that genuinely are hostnames still classify — the #772 tightening
+/// rejects prose without collapsing the Hostname type itself.
+///
+/// Only `host:port` is asserted here. A bare single-token hostname
+/// (`web-server`, `cache-node-3`) is claimed by the personal-domain `Username`
+/// heuristic, which runs before network detection in `IdentifierBuilder::detect`
+/// and matches any 3-32 character word. That is a separate pre-existing gap
+/// (unchanged by #772) — see `test_detect_data_type_single_word_prose_gap`.
+#[test]
+fn test_detect_data_type_still_detects_hostnames() {
+    assert_eq!(
+        detect_data_type("db-primary:5432"),
+        Some(IdentifierType::Hostname),
+        "a host:port value should classify as a hostname"
+    );
+}
+
+/// Documents a KNOWN REMAINING GAP, so it is visible rather than silent.
+///
+/// #772 fixed the hostname and port arms, so multi-word prose now returns
+/// `None`. A single bare word is still claimed by the `Username` heuristic in
+/// `primitives::identifiers::personal::detection::find_personal_identifier`,
+/// which accepts any 3-32 char `[a-zA-Z0-9_.-]` token with no dot. That arm is
+/// already anchored — it is over-broad, not unanchored — so it is a different
+/// defect from #772 and is deliberately out of scope here.
+///
+/// If this assertion starts failing, the Username heuristic was tightened:
+/// flip it to `None` and delete this comment.
+#[test]
+fn test_detect_data_type_single_word_prose_gap() {
+    assert_eq!(
+        detect_data_type("report"),
+        Some(IdentifierType::Username),
+        "known gap: the Username heuristic claims any bare word"
+    );
+}
+
 /// The field-name hint resolves values the general detector classifies
 /// differently — an SSN-shaped string is only reported as an SSN once the
 /// field says so.
